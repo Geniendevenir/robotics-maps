@@ -47,7 +47,7 @@ and compute layer, cobot makers other than Dobot, consumer/service robots, inves
 ## Low
 - CIIF Robotics Show (Shanghai) and CIROS (Shanghai) — industrial robotics trade shows.
 - Shenzhen/Beijing municipal embodied-AI funds and Beijing E-Town robot programs — public funding (verify names).
-- Kepler, MagicLab, Dataa Robotics (CloudMinds), Sanctuary-style others — additional humanoid players (verify activity).
+- Kepler, MagicLab, Dataa Robotics (CloudMinds) — additional humanoid players (verify activity).
 - GuYueHome (古月居) and ROS China community — main Chinese ROS learning community; Open-source community type absent.
 - Discoverse / RoboTwin / other Chinese sim and benchmark projects (verify origin) — Simulator/Tool rows are thin (only InternUtopia).
 - Peking University BIGAI (Beijing Institute for General AI) — embodied-AI research institute.
