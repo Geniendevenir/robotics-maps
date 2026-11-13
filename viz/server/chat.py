@@ -164,7 +164,7 @@ def cli_stream(messages, context):
             "--mcp-config",
             config_file,
             "--allowedTools",
-            "mcp__maps__*",
+            "mcp__maps",
         ]
         process = subprocess.Popen(
             command,
@@ -177,6 +177,7 @@ def cli_stream(messages, context):
         process.stdin.write(prompt)
         process.stdin.close()
         pending = {}
+        emitted_text = False
         for line in process.stdout:
             try:
                 event = json.loads(line)
@@ -188,10 +189,12 @@ def cli_stream(messages, context):
             if event_type == "stream_event":
                 delta = event.get("event", {}).get("delta", {})
                 if delta.get("type") == "text_delta" and delta.get("text"):
+                    emitted_text = True
                     yield _sse({"type": "text", "text": delta["text"]})
             elif event_type == "assistant":
                 for block in blocks:
                     if block.get("type") == "text" and block.get("text"):
+                        emitted_text = True
                         yield _sse({"type": "text", "text": block["text"]})
                     elif block.get("type") == "tool_use":
                         pending[block.get("id")] = {
@@ -209,7 +212,7 @@ def cli_stream(messages, context):
                             "result_summary": _tool_result_text(block),
                         })
             elif event_type == "result" and event.get("result"):
-                if not any(block.get("type") == "text" for block in blocks):
+                if not emitted_text:
                     yield _sse({"type": "text", "text": event["result"]})
         stderr = process.stderr.read()
         return_code = process.wait()

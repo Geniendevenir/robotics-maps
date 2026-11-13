@@ -1,3 +1,4 @@
+import mimetypes
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -214,6 +215,10 @@ def chat_completion(payload: dict):
 mcp_root = MCPRootPath(mcp_http_app)
 app.add_route("/mcp", mcp_root, methods=["GET", "POST", "DELETE"])
 app.mount("/mcp", mcp_http_app)
+mimetypes.add_type("image/webp", ".webp")
+img_dir = VIZ_ROOT / "web" / "public" / "img"
+if img_dir.exists():
+    app.mount("/img", StaticFiles(directory=img_dir), name="img")
 web_dist = VIZ_ROOT / "web" / "dist"
 if web_dist.exists():
     app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
