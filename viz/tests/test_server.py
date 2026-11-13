@@ -32,6 +32,21 @@ def test_api_data_counts(client):
     )
 
 
+def test_group_store_instances_reload_before_mutations(tmp_path):
+    path = tmp_path / "groups.json"
+    first = GroupStore(path)
+    second = GroupStore(path)
+
+    group_one = first.create("Group one")
+    group_two = second.create("Group two")
+    first.add_nodes(group_one["id"], ["p:one"])
+
+    for store in (first, second):
+        groups = {group["id"]: group for group in store.list()}
+        assert groups[group_one["id"]]["node_ids"] == ["p:one"]
+        assert groups[group_two["id"]]["name"] == "Group two"
+
+
 def test_group_crud_and_persistence(client, tmp_path):
     created = client.post(
         "/api/groups",

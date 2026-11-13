@@ -1,7 +1,9 @@
+import fcntl
 import json
 import re
 import secrets
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +26,7 @@ def validate_color(color):
 class GroupStore:
     def __init__(self, path=DEFAULT_GROUPS_PATH):
         self.path = Path(path)
+        self.lock_path = self.path.with_name(f"{self.path.name}.lock")
         self._lock = threading.RLock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._groups = self._read()
@@ -42,12 +45,27 @@ class GroupStore:
         )
         temporary.replace(self.path)
 
+    @contextmanager
+    def _mutation(self):
+        with self._lock:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.lock_path.open("a+") as lock_file:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                try:
+                    self._groups = self._read()
+                    yield
+                    self._persist()
+                finally:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
     def list(self):
         with self._lock:
+            self._groups = self._read()
             return json.loads(json.dumps(self._groups, ensure_ascii=False))
 
     def get(self, group_id):
         with self._lock:
+            self._groups = self._read()
             for group in self._groups:
                 if group["id"] == group_id:
                     return json.loads(json.dumps(group, ensure_ascii=False))
@@ -55,8 +73,8 @@ class GroupStore:
 
     def create(self, name, description="", color="#e4572e", node_ids=None, created_by="user"):
         color = DEFAULT_COLOR if color is None or color == "" else validate_color(color)
-        now = timestamp()
-        with self._lock:
+        with self._mutation():
+            now = timestamp()
             group_id = f"g_{secrets.token_hex(3)}"
             while any(group["id"] == group_id for group in self._groups):
                 group_id = f"g_{secrets.token_hex(3)}"
@@ -71,14 +89,13 @@ class GroupStore:
                 "updated_at": now,
             }
             self._groups.append(group)
-            self._persist()
             return json.loads(json.dumps(group, ensure_ascii=False))
 
     def update(self, group_id, **fields):
         color = fields.get("color")
         if color is not None and color != "":
             validate_color(color)
-        with self._lock:
+        with self._mutation():
             group = self._find(group_id)
             for key in ("name", "description", "color"):
                 if key not in fields or fields[key] is None:
@@ -92,33 +109,29 @@ class GroupStore:
                 else:
                     group[key] = value
             group["updated_at"] = timestamp()
-            self._persist()
             return json.loads(json.dumps(group, ensure_ascii=False))
 
     def add_nodes(self, group_id, node_ids):
-        with self._lock:
+        with self._mutation():
             group = self._find(group_id)
             group["node_ids"] = list(dict.fromkeys(group["node_ids"] + list(node_ids)))
             group["updated_at"] = timestamp()
-            self._persist()
             return json.loads(json.dumps(group, ensure_ascii=False))
 
     def remove_nodes(self, group_id, node_ids):
         remove = set(node_ids)
-        with self._lock:
+        with self._mutation():
             group = self._find(group_id)
             group["node_ids"] = [node_id for node_id in group["node_ids"] if node_id not in remove]
             group["updated_at"] = timestamp()
-            self._persist()
             return json.loads(json.dumps(group, ensure_ascii=False))
 
     def delete(self, group_id):
-        with self._lock:
+        with self._mutation():
             before = len(self._groups)
             self._groups = [group for group in self._groups if group["id"] != group_id]
             if len(self._groups) == before:
                 raise KeyError(group_id)
-            self._persist()
 
     def _find(self, group_id):
         for group in self._groups:
