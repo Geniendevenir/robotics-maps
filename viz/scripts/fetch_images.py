@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image
+from PIL import Image, ImageChops
 
 try:
     from .data_common import DATA_DIR, VIZ_ROOT, assign_node_ids, parse_value, read_json, rows_by_kind, url_indexes
@@ -208,6 +208,22 @@ def image_bytes(candidate):
     return payload, content_type
 
 
+def is_usable_image(image):
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    if alpha.getextrema()[1] < 10:
+        return False
+
+    visible = alpha.point(bytes(255 if value >= 10 else 0 for value in range(256)))
+    rgb = rgba.convert("RGB")
+    darkest_channel = ImageChops.darker(
+        ImageChops.darker(rgb.getchannel("R"), rgb.getchannel("G")),
+        rgb.getchannel("B"),
+    )
+    non_white = darkest_channel.point(bytes(255 if value < 235 else 0 for value in range(256)))
+    return ImageChops.multiply(visible, non_white).getbbox() is not None
+
+
 def save_webp(payload, target):
     try:
         image = Image.open(BytesIO(payload))
@@ -218,6 +234,8 @@ def save_webp(payload, target):
         return False, "invalid-image"
     if image.width < MIN_SIZE or image.height < MIN_SIZE:
         return False, f"too-small:{image.width}x{image.height}"
+    if not is_usable_image(image):
+        return False, "invisible-or-white-only"
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGBA" if "transparency" in image.info else "RGB")
     image.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
