@@ -1,0 +1,2226 @@
+# Notion sync log
+
+Source: `main` @ 28b3c77. Order: Ecosystem + Knowledge -> Robots & Models -> Projects rows -> Projects relations (second pass).
+Live schemas fetched before writing. Never written: `Level`, `Mix check`, `Unlocks`, `Used in projects`, `Builds`, `Uses`, `Related projects`, Knowledge `Projects` / `Robots & models` (all reverse or formula).
+
+## Totals
+
+| Database | Created | Updated (existing rows) | Skipped | Final rows |
+|---|---|---|---|---|
+| Ecosystem Map | 448 | 7 | 0 | 455 |
+| Knowledge Map | 223 | 0 | 0 | 231 |
+| Robots & Models | 462 | 10 | 0 | 474 |
+| Projects | 613 | 11 | 0 | 624 |
+
+Projects relation pass: 624 rows updated with Prerequisites / Knowledge nodes / Robots & models / Relevant orgs (19 retried after Notion rate limits, all succeeded).
+Unresolved relation names: 0. Builder names moved to `Builder (if not in map)`: 0. Write errors remaining: 0.
+
+## Rules applied
+
+- Dedup key: name lowercased, punctuation removed, plus an explicit alias map (e.g. `SO-101 arm` -> `SO-101`, `pi0` -> `π0 / π0.5`, `Hugging Face` -> `Hugging Face (LeRobot)`).
+- Duplicates across research files merged into one row: first non-empty value wins for text/select, lists and Sources URLs are unioned.
+- Existing rows keep their Notion title; scalar fields are overwritten with verified research values; relations are unioned with what was already in Notion.
+- Exception: `Real-world RL fine-tuning (HIL-SERL)` Prerequisites were replaced with the architect's list, removing the old `Sim-to-real transfer on the SO-101` edge (equal-Level conflict).
+
+## Updated existing rows
+
+- ecosystem | Pollen Robotics (Hugging Face) | existing row updated
+- ecosystem | Wandercraft | existing row updated
+- ecosystem | Bleu Robotics | existing row updated
+- ecosystem | Advanced Machine Intelligence (AMI) | existing row updated
+- ecosystem | Hugging Face (LeRobot) | existing row updated
+- ecosystem | Enchanted Tools | existing row updated
+- ecosystem | ISIR (Sorbonne Université) | existing row updated
+- robots | Isaac GR00T | existing row updated
+- robots | SO-101 | existing row updated
+- robots | π0 / π0.5 | existing row updated
+- robots | MuJoCo | existing row updated
+- robots | Isaac Sim / Isaac Lab | existing row updated
+- robots | Reachy 2 | existing row updated
+- robots | Calvin-40 | existing row updated
+- robots | Miroki / Miroka | existing row updated
+- robots | ACT (Action Chunking Transformer) | existing row updated
+- robots | SmolVLA | existing row updated
+- projects | Intro: robot anatomy & coordinate frames in sim | existing row updated
+- projects | Assemble & teleoperate an SO-101 | existing row updated
+- projects | Intro: run a pretrained policy in simulation | existing row updated
+- projects | Intro: drive a servo motor from code | existing row updated
+- projects | Real-world RL fine-tuning (HIL-SERL) | existing row updated
+- projects | World-model planning on the SO-101 | existing row updated
+- projects | Human video → robot data engine | existing row updated
+- projects | Language-commanded arm with SmolVLA | existing row updated
+- projects | Design a custom SO-101 gripper | existing row updated
+- projects | Sim-to-real transfer on the SO-101 | existing row updated
+- projects | Autonomous pick-and-place with ACT | existing row updated
+- projects | Real-world RL fine-tuning (HIL-SERL) | Prerequisites replaced with architect list (removed stale 'Sim-to-real transfer on the SO-101' edge)
+
+## Existing Notion rows not in research output (left untouched)
+
+- Knowledge Map: Vision-Language-Action models (VLAs)
+- Knowledge Map: Reinforcement learning for robots
+- Knowledge Map: World models & world action models
+- Knowledge Map: Teleoperation & robot data collection
+- Knowledge Map: Learning from human video
+- Knowledge Map: Imitation learning (behavior cloning)
+- Knowledge Map: Robot datasets & benchmarks
+- Knowledge Map: Sim-to-real transfer
+- Robots & Models: Bleu_0.1
+- Robots & Models: Xiaomi-Robotics-0 / -1
+
+## Skipped
+
+- None.
+
+## Merged duplicates (71 rows built from more than one research row)
+
+- Knowledge Map: **Wheeled mobile robot kinematics** <- Wheeled mobile robot kinematics (knowledge_kinematics_dynamics.json, knowledge_locomotion.json)
+- Ecosystem Map: **Schaeffler** <- Schaeffler (ecosystem_europe_components.json, ecosystem_europe_integration_demand.json)
+- Ecosystem Map: **igus** <- igus (ecosystem_europe_components.json, ecosystem_europe_platforms.json)
+- Ecosystem Map: **Shadow Robot Company** <- Shadow Robot Company (ecosystem_europe_components.json, ecosystem_europe_platforms.json)
+- Ecosystem Map: **Comau** <- Comau (ecosystem_europe_integration_demand.json, ecosystem_europe_platforms.json)
+- Ecosystem Map: **automatica** <- automatica, automatica (Munich) (ecosystem_europe_integration_demand.json, ecosystem_france_europe_events_hackathons_competitions_prizes.json)
+- Ecosystem Map: **Hugging Face (LeRobot)** <- Hugging Face (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Ecosystem Map: **Advanced Machine Intelligence (AMI)** <- AMI (Advanced Machine Intelligence), AMI Labs (Advanced Machine Intelligence) (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Ecosystem Map: **Genesis AI** <- Genesis AI (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Ecosystem Map: **Inbolt** <- Inbolt (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Ecosystem Map: **Bleu Robotics** <- Bleu Robotics (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Ecosystem Map: **Coupe de France de Robotique** <- Coupe de France de Robotique (ecosystem_france_europe_events_hackathons_competitions_prizes.json, ecosystem_france_outside_paris_all.json)
+- Ecosystem Map: **Planète Sciences** <- Planète Sciences (ecosystem_france_europe_events_hackathons_competitions_prizes.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **SIDO Lyon** <- SIDO Lyon (ecosystem_france_europe_events_hackathons_competitions_prizes.json, ecosystem_france_outside_paris_all.json)
+- Ecosystem Map: **GdR Robotique (CNRS research network)** <- GdR Robotique (CNRS research network), GdR Robotique (CNRS) (ecosystem_france_europe_events_hackathons_competitions_prizes.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **World FIRA** <- World FIRA (ecosystem_france_europe_events_hackathons_competitions_prizes.json, ecosystem_france_outside_paris_all.json)
+- Ecosystem Map: **Clubelek (INSA Lyon)** <- ClubElek (INSA Lyon), Clubelek (INSA Lyon) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **LAAS-CNRS** <- LAAS-CNRS (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **LIRMM** <- LIRMM, LIRMM (Robotics department) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **LS2N** <- LS2N (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **ICube** <- ICube, ICube (Strasbourg) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **Institut Pascal** <- Institut Pascal (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **Heudiasyc** <- Heudiasyc, Heudiasyc (UTC) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **GIPSA-lab** <- GIPSA-lab (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **TIMC** <- TIMC, TIMC (Grenoble) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **I3S** <- I3S, I3S (Université Côte d'Azur) (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **LAB-STICC** <- LAB-STICC, Lab-STICC (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **Centrale Nantes** <- Centrale Nantes (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **INSA Lyon** <- INSA Lyon (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **INSA Toulouse** <- INSA Toulouse (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Ecosystem Map: **ISAE-SUPAERO** <- ISAE-SUPAERO (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Robots & Models: **Ruckig** <- Ruckig (knowledge_control.json, knowledge_kinematics_dynamics.json, knowledge_planning.json)
+- Robots & Models: **Pinocchio** <- Pinocchio (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json, knowledge_control.json, knowledge_kinematics_dynamics.json, knowledge_locomotion.json)
+- Robots & Models: **Crocoddyl** <- Crocoddyl (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json, knowledge_control.json, knowledge_kinematics_dynamics.json, knowledge_locomotion.json)
+- Robots & Models: **OCS2** <- OCS2 (knowledge_control.json, knowledge_locomotion.json)
+- Robots & Models: **Drake** <- Drake (ecosystem_us_all.json, knowledge_control.json, knowledge_simulation.json)
+- Robots & Models: **ViSP** <- ViSP (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json, knowledge_control.json)
+- Robots & Models: **Franka Research 3 (FR3)** <- Franka Research 3, Franka Research 3 (FR3) (ecosystem_europe_platforms.json, knowledge_control.json, knowledge_hri_safety.json)
+- Robots & Models: **safe-control-gym** <- safe-control-gym (knowledge_control.json, knowledge_hri_safety.json)
+- Robots & Models: **SO-101** <- SO-101, SO-101 arm (ecosystem_europe_software_ai.json, ecosystem_paris_all.json, knowledge_embedded_electronics.json, knowledge_manipulation.json, knowledge_simulation.json)
+- Robots & Models: **Reachy Mini** <- Reachy Mini (ecosystem_europe_software_ai.json, ecosystem_paris_all.json, knowledge_embedded_electronics.json)
+- Robots & Models: **LeRobot** <- LeRobot (ecosystem_europe_software_ai.json, ecosystem_paris_all.json, knowledge_embedded_electronics.json)
+- Robots & Models: **Unitree G1** <- Unitree G1 (ecosystem_china_all.json, knowledge_hri_safety.json, knowledge_kinematics_dynamics.json, knowledge_locomotion.json)
+- Robots & Models: **Unitree Go2** <- Unitree Go2 (ecosystem_china_all.json, knowledge_hri_safety.json, knowledge_locomotion.json)
+- Robots & Models: **Nav2** <- Nav2 (knowledge_hri_safety.json, knowledge_planning.json)
+- Robots & Models: **TOPP-RA** <- TOPP-RA, TOPPRA (knowledge_kinematics_dynamics.json, knowledge_planning.json)
+- Robots & Models: **onshape-to-robot** <- onshape-to-robot (knowledge_kinematics_dynamics.json, knowledge_mechanisms_actuation.json)
+- Robots & Models: **ANYmal** <- ANYmal (ecosystem_europe_software_ai.json, knowledge_locomotion.json)
+- Robots & Models: **Isaac Sim / Isaac Lab** <- Isaac Lab, Isaac Sim / Isaac Lab, NVIDIA Isaac Lab, NVIDIA Isaac Sim, NVIDIA Isaac Sim (in Comau controllers) (ecosystem_europe_integration_demand.json, ecosystem_us_all.json, knowledge_locomotion.json, knowledge_simulation.json)
+- Robots & Models: **MuJoCo Playground** <- MuJoCo Playground (knowledge_locomotion.json, knowledge_simulation.json)
+- Robots & Models: **Genesis** <- Genesis, Genesis (physics simulator) (ecosystem_paris_all.json, knowledge_locomotion.json, knowledge_simulation.json)
+- Robots & Models: **Mobile ALOHA** <- Mobile ALOHA (ecosystem_us_all.json, knowledge_manipulation.json)
+- Robots & Models: **MuJoCo** <- MuJoCo (knowledge_manipulation.json, knowledge_simulation.json)
+- Robots & Models: **ManiSkill** <- ManiSkill (knowledge_manipulation.json, knowledge_simulation.json)
+- Robots & Models: **MoveIt 2** <- MoveIt 2 (knowledge_manipulation.json, knowledge_planning.json)
+- Robots & Models: **cuRobo** <- cuRobo (knowledge_manipulation.json, knowledge_planning.json)
+- Robots & Models: **π0 / π0.5** <- pi0, pi0 (Physical Intelligence), pi0.5 (Physical Intelligence) (ecosystem_us_all.json, knowledge_manipulation.json)
+- Robots & Models: **Kalibr** <- Kalibr (knowledge_perception.json, knowledge_sensing.json, knowledge_state_estimation_slam.json)
+- Robots & Models: **DINOv2** <- DINOv2 (knowledge_perception.json, knowledge_robot_learning.json)
+- Robots & Models: **DUSt3R** <- DUSt3R (ecosystem_france_schools_student_associations_research_labs.json, knowledge_perception.json)
+- Robots & Models: **Livox Mid-360** <- Livox Mid-360 (knowledge_perception.json, knowledge_sensing.json)
+- Robots & Models: **SayCan** <- SayCan (knowledge_planning.json, knowledge_robot_learning.json)
+- Robots & Models: **RoboCasa** <- RoboCasa (knowledge_robot_learning.json, knowledge_simulation.json)
+- Robots & Models: **Gazebo** <- Gazebo (ecosystem_us_all.json, knowledge_simulation.json)
+- Robots & Models: **TurtleBot3** <- TurtleBot3 (ecosystem_south_korea_all.json, knowledge_state_estimation_slam.json)
+- Robots & Models: **Iggy Rob** <- Iggy Rob (ecosystem_europe_components.json, ecosystem_europe_platforms.json)
+- Robots & Models: **AEON (Hexagon Robotics)** <- AEON, AEON (Hexagon Robotics) (ecosystem_europe_integration_demand.json, ecosystem_europe_platforms.json)
+- Robots & Models: **Figure 03** <- Figure 03 (ecosystem_europe_integration_demand.json, ecosystem_us_all.json)
+- Robots & Models: **GENE-26.5** <- GENE-26.5 (ecosystem_europe_software_ai.json, ecosystem_paris_all.json)
+- Robots & Models: **SigmaBan** <- SigmaBan (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+- Robots & Models: **SOFA** <- SOFA (ecosystem_france_outside_paris_all.json, ecosystem_france_schools_student_associations_research_labs.json)
+
+## Field conflicts between duplicates (328, first value kept)
+
+- knowledge | Wheeled mobile robot kinematics | Branch: kept 'Kinematics & dynamics', dropped 'Locomotion' (knowledge_locomotion.json)
+- knowledge | Wheeled mobile robot kinematics | What it is: kept "Wheeled robots cannot slide sideways, which is a 'nonholonom", dropped 'Wheel speeds determine how the chassis moves. Differential d' (knowledge_locomotion.json)
+- knowledge | Wheeled mobile robot kinematics | Prerequisites: kept 'Coordinate frames; basic calculus', dropped 'Vectors; coordinate frames; basic Python' (knowledge_locomotion.json)
+- knowledge | Wheeled mobile robot kinematics | Frontier state 2026: kept 'Mature; used everywhere in AMRs and mobile manipulators. Rem', dropped 'Ideal no-slip models are a baseline, not a model of loose gr' (knowledge_locomotion.json)
+- knowledge | Wheeled mobile robot kinematics | Key players: kept 'Modern Robotics ch. 13, Caltech, ROS navigation community', dropped 'Northwestern Modern Robotics; Clearpath' (knowledge_locomotion.json)
+- knowledge | Wheeled mobile robot kinematics | Best resources: kept 'https://modernrobotics.northwestern.edu/nu-gm-book-resource/', dropped 'https://modernrobotics.northwestern.edu/nu-gm-book-resource/' (knowledge_locomotion.json)
+- ecosystem | Schaeffler | What they build: kept 'German motion-technology supplier of bearings and drives, in', dropped 'German industrial supplier that is both a humanoid customer ' (ecosystem_europe_integration_demand.json)
+- ecosystem | Shadow Robot Company | What they build: kept 'UK maker of the Shadow Dexterous Hand (tendon-driven, five-f', dropped 'Builds the Shadow Dexterous Hand (one of the most advanced f' (ecosystem_europe_platforms.json)
+- ecosystem | igus | What they build: kept 'German motion-plastics supplier of self-lubricating bearings', dropped 'Motion-plastics manufacturer (€1.105B sales in 2024) with a ' (ecosystem_europe_platforms.json)
+- ecosystem | Comau | What they build: kept "Italian robotics system integrator (formerly Stellantis' cap", dropped 'Italian automation company (~50 years old; majority owned by' (ecosystem_europe_platforms.json)
+- ecosystem | automatica | City: kept 'Munich', dropped 'Munich, 22-25 June 2027' (ecosystem_france_europe_events_hackathons_competitions_prizes.json)
+- ecosystem | automatica | What they build: kept 'Munich trade fair (Messe München) for robotics and automatio', dropped 'Leading trade fair for robotics and automation (Messe Münche' (ecosystem_france_europe_events_hackathons_competitions_prizes.json)
+- ecosystem | automatica | Website: kept 'https://automatica-munich.com', dropped 'https://automatica-munich.com/en/' (ecosystem_france_europe_events_hackathons_competitions_prizes.json)
+- ecosystem | SIDO Lyon | City: kept 'Lyon', dropped 'Chassieu (Lyon metropolitan area)' (ecosystem_france_outside_paris_all.json)
+- ecosystem | SIDO Lyon | What they build: kept 'French business event for IoT, AI, robotics and XR (8,015 pr', dropped 'Trade event bringing together IoT, AI, robotics and XR solut' (ecosystem_france_outside_paris_all.json)
+- ecosystem | SIDO Lyon | Warm contact path: kept 'unknown', dropped 'unknown; suggested public route: official visitor registrati' (ecosystem_france_outside_paris_all.json)
+- ecosystem | SIDO Lyon | Website: kept 'https://www.sido-lyon.com', dropped 'https://www.sido-lyon.com/' (ecosystem_france_outside_paris_all.json)
+- ecosystem | World FIRA | City: kept 'unknown', dropped 'Auzeville-Tolosane (Toulouse area)' (ecosystem_france_outside_paris_all.json)
+- ecosystem | World FIRA | What they build: kept 'International agricultural-robotics forum with live in-field', dropped 'Agricultural robotics forum combining in-field demonstration' (ecosystem_france_outside_paris_all.json)
+- ecosystem | World FIRA | Warm contact path: kept 'unknown', dropped 'unknown; suggested public route: official event contact and ' (ecosystem_france_outside_paris_all.json)
+- ecosystem | World FIRA | Website: kept 'https://world-fira.com', dropped 'https://www.world-fira.com/' (ecosystem_france_outside_paris_all.json)
+- ecosystem | Coupe de France de Robotique | City: kept 'La Roche-sur-Yon (2027: Parc Expo Les Oudairies)', dropped 'La Roche-sur-Yon' (ecosystem_france_outside_paris_all.json)
+- ecosystem | Coupe de France de Robotique | What they build: kept "France's national student robot contest (the French qualifie", dropped 'Student and amateur autonomous-robot competition organized b' (ecosystem_france_outside_paris_all.json)
+- ecosystem | Coupe de France de Robotique | Warm contact path: kept 'Organised by Planète Sciences; register a team on the offici', dropped 'unknown; suggested public route: official competition regist' (ecosystem_france_outside_paris_all.json)
+- ecosystem | Coupe de France de Robotique | Website: kept 'https://www.coupederobotique.fr', dropped 'https://www.coupederobotique.fr/' (ecosystem_france_outside_paris_all.json)
+- ecosystem | LAAS-CNRS | What they build: kept 'Humanoid and autonomous robotics research, including the Gep', dropped "One of France's largest robotics labs (CNRS). Teams Gepetto " (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LAAS-CNRS | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'Contribute to Pinocchio/Crocoddyl on GitHub, then contact Ge' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LAAS-CNRS | Website: kept 'https://www.laas.fr/', dropped 'https://www.laas.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LIRMM | What they build: kept 'University/CNRS laboratory with a robotics department, along', dropped 'Montpellier CNRS/University lab for computer science, roboti' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LIRMM | Open source: kept 'False', dropped 'True' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LIRMM | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LIRMM | Website: kept 'https://www.lirmm.fr/', dropped 'https://www.lirmm.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LS2N | What they build: kept 'Researches digital sciences and robotics, including robotize', dropped 'Nantes digital-sciences lab (CNRS, Centrale Nantes, Nantes U' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LS2N | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | LS2N | Website: kept 'https://www.ls2n.fr/', dropped 'https://www.ls2n.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ICube | City: kept 'Illkirch-Graffenstaden (Strasbourg area)', dropped 'Strasbourg' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ICube | What they build: kept 'Engineering/computing/imaging laboratory researching medical', dropped 'Strasbourg engineering/computer-science/imaging lab; its Ima' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ICube | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ICube | Website: kept 'https://icube.unistra.fr/', dropped 'https://icube.unistra.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Heudiasyc | What they build: kept 'UTC/CNRS laboratory in intelligent systems, robotics and AI.', dropped 'CNRS/UTC lab (since 1981) on embedded systems that make mobi' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Heudiasyc | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Heudiasyc | Website: kept 'https://www.hds.utc.fr/', dropped 'https://www.hds.utc.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Institut Pascal | City: kept 'Aubière (Clermont-Ferrand area)', dropped 'Clermont-Ferrand' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Institut Pascal | What they build: kept 'Researches intelligent robots and machines, including multi-', dropped 'Clermont-Ferrand CNRS/UCA lab with an image, perception syst' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Institut Pascal | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Institut Pascal | Website: kept 'https://www.institutpascal.uca.fr/', dropped 'https://www.institutpascal.uca.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GIPSA-lab | City: kept 'Saint-Martin-d’Hères (Grenoble area)', dropped 'Grenoble' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GIPSA-lab | What they build: kept 'Researches signal processing, control and related robotics. ', dropped 'Grenoble signal/control lab; designs many custom flying robo' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GIPSA-lab | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GIPSA-lab | Website: kept 'https://www.gipsa-lab.grenoble-inp.fr/', dropped 'https://www.gipsa-lab.grenoble-inp.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | I3S | City: kept 'Sophia Antipolis / Nice', dropped 'Sophia Antipolis' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | I3S | What they build: kept 'Computing, signals and systems laboratory participating in r', dropped 'CNRS/UCA computer science and signals lab listed by the GdR ' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | I3S | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | I3S | Website: kept 'https://www.i3s.unice.fr/', dropped 'https://www.i3s.univ-cotedazur.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Lab-STICC | City: kept 'Brest / Lorient / Vannes', dropped 'Brest / Lorient' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Lab-STICC | What they build: kept 'Research laboratory participating in national robotics infra', dropped 'CNRS lab in Brittany (UBO, UBS, IMT Atlantique, ENSTA Brest.' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Lab-STICC | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Lab-STICC | Website: kept 'https://labsticc.fr/', dropped 'https://labsticc.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | TIMC | City: kept 'La Tronche (Grenoble area)', dropped 'Grenoble' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | TIMC | What they build: kept 'Interdisciplinary health-engineering research laboratory, re', dropped 'Grenoble lab on computer-assisted medical interventions, lis' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | TIMC | Warm contact path: kept 'unknown; suggested public route: official team or laboratory', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | TIMC | Website: kept 'https://www.timc.fr/', dropped 'https://www.timc.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GdR Robotique (CNRS research network) | Type: kept 'Research lab', dropped 'Association' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GdR Robotique (CNRS research network) | City: kept 'unknown', dropped 'National' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GdR Robotique (CNRS research network) | What they build: kept 'CNRS national research network for French robotics labs: run', dropped 'CNRS national robotics research network: directory of ~49 ro' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | GdR Robotique (CNRS research network) | Warm contact path: kept 'unknown', dropped 'Register as student members on gdr-robotique.org' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Centrale Nantes | What they build: kept 'Engineering school linked to the LS2N robotics ecosystem. It', dropped 'Engineering school with a strong robotics track; coordinates' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Centrale Nantes | Warm contact path: kept 'unknown; suggested public route: official school partnership', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Centrale Nantes | Website: kept 'https://www.ec-nantes.fr/', dropped 'https://www.ec-nantes.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Lyon | What they build: kept 'Engineering school with a student robotics/electronics route', dropped 'Engineering school; student club ClubElek (Coupe de France, ' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Lyon | Warm contact path: kept 'unknown; suggested public route: official school partnership', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Lyon | Website: kept 'https://www.insa-lyon.fr/', dropped 'https://www.insa-lyon.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Toulouse | What they build: kept 'Engineering school in the Toulouse research and industrial e', dropped 'Engineering school next to LAAS; Club Robot INSA Toulouse co' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Toulouse | Warm contact path: kept 'unknown; suggested public route: official school partnership', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | INSA Toulouse | Website: kept 'https://www.insa-toulouse.fr/', dropped 'https://www.insa-toulouse.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ISAE-SUPAERO | What they build: kept 'Aerospace engineering school with research and innovation pr', dropped 'Aerospace engineering school; Club Robotique de Supaéro comp' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ISAE-SUPAERO | Warm contact path: kept 'unknown; suggested public route: official school partnership', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ISAE-SUPAERO | Website: kept 'https://www.isae-supaero.fr/', dropped 'https://www.isae-supaero.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Planète Sciences | City: kept 'Évry-Courcouronnes (Île-de-France)', dropped 'Ris-Orangis (national network)' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Planète Sciences | What they build: kept 'French youth science association that runs hands-on space, r', dropped 'Youth science non-profit; organises the Coupe de France de R' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Planète Sciences | Warm contact path: kept 'Contact via the Coupe de France / Planète Sciences national ', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ClubElek (INSA Lyon) | What they build: kept 'Student electronics and robotics association. Its competitio', dropped 'INSA Lyon electronics/robotics club: Coupe de France, drones' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ClubElek (INSA Lyon) | Warm contact path: kept 'unknown; suggested public route: association bureau address ', dropped 'unknown' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | ClubElek (INSA Lyon) | Website: kept 'https://clubelek.fr/', dropped 'https://www.clubelek.fr' (ecosystem_france_schools_student_associations_research_labs.json)
+- ecosystem | Hugging Face (LeRobot) | City: kept 'Paris / New York', dropped 'Paris (+ New York)' (ecosystem_paris_all.json)
+- ecosystem | Hugging Face (LeRobot) | What they build: kept 'Commercial AI platform and open-source community with Paris ', dropped 'Open-source AI platform. Its Paris-based robotics team build' (ecosystem_paris_all.json)
+- ecosystem | Hugging Face (LeRobot) | Warm contact path: kept 'Paris office; LeRobot Discord and GitHub community; LeRobot ', dropped '42AI already co-hosted the June 2025 LeRobot worldwide hacka' (ecosystem_paris_all.json)
+- ecosystem | Genesis AI | City: kept 'Paris / San Carlos', dropped 'Paris (+ San Carlos, CA)' (ecosystem_paris_all.json)
+- ecosystem | Genesis AI | What they build: kept 'Founded in early 2025; Reuters reports $105M raised and a Ju', dropped 'Full-stack general-purpose robotics company: GENE-26.5 robot' (ecosystem_paris_all.json)
+- ecosystem | Genesis AI | Warm contact path: kept 'unknown', dropped 'Station F campus (Future 40 2025)' (ecosystem_paris_all.json)
+- ecosystem | Genesis AI | Website: kept 'https://genesis.ai', dropped 'https://www.genesisai.homes' (ecosystem_paris_all.json)
+- ecosystem | Advanced Machine Intelligence (AMI) | Type: kept 'Research lab', dropped 'Startup' (ecosystem_paris_all.json)
+- ecosystem | Advanced Machine Intelligence (AMI) | City: kept 'Paris', dropped 'Paris (+ New York, Montreal, Singapore)' (ecosystem_paris_all.json)
+- ecosystem | Advanced Machine Intelligence (AMI) | What they build: kept 'Frontier AI lab co-founded by Yann LeCun, with Paris among i', dropped 'Frontier AI lab co-founded by Yann LeCun building world mode' (ecosystem_paris_all.json)
+- ecosystem | Advanced Machine Intelligence (AMI) | Size / stage: kept 'Pre-seed/Seed', dropped 'Series C+' (ecosystem_paris_all.json)
+- ecosystem | Advanced Machine Intelligence (AMI) | Open source: kept 'False', dropped 'True' (ecosystem_paris_all.json)
+- ecosystem | Bleu Robotics | What they build: kept 'Paris startup developing hardware-agnostic AI software for i', dropped 'AI that teaches industrial humanoid robots new factory tasks' (ecosystem_paris_all.json)
+- ecosystem | Bleu Robotics | Warm contact path: kept 'unknown', dropped 'Station F campus (Future 40 2026)' (ecosystem_paris_all.json)
+- ecosystem | Bleu Robotics | Website: kept 'https://bleu-robotics.com/', dropped 'https://bleu-robotics.com' (ecosystem_paris_all.json)
+- ecosystem | Inbolt | What they build: kept '3D vision + hardware-agnostic AI software that lets existing', dropped 'Real-time 3D vision and a generalist AI model that let indus' (ecosystem_paris_all.json)
+- robots | Franka Research 3 (FR3) | Price / access: kept 'Commercial; price not on opened page (unknown, likely €5k+ b', dropped 'Commercial research arm; price unknown' (knowledge_hri_safety.json)
+- robots | Franka Research 3 (FR3) | Key specs: kept '7-DoF arm, 3 kg payload, 855 mm reach, joint torque sensors ', dropped 'Research arm supported by the Franka Control Interface (FCI)' (knowledge_hri_safety.json)
+- robots | Franka Research 3 (FR3) | Why it matters: kept 'Reference torque-controlled research arm; where impedance co', dropped 'Standard research platform for physical HRI, compliance and ' (knowledge_hri_safety.json)
+- robots | safe-control-gym | Builder (if not in map): kept 'learnsyslab (formerly utiasDSL) on GitHub', dropped 'University of Toronto Dynamic Systems Lab (repo now at learn' (knowledge_hri_safety.json)
+- robots | safe-control-gym | Price / access: kept 'Free on GitHub, MIT licence', dropped 'Free, MIT license' (knowledge_hri_safety.json)
+- robots | safe-control-gym | Key specs: kept 'PyBullet cart-pole and quadrotor environments with constrain', dropped 'PyBullet benchmark (cart-pole, quadrotor) with symbolic cons' (knowledge_hri_safety.json)
+- robots | safe-control-gym | Why it matters: kept 'Benchmark to compare LQR, MPC, RL and safety filters fairly.', dropped 'Entry point to compare safety filters and safe RL without ha' (knowledge_hri_safety.json)
+- robots | Pinocchio | Builder (if not in map): kept 'Inria / LAAS-CNRS (stack-of-tasks)', dropped 'Inria Willow team (Paris) / LAAS-CNRS' (knowledge_kinematics_dynamics.json)
+- robots | Pinocchio | Price / access: kept 'Free, BSD', dropped 'Free, BSD licence; conda/pip' (knowledge_kinematics_dynamics.json)
+- robots | Pinocchio | Key specs: kept 'Fast rigid-body dynamics algorithms with analytical derivati', dropped 'C++ template library with Python bindings; RNEA/ABA with ana' (knowledge_kinematics_dynamics.json)
+- robots | Pinocchio | Why it matters: kept 'Gives computed-torque, whole-body and trajectory-optimizatio', dropped 'Paris-built reference library for robot dynamics; foundation' (knowledge_kinematics_dynamics.json)
+- robots | Ruckig | Builder (if not in map): kept 'Lars Berscheid (pantor) / Ruckig', dropped 'Ruckig (Lars Berscheid et al.)' (knowledge_kinematics_dynamics.json)
+- robots | Ruckig | Price / access: kept 'Community version MIT licence; separate Pro version', dropped 'Community version free (MIT), pip; Pro version paid' (knowledge_kinematics_dynamics.json)
+- robots | Ruckig | Key specs: kept 'Online, jerk-limited, time-optimal trajectory generation for', dropped 'Jerk-limited, time-optimal state-to-state trajectories in re' (knowledge_kinematics_dynamics.json)
+- robots | Ruckig | Why it matters: kept 'Makes any arm motion smooth and fast with one library call.', dropped 'Makes any arm move smoothly with a few lines of code; integr' (knowledge_kinematics_dynamics.json)
+- robots | Crocoddyl | Builder (if not in map): kept 'LAAS-CNRS / loco-3d', dropped 'RoMI Lab (Heriot-Watt, Edinburgh Centre for Robotics), LAAS-' (knowledge_kinematics_dynamics.json)
+- robots | Crocoddyl | Price / access: kept 'Free, BSD', dropped 'Free, BSD; conda' (knowledge_kinematics_dynamics.json)
+- robots | Crocoddyl | Key specs: kept 'Optimal control library for robot control under contact; DDP', dropped 'DDP-family optimal control solvers (FDDP etc.) for contact s' (knowledge_kinematics_dynamics.json)
+- robots | Crocoddyl | Why it matters: kept 'State-of-the-art trajectory optimization for legged and mani', dropped 'French-origin reference for whole-body trajectory optimizati' (knowledge_kinematics_dynamics.json)
+- robots | Unitree G1 | Price / access: kept 'From US $13.5K (vendor page)', dropped 'Price from $13.5K (vendor page); EDU variant priced separate' (knowledge_kinematics_dynamics.json)
+- robots | Unitree G1 | Key specs: kept 'Humanoid, about 35 kg, 23-43 joint motors depending on versi', dropped 'Humanoid; 29-DoF MJCF in Menagerie; base and EDU versions' (knowledge_kinematics_dynamics.json)
+- robots | Unitree G1 | Why it matters: kept 'Affordable humanoid reference for discussing fall and stop h', dropped 'Most common low-cost research humanoid target for retargetin' (knowledge_kinematics_dynamics.json)
+- robots | Unitree Go2 | Builder (if not in map): kept 'Unitree Robotics', dropped 'Unitree' (knowledge_locomotion.json)
+- robots | Unitree Go2 | Price / access: kept 'unknown', dropped 'Public documentation; current delivered hardware price and r' (knowledge_locomotion.json)
+- robots | Unitree Go2 | Key specs: kept 'Quadruped with an LLM-based interface tested in RoboPAIR (sp', dropped 'Commercial quadruped; development access differs by configur' (knowledge_locomotion.json)
+- robots | Unitree Go2 | Why it matters: kept 'One of the real robots jailbroken by RoboPAIR, showing that ', dropped 'A reference for gaits & gait cycles, rl locomotion with sim-' (knowledge_locomotion.json)
+- robots | Unitree G1 | Builder (if not in map): kept 'Unitree Robotics', dropped 'Unitree' (knowledge_locomotion.json)
+- robots | Unitree G1 | Price / access: kept 'From US $13.5K (vendor page)', dropped 'Public documentation; current delivered hardware price and r' (knowledge_locomotion.json)
+- robots | Unitree G1 | Key specs: kept 'Humanoid, about 35 kg, 23-43 joint motors depending on versi', dropped 'Vendor lists 23 to 43 joint motors depending on configuratio' (knowledge_locomotion.json)
+- robots | Unitree G1 | Why it matters: kept 'Affordable humanoid reference for discussing fall and stop h', dropped 'A reference for bipedal walking control, whole-body control ' (knowledge_locomotion.json)
+- robots | Pinocchio | Builder (if not in map): kept 'Inria / LAAS-CNRS (stack-of-tasks)', dropped 'Stack of Tasks contributors' (knowledge_locomotion.json)
+- robots | Pinocchio | Price / access: kept 'Free, BSD', dropped 'Public repository; check component licenses and compute requ' (knowledge_locomotion.json)
+- robots | Pinocchio | Key specs: kept 'Fast rigid-body dynamics algorithms with analytical derivati', dropped 'Rigid-body dynamics algorithms and analytical derivatives; n' (knowledge_locomotion.json)
+- robots | Pinocchio | Why it matters: kept 'Gives computed-torque, whole-body and trajectory-optimizatio', dropped 'A reference for whole-body control for legged robots, leg de' (knowledge_locomotion.json)
+- robots | Crocoddyl | Builder (if not in map): kept 'LAAS-CNRS / loco-3d', dropped 'loco-3d contributors' (knowledge_locomotion.json)
+- robots | Crocoddyl | Price / access: kept 'Free, BSD', dropped 'Public repository; check component licenses and compute requ' (knowledge_locomotion.json)
+- robots | Crocoddyl | Key specs: kept 'Optimal control library for robot control under contact; DDP', dropped 'Optimal control under contact sequences using DDP-like algor' (knowledge_locomotion.json)
+- robots | Crocoddyl | Why it matters: kept 'State-of-the-art trajectory optimization for legged and mani', dropped 'A reference for whole-body control for legged robots, loco-m' (knowledge_locomotion.json)
+- robots | OCS2 | Builder (if not in map): kept 'ETH Zurich Robotic Systems Lab', dropped 'ETH Robotic Systems Lab' (knowledge_locomotion.json)
+- robots | OCS2 | Price / access: kept 'Free, BSD-3-Clause', dropped 'Public repository; check component licenses and compute requ' (knowledge_locomotion.json)
+- robots | OCS2 | Key specs: kept 'Optimal Control for Switched Systems: SLQ/DDP-based MPC tool', dropped 'Optimal control toolbox for switched systems including legge' (knowledge_locomotion.json)
+- robots | OCS2 | Why it matters: kept 'Industrial-grade MPC reference from a top legged-robotics la', dropped 'A reference for model predictive control for legged robots, ' (knowledge_locomotion.json)
+- robots | SO-101 | Builder (if not in map): kept 'The Robot Studio / Hugging Face', dropped 'Hugging Face LeRobot / TheRobotStudio' (knowledge_manipulation.json)
+- robots | SO-101 | Price / access: kept 'Repository BOM lists US$13.89 per STS3215 servo; follower ne', dropped 'Open assembly guide and bill of materials; current complete ' (knowledge_manipulation.json)
+- robots | SO-101 | Key specs: kept 'Five arm joints plus actuated gripper (six servos); SO-101 f', dropped 'Leader-follower arm assembly documented; follower uses six S' (knowledge_manipulation.json)
+- robots | SO-101 | Why it matters: kept 'Low-cost arm supported by LeRobot for teleoperation, data co', dropped 'A reference for grippers & end-effectors, pick-and-place pip' (knowledge_manipulation.json)
+- robots | onshape-to-robot | Builder (if not in map): kept 'Rhoban (Bordeaux)', dropped 'Rhoban / onshape-to-robot contributors' (knowledge_mechanisms_actuation.json)
+- robots | onshape-to-robot | Price / access: kept 'Free, pip; needs Onshape account/API key', dropped 'Public documentation and repository; Onshape account/API and' (knowledge_mechanisms_actuation.json)
+- robots | onshape-to-robot | Key specs: kept 'Exports Onshape assemblies to URDF, SDF or MuJoCo; dof_/fram', dropped 'Exports Onshape assemblies to URDF, SDF or MuJoCo descriptio' (knowledge_mechanisms_actuation.json)
+- robots | onshape-to-robot | Why it matters: kept 'Closes the gap between student CAD and a simulatable robot m', dropped 'Connects mechanical CAD to a testable robot model without cl' (knowledge_mechanisms_actuation.json)
+- robots | MoveIt 2 | Builder (if not in map): kept 'MoveIt community', dropped 'MoveIt community / PickNik Robotics' (knowledge_planning.json)
+- robots | MoveIt 2 | Price / access: kept 'Public documentation and software; robot setup required.', dropped 'Public implementation referenced; hardware, compute, optiona' (knowledge_planning.json)
+- robots | MoveIt 2 | Key specs: kept 'ROS 2 manipulation platform with planning, perception and ex', dropped 'ROS 2 planning pipelines with OMPL, CHOMP and request/respon' (knowledge_planning.json)
+- robots | MoveIt 2 | Why it matters: kept 'A reference for pick-and-place pipeline, learning-based gras', dropped 'A concrete reference for Configuration space & collision che' (knowledge_planning.json)
+- robots | Nav2 | Price / access: kept 'Free, open source (GitHub)', dropped 'Public implementation referenced; hardware, compute, optiona' (knowledge_planning.json)
+- robots | Nav2 | Key specs: kept 'ROS 2 navigation framework (planners, controllers, behavior ', dropped 'ROS 2 navigation servers, planners, controllers, costmaps an' (knowledge_planning.json)
+- robots | Nav2 | Why it matters: kept 'Default navigation stack that social-navigation layers plug ', dropped 'A concrete reference for Graph search & incremental replanni' (knowledge_planning.json)
+- robots | Ruckig | Builder (if not in map): kept 'Lars Berscheid (pantor) / Ruckig', dropped 'Lars Berscheid / Ruckig contributors' (knowledge_planning.json)
+- robots | Ruckig | Price / access: kept 'Community version MIT licence; separate Pro version', dropped 'Public implementation referenced; hardware, compute, optiona' (knowledge_planning.json)
+- robots | Ruckig | Key specs: kept 'Online, jerk-limited, time-optimal trajectory generation for', dropped 'Online state-to-state trajectory generation with velocity, a' (knowledge_planning.json)
+- robots | Ruckig | Why it matters: kept 'Makes any arm motion smooth and fast with one library call.', dropped 'A concrete reference for Trajectory generation & time parame' (knowledge_planning.json)
+- robots | TOPPRA | Builder (if not in map): kept 'Hung Pham, Quang-Cuong Pham', dropped 'Hung Pham and TOPPRA contributors' (knowledge_planning.json)
+- robots | TOPPRA | Price / access: kept 'Free, open-source library', dropped 'Public implementation referenced; hardware, compute, optiona' (knowledge_planning.json)
+- robots | TOPPRA | Key specs: kept 'Time-optimal path parameterization by reachability analysis,', dropped 'Reachability-analysis time parameterization of prescribed ge' (knowledge_planning.json)
+- robots | TOPPRA | Why it matters: kept 'Standard method to traverse a given path as fast as joint li', dropped 'A concrete reference for Trajectory generation & time parame' (knowledge_planning.json)
+- robots | cuRobo | Price / access: kept 'Public library; compatible NVIDIA GPU required.', dropped 'Public implementation referenced; hardware, compute, optiona' (knowledge_planning.json)
+- robots | cuRobo | Key specs: kept 'CUDA-accelerated kinematics, collision checking and motion g', dropped 'CUDA-accelerated motion generation, collision checking and o' (knowledge_planning.json)
+- robots | cuRobo | Why it matters: kept 'A reference for learning-based grasp detection, collision-fr', dropped 'A concrete reference for GPU-parallel motion planning. No pl' (knowledge_planning.json)
+- robots | DINOv2 | Builder (if not in map): kept 'Meta FAIR', dropped 'Meta AI' (knowledge_robot_learning.json)
+- robots | DINOv2 | Price / access: kept 'Open code and weights', dropped 'Public reference code/paper; GPU and API costs excluded; che' (knowledge_robot_learning.json)
+- robots | DINOv2 | Key specs: kept 'Self-supervised ViT features', dropped 'Self-supervised visual features; a perception backbone, not ' (knowledge_robot_learning.json)
+- robots | DINOv2 | Why it matters: kept 'Backbone reused by depth, segmentation and robot policy mode', dropped 'Reference for pretrained visual representations for robots.' (knowledge_robot_learning.json)
+- robots | SayCan | Kind: kept 'AI model', dropped 'Simulator/Tool' (knowledge_robot_learning.json)
+- robots | SayCan | Builder (if not in map): kept 'Google Research / Everyday Robots research team', dropped 'Google Research; Everyday Robots' (knowledge_robot_learning.json)
+- robots | SayCan | Price / access: kept 'Public implementation referenced; hardware, compute, optiona', dropped 'Public reference code/paper; GPU and API costs excluded; che' (knowledge_robot_learning.json)
+- robots | SayCan | Key specs: kept 'Language-model skill scoring combined with affordance/value ', dropped 'Combines language-model skill relevance with learned afforda' (knowledge_robot_learning.json)
+- robots | SayCan | Why it matters: kept 'A concrete reference for Language-grounded task planning. No', dropped 'Reference for llm/vlm task planning & code-as-policies.' (knowledge_robot_learning.json)
+- robots | Kalibr | Price / access: kept 'Free, open source (ROS-based)', dropped 'Public BSD source; documented ROS-based workflow, not assume' (knowledge_sensing.json)
+- robots | Kalibr | Key specs: kept 'Multi-camera and camera-IMU calibration toolbox', dropped 'Multi-camera intrinsic/extrinsic calibration and camera-IMU ' (knowledge_sensing.json)
+- robots | Kalibr | Why it matters: kept 'Reference tool for calibrating cameras with IMUs and multipl', dropped 'Teaches what data a calibration needs, rather than assuming ' (knowledge_sensing.json)
+- robots | Livox Mid-360 | Price / access: kept 'unknown', dropped 'Current delivered EU price unknown; consult the linked docum' (knowledge_sensing.json)
+- robots | Livox Mid-360 | Key specs: kept '360°x59° FOV, 0.1 m min range, 40 m @10% reflectivity, 265 g', dropped '3D LiDAR; manufacturer lists 360° horizontal by 59° vertical' (knowledge_sensing.json)
+- robots | Livox Mid-360 | Why it matters: kept 'Low-cost 3D LiDAR designed for mobile robots.', dropped 'Demonstrates how coverage and scan pattern differ from plana' (knowledge_sensing.json)
+- robots | MuJoCo | Price / access: kept 'Open-source engine; GPU/CPU workstation costs excluded.', dropped 'Open-source code; no simulator purchase required.' (knowledge_simulation.json)
+- robots | MuJoCo | Key specs: kept 'Physics engine for articulated structures and contact; Pytho', dropped 'CPU rigid-body dynamics, contacts, MJCF and Python bindings.' (knowledge_simulation.json)
+- robots | MuJoCo | Why it matters: kept 'A reference for grippers & end-effectors, grasp mechanics, p', dropped 'A physics baseline for numerical fidelity, contact, asset va' (knowledge_simulation.json)
+- robots | Drake | Builder (if not in map): kept 'Toyota Research Institute / MIT', dropped 'MIT / Toyota Research Institute' (knowledge_simulation.json)
+- robots | Drake | Price / access: kept 'Free, open source (licence not checked)', dropped 'Open-source toolbox; computing costs depend on experiment.' (knowledge_simulation.json)
+- robots | Drake | Key specs: kept 'C++/Python toolbox for model-based design and verification: ', dropped 'C++/Python multibody dynamics, mathematical optimization and' (knowledge_simulation.json)
+- robots | Drake | Why it matters: kept 'The tool behind the best free underactuated-robotics course.', dropped 'Reference implementation for time stepping & numerical fidel' (knowledge_simulation.json)
+- robots | ManiSkill | Builder (if not in map): kept 'ManiSkill team', dropped 'ManiSkill contributors / Hao Su Lab' (knowledge_simulation.json)
+- robots | ManiSkill | Price / access: kept 'Public software and tutorials; compute needs depend on workl', dropped 'Apache-2.0 repository; GPU and individual asset requirements' (knowledge_simulation.json)
+- robots | ManiSkill | Key specs: kept 'Robot simulation with prebuilt tasks, demonstrations and vis', dropped 'SAPIEN-based simulation framework; GPU-parallel physics and ' (knowledge_simulation.json)
+- robots | ManiSkill | Why it matters: kept 'A reference for pick-and-place pipeline, learning-based gras', dropped 'Reference implementation for sensor simulation, rendering & ' (knowledge_simulation.json)
+- robots | Isaac Sim / Isaac Lab | Builder (if not in map): kept 'NVIDIA / contributors', dropped 'NVIDIA and Isaac Lab contributors' (knowledge_simulation.json)
+- robots | Isaac Sim / Isaac Lab | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Isaac Lab code is open source; Isaac Sim and assets have sep' (knowledge_simulation.json)
+- robots | Isaac Sim / Isaac Lab | Key specs: kept 'Robot-learning framework with locomotion environments; inspe', dropped 'GPU simulation and robot-learning workflows; current Lab doc' (knowledge_simulation.json)
+- robots | Isaac Sim / Isaac Lab | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'Reference implementation for sensor simulation, rendering & ' (knowledge_simulation.json)
+- robots | MuJoCo Playground | Builder (if not in map): kept 'Google DeepMind / contributors', dropped 'Google DeepMind' (knowledge_simulation.json)
+- robots | MuJoCo Playground | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Apache-2.0 repository; pin commit and inspect hardware requi' (knowledge_simulation.json)
+- robots | MuJoCo Playground | Key specs: kept 'Open learning environment library built on MJX; a distinct t', dropped 'Current main: PyTorch robot environments and RL/hardware wor' (knowledge_simulation.json)
+- robots | MuJoCo Playground | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'Reference implementation for gpu-parallel simulation & vecto' (knowledge_simulation.json)
+- robots | Genesis | Builder (if not in map): kept 'Genesis Embodied AI contributors', dropped 'Genesis contributors; developed with support from Genesis AI' (knowledge_simulation.json)
+- robots | Genesis | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Apache-2.0 repository; functionality and speed depend on bac' (knowledge_simulation.json)
+- robots | Genesis | Key specs: kept 'Robotics simulation platform; supported physics and learning', dropped 'Genesis World: Pythonic multiphysics engine, renderer and co' (knowledge_simulation.json)
+- robots | Genesis | Why it matters: kept 'A reference for rl locomotion with sim-to-real, agile & park', dropped 'Reference implementation for gpu-parallel simulation & vecto' (knowledge_simulation.json)
+- robots | SO-101 | Builder (if not in map): kept 'The Robot Studio / Hugging Face', dropped 'TheRobotStudio / Hugging Face LeRobot' (knowledge_simulation.json)
+- robots | SO-101 | Price / access: kept 'Repository BOM lists US$13.89 per STS3215 servo; follower ne', dropped 'Open documentation; current EU complete kit price unknown. P' (knowledge_simulation.json)
+- robots | SO-101 | Key specs: kept 'Five arm joints plus actuated gripper (six servos); SO-101 f', dropped 'Low-cost leader/follower arm platform with documented assemb' (knowledge_simulation.json)
+- robots | SO-101 | Why it matters: kept 'Low-cost arm supported by LeRobot for teleoperation, data co', dropped 'Reference implementation for system identification & simulat' (knowledge_simulation.json)
+- robots | RoboCasa | Builder (if not in map): kept 'Soroush Nasiriany and RoboCasa collaborators; UT Austin; NVI', dropped 'RoboCasa research contributors' (knowledge_simulation.json)
+- robots | RoboCasa | Price / access: kept 'Public reference code/paper; GPU and API costs excluded; che', dropped 'Public project and linked code/data; individual asset licens' (knowledge_simulation.json)
+- robots | RoboCasa | Key specs: kept 'Simulation environments and datasets for everyday kitchen ac', dropped 'Household simulation framework for training and benchmarking' (knowledge_simulation.json)
+- robots | RoboCasa | Why it matters: kept 'Reference for policy evaluation & real-world testing methodo', dropped 'Reference implementation for simulation benchmarks & reprodu' (knowledge_simulation.json)
+- robots | Kalibr | Builder (if not in map): kept 'ETH Zurich Autonomous Systems Lab', dropped 'ETH Zurich Autonomous Systems Lab and contributors' (knowledge_state_estimation_slam.json)
+- robots | Kalibr | Price / access: kept 'Free, open source (ROS-based)', dropped 'Free source under a BSD-style four-condition license, includ' (knowledge_state_estimation_slam.json)
+- robots | Kalibr | Key specs: kept 'Multi-camera and camera-IMU calibration toolbox', dropped 'Multi-camera, camera/IMU spatial-temporal, multi-IMU and rol' (knowledge_state_estimation_slam.json)
+- robots | Kalibr | Why it matters: kept 'Reference tool for calibrating cameras with IMUs and multipl', dropped 'Poor extrinsics or clocks can invalidate an otherwise good S' (knowledge_state_estimation_slam.json)
+- robots | Unitree Go2 | Price / access: kept 'unknown', dropped 'From $1,600 (Air); $2,800 / $4,500 higher trims, tax & freig' (ecosystem_china_all.json)
+- robots | Unitree Go2 | Key specs: kept 'Quadruped with an LLM-based interface tested in RoboPAIR (sp', dropped '12 joint motors; OTA updates; EDU variant for development' (ecosystem_china_all.json)
+- robots | Unitree Go2 | Why it matters: kept 'One of the real robots jailbroken by RoboPAIR, showing that ', dropped 'Cheapest capable quadruped: the default platform for locomot' (ecosystem_china_all.json)
+- robots | Unitree G1 | Price / access: kept 'From US $13.5K (vendor page)', dropped 'From $13.5K' (ecosystem_china_all.json)
+- robots | Unitree G1 | Key specs: kept 'Humanoid, about 35 kg, 23-43 joint motors depending on versi', dropped '23-43 joint motors; imitation/RL-driven control' (ecosystem_china_all.json)
+- robots | Unitree G1 | Why it matters: kept 'Affordable humanoid reference for discussing fall and stop h', dropped 'The most common research humanoid worldwide; many open RL / ' (ecosystem_china_all.json)
+- robots | Isaac Sim / Isaac Lab | Builder (if not in map): kept 'NVIDIA / contributors', dropped 'NVIDIA (US)' (ecosystem_europe_integration_demand.json)
+- robots | Isaac Sim / Isaac Lab | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Free; source on GitHub under Apache 2.0 (some Omniverse depe' (ecosystem_europe_integration_demand.json)
+- robots | Isaac Sim / Isaac Lab | Key specs: kept 'Robot-learning framework with locomotion environments; inspe', dropped 'Digital-twin simulation embedded with Jetson compute in Coma' (ecosystem_europe_integration_demand.json)
+- robots | Isaac Sim / Isaac Lab | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'Industrial sim-to-real pipeline using the same tools student' (ecosystem_europe_integration_demand.json)
+- robots | Franka Research 3 (FR3) | Price / access: kept 'Commercial; price not on opened page (unknown, likely €5k+ b', dropped 'Sold via franka.de (price not published on page)' (ecosystem_europe_platforms.json)
+- robots | Franka Research 3 (FR3) | Key specs: kept '7-DoF arm, 3 kg payload, 855 mm reach, joint torque sensors ', dropped '7 DoF, torque sensor in each joint, 1 kHz low-level control ' (ecosystem_europe_platforms.json)
+- robots | Franka Research 3 (FR3) | Why it matters: kept 'Reference torque-controlled research arm; where impedance co', dropped 'The standard arm in robot-learning papers (DROID, many VLA d' (ecosystem_europe_platforms.json)
+- robots | AEON (Hexagon Robotics) | Price / access: kept 'Commercial; unknown price', dropped 'Commercial (industrial)' (ecosystem_europe_platforms.json)
+- robots | AEON (Hexagon Robotics) | Key specs: kept 'Wheeled-leg humanoid (legs glide on wheels); delivers materi', dropped '165 cm, 60 kg, wheels at end of legs, 2.4 m/s, 15 kg short-t' (ecosystem_europe_platforms.json)
+- robots | AEON (Hexagon Robotics) | Why it matters: kept "The humanoid chosen for Europe's first car-plant pilot (BMW ", dropped 'European humanoid with the largest announced deployment comm' (ecosystem_europe_platforms.json)
+- robots | Iggy Rob | Form factor: kept 'Mobile manipulator', dropped 'Humanoid' (ecosystem_europe_platforms.json)
+- robots | Iggy Rob | Price / access: kept '2025 announced target: €47,999 (about $54,500 at the time); ', dropped '€47,999' (ecosystem_europe_platforms.json)
+- robots | Iggy Rob | Key specs: kept 'Original 2025 industrial configuration reported with two ReB', dropped 'Low-cost humanoid built from igus motion-plastic parts on a ' (ecosystem_europe_platforms.json)
+- robots | Iggy Rob | Why it matters: kept 'Low-cost wheeled humanoid from a component maker.', dropped 'One of the cheapest commercial humanoids in Europe.' (ecosystem_europe_platforms.json)
+- robots | LeRobot | Price / access: kept 'Free', dropped 'Free (Apache-2.0)' (ecosystem_europe_software_ai.json)
+- robots | LeRobot | Key specs: kept 'Python library for robot learning, motor drivers for Feetech', dropped 'Python library: teleop, dataset format on the HF Hub, imitat' (ecosystem_europe_software_ai.json)
+- robots | LeRobot | Why it matters: kept 'Software side of the low-cost arm stack.', dropped 'Accessible open-source stack for collecting demonstrations a' (ecosystem_europe_software_ai.json)
+- robots | SO-101 | Builder (if not in map): kept 'The Robot Studio / Hugging Face', dropped 'TheRobotStudio (co-designer)' (ecosystem_europe_software_ai.json)
+- robots | SO-101 | Price / access: kept 'Repository BOM lists US$13.89 per STS3215 servo; follower ne', dropped 'Open hardware; 3D-printed parts + BOM (price: unknown here)' (ecosystem_europe_software_ai.json)
+- robots | SO-101 | Key specs: kept 'Five arm joints plus actuated gripper (six servos); SO-101 f', dropped '6x Feetech STS3215 servos (follower); leader arm for teleope' (ecosystem_europe_software_ai.json)
+- robots | SO-101 | Why it matters: kept 'Low-cost arm supported by LeRobot for teleoperation, data co', dropped 'Low-cost arm for learning teleoperation and imitation learni' (ecosystem_europe_software_ai.json)
+- robots | Reachy Mini | Builder (if not in map): kept 'Pollen Robotics / Hugging Face', dropped 'Pollen Robotics (acquired by Hugging Face)' (ecosystem_europe_software_ai.json)
+- robots | Reachy Mini | Price / access: kept 'US$399 lite / US$499 wireless (+tax, shipping), per HF page', dropped 'Open-source DIY kit; current price unknown in the opened sou' (ecosystem_europe_software_ai.json)
+- robots | Reachy Mini | Key specs: kept 'Open-source expressive desktop robot', dropped 'Desktop robot: 11 in tall, 3.3 lb, motorized head/body, came' (ecosystem_europe_software_ai.json)
+- robots | Reachy Mini | Why it matters: kept 'Open HRI platform from a Paris-born company; good showcase h', dropped 'Desktop platform for human-robot interaction and Python expe' (ecosystem_europe_software_ai.json)
+- robots | ANYmal | Builder (if not in map): kept 'ANYbotics / ETH lineage', dropped 'ANYbotics (commercial manufacturer; original robot developed' (ecosystem_europe_software_ai.json)
+- robots | ANYmal | Price / access: kept 'Public documentation; current delivered hardware price and r', dropped 'Commercial; current price unknown' (ecosystem_europe_software_ai.json)
+- robots | ANYmal | Key specs: kept 'Primary research documents sim-to-real locomotion and recove', dropped 'Industrial inspection quadruped' (ecosystem_europe_software_ai.json)
+- robots | ANYmal | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'Origin platform of much European legged-RL research.' (ecosystem_europe_software_ai.json)
+- robots | Pinocchio | Price / access: kept 'Free, BSD', dropped 'Free public source; check current repository license and ins' (ecosystem_france_outside_paris_all.json)
+- robots | Pinocchio | Key specs: kept 'Fast rigid-body dynamics algorithms with analytical derivati', dropped 'Open-source rigid-body kinematics/dynamics library with C++ ' (ecosystem_france_outside_paris_all.json)
+- robots | Pinocchio | Why it matters: kept 'Gives computed-torque, whole-body and trajectory-optimizatio', dropped 'Foundational software for robot dynamics and optimization wi' (ecosystem_france_outside_paris_all.json)
+- robots | Crocoddyl | Price / access: kept 'Free, BSD', dropped 'Public source and package installation; see repository licen' (ecosystem_france_outside_paris_all.json)
+- robots | Crocoddyl | Key specs: kept 'Optimal control library for robot control under contact; DDP', dropped 'Open-source optimal-control library using Pinocchio. Origin ' (ecosystem_france_outside_paris_all.json)
+- robots | Crocoddyl | Why it matters: kept 'State-of-the-art trajectory optimization for legged and mani', dropped 'A more advanced software route into trajectory optimization ' (ecosystem_france_outside_paris_all.json)
+- robots | ViSP | Price / access: kept 'Free, GPL (commercial licence via Inria per site, not checke', dropped 'Free source and documented tutorials; check license for inte' (ecosystem_france_outside_paris_all.json)
+- robots | ViSP | Key specs: kept 'Open-source C++ Visual Servoing Platform: trackers, visual f', dropped 'Open-source visual-servoing library: tracking image features' (ecosystem_france_outside_paris_all.json)
+- robots | ViSP | Why it matters: kept 'Reference library to make a camera-driven arm demo.', dropped 'Directly connects familiar computer vision to closed-loop ro' (ecosystem_france_outside_paris_all.json)
+- robots | Pinocchio | Builder (if not in map): kept 'Inria / LAAS-CNRS (stack-of-tasks)', dropped 'Also Inria (co-developers)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Pinocchio | Price / access: kept 'Free, BSD', dropped 'Free (BSD-2-Clause)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Pinocchio | Key specs: kept 'Fast rigid-body dynamics algorithms with analytical derivati', dropped 'C++/Python rigid-body dynamics and kinematics (URDF), analyt' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Pinocchio | Why it matters: kept 'Gives computed-torque, whole-body and trajectory-optimizatio', dropped 'Fast dynamics library behind many MPC/whole-body controllers' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Crocoddyl | Price / access: kept 'Free, BSD', dropped 'Free (BSD-3-Clause)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Crocoddyl | Key specs: kept 'Optimal control library for robot control under contact; DDP', dropped 'Optimal control under contact sequences, DDP-based solvers' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | Crocoddyl | Why it matters: kept 'State-of-the-art trajectory optimization for legged and mani', dropped 'Reference open-source optimal-control solver for legged/huma' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | ViSP | Price / access: kept 'Free, GPL (commercial licence via Inria per site, not checke', dropped 'Free (open source)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | ViSP | Key specs: kept 'Open-source C++ Visual Servoing Platform: trackers, visual f', dropped 'Visual servoing, model-based/KLT/blob tracking, robot & sens' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | ViSP | Why it matters: kept 'Reference library to make a camera-driven arm demo.', dropped 'Ready-made camera-in-the-loop control for low-cost arms.' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SOFA | Price / access: kept 'Free open-source framework; plugin licenses can differ.', dropped 'Free (LGPL)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SOFA | Key specs: kept 'Open-source physics-simulation framework relevant to deforma', dropped 'Interactive soft/rigid body mechanics simulation; current re' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SOFA | Why it matters: kept 'Lets students explore soft-robot modeling and control in sim', dropped "Main simulator for soft robots; summer school 'Deformations " (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SigmaBan | Open source: kept 'False', dropped 'True' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SigmaBan | Price / access: kept 'unknown; contact the supplier for a quote or demonstration', dropped 'Research platform' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SigmaBan | Key specs: kept 'Humanoid research platform named on the Rhoban RoboCup team ', dropped 'Kid-size humanoid for RoboCup' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | SigmaBan | Why it matters: kept 'Links perception, locomotion and competition engineering in ', dropped 'Proof that a university group can build competitive small hu' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | DUSt3R | Price / access: kept 'Code on GitHub; non-commercial license terms (check)', dropped 'Code and weights on GitHub (CC BY-NC-SA 4.0, non-commercial)' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | DUSt3R | Key specs: kept 'Pointmaps from unposed image pairs', dropped 'Geometric 3D reconstruction from image pairs without camera ' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | DUSt3R | Why it matters: kept 'Started feed-forward 3D; built in Grenoble (European ecosyst', dropped 'Cheap 3D perception from plain cameras for low-cost robots.' (ecosystem_france_schools_student_associations_research_labs.json)
+- robots | LeRobot | Price / access: kept 'Free', dropped 'Free (Apache-2.0)' (ecosystem_paris_all.json)
+- robots | LeRobot | Key specs: kept 'Python library for robot learning, motor drivers for Feetech', dropped 'PyTorch library: datasets, teleop recording, training ACT/Di' (ecosystem_paris_all.json)
+- robots | LeRobot | Why it matters: kept 'Software side of the low-cost arm stack.', dropped 'The software backbone of our low-cost robot-learning wedge.' (ecosystem_paris_all.json)
+- robots | SO-101 | Builder (if not in map): kept 'The Robot Studio / Hugging Face', dropped 'The Robot Studio / community (open design)' (ecosystem_paris_all.json)
+- robots | SO-101 | Price / access: kept 'Repository BOM lists US$13.89 per STS3215 servo; follower ne', dropped '≈€100-250 in parts (open design)' (ecosystem_paris_all.json)
+- robots | SO-101 | Key specs: kept 'Five arm joints plus actuated gripper (six servos); SO-101 f', dropped '6-DoF low-cost 3D-printed arm, leader/follower teleop' (ecosystem_paris_all.json)
+- robots | SO-101 | Why it matters: kept 'Low-cost arm supported by LeRobot for teleoperation, data co', dropped 'Default LeRobot hardware; cheapest way to collect demos.' (ecosystem_paris_all.json)
+- robots | Reachy Mini | Price / access: kept 'US$399 lite / US$499 wireless (+tax, shipping), per HF page', dropped 'From ~$299 (Lite) / $449 (wireless) per HF blog' (ecosystem_paris_all.json)
+- robots | Reachy Mini | Key specs: kept 'Open-source expressive desktop robot', dropped 'Desktop open-source expressive robot head, Python-programmab' (ecosystem_paris_all.json)
+- robots | Reachy Mini | Why it matters: kept 'Open HRI platform from a Paris-born company; good showcase h', dropped 'Cheap, hackable HRI platform from HF/Pollen.' (ecosystem_paris_all.json)
+- robots | GENE-26.5 | Model type: kept 'Policy (IL/RL)', dropped 'VLA' (ecosystem_paris_all.json)
+- robots | GENE-26.5 | Key specs: kept 'Proprietary robotics foundation model announced 6 May 2026; ', dropped 'Robot foundation model controlling a human-like dexterous ha' (ecosystem_paris_all.json)
+- robots | GENE-26.5 | Why it matters: kept 'Paris-made robot foundation model.', dropped 'Paris-made manipulation foundation model.' (ecosystem_paris_all.json)
+- robots | Genesis | Builder (if not in map): kept 'Genesis Embodied AI contributors', dropped 'Genesis open-source project (Zhou Xian et al.)' (ecosystem_paris_all.json)
+- robots | Genesis | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Free (open source)' (ecosystem_paris_all.json)
+- robots | Genesis | Key specs: kept 'Robotics simulation platform; supported physics and learning', dropped 'GPU physics simulator for robot learning' (ecosystem_paris_all.json)
+- robots | Genesis | Why it matters: kept 'A reference for rl locomotion with sim-to-real, agile & park', dropped 'Fast sim for RL/sim-to-real; created by Genesis AI co-founde' (ecosystem_paris_all.json)
+- robots | TurtleBot3 | Price / access: kept 'Open platform documentation; current complete kit price unkn', dropped 'Commercial kit; current EUR price, shipping and taxes unknow' (ecosystem_south_korea_all.json)
+- robots | TurtleBot3 | Key specs: kept 'Modular ROS educational wheeled platform; vendor documents R', dropped 'Modular education/research robot family developed by ROBOTIS' (ecosystem_south_korea_all.json)
+- robots | TurtleBot3 | Why it matters: kept 'A recognizable reference mobile base for an eventual real fl', dropped 'An accessible reference for navigation and ROS learning, tho' (ecosystem_south_korea_all.json)
+- robots | Isaac Sim / Isaac Lab | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Public development tooling; GPU and software-license require' (ecosystem_us_all.json)
+- robots | Isaac Sim / Isaac Lab | Key specs: kept 'Robot-learning framework with locomotion environments; inspe', dropped 'Physically based robot and sensor simulation; distinct from ' (ecosystem_us_all.json)
+- robots | Isaac Sim / Isaac Lab | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'Allows a software-heavy team to debug sensing and control be' (ecosystem_us_all.json)
+- robots | Isaac Sim / Isaac Lab | Price / access: kept 'Public repository; check component licenses and compute requ', dropped 'Public framework; GPU/compute costs depend on experiment.' (ecosystem_us_all.json)
+- robots | Isaac Sim / Isaac Lab | Key specs: kept 'Robot-learning framework with locomotion environments; inspe', dropped 'Robot-learning workflows on Isaac Sim, including reinforceme' (ecosystem_us_all.json)
+- robots | Isaac Sim / Isaac Lab | Why it matters: kept 'A reference for rl locomotion with sim-to-real, fall recover', dropped 'A sim-to-real entry point, but simulator success is not proo' (ecosystem_us_all.json)
+- robots | Figure 03 | Price / access: kept 'Commercial; partner deployments', dropped 'Commercial availability and price unknown from opened pages.' (ecosystem_us_all.json)
+- robots | Figure 03 | Key specs: kept 'Arrived at BMW Spartanburg Hall 52 in June 2026 for logistic', dropped 'General-purpose humanoid presented for everyday home tasks, ' (ecosystem_us_all.json)
+- robots | Figure 03 | Why it matters: kept 'Reference case for humanoids doing real work on a car line.', dropped 'A closed full-stack comparison point; household marketing is' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Price / access: kept 'Public code and checkpoints; check code and checkpoint licen', dropped 'Public code and checkpoints via openpi; check checkpoint-spe' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Key specs: kept 'Generalist manipulation policy presented in October 2024; op', dropped 'Flow-based vision-language-action policy trained across robo' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Why it matters: kept 'A reference for bimanual manipulation, deformable object man', dropped 'An accessible baseline for adaptation experiments; a pretrai' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Price / access: kept 'Public code and checkpoints; check code and checkpoint licen', dropped 'Public checkpoints and fine-tuning/inference examples in ope' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Key specs: kept 'Generalist manipulation policy presented in October 2024; op', dropped 'Generalist VLA extending pi0 for open-world generalization; ' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Release year: kept '2024', dropped '2025' (ecosystem_us_all.json)
+- robots | π0 / π0.5 | Why it matters: kept 'A reference for bimanual manipulation, deformable object man', dropped 'Test transfer instead of assuming it: the repository explici' (ecosystem_us_all.json)
+- robots | Mobile ALOHA | Builder (if not in map): kept 'Stanford', dropped 'Stanford University researchers (Zipeng Fu, Tony Z. Zhao, Ch' (ecosystem_us_all.json)
+- robots | Mobile ALOHA | Price / access: kept 'Research platform; current delivered price unknown.', dropped 'Open research code; full hardware cost unknown here and not ' (ecosystem_us_all.json)
+- robots | Mobile ALOHA | Key specs: kept 'Bimanual arm platform with mobile base and whole-body teleop', dropped 'Two-arm mobile teleoperation and imitation-learning platform' (ecosystem_us_all.json)
+- robots | Mobile ALOHA | Why it matters: kept 'A reference for bimanual manipulation, mobile manipulation.', dropped 'Strong reproduction reference that also exposes hardware, da' (ecosystem_us_all.json)
+- robots | Drake | Price / access: kept 'Free, open source (licence not checked)', dropped 'Public C++/Python library with tutorials; check the reposito' (ecosystem_us_all.json)
+- robots | Drake | Key specs: kept 'C++/Python toolbox for model-based design and verification: ', dropped 'Dynamics simulation, planning and optimization-based control' (ecosystem_us_all.json)
+- robots | Drake | Why it matters: kept 'The tool behind the best free underactuated-robotics course.', dropped 'Provides a model-based baseline to compare against learned p' (ecosystem_us_all.json)
+- robots | Gazebo | Price / access: kept 'Open-source simulator; select a supported ROS/Gazebo version', dropped 'Open-source simulator; free public documentation.' (ecosystem_us_all.json)
+- robots | Gazebo | Key specs: kept 'Robot/world simulation with ROS 2 bridging and simulated sen', dropped 'Robot simulation with a physics server, GUI and SDF world/ro' (ecosystem_us_all.json)
+- robots | Gazebo | Why it matters: kept 'Reference implementation for robot and scene formats: urdf, ', dropped 'A general robotics simulation alternative to a GPU-heavy rob' (ecosystem_us_all.json)
+
+## Created rows
+
+- Knowledge Map: Feedback control & PID (test write before the batch run)
+- Ecosystem Map: Unitree Robotics
+- Ecosystem Map: UBTech Robotics
+- Ecosystem Map: AgiBot (Zhiyuan Robotics)
+- Ecosystem Map: Galbot
+- Ecosystem Map: Fourier
+- Ecosystem Map: XPeng Robotics (IRON)
+- Ecosystem Map: Dobot
+- Ecosystem Map: AgileX Robotics
+- Ecosystem Map: DEEP Robotics
+- Ecosystem Map: Galaxea AI (Galaxea Dynamics)
+- Ecosystem Map: RobotEra
+- Ecosystem Map: Leju Robotics
+- Ecosystem Map: Beijing Innovation Center of Humanoid Robotics (X-Humanoid)
+- Ecosystem Map: BAAI (Beijing Academy of Artificial Intelligence)
+- Ecosystem Map: Shanghai AI Laboratory
+- Ecosystem Map: Geek+
+- Ecosystem Map: Estun Automation
+- Ecosystem Map: World Robot Conference (WRC)
+- Ecosystem Map: World Artificial Intelligence Conference (WAIC)
+- Ecosystem Map: Tsinghua University (robotics & embodied AI)
+- Ecosystem Map: Schaeffler
+- Ecosystem Map: maxon
+- Ecosystem Map: Harmonic Drive SE
+- Ecosystem Map: SCHUNK
+- Ecosystem Map: Festo
+- Ecosystem Map: igus
+- Ecosystem Map: OnRobot
+- Ecosystem Map: Infineon Technologies
+- Ecosystem Map: STMicroelectronics
+- Ecosystem Map: NXP Semiconductors
+- Ecosystem Map: Axelera AI
+- Ecosystem Map: Arduino
+- Ecosystem Map: Raspberry Pi
+- Ecosystem Map: SICK
+- Ecosystem Map: Shadow Robot Company
+- Ecosystem Map: Bota Systems
+- Ecosystem Map: Synapticon
+- Ecosystem Map: Enact Intelligence
+- Ecosystem Map: Allonic
+- Ecosystem Map: AdapTronics
+- Ecosystem Map: BMW Group
+- Ecosystem Map: Mercedes-Benz Group
+- Ecosystem Map: Zalando
+- Ecosystem Map: DHL Group
+- Ecosystem Map: Ocado Group
+- Ecosystem Map: Siemens
+- Ecosystem Map: Airbus
+- Ecosystem Map: Comau
+- Ecosystem Map: KNAPP
+- Ecosystem Map: SSI Schäfer
+- Ecosystem Map: TGW Logistics
+- Ecosystem Map: Swisslog
+- Ecosystem Map: Vanderlande
+- Ecosystem Map: Dürr
+- Ecosystem Map: Körber
+- Ecosystem Map: Motion
+- Ecosystem Map: Innov8 Group
+- Ecosystem Map: Fraunhofer IPA
+- Ecosystem Map: automatica
+- Ecosystem Map: Creandum
+- Ecosystem Map: Headline
+- Ecosystem Map: Air Street Capital
+- Ecosystem Map: Lingotto Innovation (Exor)
+- Ecosystem Map: HV Capital
+- Ecosystem Map: Speedinvest
+- Ecosystem Map: Elaia
+- Ecosystem Map: Vsquared Ventures
+- Ecosystem Map: Amadeus Capital Partners
+- Ecosystem Map: IQ Capital
+- Ecosystem Map: Zacua Ventures
+- Ecosystem Map: Plural
+- Ecosystem Map: Eurazeo
+- Ecosystem Map: Atomico
+- Ecosystem Map: Cathay Innovation
+- Ecosystem Map: EIC Fund (European Innovation Council)
+- Ecosystem Map: NATO Innovation Fund
+- Ecosystem Map: EBRD Venture Capital
+- Ecosystem Map: PROTOTYPE Capital
+- Ecosystem Map: Redalpine
+- Ecosystem Map: NEURA Robotics
+- Ecosystem Map: Agile Robots
+- Ecosystem Map: Franka Robotics
+- Ecosystem Map: Universal Robots
+- Ecosystem Map: KUKA
+- Ecosystem Map: ABB Robotics
+- Ecosystem Map: ANYbotics
+- Ecosystem Map: RobCo
+- Ecosystem Map: PAL Robotics
+- Ecosystem Map: Hexagon Robotics
+- Ecosystem Map: Engineered Arts
+- Ecosystem Map: Quantum Systems
+- Ecosystem Map: CMR Surgical
+- Ecosystem Map: Theker
+- Ecosystem Map: Generative Bionics
+- Ecosystem Map: Istituto Italiano di Tecnologia (IIT) – iCub Tech
+- Ecosystem Map: Starship Technologies
+- Ecosystem Map: Google DeepMind
+- Ecosystem Map: Wayve
+- Ecosystem Map: Genesis AI
+- Ecosystem Map: Sereact
+- Ecosystem Map: Nomagic
+- Ecosystem Map: Humanoid
+- Ecosystem Map: Flexion Robotics
+- Ecosystem Map: mimic robotics
+- Ecosystem Map: microagi
+- Ecosystem Map: Neuracore
+- Ecosystem Map: Rerun
+- Ecosystem Map: Wandelbots
+- Ecosystem Map: Micropsi Industries
+- Ecosystem Map: Inbolt
+- Ecosystem Map: Embodied AI
+- Ecosystem Map: ETH Zurich Robotic Systems Lab (RSL)
+- Ecosystem Map: ROS-Industrial Consortium Europe
+- Ecosystem Map: Coupe de France de Robotique
+- Ecosystem Map: Eurobot
+- Ecosystem Map: Planète Sciences
+- Ecosystem Map: euRobotics
+- Ecosystem Map: European Robotics Forum (ERF)
+- Ecosystem Map: euRobotics Awards
+- Ecosystem Map: European Robotics Week (ERW)
+- Ecosystem Map: European Robotics League (ERL)
+- Ecosystem Map: IEEE ICRA 2026 (Vienna) and its competitions
+- Ecosystem Map: Robotics: Science and Systems (RSS) 2027
+- Ecosystem Map: HANNOVER MESSE and ROBOTICS AWARD
+- Ecosystem Map: KUKA Innovation Award
+- Ecosystem Map: LogiMAT
+- Ecosystem Map: SIDO Lyon
+- Ecosystem Map: Robotics & Automation UK (with IntraLogisteX)
+- Ecosystem Map: ROSCon France
+- Ecosystem Map: GdR Robotique (CNRS research network)
+- Ecosystem Map: RoboCup 2027 (Nuremberg)
+- Ecosystem Map: RoboCup German Open
+- Ecosystem Map: RoboCup France
+- Ecosystem Map: CYBATHLON
+- Ecosystem Map: ELROB (European Land Robot Trial)
+- Ecosystem Map: EnRicH (European Robotics Hackathon)
+- Ecosystem Map: European Rover Challenge
+- Ecosystem Map: Robotex International
+- Ecosystem Map: Formula Student Germany - Driverless Cup
+- Ecosystem Map: Hello Tomorrow Challenge
+- Ecosystem Map: i-Lab (Concours d'innovation)
+- Ecosystem Map: AI for Good Global Summit and Robotics for Good Youth Challenge
+- Ecosystem Map: euROBIN
+- Ecosystem Map: WorldSkills France
+- Ecosystem Map: ESA-ESRIC Space Resources Challenge
+- Ecosystem Map: LeRobot Worldwide Hackathon
+- Ecosystem Map: Humanoids Summit London
+- Ecosystem Map: Physical AI Hackathon (Robotics Nation, Helsinki)
+- Ecosystem Map: Apérobot
+- Ecosystem Map: Women in Robotics Paris
+- Ecosystem Map: UK-RAS Network
+- Ecosystem Map: World FIRA
+- Ecosystem Map: Field Robot Event
+- Ecosystem Map: Niryo
+- Ecosystem Map: Génération Robots
+- Ecosystem Map: HumaRobotics
+- Ecosystem Map: Agreenculture
+- Ecosystem Map: Naïo (Naïo Technologies brand)
+- Ecosystem Map: VitiBot
+- Ecosystem Map: Vitirover
+- Ecosystem Map: AISPRID
+- Ecosystem Map: SITIA
+- Ecosystem Map: Sepro Group
+- Ecosystem Map: Stäubli Robotics France
+- Ecosystem Map: Siléane
+- Ecosystem Map: Sherpa Mobile Robotics
+- Ecosystem Map: Effidence
+- Ecosystem Map: Exotec
+- Ecosystem Map: SAVOYE
+- Ecosystem Map: Manitou Group
+- Ecosystem Map: Robocath
+- Ecosystem Map: eCential Robotics
+- Ecosystem Map: Quantum Surgical
+- Ecosystem Map: Delair
+- Ecosystem Map: Dronisos
+- Ecosystem Map: Donecle
+- Ecosystem Map: RTsys
+- Ecosystem Map: Aquitaine Robotics
+- Ecosystem Map: Robotics Place
+- Ecosystem Map: Coboteam
+- Ecosystem Map: Proxinnov
+- Ecosystem Map: Robotics Valley
+- Ecosystem Map: Clubelek (INSA Lyon)
+- Ecosystem Map: GO CAPITAL
+- Ecosystem Map: Kreaxi
+- Ecosystem Map: Siparex
+- Ecosystem Map: LAAS-CNRS
+- Ecosystem Map: LIRMM
+- Ecosystem Map: LS2N
+- Ecosystem Map: FEMTO-ST
+- Ecosystem Map: ICube
+- Ecosystem Map: Inria Lille – DEFROST
+- Ecosystem Map: LORIA / Inria Nancy – Larsen
+- Ecosystem Map: IRISA / Inria Rennes – Rainbow
+- Ecosystem Map: Inria Bordeaux – Flowers
+- Ecosystem Map: Inria Bordeaux – AUCTUS
+- Ecosystem Map: LaBRI – Rhoban
+- Ecosystem Map: Inria Sophia Antipolis – HEPHAISTOS
+- Ecosystem Map: Institut Pascal
+- Ecosystem Map: Heudiasyc
+- Ecosystem Map: GIPSA-lab
+- Ecosystem Map: TIMC
+- Ecosystem Map: Pprime
+- Ecosystem Map: LIG
+- Ecosystem Map: I3S
+- Ecosystem Map: Institut des Sciences du Mouvement Étienne-Jules Marey (ISM)
+- Ecosystem Map: LAB-STICC
+- Ecosystem Map: Poppy Project
+- Ecosystem Map: Centrale Nantes
+- Ecosystem Map: INSA Lyon
+- Ecosystem Map: INSA Toulouse
+- Ecosystem Map: ISAE-SUPAERO
+- Ecosystem Map: Shark Robotics
+- Ecosystem Map: Haption
+- Ecosystem Map: CEDRAT Technologies
+- Ecosystem Map: Starkenn SilMach Labs (SilMach)
+- Ecosystem Map: SYMÉTRIE
+- Ecosystem Map: MS-Innov
+- Ecosystem Map: Axilum Robotics
+- Ecosystem Map: Notilo Plus
+- Ecosystem Map: Hexadrone
+- Ecosystem Map: Azur Drones
+- Ecosystem Map: Roboplanet
+- Ecosystem Map: Japet Medical
+- Ecosystem Map: Les Companions
+- Ecosystem Map: Capsix Robotics
+- Ecosystem Map: Awabot
+- Ecosystem Map: TwinswHeel
+- Ecosystem Map: Kompaï Robotics
+- Ecosystem Map: FINOVAM Gestion
+- Ecosystem Map: Decathlon
+- Ecosystem Map: Nimbl'Bot
+- Ecosystem Map: Eclore Actuators
+- Ecosystem Map: Nio Robotics (Nimble One site)
+- Ecosystem Map: ACWA Robotics
+- Ecosystem Map: E-COBOT
+- Ecosystem Map: IRDI Capital Investissement
+- Ecosystem Map: Sodero
+- Ecosystem Map: Inria Rainbow (IRISA, Rennes)
+- Ecosystem Map: Inria DEFROST (Lille)
+- Ecosystem Map: Inria Flowers (Bordeaux)
+- Ecosystem Map: Inria Larsen (LORIA, Nancy)
+- Ecosystem Map: Inria HuCeBot (Nancy)
+- Ecosystem Map: Inria Auctus (Bordeaux)
+- Ecosystem Map: Inria Chroma
+- Ecosystem Map: Inria Acentauri (Sophia Antipolis)
+- Ecosystem Map: Rhoban (LaBRI, Bordeaux)
+- Ecosystem Map: FEMTO-ST – AS2M department
+- Ecosystem Map: Institut Pprime
+- Ecosystem Map: LISV (UVSQ / Paris-Saclay)
+- Ecosystem Map: IBISC (Univ. Évry / Paris-Saclay)
+- Ecosystem Map: MIS (UPJV Amiens)
+- Ecosystem Map: LISPEN (Arts et Métiers)
+- Ecosystem Map: CESI LINEACT
+- Ecosystem Map: ONERA – DTIS
+- Ecosystem Map: CRIStAL (Lille)
+- Ecosystem Map: Ampère
+- Ecosystem Map: IFREMER
+- Ecosystem Map: NAVER LABS Europe
+- Ecosystem Map: IRT Jules Verne
+- Ecosystem Map: PEPR O2R (Organic Robotics programme)
+- Ecosystem Map: Arts et Métiers (ENSAM)
+- Ecosystem Map: Télécom Paris (IP Paris)
+- Ecosystem Map: ENS Paris-Saclay
+- Ecosystem Map: Université Paris-Saclay
+- Ecosystem Map: Grenoble INP – UGA
+- Ecosystem Map: INSA Rennes
+- Ecosystem Map: INSA Strasbourg
+- Ecosystem Map: UTC – Université de technologie de Compiègne
+- Ecosystem Map: UTT – Université de technologie de Troyes
+- Ecosystem Map: IMT Atlantique
+- Ecosystem Map: IMT Nord Europe
+- Ecosystem Map: Bordeaux INP (ENSEIRB-MATMECA, ENSC)
+- Ecosystem Map: Université de Montpellier / Polytech Montpellier
+- Ecosystem Map: Clermont Auvergne INP (incl. SIGMA Clermont)
+- Ecosystem Map: ENAC
+- Ecosystem Map: Toulouse INP – ENSEEIHT
+- Ecosystem Map: EPITA
+- Ecosystem Map: ESILV (Pôle Léonard de Vinci)
+- Ecosystem Map: ECE Paris
+- Ecosystem Map: ESIEA
+- Ecosystem Map: Efrei
+- Ecosystem Map: ESME
+- Ecosystem Map: ESTACA
+- Ecosystem Map: ENSEA
+- Ecosystem Map: Isep
+- Ecosystem Map: Epitech
+- Ecosystem Map: CESI
+- Ecosystem Map: ESEO
+- Ecosystem Map: ESTIA
+- Ecosystem Map: École Centrale de Lyon
+- Ecosystem Map: Centrale Méditerranée
+- Ecosystem Map: Télécom Saint-Étienne
+- Ecosystem Map: ISAE-ENSMA
+- Ecosystem Map: Université Côte d'Azur
+- Ecosystem Map: VRAC (ARDIC – IUT Cachan alumni)
+- Ecosystem Map: Poppy Station
+- Ecosystem Map: Electrolab
+- Ecosystem Map: RCVA
+- Ecosystem Map: MiAM Robotique
+- Ecosystem Map: PM-ROBOTIX
+- Ecosystem Map: X-Robot (École polytechnique)
+- Ecosystem Map: Club Tech CentraleSupélec
+- Ecosystem Map: ENSTA Robotique (ENSTAR)
+- Ecosystem Map: Télécom Robotic
+- Ecosystem Map: INTech
+- Ecosystem Map: Evolutek
+- Ecosystem Map: DaVinciBot (ESILV)
+- Ecosystem Map: ECEBORG
+- Ecosystem Map: Crobot'ic (EFREI Robotique)
+- Ecosystem Map: Sudriabotik (ESME)
+- Ecosystem Map: SiERA (ESTACA)
+- Ecosystem Map: ARES ENSEA
+- Ecosystem Map: Robotium (ECAM-EPMI)
+- Ecosystem Map: IUT Cachan CRAC
+- Ecosystem Map: Eirbot (ENSEIRB-MATMECA)
+- Ecosystem Map: 7Robot (ENSEEIHT)
+- Ecosystem Map: Club Robot INSA Toulouse
+- Ecosystem Map: Club Robotique de Supaéro
+- Ecosystem Map: ENAC Robotique
+- Ecosystem Map: Robotronik (Grenoble INP Phelma)
+- Ecosystem Map: Polybot Grenoble
+- Ecosystem Map: RobotESEO
+- Ecosystem Map: Atlantic Robotic Club (IMT Atlantique)
+- Ecosystem Map: Club Robotique ENSTA Bretagne
+- Ecosystem Map: CRIS – Club de Robotique de l'INSA de Strasbourg
+- Ecosystem Map: Robotik UTT
+- Ecosystem Map: EsialRobotik
+- Ecosystem Map: Robotech Nancy (Polytech Nancy)
+- Ecosystem Map: Robotech Montpellier
+- Ecosystem Map: Club Robot ECM (E-Gab)
+- Ecosystem Map: AREM (ISMIN)
+- Ecosystem Map: Projet & Tech' (Télécom Saint-Étienne)
+- Ecosystem Map: Association Robotique INSA Rouen (ARI)
+- Ecosystem Map: Esigelectronix (ESIGELEC)
+- Ecosystem Map: Club Robotik ENSIL
+- Ecosystem Map: Ensma Space Project (Ensmasteel)
+- Ecosystem Map: ERAA (ESIPE Robotics & Automation Association)
+- Ecosystem Map: ESTIA SYSTEM
+- Ecosystem Map: FANUC
+- Ecosystem Map: Yaskawa Electric
+- Ecosystem Map: Sony
+- Ecosystem Map: Honda
+- Ecosystem Map: Toyota Motor Corporation
+- Ecosystem Map: Preferred Networks
+- Ecosystem Map: Preferred Robotics
+- Ecosystem Map: Mujin
+- Ecosystem Map: Telexistence
+- Ecosystem Map: Rapyuta Robotics
+- Ecosystem Map: Kawada Robotics
+- Ecosystem Map: AIST
+- Ecosystem Map: University of Tokyo — JSK Laboratory
+- Ecosystem Map: iREX (International Robot Exhibition)
+- Ecosystem Map: Japan Robot Association (JARA)
+- Ecosystem Map: ROS Japan Users Group
+- Ecosystem Map: SoftBank Group
+- Ecosystem Map: UMA (Universal Mechanical Assistant)
+- Ecosystem Map: Mistral AI
+- Ecosystem Map: Physicl
+- Ecosystem Map: Marso Robotics
+- Ecosystem Map: Galam Robotics
+- Ecosystem Map: Exwayz
+- Ecosystem Map: Robeauté
+- Ecosystem Map: Moon Surgical
+- Ecosystem Map: Ganymed Robotics
+- Ecosystem Map: SquareMind
+- Ecosystem Map: Harmattan AI
+- Ecosystem Map: AICE
+- Ecosystem Map: Kyber
+- Ecosystem Map: Physikal AI
+- Ecosystem Map: SIM XR
+- Ecosystem Map: ISYBOT
+- Ecosystem Map: BALYO
+- Ecosystem Map: SCALLOG
+- Ecosystem Map: Stanley Robotics
+- Ecosystem Map: Maxtronics
+- Ecosystem Map: Parrot
+- Ecosystem Map: Prophesee
+- Ecosystem Map: Outsight
+- Ecosystem Map: Exail
+- Ecosystem Map: Renault Group
+- Ecosystem Map: Capgemini
+- Ecosystem Map: Dassault Aviation
+- Ecosystem Map: Station F
+- Ecosystem Map: Inria Paris (WILLOW and other teams)
+- Ecosystem Map: CEA-List
+- Ecosystem Map: U2IS – ENSTA Paris
+- Ecosystem Map: Mines Paris – Centre for Robotics (CAOR)
+- Ecosystem Map: École 42 Paris
+- Ecosystem Map: Sorbonne Université
+- Ecosystem Map: ENSTA Paris (Institut Polytechnique de Paris)
+- Ecosystem Map: École polytechnique
+- Ecosystem Map: CentraleSupélec
+- Ecosystem Map: Mines Paris – PSL
+- Ecosystem Map: 42AI
+- Ecosystem Map: Unaite
+- Ecosystem Map: LeRobot community (Hugging Face)
+- Ecosystem Map: GOSIM Paris
+- Ecosystem Map: VivaTech
+- Ecosystem Map: MACHINA (Station F physical-AI summit)
+- Ecosystem Map: Global Industrie
+- Ecosystem Map: Eurosatory
+- Ecosystem Map: Mistral AI Robotics Hackathon
+- Ecosystem Map: Adopt AI hackathons (Artefact)
+- Ecosystem Map: Bpifrance
+- Ecosystem Map: Supernova Invest
+- Ecosystem Map: Sofinnova Partners
+- Ecosystem Map: Xavier Niel (individual investor) / Kima
+- Ecosystem Map: Hyundai Motor Group
+- Ecosystem Map: Samsung Electronics
+- Ecosystem Map: LG Electronics
+- Ecosystem Map: Doosan Robotics
+- Ecosystem Map: Rainbow Robotics
+- Ecosystem Map: ROBOTIS
+- Ecosystem Map: WIRobotics
+- Ecosystem Map: NAVER LABS
+- Ecosystem Map: KAIST
+- Ecosystem Map: Korea Institute of Robotics & Technology Convergence (KIRO)
+- Ecosystem Map: Korea Association of AI Robot Industry (KAR)
+- Ecosystem Map: ROBOTWORLD
+- Ecosystem Map: FuturePlay
+- Ecosystem Map: OROCA
+- Ecosystem Map: Tommoro Robotics
+- Ecosystem Map: NVIDIA
+- Ecosystem Map: Tesla
+- Ecosystem Map: Amazon Robotics
+- Ecosystem Map: Boston Dynamics
+- Ecosystem Map: Intuitive
+- Ecosystem Map: Figure
+- Ecosystem Map: Physical Intelligence
+- Ecosystem Map: Skild AI
+- Ecosystem Map: Agility Robotics
+- Ecosystem Map: Apptronik
+- Ecosystem Map: 1X Technologies
+- Ecosystem Map: FieldAI
+- Ecosystem Map: Stanford Robotics Center
+- Ecosystem Map: Berkeley Artificial Intelligence Research (BAIR)
+- Ecosystem Map: Carnegie Mellon University Robotics Institute
+- Ecosystem Map: Toyota Research Institute (TRI)
+- Ecosystem Map: Massachusetts Institute of Technology (MIT)
+- Ecosystem Map: MassRobotics
+- Ecosystem Map: Silicon Valley Robotics
+- Ecosystem Map: Open Source Robotics Foundation (Open Robotics)
+- Ecosystem Map: Lux Capital
+- Ecosystem Map: DCVC
+- Ecosystem Map: Conference on Robot Learning (CoRL 2026)
+- Ecosystem Map: Automate (US trade show)
+- Ecosystem Map: Robotics Summit & Expo
+- Knowledge Map: Dynamic system modeling & state-space
+- Knowledge Map: Stability & frequency-domain analysis
+- Knowledge Map: Trajectory generation & motion profiles
+- Knowledge Map: Joint-space control of robot arms
+- Knowledge Map: System identification & controller tuning
+- Knowledge Map: Optimal control & LQR
+- Knowledge Map: Model predictive control (MPC)
+- Knowledge Map: Trajectory optimization
+- Knowledge Map: Impedance & admittance control
+- Knowledge Map: Task-space & whole-body control
+- Knowledge Map: Underactuated & balancing control
+- Knowledge Map: Mobile robot path-tracking control
+- Knowledge Map: Multirotor flight control
+- Knowledge Map: Visual servoing
+- Knowledge Map: Nonlinear, robust & adaptive control
+- Knowledge Map: Sampling-based & GPU-parallel MPC
+- Knowledge Map: Safety filters & control barrier functions
+- Knowledge Map: Learning-based & data-driven control
+- Knowledge Map: Electronics fundamentals for robots
+- Knowledge Map: Microcontrollers & bare-metal firmware
+- Knowledge Map: Communication buses (UART, I2C, SPI, CAN)
+- Knowledge Map: Smart servos & serial actuator buses
+- Knowledge Map: Motor drivers & power electronics
+- Knowledge Map: BLDC motor control & field-oriented control (FOC)
+- Knowledge Map: Sensor interfacing & signal conditioning
+- Knowledge Map: Batteries & power distribution
+- Knowledge Map: Embedded Linux & companion computers
+- Knowledge Map: Real-time OS & real-time control loops
+- Knowledge Map: ROS 2 hardware interfaces (ros2_control, micro-ROS)
+- Knowledge Map: Industrial real-time fieldbus (EtherCAT)
+- Knowledge Map: PCB design for robots
+- Knowledge Map: Edge AI hardware & on-device inference
+- Knowledge Map: Embedded simulation & hardware-in-the-loop testing
+- Knowledge Map: Electrical safety & functional safety for robots
+- Knowledge Map: Open-source actuator & electronics stacks for legged/humanoid robots
+- Knowledge Map: Robot safety standards & risk assessment
+- Knowledge Map: Collaborative operation modes (cobots)
+- Knowledge Map: HRI foundations & user-study methods
+- Knowledge Map: Human detection & body-pose tracking for HRI
+- Knowledge Map: Speed & separation monitoring implementation
+- Knowledge Map: Collision detection & reaction (power and force limiting)
+- Knowledge Map: Shared control & shared autonomy
+- Knowledge Map: Physical HRI: hand-guiding & kinesthetic teaching
+- Knowledge Map: Human-robot handovers
+- Knowledge Map: Legible & expressive robot motion
+- Knowledge Map: Social & human-aware navigation
+- Knowledge Map: Conversational & multimodal robot interfaces
+- Knowledge Map: Human motion & intention prediction
+- Knowledge Map: Robotics regulation & compliance in the EU
+- Knowledge Map: Safe learning & safety filters
+- Knowledge Map: Semantic safety & guardrails for LLM/VLA-controlled robots
+- Knowledge Map: Learning from human feedback & corrections
+- Knowledge Map: Safety of humanoids & dynamically stable mobile robots
+- Knowledge Map: Rigid-body motion & coordinate frames
+- Knowledge Map: Robot description formats (URDF / MJCF)
+- Knowledge Map: Forward kinematics (DH & product of exponentials)
+- Knowledge Map: Velocity kinematics, Jacobians & singularities
+- Knowledge Map: Inverse kinematics (analytic & numerical)
+- Knowledge Map: Differential IK & redundancy resolution (QP-based)
+- Knowledge Map: Wheeled mobile robot kinematics
+- Knowledge Map: Parallel & closed-chain mechanisms
+- Knowledge Map: Rigid-body dynamics (equations of motion)
+- Knowledge Map: Efficient dynamics algorithms & analytical derivatives
+- Knowledge Map: Trajectory generation & time scaling
+- Knowledge Map: Dynamic parameter identification & actuator models
+- Knowledge Map: Kinematic & hand-eye calibration
+- Knowledge Map: Floating-base & centroidal dynamics (legged/humanoid)
+- Knowledge Map: Contact dynamics & differentiable simulation
+- Knowledge Map: Human-to-robot motion retargeting
+- Knowledge Map: Static & dynamic stability
+- Knowledge Map: Gaits & gait cycles
+- Knowledge Map: Reduced-order locomotion models
+- Knowledge Map: Central pattern generators
+- Knowledge Map: Bipedal walking control
+- Knowledge Map: Model predictive control for legged robots
+- Knowledge Map: Whole-body control for legged robots
+- Knowledge Map: RL locomotion with sim-to-real
+- Knowledge Map: Leg design & proprioceptive actuation
+- Knowledge Map: Perceptive rough-terrain locomotion
+- Knowledge Map: Fall recovery & get-up
+- Knowledge Map: Multirotor flight dynamics & control
+- Knowledge Map: Wheel-legged hybrid locomotion
+- Knowledge Map: Humanoid motion imitation & retargeting
+- Knowledge Map: Agile & parkour locomotion
+- Knowledge Map: Loco-manipulation coordination
+- Knowledge Map: Cross-embodiment locomotion policies
+- Knowledge Map: Grippers & end-effectors
+- Knowledge Map: Grasp mechanics
+- Knowledge Map: Pick-and-place pipeline
+- Knowledge Map: Teleoperation & demonstration collection for arms
+- Knowledge Map: Learning-based grasp detection
+- Knowledge Map: Object pose estimation for manipulation
+- Knowledge Map: Collision-free arm motion generation
+- Knowledge Map: Force/compliant & contact-rich manipulation
+- Knowledge Map: Bimanual manipulation
+- Knowledge Map: Mobile manipulation
+- Knowledge Map: Tactile sensing for manipulation
+- Knowledge Map: Deformable object manipulation
+- Knowledge Map: Dexterous in-hand manipulation
+- Knowledge Map: Non-prehensile manipulation
+- Knowledge Map: Long-horizon / task-and-motion planning
+- Knowledge Map: Open-vocabulary & affordance manipulation
+- Knowledge Map: Generalist manipulation policies / VLAs
+- Knowledge Map: Electric actuator architectures: mechanical trade-offs
+- Knowledge Map: Actuator sizing: torque, inertia and thermal duty
+- Knowledge Map: Spur and planetary gear trains
+- Knowledge Map: Cycloidal reducers and output mechanisms
+- Knowledge Map: Strain-wave gearing and flexspline design
+- Knowledge Map: Timing-belt and capstan transmissions
+- Knowledge Map: Lead screws, ball screws and linear joint packaging
+- Knowledge Map: Linkages, cams and parallel mechanism design
+- Knowledge Map: Tendon routing, antagonism and underactuated mechanisms
+- Knowledge Map: Backdrivability, friction and mechanical transparency
+- Knowledge Map: Series-elastic actuator mechanics
+- Knowledge Map: Variable-stiffness and antagonistic spring mechanisms
+- Knowledge Map: Bearings, structures and printed load paths
+- Knowledge Map: CAD and design for manufacture of robot joints
+- Knowledge Map: Hydraulic and pneumatic transmission mechanics
+- Knowledge Map: Soft pneumatic actuators and compliant-body fabrication
+- Knowledge Map: Artificial muscles: electrohydraulic and smart-material actuation
+- Knowledge Map: Integrated legged and humanoid joint co-design
+- Knowledge Map: Camera models & image formation
+- Knowledge Map: Camera calibration (intrinsic, extrinsic & hand-eye)
+- Knowledge Map: Classical image processing & feature matching
+- Knowledge Map: Fiducial markers (AprilTag, ArUco)
+- Knowledge Map: Stereo & RGB-D depth sensing
+- Knowledge Map: Point cloud processing
+- Knowledge Map: Real-time 2D object detection
+- Knowledge Map: Promptable image & video segmentation (SAM family)
+- Knowledge Map: Multi-object tracking
+- Knowledge Map: Monocular depth estimation
+- Knowledge Map: Human body & hand pose tracking
+- Knowledge Map: LiDAR perception & 3D object detection
+- Knowledge Map: Open-vocabulary detection & grounding
+- Knowledge Map: Self-supervised visual features (DINOv2-style backbones)
+- Knowledge Map: Point tracking (track-any-point)
+- Knowledge Map: Feed-forward 3D reconstruction (DUSt3R / VGGT)
+- Knowledge Map: Neural scene representations (NeRF & Gaussian splatting)
+- Knowledge Map: Open-vocabulary 3D scene graphs & semantic maps
+- Knowledge Map: Vision-language models for embodied perception
+- Knowledge Map: Event-based vision
+- Knowledge Map: Configuration space & collision checking
+- Knowledge Map: Graph search & incremental replanning
+- Knowledge Map: Sampling-based motion planning
+- Knowledge Map: Trajectory generation & time parameterization
+- Knowledge Map: Optimization-based trajectory planning
+- Knowledge Map: Navigation stacks & costmaps
+- Knowledge Map: Local planning & reactive obstacle avoidance
+- Knowledge Map: Behavior trees & task executives
+- Knowledge Map: Symbolic task planning with PDDL
+- Knowledge Map: Kinodynamic & nonholonomic planning
+- Knowledge Map: Multi-robot path finding & conflict resolution
+- Knowledge Map: Coverage path planning
+- Knowledge Map: Planning under uncertainty & belief space
+- Knowledge Map: GPU-parallel motion planning
+- Knowledge Map: Learned & diffusion motion planners
+- Knowledge Map: Language-grounded task planning
+- Knowledge Map: World-model predictive planning
+- Knowledge Map: Robot learning problem formulation: observations, actions, policies
+- Knowledge Map: Robot learning toolchains & data formats
+- Knowledge Map: Policy evaluation & real-world testing methodology
+- Knowledge Map: Diffusion & flow-matching policies
+- Knowledge Map: Action chunking & action tokenization
+- Knowledge Map: Pretrained visual representations for robots
+- Knowledge Map: Offline reinforcement learning
+- Knowledge Map: Reward learning & reward specification
+- Knowledge Map: Interactive imitation & human-in-the-loop correction
+- Knowledge Map: Data augmentation & synthetic demonstration generation
+- Knowledge Map: Fine-tuning & adapting pretrained robot policies
+- Knowledge Map: Real-time learned-policy execution & inference scheduling
+- Knowledge Map: LLM/VLM task planning & code-as-policies
+- Knowledge Map: Cross-embodiment learning
+- Knowledge Map: Autonomous self-improvement & continual robot learning
+- Knowledge Map: Failure detection & uncertainty for learned policies
+- Knowledge Map: Sensor characteristics, uncertainty & noise
+- Knowledge Map: Joint encoders & proprioceptive sensing
+- Knowledge Map: IMUs: accelerometers, gyroscopes & magnetometers
+- Knowledge Map: Force/torque sensing & current-based torque estimation
+- Knowledge Map: RGB cameras & intrinsic calibration
+- Knowledge Map: Depth cameras: stereo, structured light & ToF
+- Knowledge Map: 2D & 3D LiDAR hardware
+- Knowledge Map: Short-range ranging: ultrasonic, infrared & ToF
+- Knowledge Map: Extrinsic & multi-sensor calibration
+- Knowledge Map: Time synchronization & timestamping
+- Knowledge Map: ROS 2 sensor drivers, metadata & recording
+- Knowledge Map: Sensor simulation & noise models
+- Knowledge Map: Event cameras & asynchronous acquisition
+- Knowledge Map: mmWave radar sensing hardware
+- Knowledge Map: Robot skin & distributed tactile hardware
+- Knowledge Map: Microphone arrays & robot audio acquisition
+- Knowledge Map: GNSS & RTK receiver hardware
+- Knowledge Map: Wrist cameras & multi-camera data-collection rigs
+- Knowledge Map: Time stepping & numerical fidelity
+- Knowledge Map: Collision geometry & contact solver fidelity
+- Knowledge Map: Robot and scene formats: URDF, MJCF, SDF & USD
+- Knowledge Map: ROS 2 and Gazebo simulation integration
+- Knowledge Map: Sensor simulation, rendering & synthetic labels
+- Knowledge Map: GPU-parallel simulation & vectorized environments
+- Knowledge Map: Domain randomization & transfer stress testing
+- Knowledge Map: System identification & simulator calibration
+- Knowledge Map: Real-to-sim digital twins & Gaussian-splat rendering
+- Knowledge Map: Learned action-conditioned world simulators
+- Knowledge Map: Simulation benchmarks & reproducible evaluation
+- Knowledge Map: Procedural scenes, asset pipelines & task generation
+- Knowledge Map: Differentiable physics & gradient validation
+- Knowledge Map: Deformable and multiphysics simulation fidelity
+- Knowledge Map: Bayesian state estimation & uncertainty
+- Knowledge Map: Wheel & inertial dead reckoning
+- Knowledge Map: Kalman filtering & multisensor fusion
+- Knowledge Map: Particle filtering & global localization
+- Knowledge Map: Factor graphs, smoothing & pose-graph SLAM
+- Knowledge Map: Estimator calibration, timing & observability
+- Knowledge Map: Visual odometry & visual-inertial SLAM
+- Knowledge Map: 2D lidar SLAM & occupancy mapping
+- Knowledge Map: 3D lidar-inertial odometry & mapping
+- Knowledge Map: Place recognition, loop closure & relocalization
+- Knowledge Map: Robust, dynamic & lifelong state estimation
+- Knowledge Map: Dense, semantic & neural SLAM maps
+- Knowledge Map: Multi-robot & distributed SLAM
+- Knowledge Map: SLAM benchmarking, consistency & failure analysis
+- Knowledge Map: Contact-aided & invariant state estimation
+- Knowledge Map: GNSS-aided localization & georeferencing
+- Robots & Models: Python Control Systems Library
+- Robots & Models: ros2_controllers
+- Robots & Models: Ruckig
+- Robots & Models: CasADi
+- Robots & Models: acados
+- Robots & Models: do-mpc
+- Robots & Models: OSQP
+- Robots & Models: ProxSuite
+- Robots & Models: Pinocchio
+- Robots & Models: TSID
+- Robots & Models: Crocoddyl
+- Robots & Models: OCS2
+- Robots & Models: Drake
+- Robots & Models: MuJoCo MPC
+- Robots & Models: Hydrax
+- Robots & Models: DIAL-MPC
+- Robots & Models: PX4 Autopilot
+- Robots & Models: Crazyflie 2.1+
+- Robots & Models: ViSP
+- Robots & Models: Nav2 controller plugins (Regulated Pure Pursuit, MPPI)
+- Robots & Models: Franka Research 3 (FR3)
+- Robots & Models: safe-control-gym
+- Robots & Models: Feetech STS3215 servo
+- Robots & Models: Dynamixel (Protocol 2.0)
+- Robots & Models: ESP32-S3
+- Robots & Models: Raspberry Pi Pico 2 (RP2350)
+- Robots & Models: Teensy 4.1
+- Robots & Models: Arduino UNO Q
+- Robots & Models: NVIDIA Jetson Orin Nano Super Developer Kit
+- Robots & Models: NVIDIA Jetson AGX Thor
+- Robots & Models: Hailo-8
+- Robots & Models: ODrive S1 / Pro
+- Robots & Models: mjbots moteus
+- Robots & Models: SimpleFOC
+- Robots & Models: MIT Mini Cheetah actuator
+- Robots & Models: Berkeley Humanoid Lite
+- Robots & Models: Open Duck Mini v2
+- Robots & Models: Reachy Mini
+- Robots & Models: ros2_control
+- Robots & Models: micro-ROS
+- Robots & Models: Zephyr RTOS
+- Robots & Models: FreeRTOS
+- Robots & Models: KiCad
+- Robots & Models: Wokwi
+- Robots & Models: Renode
+- Robots & Models: SOEM (Simple Open EtherCAT Master)
+- Robots & Models: Edge Impulse
+- Robots & Models: LiteRT for Microcontrollers
+- Robots & Models: LeRobot
+- Robots & Models: RobStride 00 integrated actuator
+- Robots & Models: Universal Robots UR5e
+- Robots & Models: Unitree G1
+- Robots & Models: Unitree Go2
+- Robots & Models: NAO6
+- Robots & Models: Furhat
+- Robots & Models: HuNavSim
+- Robots & Models: Arena 4.0
+- Robots & Models: Nav2
+- Robots & Models: MediaPipe Pose Landmarker
+- Robots & Models: Ultralytics YOLO26 Pose
+- Robots & Models: Whisper
+- Robots & Models: Trajectron++
+- Robots & Models: SARA shield
+- Robots & Models: ASIMOV Benchmark
+- Robots & Models: RoboPAIR
+- Robots & Models: RoboGuard
+- Robots & Models: Gemini Robotics 1.5
+- Robots & Models: Featherstone spatial_v2
+- Robots & Models: Robotics Toolbox for Python
+- Robots & Models: TRAC-IK
+- Robots & Models: mink
+- Robots & Models: Pink
+- Robots & Models: TOPP-RA
+- Robots & Models: MuJoCo Warp
+- Robots & Models: DiffMJX
+- Robots & Models: MuJoCo Menagerie
+- Robots & Models: onshape-to-robot
+- Robots & Models: BAM (Better Actuator Models)
+- Robots & Models: BIRDy
+- Robots & Models: GMR (General Motion Retargeting)
+- Robots & Models: BeyondMimic
+- Robots & Models: Low-cost 3D-printed delta robot (IJMERR 2024)
+- Robots & Models: Unitree H1
+- Robots & Models: Boston Dynamics Spot
+- Robots & Models: ANYmal
+- Robots & Models: Petoi Bittle
+- Robots & Models: Stanford Pupper
+- Robots & Models: TurtleBot 4
+- Robots & Models: Bitcraze Crazyflie 2.1
+- Robots & Models: legged_gym
+- Robots & Models: MuJoCo Playground
+- Robots & Models: Genesis
+- Robots & Models: PX4
+- Robots & Models: ALOHA 2
+- Robots & Models: Mobile ALOHA
+- Robots & Models: LEAP Hand
+- Robots & Models: GelSight Mini
+- Robots & Models: ManiSkill
+- Robots & Models: robosuite
+- Robots & Models: MoveIt 2
+- Robots & Models: cuRobo
+- Robots & Models: Contact-GraspNet
+- Robots & Models: GraspNet-1Billion
+- Robots & Models: AnyGrasp
+- Robots & Models: FoundationPose
+- Robots & Models: Cloth Funnels
+- Robots & Models: ReKep
+- Robots & Models: VoxPoser
+- Robots & Models: OpenVLA
+- Robots & Models: Octo
+- Robots & Models: Diffusion Policy
+- Robots & Models: FreeCAD
+- Robots & Models: ODRI actuator module
+- Robots & Models: Harmonic Drive strain-wave gearing
+- Robots & Models: Nabtesco RV reducer family
+- Robots & Models: RUKA
+- Robots & Models: DLR David variable-stiffness joints
+- Robots & Models: Festo DMSP fluidic muscle
+- Robots & Models: PneuNets bending-actuator toolkit
+- Robots & Models: ToddlerBot
+- Robots & Models: AprilTag 3 library
+- Robots & Models: Kalibr
+- Robots & Models: OAK-D Pro
+- Robots & Models: ZED 2
+- Robots & Models: librealsense (RealSense SDK)
+- Robots & Models: FoundationStereo
+- Robots & Models: Open3D
+- Robots & Models: Point Cloud Library (PCL)
+- Robots & Models: YOLO11
+- Robots & Models: SAM 2
+- Robots & Models: SAM 3
+- Robots & Models: Grounding DINO
+- Robots & Models: Grounded-SAM-2
+- Robots & Models: OWLv2
+- Robots & Models: Florence-2
+- Robots & Models: Depth Anything V2
+- Robots & Models: Depth Anything 3
+- Robots & Models: Depth Pro
+- Robots & Models: DINOv2
+- Robots & Models: MediaPipe Hand & Pose Landmarker
+- Robots & Models: ByteTrack
+- Robots & Models: CoTracker3
+- Robots & Models: TAPIR
+- Robots & Models: DUSt3R
+- Robots & Models: VGGT
+- Robots & Models: nerfstudio
+- Robots & Models: gsplat
+- Robots & Models: 3D Gaussian Splatting (reference implementation)
+- Robots & Models: ConceptGraphs
+- Robots & Models: OK-Robot
+- Robots & Models: Gemini Robotics-ER 1.5
+- Robots & Models: Livox Mid-360
+- Robots & Models: OpenPCDet
+- Robots & Models: Prophesee Metavision SDK
+- Robots & Models: Isaac ROS
+- Robots & Models: OMPL
+- Robots & Models: BehaviorTree.CPP
+- Robots & Models: PlanSys2
+- Robots & Models: Multi-agent path planning examples
+- Robots & Models: Fields2Cover
+- Robots & Models: POMDPs.jl
+- Robots & Models: Cascaded Diffusion Models for Neural Motion Planning
+- Robots & Models: SayCan
+- Robots & Models: DINO-WM
+- Robots & Models: LeRobotDataset v3
+- Robots & Models: RLDS
+- Robots & Models: robomimic
+- Robots & Models: FAST tokenizer
+- Robots & Models: R3M
+- Robots & Models: VC-1
+- Robots & Models: CortexBench
+- Robots & Models: CQL reference implementation
+- Robots & Models: IQL reference implementation
+- Robots & Models: Eureka
+- Robots & Models: MimicGen
+- Robots & Models: LIBERO
+- Robots & Models: RoboCasa
+- Robots & Models: Real-Time Chunking (RTC)
+- Robots & Models: Code as Policies
+- Robots & Models: CrossFormer
+- Robots & Models: RT-1-X
+- Robots & Models: RoboCat
+- Robots & Models: RLPD reference implementation
+- Robots & Models: KnowNo
+- Robots & Models: Tensor2Robot
+- Robots & Models: Allan Variance ROS
+- Robots & Models: AS5600 magnetic angle sensor (Adafruit breakout)
+- Robots & Models: BNO085/BNO086 IMU
+- Robots & Models: ICM-42688-P
+- Robots & Models: ATI Mini45 force/torque transducer
+- Robots & Models: OpenCV camera calibration tools
+- Robots & Models: RealSense D405
+- Robots & Models: Luxonis OAK-D
+- Robots & Models: Orbbec Gemini 2
+- Robots & Models: Stereolabs ZED 2
+- Robots & Models: RPLIDAR A1
+- Robots & Models: Ouster OS1
+- Robots & Models: VL53L1X carrier (Pololu 3415)
+- Robots & Models: Sharp/Socle GP2Y0A21YK0F
+- Robots & Models: Direct visual LiDAR calibration toolbox
+- Robots & Models: LinuxPTP
+- Robots & Models: rosbag2
+- Robots & Models: ROS image_pipeline
+- Robots & Models: Gazebo sensor simulation
+- Robots & Models: NVIDIA Isaac Sim sensors
+- Robots & Models: OpenEB / Metavision open modules
+- Robots & Models: iniVation event-camera systems
+- Robots & Models: TI IWR6843ISK evaluation board
+- Robots & Models: ReSkin magnetic tactile skin
+- Robots & Models: AnySkin
+- Robots & Models: ReSpeaker USB 4-Mic Array XVF3000 v2.0
+- Robots & Models: ODAS
+- Robots & Models: u-blox ZED-F9P GNSS module
+- Robots & Models: UMI data-collection gripper
+- Robots & Models: TI DCA1000EVM
+- Robots & Models: TI mmWave Studio
+- Robots & Models: Newton
+- Robots & Models: Gazebo
+- Robots & Models: OpenUSD
+- Robots & Models: SimplerEnv
+- Robots & Models: DreamerV3
+- Robots & Models: NVIDIA Warp
+- Robots & Models: PythonRobotics
+- Robots & Models: robot_localization
+- Robots & Models: GTSAM
+- Robots & Models: OpenVINS
+- Robots & Models: ORB-SLAM3
+- Robots & Models: SLAM Toolbox
+- Robots & Models: RTAB-Map
+- Robots & Models: KISS-ICP
+- Robots & Models: FAST-LIO2
+- Robots & Models: LIO-SAM
+- Robots & Models: FAST-LIVO2
+- Robots & Models: TurtleBot3
+- Robots & Models: evo
+- Robots & Models: DynaSLAM
+- Robots & Models: SplaTAM
+- Robots & Models: MASt3R-SLAM
+- Robots & Models: MASt3R
+- Robots & Models: Kimera-Multi
+- Robots & Models: invariant-ekf
+- Robots & Models: ScaRF-SLAM
+- Robots & Models: Unitree R1
+- Robots & Models: UBTech Walker S2
+- Robots & Models: AgiBot World (dataset)
+- Robots & Models: GO-1 (Genie Operator-1)
+- Robots & Models: AgiBot X1
+- Robots & Models: Galbot G1
+- Robots & Models: Fourier Max (Meta humanoid)
+- Robots & Models: XPeng IRON
+- Robots & Models: Dobot ATOM
+- Robots & Models: Dobot Magician E6
+- Robots & Models: AgileX PiPER
+- Robots & Models: AgileX Cobot Magic (Mobile ALOHA kit)
+- Robots & Models: DEEP Robotics Jueying Lite3
+- Robots & Models: DEEP Robotics Jueying X30
+- Robots & Models: Galaxea R1
+- Robots & Models: Galaxea LEMO A1Z
+- Robots & Models: Galaxea G0 / G0.5
+- Robots & Models: RobotEra STAR1
+- Robots & Models: Leju KUAVO
+- Robots & Models: TianGong 3.0
+- Robots & Models: RoboMIND (dataset)
+- Robots & Models: RoboBrain 2.0
+- Robots & Models: InternVLA-M1
+- Robots & Models: InternUtopia (ex-GRUtopia)
+- Robots & Models: Geek+ warehouse AMRs
+- Robots & Models: Schaeffler formed strain wave gearbox
+- Robots & Models: HMND 01 Alpha
+- Robots & Models: maxon integrated joint actuator
+- Robots & Models: Harmonic Drive strain wave gears
+- Robots & Models: SCHUNK-Bosch humanoid robot hand
+- Robots & Models: igus ReBeL cobot
+- Robots & Models: Iggy Rob
+- Robots & Models: OnRobot 2FGP20
+- Robots & Models: Infineon Mobile Robot (IMR)
+- Robots & Models: RoBee
+- Robots & Models: Axelera Metis
+- Robots & Models: Arduino VENTUNO Q
+- Robots & Models: Shadow Dexterous Hand
+- Robots & Models: Bota SensONE
+- Robots & Models: Synapticon-Stabilus humanoid actuators
+- Robots & Models: AdapTronics EAAL gripper
+- Robots & Models: AEON (Hexagon Robotics)
+- Robots & Models: Figure 03
+- Robots & Models: Apollo (Apptronik)
+- Robots & Models: HMND 01
+- Robots & Models: Walker S2
+- Robots & Models: Unitree humanoids (Innov8 / Novares pilot)
+- Robots & Models: Ocado bot (Ocado Smart Platform grid robot)
+- Robots & Models: KNAPP Pick-it-Easy Robot
+- Robots & Models: SSI Piece Picking
+- Robots & Models: TGW RovoFlex
+- Robots & Models: Swisslog ItemPiQ
+- Robots & Models: Dürr EcoRP4
+- Robots & Models: Airbus CabinMarker
+- Robots & Models: NAiSE Fleet Management Software
+- Robots & Models: SVT Robotics SOFTBOT Platform
+- Robots & Models: Gereon UGV
+- Robots & Models: Gravis autonomous excavator retrofit kit
+- Robots & Models: Dexory autonomous warehouse-scanning robot
+- Robots & Models: Machenta instant-learning model
+- Robots & Models: mimic humanoid hand + physical-AI model
+- Robots & Models: THEKER generalist factory robot
+- Robots & Models: Stateful Robotics long-horizon planning platform
+- Robots & Models: 4NE1 Gen 4
+- Robots & Models: Neuron AI
+- Robots & Models: MAiRA
+- Robots & Models: Agile ONE
+- Robots & Models: Diana 7
+- Robots & Models: UR Gen 7 (g-Series)
+- Robots & Models: UR AI Trainer
+- Robots & Models: ANYmal X
+- Robots & Models: Alfie (RobCo)
+- Robots & Models: TIAGo Pro
+- Robots & Models: PAL Robotics SEA arm (ICRA 2026)
+- Robots & Models: Ameca
+- Robots & Models: Shadow Dexterous Hand / DEX-EE
+- Robots & Models: igus ReBeL
+- Robots & Models: Versius Plus
+- Robots & Models: iCub
+- Robots & Models: ergoCub
+- Robots & Models: GENE.01
+- Robots & Models: Starship delivery robot
+- Robots & Models: Gemini Robotics 2.5
+- Robots & Models: Gemini Robotics On-Device
+- Robots & Models: Apollo 2
+- Robots & Models: Eno
+- Robots & Models: GENE-26.5
+- Robots & Models: Cortex 2.0
+- Robots & Models: Nomagic picking robot ('Richard' at Zalando)
+- Robots & Models: KinetIQ
+- Robots & Models: FLUX-mimic
+- Robots & Models: Atlas (microagi)
+- Robots & Models: Neuracore platform
+- Robots & Models: Rerun SDK
+- Robots & Models: Wandelbots NOVA
+- Robots & Models: MIRAI
+- Robots & Models: AIR (Embodied AI)
+- Robots & Models: RSL-RL
+- Robots & Models: ROS 2
+- Robots & Models: Microduck
+- Robots & Models: Ned2
+- Robots & Models: GR100
+- Robots & Models: AGC Autonomy Kit
+- Robots & Models: Oz
+- Robots & Models: Orio / Jo (discontinued platforms)
+- Robots & Models: Bakus
+- Robots & Models: Vitirover mowing robot
+- Robots & Models: AISPRID leaf-removal robot
+- Robots & Models: Sepro 3-axis injection-molding robots
+- Robots & Models: SHERPA AMR range
+- Robots & Models: EffiBOT
+- Robots & Models: Skypod
+- Robots & Models: R-One+
+- Robots & Models: eCential integrated surgical platform
+- Robots & Models: Epione
+- Robots & Models: Donecle automated aircraft inspection system
+- Robots & Models: Poppy Humanoid
+- Robots & Models: Poppy Torso
+- Robots & Models: Poppy Ergo Jr
+- Robots & Models: SigmaBan
+- Robots & Models: UltraBan
+- Robots & Models: Humanoid Path Planner (HPP)
+- Robots & Models: SOFA
+- Robots & Models: C3Bots research prototypes
+- Robots & Models: Colossus
+- Robots & Models: MORFOSE
+- Robots & Models: TMS-Cobot
+- Robots & Models: Seasam
+- Robots & Models: iBubble
+- Robots & Models: TUNDRA 2
+- Robots & Models: Skeyetech
+- Robots & Models: Japet.W+
+- Robots & Models: PACO
+- Robots & Models: iYU
+- Robots & Models: ciTHy S
+- Robots & Models: Delair UX11
+- Robots & Models: Notilo Cloud
+- Robots & Models: NB-55
+- Robots & Models: NB-120
+- Robots & Models: Aru
+- Robots & Models: Pathfinder
+- Robots & Models: HUSKY (E-COBOT)
+- Robots & Models: MyCobot Suite
+- Robots & Models: Pyrène (TALOS humanoid)
+- Robots & Models: mc_rtc
+- Robots & Models: Microban
+- Robots & Models: Poppy robots (Poppy Humanoid / Ergo Jr)
+- Robots & Models: Solo (ODRI open quadruped)
+- Robots & Models: FANUC CRX series
+- Robots & Models: FANUC ROBOGUIDE
+- Robots & Models: MOTOMAN HC10DTP
+- Robots & Models: MOTOMAN HC20DTP
+- Robots & Models: aibo ERS-1000
+- Robots & Models: Honda Avatar Robot
+- Robots & Models: Toyota Human Support Robot (HSR)
+- Robots & Models: Kachaka Pro
+- Robots & Models: Kachaka Evo
+- Robots & Models: HAPiiBOT
+- Robots & Models: Kachaka API SDK
+- Robots & Models: PLaMo-SemGround
+- Robots & Models: MujinController PickWorker
+- Robots & Models: MujinOS
+- Robots & Models: TX Ghost
+- Robots & Models: Rapyuta PA-AMR
+- Robots & Models: NEXTAGE (NXA)
+- Robots & Models: NEXTAGE Fillie
+- Robots & Models: HRP-5P
+- Robots & Models: Kengoro
+- Robots & Models: Atalante X
+- Robots & Models: UMA Northstar humanoid
+- Robots & Models: Robostral Navigate
+- Robots & Models: V-JEPA 2 / JEPA world models
+- Robots & Models: Maestro
+- Robots & Models: Swan
+- Robots & Models: TAK-ONE
+- Robots & Models: Exwayz Engine
+- Robots & Models: Inbolt GuideNOW
+- Robots & Models: NAO
+- Robots & Models: ANAFI UKR
+- Robots & Models: BALYO autonomous forklifts
+- Robots & Models: ISYBOT sanding cobot
+- Robots & Models: Kyber teleoperation stack
+- Robots & Models: Unitree robots (Orano/Capgemini tests)
+- Robots & Models: MobED
+- Robots & Models: Ballie
+- Robots & Models: LG CLOiD
+- Robots & Models: P3020
+- Robots & Models: doosan-robot2
+- Robots & Models: RB-Y1
+- Robots & Models: RB-Y1 SDK
+- Robots & Models: OMX
+- Robots & Models: OMY
+- Robots & Models: AI Worker
+- Robots & Models: AI Sapiens
+- Robots & Models: Physical AI Tools
+- Robots & Models: WIM
+- Robots & Models: ALLEX
+- Robots & Models: ALLEX Simulation Model
+- Robots & Models: ARC
+- Robots & Models: Rookie 2
+- Robots & Models: AMBIDEX
+- Robots & Models: KAIST HOUND 1
+- Robots & Models: KAIST HOUND 2
+- Robots & Models: iTurtle
+- Robots & Models: CLIP-RT
+- Robots & Models: HABILIS Brain 0
+- Robots & Models: HABILIS Console
+- Robots & Models: Tesla Optimus
+- Robots & Models: Amazon Proteus
+- Robots & Models: Amazon Vulcan
+- Robots & Models: Spot (Boston Dynamics)
+- Robots & Models: Stretch (Boston Dynamics)
+- Robots & Models: Atlas (Boston Dynamics)
+- Robots & Models: da Vinci 5
+- Robots & Models: Helix (Figure)
+- Robots & Models: Skild Brain
+- Robots & Models: Digit (Agility Robotics)
+- Robots & Models: NEO (1X Technologies)
+- Robots & Models: Field Foundation Models (FieldAI)
+- Robots & Models: HIL-SERL
+- Projects: Intro: microcontroller, breadboard & I2C sensors
+- Projects: Intro: CAD and 3D-print a robot part
+- Projects: Intro: ROS 2 and Nav2 with a simulated mobile robot
+- Projects: Intro: train an RL policy in a GPU simulator
+- Projects: Intro: calibrate a webcam and track AprilTags
+- Projects: PID tuning playground in simulation
+- Projects: Intro: write a risk assessment for the lab robot
+- Projects: Tune the SO-101 servo P gain
+- Projects: Cascaded position-velocity loop on an ODrive bench
+- Projects: Model a pendulum and a cart in state space
+- Projects: SO-101 digital twin from URDF with Pinocchio
+- Projects: Bode plots for a real joint
+- Projects: Lyapunov certificate for a pendulum controller
+- Projects: Smooth arm motions with Ruckig
+- Projects: Jerk-limited trajectories on the real SO-101
+- Projects: Online re-targeting with ros2 joint trajectory controller
+- Projects: Gravity compensation for a simulated arm
+- Projects: Computed-torque vs PD tracking benchmark
+- Projects: Identify friction and inertia of one joint
+- Projects: Close the sim-to-real gap of the SO-101 simulator
+- Projects: Learned residual dynamics model for a joint
+- Projects: Balance a cart-pole with LQR
+- Projects: LQR hover for a simulated quadrotor
+- Projects: LQR trajectory stabilization for an arm
+- Projects: First MPC with do-mpc
+- Projects: MPC for a differential-drive robot with obstacles
+- Projects: Real-time MPC on a reaction-wheel or ballbot-style balancer
+- Projects: Pendulum swing-up with direct collocation
+- Projects: Acrobot swing-up then LQR catch
+- Projects: Crocoddyl jump for a simulated quadruped
+- Projects: Admittance hand-guiding in simulation
+- Projects: Compliant SO-101 via low servo gains and current monitoring
+- Projects: Learned stiffness schedule for wiping
+- Projects: Task-space controller: keep the hand still while the base moves
+- Projects: QP whole-body controller with joint-limit tasks
+- Projects: Whole-body balance under pushes for a simulated humanoid
+- Projects: Energy-shaping pendulum swing-up
+- Projects: Build a reaction-wheel inverted pendulum
+- Projects: Cart-pole controller shoot-out in safe-control-gym
+- Projects: Pure pursuit in Nav2 simulation
+- Projects: Pure pursuit vs MPPI on a cheap robot car
+- Projects: Adaptive path tracking under changing friction
+- Projects: Fly a Crazyflie with the stock cascaded PID
+- Projects: Swap Crazyflie controllers: PID vs Mellinger vs INDI
+- Projects: RL low-level quadrotor controller sim-to-real
+- Projects: Image-based visual servoing in ViSP simulation
+- Projects: Webcam visual servoing on the SO-101
+- Projects: Foundation-model pose-based visual servoing
+- Projects: Feedback linearization of a two-link arm
+- Projects: Adaptive control with an unknown payload
+- Projects: Robust tube MPC on a quadrotor model
+- Projects: MuJoCo MPC tour: make a humanoid stand
+- Projects: GPU sampling MPC for the SO-101 in Hydrax
+- Projects: Training-free quadruped gaits with DIAL-MPC
+- Projects: CBF safety filter for a 2D robot
+- Projects: Keep-out zone for the real SO-101
+- Projects: Residual RL on top of a PD controller
+- Projects: Neural-network dynamics + MPC for a toy car
+- Projects: Learned residual controller for SO-101 tracking
+- Projects: Custom power & e-stop board for the SO-101
+- Projects: micro-ROS ESP32 sensor node
+- Projects: ros2_control hardware interface for SO-101
+- Projects: Jitter lab: FreeRTOS vs Zephyr vs PREEMPT_RT
+- Projects: SimpleFOC gimbal motor: position, velocity, torque modes
+- Projects: Low-cost quasi-direct-drive actuator test bench
+- Projects: CAN-FD bus sniffer & dashboard
+- Projects: Firmware CI with hardware-in-the-loop
+- Projects: TinyML gesture/keyword control on an MCU
+- Projects: On-board policy: run an ACT/diffusion policy on Jetson Orin Nano
+- Projects: Edge AI accelerator benchmark for robot perception
+- Projects: VLA on board a mobile manipulator with Jetson Thor
+- Projects: Arduino UNO Q split-brain robot
+- Projects: Custom BLDC driver PCB
+- Projects: Open Duck Mini build
+- Projects: Berkeley Humanoid Lite reproduction
+- Projects: Protected battery pack + BMS telemetry for a walking robot
+- Projects: EtherCAT test cell with SOEM
+- Projects: Reachy Mini custom expressive behaviours on the edge
+- Projects: Experimental contact detection from servo telemetry
+- Projects: Embedded Rust (Embassy) firmware for a robot joint
+- Projects: Sim-matched digital twin of the arm electronics
+- Projects: Joint bus shoot-out: serial vs CAN-FD vs EtherCAT
+- Projects: ros2_control driver for an EtherCAT servo drive
+- Projects: Safety-limit configurator for a simulated arm
+- Projects: Standards change map: ISO 10218:2025 explainer
+- Projects: Mode switcher: separation monitoring to force limiting
+- Projects: Cobot mode decision tool
+- Projects: Robot speed vs comfort experiment
+- Projects: HRI study toolkit for the lab
+- Projects: Multi-person pose benchmark for the lab space
+- Projects: Depth-camera separation monitor
+- Projects: Robot-mounted distance sensor skin
+- Projects: Learned speed scaling vs analytic rule
+- Projects: Momentum-observer collision detection in sim
+- Projects: Region-aware force limits demo
+- Projects: Goal-inference assistive arm
+- Projects: Legible shared autonomy display
+- Projects: Mixed-reality kinesthetic teaching
+- Projects: Robot-to-human object handover on a desk arm
+- Projects: Handover benchmark in simulation
+- Projects: Legibility online experiment
+- Projects: Social costmap layer for Nav2
+- Projects: LLM-generated social navigation scenarios
+- Projects: Interruptible conversational robot
+- Projects: Socially assistive coach robot
+- Projects: Trajectron++ on lab footage
+- Projects: Reach-target prediction for collaboration
+- Projects: Compliance checklist for a lab demo robot
+- Projects: AI Act classifier for robot features
+- Projects: Safety filter benchmark in safe-control-gym
+- Projects: Safety filter around a learned arm policy
+- Projects: Guardrail for a language-commanded arm
+- Projects: Red-team day: jailbreak our own robot agent
+- Projects: Human-gated interactive imitation on SO-101
+- Projects: Preference feedback for comfortable motion
+- Projects: Controlled-fall and safe-stop behaviours in sim
+- Projects: Humanoid safety readiness review
+- Projects: Camera-to-gripper frame chain on the SO-101
+- Projects: Quaternion pitfalls benchmark
+- Projects: Write an MJCF for the SO-101 from scratch
+- Projects: CAD-to-sim pipeline for a custom gripper
+- Projects: URDF/MJCF linter for student robots
+- Projects: Forward kinematics three ways
+- Projects: Leader-arm FK pose streamer
+- Projects: FK accuracy check against a camera
+- Projects: Live manipulability ellipsoid
+- Projects: Singularity-aware teleop for the SO-101
+- Projects: Jacobian-transpose force estimation
+- Projects: Analytic vs numerical IK shoot-out
+- Projects: Click-to-reach SO-101
+- Projects: IK for 5-DoF arms with orientation trade-offs
+- Projects: Follow a moving target with mink
+- Projects: Phone-pose teleoperation of the SO-101
+- Projects: Whole-body reach on a simulated humanoid
+- Projects: Diff-drive odometry from scratch
+- Projects: SO-101 on wheels: base + arm kinematics
+- Projects: Delta robot IK/FK in simulation
+- Projects: Build a 3D-printed delta picker
+- Projects: Closed-loop leg linkage in MuJoCo
+- Projects: Derive and verify a 2-link arm's equations
+- Projects: Gravity-compensated SO-101 'floating arm'
+- Projects: RNEA vs ABA timing notebook
+- Projects: Gradient-based trajectory optimization of a throw
+- Projects: Model-based torque feedforward on the SO-101
+- Projects: Time-optimal SO-101 drawing
+- Projects: Smoothing learned-policy actions
+- Projects: STS3215 actuator model for sim-to-real
+- Projects: Full inertial identification of the SO-101
+- Projects: Hand-eye calibration in sim
+- Projects: Marker-free self-calibration
+- Projects: Centroidal momentum viewer
+- Projects: Humanoid jump with Crocoddyl
+- Projects: Trajectory-optimized motions as RL references
+- Projects: Gradient-based push policy
+- Projects: Retarget your own dance to a humanoid
+- Projects: Retarget human arm video to the SO-101
+- Projects: Retargeting-quality study on BeyondMimic
+- Projects: Animate differential versus mecanum motion
+- Projects: Calibrate wheel-radius mismatch in simulation
+- Projects: Slip-aware wheel command benchmark
+- Projects: Draw a moving support polygon
+- Projects: Push a simulated standing quadruped
+- Projects: Compare balance margins during gait transitions
+- Projects: Build an interactive gait phase viewer
+- Projects: Compare gait energy and slip
+- Projects: Transfer a conservative gait to Bittle
+- Projects: Simulate LIPM versus SLIP
+- Projects: Map stable hopping parameters
+- Projects: Test reduced-model predictions on a full robot
+- Projects: Couple four gait oscillators
+- Projects: Add contact phase resets
+- Projects: Benchmark CPG versus learned gait timing
+- Projects: Animate capture-point stepping
+- Projects: Reproduce preview-style flat-ground walking
+- Projects: Compare capture steps and fixed footsteps
+- Projects: Inspect a contact-force MPC rollout
+- Projects: Reproduce a simulated MPC trot
+- Projects: Compare convex and nonlinear contact control
+- Projects: Visualize competing balance tasks
+- Projects: Track a body pose with fixed feet
+- Projects: Combine stepping and torso tracking
+- Projects: Replay and audit a locomotion policy
+- Projects: Train randomized versus nominal walkers
+- Projects: Audit transfer across two simulators
+- Projects: Plot a leg workspace and force map
+- Projects: Compare virtual leg ratios
+- Projects: Prototype a passive leg linkage
+- Projects: Render terrain-height foothold overlays
+- Projects: Compare blind and terrain-aware walking
+- Projects: Inject depth delay into rough-terrain walking
+- Projects: Catalogue simulated fallen poses
+- Projects: Train or replay a simulated get-up controller
+- Projects: Switch safely between walking and recovery
+- Projects: Animate thrust and attitude coupling
+- Projects: Tune a simulated hover cascade
+- Projects: Simulate rolling-contact constraints
+- Projects: Switch between roll and step modes
+- Projects: Compare hybrid and leg-only energy proxies
+- Projects: Compare nominal and residual-dynamics tracking
+- Projects: Replay a simulated jump with contact overlays
+- Projects: Build a held-out virtual parkour course
+- Projects: Design a risk-limited parkour benchmark
+- Projects: Animate payload-induced balance shifts
+- Projects: Walk with a moving virtual payload
+- Projects: Step while pushing a known object
+- Projects: Normalize gait observations across two virtual bodies
+- Projects: Test one policy on scaled virtual quadrupeds
+- Projects: Compare shared and per-body policy training
+- Projects: Compare fingertip pads
+- Projects: Simulate suction versus pinch
+- Projects: Design a compliant fingertip
+- Projects: Draw friction cones
+- Projects: Test force closure numerically
+- Projects: Predict and measure slip
+- Projects: Script a cube transfer
+- Projects: Build a clutter-clearing state machine
+- Projects: Add failed-grasp recovery
+- Projects: Audit demonstration timing
+- Projects: Visualize grasp candidates
+- Projects: Filter grasps by reachability
+- Projects: Benchmark cluttered bin picking
+- Projects: Overlay tracked object axes
+- Projects: Connect pose tracking to a grasp
+- Projects: Test recovery after occlusion
+- Projects: Plan around a tabletop obstacle
+- Projects: Compare MoveIt and cuRobo paths
+- Projects: Replan a carried object through clutter
+- Projects: Insert a peg with compliance
+- Projects: Adapt insertion to pose error
+- Projects: Coordinate two simulated grippers
+- Projects: Teleoperate a two-arm handover
+- Projects: Learn coordinated box opening
+- Projects: Choose reachable base poses
+- Projects: Carry an object between stations in simulation
+- Projects: Learn a mobile cabinet interaction
+- Projects: Visualize gel contact images
+- Projects: Detect slip from tactile sequences
+- Projects: Use touch to adjust grip during lift
+- Projects: Track cloth corners
+- Projects: Reproduce a cloth unfolding primitive
+- Projects: Compare policies across cloth materials
+- Projects: Replay hand joint motions
+- Projects: Rotate a cube in simulation
+- Projects: Transfer an object-rotation policy to a hand
+- Projects: Simulate a straight push
+- Projects: Push an object into a graspable pose
+- Projects: Learn feedback pushing under friction variation
+- Projects: Build a manipulation behavior tree
+- Projects: Plan rearrangement with geometric checks
+- Projects: Recover a multi-step task after a blocked grasp
+- Projects: Visualize language-conditioned action regions
+- Projects: Solve a keypoint-constrained manipulation task
+- Projects: Evaluate novel object instructions with safety rejection
+- Projects: Inspect a generalist policy action output
+- Projects: Fine-tune a policy on one tabletop task
+- Projects: Compare language-conditioned policies on held-out objects
+- Projects: Motor architecture decision notebook
+- Projects: Interchangeable motor mounting plate study
+- Projects: Modular rotary joint cartridge
+- Projects: Torque-speed envelope from a load case
+- Projects: Joint duty-cycle thermal estimator
+- Projects: Instrumented continuous-duty joint fixture
+- Projects: Planetary tooth-count explorer
+- Projects: Hand-cranked printed planetary cutaway
+- Projects: Interchangeable ratio gearbox bench
+- Projects: Cycloidal eccentric-to-output animation
+- Projects: Hand-driven cycloidal tolerance experiment
+- Projects: Guarded dual-disc cycloidal joint prototype
+- Projects: Strain-wave tooth engagement explainer
+- Projects: Printed flexspline fit and compliance coupons
+- Projects: Strain-wave versus cycloidal joint CAD trade study
+- Projects: Belt and capstan preload explorer
+- Projects: Hand-driven belt tension reversal rig
+- Projects: Remote-drive elbow transmission fixture
+- Projects: Screw lead force-speed visualizer
+- Projects: Horizontal screw-guide alignment jig
+- Projects: Supported linear joint module
+- Projects: Four-bar path sketchbook
+- Projects: Cardboard cam and follower comparison
+- Projects: Parallel-link remote-actuated joint prototype
+- Projects: Tendon routing and slack simulator
+- Projects: Antagonistic tendon hinge board
+- Projects: Underactuated tendon differential demonstrator
+- Projects: Reflected inertia gear-ratio dashboard
+- Projects: Passive joint friction identification fixture
+- Projects: Low-impedance joint architecture comparison
+- Projects: Spring-in-series resonance notebook
+- Projects: Passive series-spring calibration board
+- Projects: Guarded series-elastic rotary joint
+- Projects: Variable-stiffness cam geometry notebook
+- Projects: Hand-adjusted antagonistic spring hinge
+- Projects: Dual-adjustment variable-stiffness joint CAD prototype
+- Projects: Bearing support and load-path CAD review
+- Projects: Printed bearing-seat fit coupon matrix
+- Projects: Stiffness-to-mass robot bracket challenge
+- Projects: CAD-to-robot mass and joint audit
+- Projects: Manufacturable serviceable elbow design pack
+- Projects: Pressure-area actuator comparison notebook
+- Projects: Pneumatic supply architecture digital review
+- Projects: Supervised low-pressure muscle hinge bench
+- Projects: PneuNet chamber geometry sketch study
+- Projects: Soft actuator mold and seal coupon kit
+- Projects: Supervised soft bending fatigue bench
+- Projects: Artificial muscle force-stroke evidence atlas
+- Projects: Electrohydraulic pouch mechanics model
+- Projects: Thermal magnetic folding mechanism digital twin
+- Projects: Humanoid knee packaging teardown in CAD
+- Projects: Equal-envelope leg joint Pareto study
+- Projects: Captive single-leg actuator test stand
+- Projects: Camera-to-arm hand-eye calibration for the SO-101
+- Projects: Camera-IMU calibration with Kalibr
+- Projects: Lens-distortion lab: cheap vs. good cameras
+- Projects: Feature-matching panorama and visual odometry toy
+- Projects: Line-following mobile robot with classical vision
+- Projects: Tag-based pick targets for the SO-101
+- Projects: Tag-based ground truth rig for evaluating learned perception
+- Projects: Depth camera failure atlas
+- Projects: Learned stereo vs. on-board stereo
+- Projects: DIY stereo camera from two webcams
+- Projects: Tabletop segmentation: find objects on a table in 3D
+- Projects: Multi-view object scanning with ICP
+- Projects: Point-cloud grasp targets for the SO-101
+- Projects: Edge YOLO on a Jetson with ROS 2
+- Projects: Sorting robot: detect and bin objects by class
+- Projects: Synthetic data for detector training
+- Projects: Click-to-mask object cutout for robot datasets
+- Projects: Text-prompted segmentation of every instance with SAM 3
+- Projects: Masked observations to make imitation policies robust
+- Projects: People counter and tracker for a lab entrance
+- Projects: Tracker benchmark on robot-workspace videos
+- Projects: Pan-tilt camera that follows a chosen object
+- Projects: Webcam-only obstacle map from monocular depth
+- Projects: Replace the depth camera: monocular depth for grasping
+- Projects: Gesture-commanded robot
+- Projects: Hand-tracking teleoperation of the SO-101
+- Projects: Vision safety zone: slow the arm when a person is near
+- Projects: 3D detection on KITTI with OpenPCDet
+- Projects: LiDAR obstacle detection on a mobile robot
+- Projects: Camera-LiDAR fusion overlay
+- Projects: Language-pointing arm with open-vocabulary detection
+- Projects: Open-vocabulary detector shoot-out on lab objects
+- Projects: Edge open-vocabulary detection on Jetson
+- Projects: Few-shot object re-identification with DINOv2 features
+- Projects: Turn human videos into motion tracks
+- Projects: Point-track keypoints as policy inputs
+- Projects: Robot-mounted camera to live 3D workspace model
+- Projects: Gaussian-splat digital twin of a workbench
+- Projects: Splat-to-simulation asset pipeline
+- Projects: Language-queryable splat of the lab
+- Projects: Open-vocabulary 3D map of a room
+- Projects: Fetch-by-name with a mobile manipulator
+- Projects: Scene graph change detection: what moved?
+- Projects: Gemini-ER pointing on the SO-101
+- Projects: VLM success detector for robot episodes
+- Projects: Open VLM vs. API VLM for robot pointing
+- Projects: High-speed ball catching cue with an event camera
+- Projects: Event + frame fusion under extreme lighting
+- Projects: Planning lab: animate obstacle inflation for a disc robot
+- Projects: Planning lab: compare discrete and swept collision tests on thin walls
+- Projects: Planning lab: build a shared collision-validation service for two robot shapes
+- Projects: Planning lab: film A-star versus Dijkstra maze expansions
+- Projects: Planning lab: replay D-star Lite when a corridor closes
+- Projects: Planning lab: compare incremental and fresh search across changing warehouse maps
+- Projects: Planning lab: animate PRM and RRT in a two-dimensional maze
+- Projects: Planning lab: benchmark RRT-star quality versus runtime over fixed seeds
+- Projects: Planning lab: compare geometric and control-based planners for a simulated vehicle
+- Projects: Planning lab: compare jerk-limited retargeting with path retiming
+- Projects: Planning lab: integrate online retargeting with collision revalidation and stop handling
+- Projects: Planning lab: optimize smooth waypoints around a two-dimensional obstacle
+- Projects: Planning lab: compare straight-line and sampling-based initializations
+- Projects: Planning lab: combine global search with receding-horizon trajectory optimization
+- Projects: Planning lab: measure footprint inflation effects in narrow corridors
+- Projects: Planning lab: build a multi-stop simulated delivery route with recoveries
+- Projects: Planning lab: animate candidate velocity rollouts around a moving obstacle
+- Projects: Planning lab: compare DWB and MPPI on identical simulated routes
+- Projects: Planning lab: stress-test local avoidance under sensor latency and crossing traffic
+- Projects: Planning lab: animate a patrol tree with battery and blocked-door conditions
+- Projects: Planning lab: add cancellation and bounded recovery to a navigation tree
+- Projects: Planning lab: orchestrate simulated inspection with injected action failures
+- Projects: Planning lab: visualize a PDDL courier plan between rooms
+- Projects: Planning lab: replan a courier task after a door action fails
+- Projects: Planning lab: connect PDDL goals to monitored simulated navigation actions
+- Projects: Planning lab: animate Dubins-style turns versus impossible sideways moves
+- Projects: Planning lab: compare lattice and Hybrid A-star parking routes
+- Projects: Planning lab: plan drone-like acceleration-limited detours with forward propagation
+- Projects: Planning lab: animate two robots resolving a corridor conflict
+- Projects: Planning lab: compare prioritized planning and conflict-based search
+- Projects: Planning lab: replan a simulated fleet after execution delays and blocked cells
+- Projects: Planning lab: animate stripe coverage with a visible missed-area heatmap
+- Projects: Planning lab: compare sweep direction and turning cost for irregular fields
+- Projects: Planning lab: integrate obstacle-aware coverage and return-to-base scheduling
+- Projects: Planning lab: animate a noisy corridor decision with belief bars
+- Projects: Planning lab: compare shortest-path and information-gathering policies
+- Projects: Planning lab: evaluate belief-aware routing under sensor dropout and model mismatch
+- Projects: Planning lab: plot batched collision-check timing against a CPU baseline
+- Projects: Planning lab: benchmark cuRobo planning seeds and collision resolution
+- Projects: Planning lab: build a reproducible cross-device parallel-planning benchmark
+- Projects: Planning lab: train a tiny maze waypoint predictor on generated plans
+- Projects: Planning lab: compare a learned sampler with uniform RRT on held-out maps
+- Projects: Planning lab: evaluate cascaded diffusion planning with repair and classical fallback
+- Projects: Planning lab: compare free-form and validated language-to-room plans
+- Projects: Planning lab: translate courier requests to PDDL with schema rejection
+- Projects: Planning lab: build a monitored language-to-inspection executive with adversarial requests
+- Projects: Planning lab: animate a learned toy dynamics model against real simulator rollouts
+- Projects: Planning lab: compare CEM and random shooting under dynamics mismatch
+- Projects: Planning lab: compare latent tree search and MPC on held-out detour tasks
+- Projects: Observation-to-action contract visualizer
+- Projects: Hidden-state memory challenge
+- Projects: Action-coordinate mismatch detective
+- Projects: Episode timeline and schema inspector
+- Projects: RLDS-to-LeRobot semantic round trip
+- Projects: Robot data provenance firewall
+- Projects: Policy scorecard with honest error bars
+- Projects: Kitchen generalization tournament
+- Projects: Physical-policy qualification gate
+- Projects: Multimodal action distribution movie
+- Projects: Denoising-budget control shootout
+- Projects: Flow-versus-diffusion reproducibility challenge
+- Projects: FAST action compression oscilloscope
+- Projects: Chunk-horizon disturbance challenge
+- Projects: Frequency-aware token allocation study
+- Projects: Robot-camera feature atlas
+- Projects: Frozen-encoder low-data race
+- Projects: Precision-versus-semantics encoder audit
+- Projects: Offline value optimism microscope
+- Projects: CQL and IQL dataset-quality ladder
+- Projects: Offline-policy release stress test
+- Projects: Reward hacking museum
+- Projects: VLM reward confusion gallery
+- Projects: Eureka reward-code safety tournament
+- Projects: DAgger distribution-shift sandbox
+- Projects: Correction timing replay lab
+- Projects: Shared-control coverage ablation
+- Projects: Augmentation label-validity microscope
+- Projects: MimicGen reset-coverage laboratory
+- Projects: Multi-camera augmentation consistency challenge
+- Projects: Pretrained-policy adaptation budget explorer
+- Projects: Normalization and camera adaptation clinic
+- Projects: Adapter merge versus forgetting benchmark
+- Projects: Latency injection action-queue viewer
+- Projects: Real-time chunk stitching bake-off
+- Projects: Supervised arm deadline qualification
+- Projects: Skill-API hallucination test stage
+- Projects: Affordance-grounded plan ranking lab
+- Projects: Generated robot-code contract arena
+- Projects: Embodiment action-space passport
+- Projects: Cross-robot negative-transfer benchmark
+- Projects: Held-out embodiment adaptation challenge
+- Projects: Continual-learning forgetting flipbook
+- Projects: Self-generated data acceptance audit
+- Projects: Rollback-first autonomous curriculum
+- Projects: Uncertainty calibration help button
+- Projects: Failure early-warning precision-recall lab
+- Projects: Shift-aware stop-or-continue arena
+- Projects: Measurement truth versus resolution: a sensor-error notebook
+- Projects: Sampling-rate aliasing on a moving distance target
+- Projects: Stationary IMU warm-up and temperature-drift dossier
+- Projects: Encoder rollover and index-reference explorer
+- Projects: Magnet alignment and standoff repeatability jig
+- Projects: Incremental versus magnetic joint-angle metrology fixture
+- Projects: IMU units, missing orientation and axis-sign replay
+- Projects: Allan-deviation repeatability across stationary sessions
+- Projects: IMU mount vibration transmission comparison
+- Projects: Six-axis wrench units and lever-arm replay
+- Projects: Wrist transducer zeroing and load-fixture calibration
+- Projects: Motor-current torque estimate versus an independent load reference
+- Projects: Rolling-shutter and exposure artifact ruler
+- Projects: Focus and resolution changes invalidate camera calibration
+- Projects: Close-range stereo occlusion and minimum-distance test rig
+- Projects: RGB-depth registration against a measured stepped target
+- Projects: Planar LiDAR scan geometry and blind-zone bench
+- Projects: LiDAR reflectivity and incidence-angle return audit
+- Projects: 3D LiDAR coverage and timestamped scan-density atlas
+- Projects: Ultrasonic beam-width and soft-surface echo chart
+- Projects: Analog infrared range curve and blind-zone calibration
+- Projects: ToF range validity across target color and ambient light
+- Projects: Remountable camera-LiDAR calibration target and fixture
+- Projects: Acquisition-time versus arrival-time timestamp sandbox
+- Projects: Hardware-trigger exposure-skew measurement fixture
+- Projects: PTP clock alignment under sensor-network load
+- Projects: ROS sensor-message units and covariance contract linter
+- Projects: Sensor QoS loss-versus-latency capture experiment
+- Projects: Recording archive recovery and calibration-manifest integrity
+- Projects: Gazebo noise-model fingerprint with known ground truth
+- Projects: Synthetic sensor outage and saturation playback harness
+- Projects: Measured short-range sensor response versus simulated rays
+- Projects: Recorded event-stream polarity and time microscope
+- Projects: Event-camera illumination-flicker throughput envelope
+- Projects: Reusable event-RGB calibration target and coverage protocol
+- Projects: Radar point-cloud capture and no-target baseline
+- Projects: Radar ADC capture throughput and packet-loss characterization
+- Projects: Reproducible radar multipath and material test enclosure
+- Projects: Magnetic skin patch replacement repeatability bench
+- Projects: Magnetic skin array crosstalk and wiring characterization
+- Projects: Removable forearm skin sleeve with calibration identity
+- Projects: Microphone channel ordering and geometry clap board
+- Projects: Robot motor-noise audio acquisition dossier
+- Projects: Long-recording microphone sample-clock drift audit
+- Projects: RTK stationary receiver and correction-outage logbook
+- Projects: GNSS antenna mounting and multipath repeatability survey
+- Projects: GNSS receiver position-time metadata ingestion contract
+- Projects: Multi-camera USB topology and capture-bandwidth atlas
+- Projects: Quick-release wrist-camera remount calibration fixture
+- Projects: VLA-ready sensing rig with verifiable calibration provenance
+- Projects: Pendulum energy-drift cinema
+- Projects: Simulation speed versus fidelity dashboard
+- Projects: Adaptive fidelity regression gate
+- Projects: Collision hull versus visual mesh gallery
+- Projects: Friction and restitution identification arena
+- Projects: Cross-engine contact disagreement atlas
+- Projects: Round-trip robot description loss report
+- Projects: Versioned portable scene package
+- Projects: Simulation clock and bridge oscilloscope
+- Projects: ROS graph fault-injection sandbox
+- Projects: Headless ROS replay acceptance rig
+- Projects: Virtual sensor truth-versus-noise wall
+- Projects: Synthetic label quality auditor
+- Projects: Camera latency and rolling exposure stress set
+- Projects: Batch-reset correctness kaleidoscope
+- Projects: Parallel simulation throughput truth sheet
+- Projects: Backend portability learning microbenchmark
+- Projects: Randomization coverage heatmap
+- Projects: Held-out nuisance robustness tournament
+- Projects: Counterexample-guided simulator curriculum
+- Projects: Recover hidden simulated pendulum damping
+- Projects: SO-101 calibration uncertainty challenge
+- Projects: Desk twin alignment before beauty contest
+- Projects: Twin appearance-versus-physics ablation
+- Projects: Digital twin policy-ranking audit
+- Projects: Imagined pendulum rollout microscope
+- Projects: Action-ignored video simulator detector
+- Projects: Learned-versus-physics evaluator disagreement study
+- Projects: Success-checker loophole film festival
+- Projects: Seeded simulation leaderboard in a box
+- Projects: Simulator-to-real ranking credibility study
+- Projects: Seeded tabletop scene generator
+- Projects: Procedural scene solvability filter
+- Projects: Compositional scene generalization split
+- Projects: Gradient versus finite-difference spotlight
+- Projects: Contact gradient breakage gallery
+- Projects: Differentiable system-ID versus black-box search
+- Projects: Rigid-versus-soft drop comparison reel
+- Projects: Soft material parameter observability lab
+- Projects: Coupled solver stability frontier map
+- Projects: Animate a one-dimensional robot belief
+- Projects: Make covariance visible on a 2D trajectory
+- Projects: Expose correlated-sensor overconfidence
+- Projects: Separate IMU bias from motion in replay
+- Projects: Measure odometry drift on an encoder cart
+- Projects: Fuse simulated wheel and IMU messages
+- Projects: Stage a sensor-dropout fusion challenge
+- Projects: Compare filtering and fixed-lag smoothing
+- Projects: Animate particles in a repeated corridor
+- Projects: Recover after a simulated robot kidnapping
+- Projects: Trade localization precision for particle budget
+- Projects: Close a tiny pose graph
+- Projects: Reject a malicious loop constraint in a toy graph
+- Projects: Add preintegrated IMU factors to a trajectory
+- Projects: Audit clock offsets before running VIO
+- Projects: Design an observable calibration motion
+- Projects: Build a rigid timestamped camera-IMU rig
+- Projects: Replay a public visual-inertial trajectory
+- Projects: Show where metric scale comes from
+- Projects: Compare filter and graph VIO under visual loss
+- Projects: Grow a floor plan from a recorded laser bag
+- Projects: Save a graph and localize a second session
+- Projects: Map one lab room with a supervised mobile base
+- Projects: Replay a 3D lidar odometry baseline
+- Projects: Compare lidar filtering and smoothing on one bag
+- Projects: Engineer a synchronized lidar-camera-IMU mapper
+- Projects: Film a map correction after a verified loop
+- Projects: Build a look-alike-room loop rejection test
+- Projects: Compare geometric and learned place matching
+- Projects: Break a SLAM replay with moving foregrounds
+- Projects: Revisit a changed room without corrupting its map
+- Projects: Pilot a localization-health monitor across lab sessions
+- Projects: Reconstruct a recorded room with Gaussian SLAM
+- Projects: Compare prior-driven and classical-tracked dense maps
+- Projects: Measure whether loop corrections improve a dense map
+- Projects: Align two recorded robot sessions
+- Projects: Keep cooperative maps consistent through packet loss
+- Projects: Design a bandwidth-budgeted cooperative mapping protocol
+- Projects: Build a trajectory evaluation scorecard
+- Projects: Turn trajectory failures into a reproducible test suite
+- Projects: Audit a city-scale SLAM claim on held-out sessions
+- Projects: Visualize a contact-aided inertial estimate
+- Projects: Detect when a stance-foot assumption becomes false
+- Projects: Replay legged body-state estimates with camera outages
+- Projects: Convert synthetic GNSS fixes into a local map frame
+- Projects: Survive GNSS dropout and bad fixes in replay
+- Projects: Georeference a supervised outdoor mapping walk
+- Projects: Simulate power-and-force-limited contact
+- Projects: Webcam human skeleton in real time
+- Projects: Detect collisions from motor current
+- Projects: Joystick shared control in sim
+- Projects: Record a motion by moving the arm by hand
+- Projects: Detect an open hand ready to receive
+- Projects: Legible vs predictable reaching
+- Projects: Nav2 robot among simulated pedestrians
+- Projects: Voice-commanded Reachy Mini
+- Projects: Constant-velocity vs social-force prediction
+- Projects: EU robot regulation one-pager
+- Projects: Run the ASIMOV semantic safety benchmark
+- Projects: Correct a robot with one keypress
+- Projects: Why humanoids cannot just stop
+- Projects: Color-blob tracker in OpenCV
+- Projects: First YOLO detector on custom objects
+- Projects: Depth from a single photo
+- Projects: Disturbance-rejecting balancer: MPC with a learned residual on real hardware
+- Projects: Safe shared-workspace SO-101 assistant: language guardrail, safety filter and handover
+- Projects: Identified-model dynamic throw on the real SO-101
+- Projects: Custom 2-DoF leg module with printed cycloidal joints on a hopping test stand
+- Projects: Calibrated SO-101 digital twin that predicts real policy success
