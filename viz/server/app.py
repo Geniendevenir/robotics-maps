@@ -82,13 +82,16 @@ def create_group(payload: dict):
     node_ids = payload.get("node_ids", [])
     if not isinstance(node_ids, list) or not all(isinstance(value, str) for value in node_ids):
         raise HTTPException(status_code=422, detail="node_ids must be a list of strings")
-    group = groups.create(
-        name,
-        payload.get("description", ""),
-        payload.get("color", "#e4572e"),
-        node_ids,
-        payload.get("created_by", "user"),
-    )
+    try:
+        group = groups.create(
+            name,
+            payload.get("description", ""),
+            payload.get("color", "#e4572e"),
+            node_ids,
+            payload.get("created_by", "user"),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     _changed_groups()
     return group
 
@@ -98,12 +101,15 @@ def update_group(group_id: str, payload: dict):
     _group_or_404(group_id)
     if "name" in payload and (not isinstance(payload["name"], str) or not payload["name"].strip()):
         raise HTTPException(status_code=422, detail="name cannot be empty")
-    group = groups.update(
-        group_id,
-        name=payload.get("name"),
-        description=payload.get("description"),
-        color=payload.get("color"),
-    )
+    try:
+        group = groups.update(
+            group_id,
+            name=payload.get("name"),
+            description=payload.get("description"),
+            color=payload.get("color"),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     _changed_groups()
     return group
 

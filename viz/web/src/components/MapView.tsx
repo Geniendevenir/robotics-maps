@@ -9,6 +9,8 @@ import { nodeMatches } from "../filters";
 import { ORG_TYPE_COLORS } from "../colors";
 import type { MapNode } from "../types";
 
+const GROUP_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
 function esc(s: string) {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 }
@@ -19,7 +21,9 @@ function icon(n: MapNode, opts: { selected: boolean; hl: boolean; gcolor?: strin
     ? `<img src="${n.image}" alt="" loading="lazy" onerror="this.remove()"/>`
     : `<span>${esc(n.name.slice(0, 2).toUpperCase())}</span>`;
   const cls = ["mk", opts.selected ? "sel" : "", opts.hl ? "hl" : "", n.geo?.approx ? "approx" : ""].join(" ");
-  const ring = opts.gcolor ? `box-shadow:0 0 0 4px ${opts.gcolor};` : "";
+  const ring = opts.gcolor && GROUP_COLOR_PATTERN.test(opts.gcolor)
+    ? `box-shadow:0 0 0 4px ${opts.gcolor};`
+    : "";
   return L.divIcon({
     className: "mk-wrap",
     html: `<div class="${cls}" style="border-color:${color};${ring}">${inner}</div><div class="mk-label">${esc(n.name)}</div>`,

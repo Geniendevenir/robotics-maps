@@ -1,4 +1,5 @@
 import json
+import re
 import secrets
 import threading
 from datetime import datetime, timezone
@@ -6,10 +7,18 @@ from pathlib import Path
 
 
 DEFAULT_GROUPS_PATH = Path(__file__).resolve().parents[1] / "state" / "groups.json"
+DEFAULT_COLOR = "#e4572e"
+COLOR_PATTERN = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 
 def timestamp():
     return datetime.now(timezone.utc).isoformat()
+
+
+def validate_color(color):
+    if not isinstance(color, str) or not COLOR_PATTERN.fullmatch(color):
+        raise ValueError("color must be a 3- or 6-digit hex value")
+    return color
 
 
 class GroupStore:
@@ -45,6 +54,7 @@ class GroupStore:
         raise KeyError(group_id)
 
     def create(self, name, description="", color="#e4572e", node_ids=None, created_by="user"):
+        color = DEFAULT_COLOR if color is None or color == "" else validate_color(color)
         now = timestamp()
         with self._lock:
             group_id = f"g_{secrets.token_hex(3)}"
@@ -54,7 +64,7 @@ class GroupStore:
                 "id": group_id,
                 "name": name.strip(),
                 "description": description or "",
-                "color": color or "#e4572e",
+                "color": color,
                 "node_ids": list(dict.fromkeys(node_ids or [])),
                 "created_by": created_by if created_by in ("user", "agent") else "user",
                 "created_at": now,
@@ -65,11 +75,22 @@ class GroupStore:
             return json.loads(json.dumps(group, ensure_ascii=False))
 
     def update(self, group_id, **fields):
+        color = fields.get("color")
+        if color is not None and color != "":
+            validate_color(color)
         with self._lock:
             group = self._find(group_id)
             for key in ("name", "description", "color"):
-                if key in fields and fields[key] is not None:
-                    group[key] = fields[key].strip() if key == "name" else fields[key]
+                if key not in fields or fields[key] is None:
+                    continue
+                value = fields[key]
+                if key == "name":
+                    group[key] = value.strip()
+                elif key == "color":
+                    if value != "":
+                        group[key] = value
+                else:
+                    group[key] = value
             group["updated_at"] = timestamp()
             self._persist()
             return json.loads(json.dumps(group, ensure_ascii=False))

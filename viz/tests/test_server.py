@@ -55,6 +55,20 @@ def test_group_crud_and_persistence(client, tmp_path):
     assert client.get("/api/groups").json() == []
 
 
+def test_invalid_group_color_rejected_by_store_and_api(client):
+    invalid = 'red;" onmouseover="x'
+    with pytest.raises(ValueError, match="3- or 6-digit hex"):
+        server_app.groups.create("Invalid", color=invalid)
+    response = client.post("/api/groups", json={"name": "Invalid", "color": invalid})
+    assert response.status_code == 422
+
+    group = client.post("/api/groups", json={"name": "Valid"}).json()
+    with pytest.raises(ValueError, match="3- or 6-digit hex"):
+        server_app.groups.update(group["id"], color=invalid)
+    response = client.patch(f"/api/groups/{group['id']}", json={"color": invalid})
+    assert response.status_code == 422
+
+
 def test_ui_broadcast_reaches_sse_subscriber(client):
     node_id = client.get("/api/data").json()["nodes"][0]["id"]
     subscriber = server_app.broker.subscribe()
