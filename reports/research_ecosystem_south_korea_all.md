@@ -70,9 +70,21 @@ Open-source checkboxes are true only where public open resources or a verified l
 
 Searches covered corporate robotics, collaborative arms, Korean robot learning, open-source communities, university labs, public applied institutes, venture investors, associations, and exhibitions. Primary pages were opened for all selected organizations and every artifact row. The JSON source ledger lists opened URLs, including consulted alternatives; search snippets alone are not the evidence for a row.
 
-Broad follow-up discovery found Tommoro/CLIP-RT and changed the shortlist, so saturation was **not** claimed at that point. Final saturation checks are pending in this work-in-progress report. Depth remains capped at 15 organizations; alternatives are not additional rows.
+Broad follow-up discovery found Tommoro/CLIP-RT and changed the shortlist. Final searches were run after that change:
+
+| Query | Observation |
+| --- | --- |
+| `Korean robotics companies open source` | Repeated ROBOTIS, Yujin Robot, HD Hyundai and Libertron; mainly additional artifacts and repositories for already encountered firms. |
+| `South Korea robotics manufacturers` | Repeated major industrial suppliers; directories remain a source of additional specialist candidates. |
+| `Korean robotics industry companies` | Exposed additional integrators and component suppliers through KIRIA/eRobot and recent ROBOTWORLD reporting. |
+
+The required three-query run below 10% new entries was **not demonstrated**. `saturation_reached = false`: this is a completed depth-capped shortlist, not an exhaustive Korean company census. The top-15 limit is retained; newly encountered specialists are coverage leads, not unverified extra rows. Verification and coverage criticism should revisit the selection, especially industrial integration and components, rather than interpreting this output as a saturation claim.
 
 Important bounded omissions for a future deeper slice include HD Hyundai Robotics (a separate group from Hyundai Motor Group), Hanwha Robotics, Neuromeka, Clobot, Yujin Robot, SNU as a separate institution, KIST, KIRIA, Korea Robotics Society, and Daegu ROBEX. These names were encountered during discovery; they are not promoted to verified organization rows. This shortlist cannot be read as exhaustive coverage of Korean medical, agricultural, defense, or component suppliers.
+
+## Validation
+
+The final JSON was checked for exact root and row keys, required fields, valid schema selects/multiselects, checkbox and numeric types, unique organization/artifact names, 15-organization depth, five-line summary, source-ledger membership for every row, and organization relation targets. Pilot organization names were compared with normalized case/whitespace. No duplicates or forbidden reverse relation were found. All 42 rows cite source URLs in the 58-URL consulted ledger. These checks validate the discovery file's structure; independent factual verification remains the next pipeline stage.
 
 ## Five-line summary
 
