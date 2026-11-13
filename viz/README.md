@@ -49,4 +49,4 @@ npm run dev      # http://localhost:5173, proxies /api, /mcp and /img to :8765
 npm run build    # writes viz/web/dist, then served by python -m viz.server at http://127.0.0.1:8765
 ```
 
-Views: **Holygraph whiteboard** (projects, knowledge, robots/models, optional orgs; Branch = sector, Level = ring) and **World map** (455 organizations, clustered with logos; dashed border = approximate location). Click a node for its details panel; shift-drag to multi-select and group. The **Guide** tab is the chat; it can search, focus, filter, switch views and edit groups.
+Views: **Holygraph whiteboard** (projects, knowledge, robots/models, optional orgs; Branch = sector, Level = ring) and **World map** (615 organizations, clustered with logos; dashed border = approximate location). Click a node for its details panel; shift-drag to multi-select and group. The **Guide** tab is the chat; it can search, focus, filter, switch views and edit groups.

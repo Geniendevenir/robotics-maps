@@ -91,7 +91,7 @@ def build_graph():
                 "fields": fields,
             }
             if kind == "ecosystem":
-                place = place_for_org(fields)
+                place = place_for_org(fields, row.get("country"))
                 coords = geocache.get(place)
                 if coords and "lat" in coords and "lon" in coords:
                     dlat, dlon = jitter(node_id)

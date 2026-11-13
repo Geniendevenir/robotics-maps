@@ -28,7 +28,7 @@ def test_api_data_counts(client):
     graph = response.json()
     assert set(graph) == {"generated_at", "nodes", "edges"}
     counts = Counter(node["type"] for node in graph["nodes"])
-    expected = {"project": 624, "knowledge": 231, "robot": 474, "org": 455}
+    expected = {"project": 624, "knowledge": 231, "robot": 542, "org": 615}
     assert counts == expected, (
         f"Research dataset count mismatch: expected {expected}, got {dict(counts)}"
     )

@@ -15,6 +15,8 @@ CENTROIDS = {
     "paris": (48.8566, 2.3522),
     "france": (46.2276, 2.2137),
     "europe": (50.8503, 4.3517),
+    "germany": (51.1657, 10.4515),
+    "switzerland": (46.8182, 8.2275),
     "united states": (39.8283, -98.5795),
     "us": (39.8283, -98.5795),
     "china": (35.8617, 104.1954),
@@ -23,8 +25,9 @@ CENTROIDS = {
 }
 
 
-def approximate(place, region=None):
-    for value in (region, place):
+def approximate(place, region=None, country=None):
+    place_country = place.rsplit(",", 1)[-1].strip() if "," in place else None
+    for value in (country, place_country, region, place):
         if value:
             centroid = CENTROIDS.get(value.strip().lower())
             if centroid:
@@ -50,10 +53,12 @@ def build_cache():
     cache_path = DATA_DIR / "geocache.json"
     cache = read_json(cache_path)
     place_regions = {}
+    place_countries = {}
     for row in rows["ecosystem"]:
         fields = row.get("props", {})
-        place = place_for_org(fields)
+        place = place_for_org(fields, row.get("country"))
         place_regions.setdefault(place, str(fields.get("Region") or ""))
+        place_countries.setdefault(place, str(row.get("country") or ""))
     places = set(place_regions)
     last_request = 0.0
     exact = 0
@@ -78,7 +83,11 @@ def build_cache():
             except Exception as error:
                 print(f"geocode failed for {place!r}: {error}")
         if coords is None:
-            lat, lon = approximate(place, place_regions.get(place))
+            lat, lon = approximate(
+                place,
+                place_regions.get(place),
+                place_countries.get(place),
+            )
             coords = {"lat": lat, "lon": lon, "approx": True}
             approx += 1
         else:

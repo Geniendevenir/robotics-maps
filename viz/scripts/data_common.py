@@ -81,16 +81,23 @@ def normalize_url(url):
     return (url or "").rstrip("/").replace("/p/", "/").lower()
 
 
-def place_for_org(fields):
+def place_for_org(fields, country=None):
     city = fields.get("City")
     region = fields.get("Region")
     if isinstance(city, list):
         city = ", ".join(str(part) for part in city)
     city = str(city or "").strip()
     region = str(region or "").strip()
+    country = str(country or "").strip()
     if city.lower() in ("", "unknown", "n/a", "none"):
+        if country:
+            return country
         return region or "Europe"
     city = city.split("(", 1)[0].split("+", 1)[0].split("/", 1)[0].split(";", 1)[0].strip(" ,")
+    if country:
+        if norm(country) not in norm(city):
+            return f"{city}, {country}"
+        return city
     region_country = {
         "Paris": "France",
         "France": "France",
