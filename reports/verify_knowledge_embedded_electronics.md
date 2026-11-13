@@ -8,7 +8,7 @@ Reviewed **74 rows**: **22 verified / 52 corrected / 0 rejected**. Retained 17 k
 
 - Independently opened all 65 distinct input URLs using page-content retrieval and an HTTP audit; reviewed official specifications, repository READMEs, papers and course material. Reused identical URLs across rows rather than pretending each occurrence is a new source.
 - HTTP 200 is not sufficient: the AI HAT+ portal URL serves Pico 2 W material; Springer direct HTTP serves a JavaScript challenge, but the page-content reader exposed the actual book metadata. The ICRA 2025 site returned HTTP 403 directly (page-content retrieval exposed conference material); it is not needed by any row and was removed from the cleaned source list.
-- The Pico 2 product-brief PDF downloaded (HTTP 200), but the page-content reader did not extract its text. Replaced the hardware row's PDF dependency with the opened official Pico 2 product page and SDK license. The original PDF remains only in the historical consulted list and the MCU node alongside readable supporting references; no claim relies on an unread PDF.
+- The Pico 2 product-brief PDF downloaded (HTTP 200), but the page-content reader did not extract its text. Replaced the hardware row's PDF dependency with the opened official Pico 2 product page and SDK license. The original PDF remains only in the historical consulted list, not in any row Sources; no claim relies on an unread PDF.
 - Opened replacement primary references for AI HAT+, ISO 13849-1, battery monitoring, Pico 2, UNO Q licensing, Teensy manufacturing, ODrive CAN protocol and ESP32-S3 CAN-FD restrictions. No Notion reads or writes were performed.
 - Source content verifies existence and documented capabilities, not guaranteed stock, shipment, price, student build time, best-in-market rankings or active employment. No Ecosystem organization rows occur in this file; builder identities were checked against official sites/repos, but continuing operations in 2026 cannot be inferred from an old announcement alone.
 - Project demos are proposals. Duration, workload shares, complexity, accessibility and cost buckets are lab planning estimates, not experimentally established results. No hardware was built or safety-certified in this verification.
@@ -64,9 +64,9 @@ Reviewed **74 rows**: **22 verified / 52 corrected / 0 rejected**. Retained 17 k
 | 11 | ODrive S1 / Pro | corrected | Fixed S1/Pro size conflation and made non-public current-generation firmware explicit. |
 | 12 | mjbots moteus | corrected | Removed unsubstantiated hobby-quadruped adoption claim. |
 | 13 | SimpleFOC | corrected | Removed unsupported lowest-cost/any-MCU assertion. |
-| 14 | MIT Mini Cheetah actuator | corrected | Actuator reference is a component, not a complete quadruped; removed unsupported template-for-most claim. |
+| 14 | MIT Mini Cheetah actuator | corrected | Actuator reference is a component, not a complete quadruped; removed unsupported template-for-most claim and set release year unknown (thesis date is not product release evidence). |
 | 15 | Berkeley Humanoid Lite | corrected | Removed most-accessible ranking and qualified the source-reported US parts budget. |
-| 16 | Open Duck Mini v2 | corrected | Added source-reported BOM target and clarified community builder attribution. |
+| 16 | Open Duck Mini v2 | corrected | Added source-reported BOM target and clarified community builder attribution; N/A form factor avoids mislabeling a biped character robot as a humanoid. |
 | 17 | Reachy Mini | verified | Opened official references support existence, builder and retained specifications. |
 | 18 | ros2_control | verified | Opened official references support existence, builder and retained specifications. |
 | 19 | micro-ROS | verified | Opened official references support existence, builder and retained specifications. |
@@ -222,4 +222,4 @@ Every input URL below was attempted. “Opened” means content was accessible w
 
 ## Validation
 
-Pending final automated schema, reference-integrity and diff checks. No executable application changes; lint/type-check tooling is not defined in this documentation/data repository.
+Passed: JSON parsing; exact field sets for all 74 rows; every select/multi-select against the checked-in schema; required text/boolean/numeric and null-release-year handling; all 28 effort-share sums = 100; unique titles; all local Knowledge nodes / Robots & models / project prerequisite references resolve; all row source URLs appear in the consulted list; 46 knowledge/hardware statuses = To verify; 28 project statuses = Idea; no formulas, private metadata or auto-managed reverse fields. `git diff --check` passed. No executable application changes; lint/type-check/test tooling is not defined in this documentation/data repository, so data validation was used instead. No active non-sample git hooks were present.
