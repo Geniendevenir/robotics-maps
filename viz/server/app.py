@@ -74,6 +74,13 @@ def get_groups():
     return groups.list()
 
 
+@app.post("/api/groups/refresh")
+def refresh_groups():
+    current = groups.list()
+    broker.publish("groups", current)
+    return current
+
+
 @app.post("/api/groups")
 def create_group(payload: dict):
     name = payload.get("name")

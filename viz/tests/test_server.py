@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from urllib.error import URLError
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from viz.server import app as server_app
 from viz.server.groups import GroupStore
 from viz.server import tools
 from viz.server.mcp_app import mcp
+from viz.server.stdio_publishers import make_publishers
 
 
 @pytest.fixture
@@ -97,6 +99,21 @@ def test_ui_broadcast_reaches_sse_subscriber(client):
         server_app.broker.unsubscribe(subscriber)
 
 
+def test_groups_refresh_reloads_and_broadcasts(client):
+    external_store = GroupStore(server_app.groups.path)
+    external = external_store.create("Created outside HTTP")
+    subscriber = server_app.broker.subscribe()
+    try:
+        response = client.post("/api/groups/refresh")
+        assert response.status_code == 200
+        assert response.json() == [external]
+        event, data = subscriber.get(timeout=1)
+        assert event == "groups"
+        assert json.loads(data) == [external]
+    finally:
+        server_app.broker.unsubscribe(subscriber)
+
+
 def test_search_nodes_and_get_node():
     graph = json.loads((server_app.DATA_DIR / "graph.json").read_text(encoding="utf-8"))
     sample = graph["nodes"][0]
@@ -137,6 +154,17 @@ def test_fastmcp_instance_lists_contract_tools():
         "show_group",
         "switch_view",
     } <= names
+
+
+def test_stdio_publishers_report_ui_failures_and_ignore_group_failures():
+    def unavailable(_request, timeout):
+        assert timeout == 3
+        raise URLError("offline")
+
+    publish_ui, publish_groups = make_publishers("http://browser:8765/", opener=unavailable)
+    with pytest.raises(RuntimeError, match="Browser server not reachable at http://browser:8765/api/ui"):
+        publish_ui({"action": "focus", "node_id": "p:one"})
+    publish_groups([])
 
 
 def test_mcp_http_accepts_canonical_path():
