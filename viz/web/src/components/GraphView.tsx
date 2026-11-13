@@ -23,20 +23,23 @@ export default function GraphView() {
   const visible = useMemo(() => {
     if (!data || !index) return new Set<string>();
     const base = new Set(data.nodes.filter((n) => nodeMatches(n, f, groups)).map((n) => n.id));
-    if (!hideIsolated || !hasConstraints(f) || f.group_id) return base;
-    // keep robots/orgs/knowledge only if they connect to a visible project or knowledge node
-    const out = new Set<string>();
-    for (const id of base) {
-      const n = index.byId.get(id)!;
-      if (n.type === "project") { out.add(id); continue; }
-      const nb = index.adj.get(id) ?? [];
-      const constrainedSelf = n.type === "knowledge" ? (f.branches?.length || f.knowledge_level?.length || f.search) : f.search || f.robot_kind?.length || f.open_source != null;
-      if (constrainedSelf && n.type === "knowledge") { out.add(id); continue; }
-      if (nb.some((e) => base.has(e.id) && index.byId.get(e.id)!.type === "project")) out.add(id);
-      else if (n.type !== "knowledge" && constrainedSelf) out.add(id);
+    let visible = base;
+    if (hideIsolated && hasConstraints(f) && !f.group_id) {
+      // keep robots/orgs/knowledge only if they connect to a visible project or knowledge node
+      visible = new Set<string>();
+      for (const id of base) {
+        const n = index.byId.get(id)!;
+        if (n.type === "project") { visible.add(id); continue; }
+        const nb = index.adj.get(id) ?? [];
+        const constrainedSelf = n.type === "knowledge" ? (f.branches?.length || f.knowledge_level?.length || f.search) : f.search || f.robot_kind?.length || f.open_source != null;
+        if (constrainedSelf && n.type === "knowledge") { visible.add(id); continue; }
+        if (nb.some((e) => base.has(e.id) && index.byId.get(e.id)!.type === "project")) visible.add(id);
+        else if (n.type !== "knowledge" && constrainedSelf) visible.add(id);
+      }
     }
-    return out;
-  }, [data, index, f, groups, hideIsolated]);
+    if (selectedId) visible.add(selectedId);
+    return visible;
+  }, [data, index, f, groups, hideIsolated, selectedId]);
 
   // init
   useEffect(() => {

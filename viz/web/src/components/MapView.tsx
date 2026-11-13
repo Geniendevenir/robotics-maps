@@ -41,8 +41,8 @@ function Markers() {
   const f = filters.map;
 
   const orgs = useMemo(
-    () => (data?.nodes ?? []).filter((n) => n.type === "org" && n.geo && nodeMatches(n, f, groups, false)),
-    [data, f, groups],
+    () => (data?.nodes ?? []).filter((n) => n.type === "org" && n.geo && (n.id === selectedId || nodeMatches(n, f, groups, false))),
+    [data, f, groups, selectedId],
   );
 
   useEffect(() => {

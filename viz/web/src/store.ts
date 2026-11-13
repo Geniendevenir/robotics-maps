@@ -90,6 +90,7 @@ export const useStore = create<State>((set, get) => ({
       if (n) {
         s.focusTick = get().focusTick + 1;
         if (n.type === "org" && get().view === "graph" && !(get().filters.graph.types ?? []).includes("org") && n.geo) s.view = "map";
+        else if (n.type !== "org" && get().view === "map") s.view = "graph";
         const v = (s.view ?? get().view) as View;
         if (v === "graph") {
           const types = get().filters.graph.types ?? [];
