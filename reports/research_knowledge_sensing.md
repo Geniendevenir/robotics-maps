@@ -1,4 +1,6 @@
-# Research log: Sensing — part 1
+# Research log: Sensing — parts 1 and 2
+
+Final deliverable: 18 knowledge nodes, 33 reference sensors/tools, 54 project candidates (18 Onboarding / 36 Project), three top-node recommendations and 75 distinct substantive HTTP-200 sources. The initial discovery snapshot below is retained as an audit trail; part 2 adds project synthesis, additional discovery and final validation.
 
 ## Method and boundaries
 
@@ -1417,7 +1419,7 @@ a driver and higher-level vision processing. Vincent Rabaud Jacob Perron Michael
 - **GNSS & RTK receiver hardware** — Applied; accessibility 3: An outdoor receiver, antenna and correction source are feasible, but two-receiver setups and field validation need more budget and logistics.
 - **Wrist cameras & multi-camera data-collection rigs** — Applied; accessibility 4: Commodity cameras are approachable for software students; mounts, USB bandwidth and actual capture-time alignment still require engineering.
 
-18 knowledge nodes; 31 reference hardware/tools; 67 distinct substantive 200-OK sources. No project candidates or top3 yet. All rows remain To verify; this is discovery, not the independent verifier pass. Sources may overlap across rows and are counted once. No physical hardware, performance benchmarks or visual UI were tested.
+Part 1 snapshot: 18 knowledge nodes; 31 reference hardware/tools; 67 distinct substantive 200-OK sources. Projects and top3 were deferred at this point and are now supplied in part 2 below. Knowledge/tool rows remain To verify; this is discovery, not the independent verifier pass. Sources may overlap across rows and are counted once. No physical hardware, performance benchmarks or visual UI were tested.
 
 ## Validation
 
@@ -1431,3 +1433,242 @@ PASS: project_candidates=[]; top3=[]; all release years null except directly sou
 ```
 
 The first staged whitespace check flagged trailing spaces inside fetched excerpts; these were mechanically trimmed without changing claims or source URLs. The final `git diff --cached --check` returned exit 0 with no output. No physical sensor demo or independent verifier pass was performed. The home-directory Python generator, fetch scripts, validator and evidence cache are retained for continuation but are not additional repository deliverables.
+
+## Part 2: additional source discovery and saturation
+
+Three additional discovery batches used web searches for (1) Prophesee recorded data/calibration, (2) TI radar raw capture/calibration, and (3) robot-camera calibration/data integrity. Search results selected URLs; only the direct curl/grep audit below qualifies evidence. Batches were evaluated against the existing Knowledge + Robots & Models entry count, not projects (proposals are synthesis, not discovered products).
+
+| Batch | Entries before | New nodes | New reference tools | New entries / prior entries | New substantive URLs | Result |
+|---|---:|---:|---:|---:|---:|---|
+| Event acquisition/calibration | 49 | 0 | 0 | 0/49 = 0% | 2 | below 10% |
+| Radar raw capture/calibration | 49 | 0 | 2 | 2/49 = 4.08% | 3 | below 10% |
+| Camera metadata/data integrity | 51 | 0 | 0 | 0/51 = 0% | 3 | below 10% |
+
+**Saturation reached: yes**, under the requested entry-based rule: three consecutive new discovery/fetch batches each added less than 10% new nodes/reference tools. This does not imply every product or possible project was enumerated. The radar batch genuinely added TI DCA1000EVM and TI mmWave Studio; these make raw-capture hardware and the Windows-host constraint explicit. No new node was warranted. The third batch also re-opened the existing UMI page: it is logged, but not counted as a new distinct URL. One guessed event-camera synchronization URL returned 404 and is excluded. New sources were attached to affected knowledge rows; no launch years or numerical prices were inferred.
+
+### Additional fetch-status log
+
+| Key | Status | Bytes | Decision | URL |
+|---|---:|---:|---|---|
+| eventsamples | 200 | 34628 | accepted | https://docs.prophesee.ai/stable/datasets.html |
+| eventcal | 200 | 90730 | accepted | https://docs.prophesee.ai/stable/samples/modules/calibration/calibration_pipeline.html |
+| eventtime | 404 | 4308 | rejected: status or no substantive match | https://docs.prophesee.ai/stable/hardware/cameras/synchronization.html |
+| dca1000 | 200 | 257651 | accepted | https://www.ti.com/tool/DCA1000EVM |
+| mmwavestudio | 200 | 259952 | accepted | https://www.ti.com/tool/MMWAVE-STUDIO |
+| radartraining | 200 | 786265 | accepted | https://www.ti.com/video/series/mmwave-training-series.html |
+| camerainfo | 200 | 6319 | accepted | https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg |
+| jointstate | 200 | 999 | accepted | https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/JointState.msg |
+| lerobotdataset | 200 | 205572 | accepted | https://huggingface.co/docs/lerobot/lerobot-dataset-v3 |
+| umihardware | 200 | 34874 | accepted | https://umi-gripper.github.io/ |
+
+### Additional grepped evidence
+
+#### eventsamples
+
+https://docs.prophesee.ai/stable/datasets.html
+
+Pattern: `RAW|EVT3|recording|HDF5`
+
+```text
+Recordings and Datasets — Metavision SDK Docs 5.3.1 documentation METAVISION INTELLIGENCE BUY PRODUCTS PROPHESEE CONTACT Metavision SDK Docs 5.3.1 Di
+ted Architecture Programming Guides Code Samples Python Tutorials Algorithms and API Data Recordings and Datasets Sample recordings Datasets Precomputed Datasets Data Encoding Formats Streaming and Decoding File Formats Hardware Supported
+Camera Plugin Upgrade Guide Open Source Licenses FAQ Glossary Index Metavision SDK Docs » Recordings and Datasets Recordings and Datasets  Sample recordings  Those recordings are available in multiple formats: RAW ( EVT2 or EVT3 ), DAT a
+nd HDF5 event files . Note Those files are shared under the Creative Commons Zero v1.0 Universal (CC0 1.0) license . This means that you are free t
+the full license details . Name Screenshot Description Sensor Duration Event Rate (Mev/s) Recordings spinner Turning Spinner Gen3.0 5 s 10.8 HDF5 (152.8 MB) RAW EVT2 (207.9 MB) DAT (413.2 MB) hand_spinner Turning 3-Blade Hand Spinner Gen3.
+1 5 s 2.4 HDF5 (38.7 MB) RAW EVT2 (46.9 MB) laser High-speed laser motion Gen4.1 3 s 38.8 HDF5 (236.5 MB) RAW EVT3 (326.2 MB) 80_balls Falling 80 balls (to use with Counting Sample ) Gen3.0 6.3 s 0.73 HDF5 (14.8 MB) RAW EVT2 (19.2 MB)
+articles of different sizes (synthetic data) (to use with PSM Sample ) Gen3.1 32 ms 322.4 HDF5 (58.2 MB) RAW EVT2 (77.3 MB) industrial_fluid_flow Particles suspended and moving within a fluid flow Gen4.0 5.6 s 1.9 HDF5 (35 MB) RAW EVT
+(43 MB) ind
+```
+
+#### eventcal
+
+https://docs.prophesee.ai/stable/samples/modules/calibration/calibration_pipeline.html
+
+Pattern: `intrinsic|validation|re.projection`
+
+```text
+tion_recording samples. Quick start guide  If you are just interested in calibrating the intrinsics of a camera, you can run the following command: Linux metavision_calibration_pipeline Windows metavision_calibration_pipeline.exe It will
+start a live intrinsics calibration pipeline that will detect a calibration pattern from different viewpoints and estimates the intrinsics from those detections.
+ve marker pattern), the user can press the ‘q’ key to stop the process and proceed to the intrinsics estimation step. The intrinsics estimation step will use the detections to estimate the camera intrinsics. When the estimation is done, th
+e pipeline will automatically execute the intrinsics validation step. The intrinsics validation step will display the detected pattern, the re-projected pattern using the estimated intrinsics and the re-projection errors. The user can
+er the step should be executed. Can be useful to only restart parts of the pipeline (e.g. intrinsics estimation using a different camera model). Each step generally have additional fields that are specific to its function. Some of those sp
+emented in Metavision SDK include: Event-based pattern detection ( eb-pattern-detection ) Intrinsics estimation ( intrinsics-estimation ) Intrinsics validation ( intrinsics-validation ) Event-based synchronized patterns detection ( eb-sync
+ed-pattern-detection ) Extrinsics estimation ( extrinsics-estimation ) Extrinsics validation ( extrinsics-validation ) Example JSON file  {
+```
+
+#### dca1000
+
+https://www.ti.com/tool/DCA1000EVM
+
+Pattern: `DCA1000|LVDS|raw|Ethernet`
+
+```text
+DCA1000EVM Evaluation board | TI.com Home Design & development DCA1000EVM DCA1000 evaluation module for real-time data capture and streaming Order now DCA1000EVM Order now Overview The DCA1000 evaluation module (EVM) prov
+ime data capture and streaming for two- and four-lane low-voltage differential signaling (LVDS) traffic from TI AWR and IWR radar sensor EVMs. The data can be streamed out via 1-Gbps Ethernet in real time to a PC running the MMWAVE-ST
+and algorithm development. Features Supports lab and mobile collection scenarios Captures LVDS data from AWR/IWR radar sensors Streams output in real time through 1-Gbps Ethernet Controlled via onboard switches or GUI/library DCA1000E
+VM Warranty card (disclaimer sheet) Ethernet cable Standoffs Samtec® coaxial micro ribbon cable (HQCD-030-02.00-SEU-TBR-1) Audio & radar DSP SoCs AM2732-Q1 — Automotive dual-core Arm®
+Cortex-R5F MCU up to 400 MHz with C66x DSP, Ethernet, safety, security Automotive mmWave radar sensors AWR1243 — 76-GHz to 81-GHz high-performance automotive MMIC AWR1443 — Single-chip 76-GHz
+, DSP and MCU DC/DC converters LM26400Y — Dual 2A, 500kHz Wide Input Range Buck Regulator Ethernet PHYs DP83867IR — Industrial temperature, robust gigabit Ethernet PHY transceiver Industrial mmWave radar sensors IWR1443 — Single-chip 76-G
+ingle-chip, 76GHz to 81GHz industrial high-performance radar with integrated DSP, MCU and ethernet IWR6443 — Single-chip 60-GHz to 64-GHz intelligent mmWave sensor integrating MCU and hardwa
+```
+
+#### mmwavestudio
+
+https://www.ti.com/tool/MMWAVE-STUDIO
+
+Pattern: `capture|mmWave|calibration`
+
+```text
+MMWAVE-STUDIO IDE, configuration, compiler or debugger | TI.com Home Design & development MMWAVE-STUDIO mmWave studio Downloads MMWAVE-STUDIO Down
+loads Overview MMWAVE-STUDIO is a stand-alone Windows® GUI that provides the ability to configure and control mmWave sensor modules and collect analog-to-digital
+ (ADC) data for offline analysis. ADC data capture is intended to enable evaluation and characterization of radio-frequency (RF) performance, and PC development of signal-processing algorith
+ms. MMWAVE-STUDIO provides the capability to evaluate and prototype chirp designs and experiment with advanced features of our radar devices. MMWAVE-S
+g low-level chirp parameters. It is not needed for typical evaluation of our radar demos. MMWAVE-STUDIO provides basic post-processing and visualization of ADC data, as well as post-processing examples based on MATLAB®, which can be use
+d as getting-started reference. MMWAVE-STUDIO connects directly to our sensor modules and requires: DCA1000EVM connected to BOOST and ISK sensor modules for streaming of ADC data
+ to PC for capture MMWCAS-DSP-EVM connected to MMWCAS-RF-EVM (cascade imaging) sensor module is required for streaming of ADC data to PC for capture MMWAVE-ST
+ includes a standalone utility for the DCA1000EVM that can be used independently from the MMWAVE-STUDIO GUI and used to capture application-specific data. This capability is demonstrated by MMWAVE-SDK. Features Post-processing of ADC da
+rd control (SOP change, reset contro
+```
+
+#### radartraining
+
+https://www.ti.com/video/series/mmwave-training-series.html
+
+Pattern: `mmWave|radar|training`
+
+```text
+mmWave radar sensors | TI.com Home Design & development Educational resources Video Series mmWave radar sensors Home Design & development Educational re
+sources Video Series mmWave radar sensors VIDEO SERIES mmWave radar sensors The mmWave training curriculum provides foundational content and hands-on examples for you to learn the fundamentals of FMCW technology and mmWave sensors to s
+tart development quickly. Our portfolio of mmWave sensors include: Automotive mmWave radar sensors and industrial mmWave radar sensors. View series mmWave radar sensors Introduction to mmWave radar sensing: FMCW radars ( 5 ) Intro
+ to mmWave Sensing : FMCW Radars - Module 1 : Range Estimation 00:22:22 Intro to mmWave Sensing : FMCW Radars - Module 2 : The Phase of the IF Signal 00:16:27 Intro to mmWave Sensing : FMCW Radars - Module 3 : Velocity Estimati
+on 00:13:51 Intro to mmWave Sensing : FMCW Radars - Module 4 : Some System Design Topics 00:16:30 Intro to mmWave Sensing : FMCW Radars - Module 5 : Angle Estimation 00:18:42 mmWave radar
+sensor devices ( 14 ) TI Automotive mmWave Sensors Device Overview 00:20:34 TI Industrial mmWave Sensors Device Overview 00:20:32 Introduction to mmWave SDK 00:15:53 DCA1000 Training Video 00:16:42 mmWave Radar Programming Model 00:24:3
+2 mmWave EVMs Deep Dive 00:06:23 Hardware Setup for IWR6843ISK and IWR6843ISK-ODS 00:09:22 Hardware Setup for IWR6843AOP 00:08:38 Hardware Setup for
+ MMWAVEICBOOST and antenna module 00:12:35 Introduction to mmWave Sensor 144
+```
+
+#### camerainfo
+
+https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg
+
+Pattern: `calibration|frame|timestamp|distortion`
+
+```text
+########################################## # Time of image acquisition, camera coordinate frame ID std_msgs/Header header # Header timestamp should be acquisition time of image # Header frame_id should be optical frame of camera # orig
+in of frame should be optical center of camera # +x should point to the right in the image # +y should point down in the image # +z should point into t
+ne of the image ####################################################################### # Calibration Parameters # ####################################################################### # These are fixed during camera calibration. Their val
+mally this will be the full camera resolution in pixels. uint32 height uint32 width # The distortion model used. Supported models are listed in # sensor_msgs/distortion_models.hpp. For most cameras, "plumb_bob" - a # simple model of radial
+and tangential distortion - is sufficent. string distortion_model # The distortion parameters, size depending on the distortion model. # For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3). float64[] d # Intrinsic
+es. # [fx 0 cx] # K = [ 0 fy cy] # [ 0 0 1] # Projects 3D points in the camera coordinate frame to 2D pixel # coordinates using the focal lengths (fx, fy) and principal point # (cx, cy). float64[9] k # 3x3 row-major matrix # Rectificat
+ntrinsic matrix for the rectified image. # It projects 3D points in the camera coordinate frame to 2D pixel # coordinates using the focal lengths (fx', fy') and principal
+```
+
+#### jointstate
+
+https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/JointState.msg
+
+Pattern: `position|velocity|effort|empty`
+
+```text
+rolled joints. # # The state of each joint (revolute or prismatic) is defined by: # * the position of the joint (rad or m), # * the velocity of the joint (rad/s or m/s) and # * the effort that is applied in the joint (Nm or N). # # Each j
+state. # The goal is to make each of the fields optional. When e.g. your joints have no # effort associated with them, you can leave the effort array empty. # # All arrays in this message should have the same size, or be empty. # This i
+ the joint name with the correct # states. std_msgs/Header header string[] name float64[] position float64[] velocity float64[] effort
+```
+
+#### lerobotdataset
+
+https://huggingface.co/docs/lerobot/lerobot-dataset-v3
+
+Pattern: `video|timestamp|metadata|dataset`
+
+```text
+LeRobotDataset v3.0 · Hugging Face Hugging Face Search models, datasets, users... Ctrl K Models Datasets Spaces Buckets Docs Enterprise Pricing Website Tasks HuggingChat Collections Languages Organizations Comm
+Providers Inference Endpoints Storage Buckets Log In Sign Up LeRobot documentation LeRobotDataset v3.0 LeRobot 🏡 View all docs AWS Trainium & Inferentia Accelerate Bitsandbytes CLI Chat UI Dataset viewer Datasets Deploying on AWS Diffuse
+name Map and Empty Cameras Compute & Hardware Compute Hardware Guide PyTorch accelerators Datasets Using LeRobotDataset Training Dataset Streaming Porting Large Datasets Using the Dataset Tools Language Columns and Recipes Tools Annotati
+on Pipeline Video encoding parameters Streaming Video Encoding Policies ACT SmolVLA π₀ (Pi0) π₀-FAST (Pi0Fast) π₀.₅ (Pi05) FineART-VLA MolmoAct2 VLA-JEPA LaWAM EO-1 LingBot-VA LingBot-VLA 2.0 O
+iting docstrings Backward compatibility API Reference Robots Teleoperators Cameras Motors Datasets Policies Processors Environments Configuration Join the Hugging Face community and get access to the augmented documentation experience Co
+llaborate on models, datasets and Spaces Faster examples with accelerated inference Switch between documentation themes Sign Up to get started Copy page LeRobotDataset
+v3.0 LeRobotDataset v3.0 is a standardized format for robot learning data. It provides unified access to multi-modal time-series data, sensorimotor signals and
+ multi‑camera video, as well as rich metadata for i
+```
+
+#### umihardware
+
+https://umi-gripper.github.io/
+
+Pattern: `camera|latency|GoPro`
+
+```text
+licy learning, UMI incorporates a carefully designed policy interface with inference-time latency matching and a relative-trajectory action representation. The resulting learned policies are hardware-agnostic and deployable across multip
+n we capture sufficient information for a wide variety of tasks with just a wrist-mounted camera? UMI’s data collection hardware takes the form of a hand-held parallel jaw gripper, mounted with a GoPro camera ①. To gather policy-deploya
+cific robot kinematic constraints ⑥. · Policy Robustness Enabled by our unique wrist-only camera setup and camera-centric action representations, UMI is 100% calibration-free (functioning even with base movement) and robust against dist
+t (between robot and gripper). --> Ablation Without inference-time observation and action latency matching, the policy exhibits significantly more jittery movements, due to the misalignment between observations and action executions. Our
+s No Latency Matching (2) Cup Arrangement ☕ Task Pick up and place an espresso cup on the saucer with its handle facing to the left of the robot. Capabi
+y of learning multi-modal action distributions and sense relative depth through monocular camera observation and side mirrors. --> Ablation Data collected by UMI is robot agnostic. Here we can deploy the same policy on both UR5e and Fra
+ with the Franka setup. We especially thank Steffen Urban for his open-source projects on GoPro SLAM and Camera-IMU calibration, and John @ 3D printing world fo
+```
+
+## Project synthesis and duplicate review
+
+54 distinct proposals: three primary proposals per node, plus limited multi-node relations for meaningful integration. Onboarding includes synthetic/recorded €0 work and small hardware demos; later projects progress to custom calibration fixtures, event-camera acquisition, raw radar capture, modular magnetic skin and a VLA-ready acquisition rig. All remain Sensing-led: acquisition experiments are scripted, so autonomy is deliberately not inflated to learned/open-world robot behavior. Novelty ranges from reproduce to original fixture/protocol; no Beyond SOTA claim. Hardware and integration range from single off-the-shelf components to custom subsystems/full acquisition stacks. Four-axis values are stored; no computed Level or reverse relations are emitted.
+
+Titles and descriptions/deliverables of all 11 existing projects, 28 Embedded candidates and 51 Manipulation candidates were read before synthesis. Concept collisions were removed or explicitly narrowed:
+- No servo bring-up, SO-101 assembly, micro-ROS publisher, real-time controller jitter benchmark, firmware CI, BLDC test-bench dynamics or contact detector. Current/torque work is static metrology against an independent load reference, not Embedded's learned contact detector or actuator step response.
+- No tactile slip detector, fingertip friction comparison, compliant insertion, teleoperation training workflow, policy fine-tuning, pick-and-place, world model or sim-to-real policy training. Skin work is material/readout/packaging metrology rather than manipulation control.
+- Manipulation's “Audit demonstration timing” already plots camera/joint alignment and missing demonstration frames. Sensing proposals instead isolate capture-versus-arrival clocks, hardware exposure skew, PTP, USB topology, message units/covariance and calibration provenance. The final acquisition rig does not duplicate that action-alignment audit or train a policy.
+- The camera fixture does not redesign a gripper; sensor simulation compares measurement response, not an SO-101 electronics or policy digital twin. Audio work is acquisition/noise characterization, not keyword control or localization implementation. Radar work does not implement detection, odometry or surveillance.
+
+Durations, cost bands, work shares and wow factors are planning judgments; no completed result or guaranteed stock/price is asserted. Physical work requires compatibility/procurement checks and safe fixtures. Existing host compute is assumed; €0 means synthetic/replayed data without new hardware, not free compute. Professional sensor loans may be needed within the proposed €500-5k experiments. One-week onboardings assume a supported setup and pre-provisioned data/parts. mmWave Studio requires an appropriate Windows host; no attempt was made to install it on this Linux machine. Project references are fetched official technical sources, not evidence that our proposed experiment has already succeeded.
+
+### Per-node project coverage
+
+- **Sensor characteristics, uncertainty & noise** (4): Measurement truth versus resolution: a sensor-error notebook; Sampling-rate aliasing on a moving distance target; Stationary IMU warm-up and temperature-drift dossier; Gazebo noise-model fingerprint with known ground truth
+- **Joint encoders & proprioceptive sensing** (3): Encoder rollover and index-reference explorer; Magnet alignment and standoff repeatability jig; Incremental versus magnetic joint-angle metrology fixture
+- **IMUs: accelerometers, gyroscopes & magnetometers** (5): Stationary IMU warm-up and temperature-drift dossier; IMU units, missing orientation and axis-sign replay; Allan-deviation repeatability across stationary sessions; IMU mount vibration transmission comparison; Camera-IMU calibration excitation and held-out residual study
+- **Force/torque sensing & current-based torque estimation** (3): Six-axis wrench units and lever-arm replay; Wrist transducer zeroing and load-fixture calibration; Motor-current torque estimate versus an independent load reference
+- **RGB cameras & intrinsic calibration** (5): Checkerboard coverage and calibration holdout gallery; Rolling-shutter and exposure artifact ruler; Focus and resolution changes invalidate camera calibration; Hardware-trigger exposure-skew measurement fixture; Quick-release wrist-camera remount calibration fixture
+- **Depth cameras: stereo, structured light & ToF** (3): Depth-camera surface and illumination failure gallery; Close-range stereo occlusion and minimum-distance test rig; RGB-depth registration against a measured stepped target
+- **2D & 3D LiDAR hardware** (4): Planar LiDAR scan geometry and blind-zone bench; LiDAR reflectivity and incidence-angle return audit; 3D LiDAR coverage and timestamped scan-density atlas; Remountable camera-LiDAR calibration target and fixture
+- **Short-range ranging: ultrasonic, infrared & ToF** (5): Sampling-rate aliasing on a moving distance target; Ultrasonic beam-width and soft-surface echo chart; Analog infrared range curve and blind-zone calibration; ToF range validity across target color and ambient light; Measured short-range sensor response versus simulated rays
+- **Extrinsic & multi-sensor calibration** (5): RGB-depth registration against a measured stepped target; Hand-eye calibration observability in a synthetic camera rig; Camera-IMU calibration excitation and held-out residual study; Remountable camera-LiDAR calibration target and fixture; Reusable event-RGB calibration target and coverage protocol
+- **Time synchronization & timestamping** (5): 3D LiDAR coverage and timestamped scan-density atlas; Acquisition-time versus arrival-time timestamp sandbox; Hardware-trigger exposure-skew measurement fixture; PTP clock alignment under sensor-network load; Long-recording microphone sample-clock drift audit
+- **ROS 2 sensor drivers, metadata & recording** (6): ROS sensor-message units and covariance contract linter; Sensor QoS loss-versus-latency capture experiment; Recording archive recovery and calibration-manifest integrity; Synthetic sensor outage and saturation playback harness; GNSS receiver position-time metadata ingestion contract; VLA-ready sensing rig with verifiable calibration provenance
+- **Sensor simulation & noise models** (3): Gazebo noise-model fingerprint with known ground truth; Synthetic sensor outage and saturation playback harness; Measured short-range sensor response versus simulated rays
+- **Event cameras & asynchronous acquisition** (3): Recorded event-stream polarity and time microscope; Event-camera illumination-flicker throughput envelope; Reusable event-RGB calibration target and coverage protocol
+- **mmWave radar sensing hardware** (3): Radar point-cloud capture and no-target baseline; Radar ADC capture throughput and packet-loss characterization; Reproducible radar multipath and material test enclosure
+- **Robot skin & distributed tactile hardware** (4): Magnetic skin patch replacement repeatability bench; Magnetic skin array crosstalk and wiring characterization; Removable forearm skin sleeve with calibration identity; VLA-ready sensing rig with verifiable calibration provenance
+- **Microphone arrays & robot audio acquisition** (3): Microphone channel ordering and geometry clap board; Robot motor-noise audio acquisition dossier; Long-recording microphone sample-clock drift audit
+- **GNSS & RTK receiver hardware** (3): RTK stationary receiver and correction-outage logbook; GNSS antenna mounting and multipath repeatability survey; GNSS receiver position-time metadata ingestion contract
+- **Wrist cameras & multi-camera data-collection rigs** (5): Recording archive recovery and calibration-manifest integrity; Removable forearm skin sleeve with calibration identity; Multi-camera USB topology and capture-bandwidth atlas; Quick-release wrist-camera remount calibration fixture; VLA-ready sensing rig with verifiable calibration provenance
+
+### Top three nodes
+
+The ratio is qualitative (accessibility × visual impact × relevance / cost), not a numerical score derived from ordinal select values.
+
+- **Wrist cameras & multi-camera data-collection rigs**: Best direct link to the low-cost SO-101/LeRobot wedge: a small USB rig yields an immediately filmable multi-view stream and reusable acquisition infrastructure without claiming a policy result. Commodity entry hardware and existing host compute keep the initial experiment modest; synchronization and mounting remain real integration work.
+- **RGB cameras & intrinsic calibration**: High accessibility with an existing webcam, printable target and open calibration tools. Distortion correction and held-out reprojection overlays are visually clear, and this knowledge unlocks depth, wrist rigs and multi-sensor data quality without new robot hardware.
+- **Depth cameras: stereo, structured light & ToF**: Live depth and point-cloud failures are easy to demonstrate and directly inform tabletop manipulation data collection. A single entry stereo device can give strong visual impact before a complete robot exists; verify actual camera price and host requirements, and do not extend the entry budget to every reference camera.
+
+## Part 2 final validation
+
+Ran the extended `/home/ubuntu/validate_sensing.py`. It reads schema select options, matches row keys against the pilot (plus required node `_accessibility_reason`), checks field types and HTTP-200 fetch-log coverage, verifies numeric effort shares, resolves relation names, checks prerequisite cycles and compares normalized project titles/deliverables against all 90 existing/pilot proposals. Concept-level duplicate review is a separate manual step documented above, not something normalized-title checks can establish. Each knowledge node has 3–6 associated proposals. Knowledge/tool status stays To verify; projects stay Idea.
+
+```text
+PASS: 18 knowledge nodes; 33 reference tools; exact pilot keys (+ required _accessibility_reason on nodes).
+PASS: schema select/multi-select values, field types, unique names, no Embedded/Manipulation duplicates, local tool relations, all nodes covered.
+PASS: every row has >=1 accepted HTTP-200 source; 75 distinct accepted sources, 70 used in rows; status=To verify; no Used in projects.
+PASS: 54 projects; exact pilot project keys; all schema selects; effort sums=100; status=Idea; fetched HTTP-200 References.
+PASS: project relations resolve across Sensing/pilots; prerequisite DAG is acyclic; 3-6 candidates per node; 3 valid top3 recommendations.
+PASS: no normalized title/deliverable duplicates internally or against 90 existing/pilot projects; concept overlap manually reviewed in report.
+COUNTS: {"accepted_sources": 75, "nodes": 18, "project_candidates": 54, "project_kinds": {"Onboarding": 18, "Project": 36}, "robots_models": 33, "top3": 3}
+```
+
+`git diff --check` returned exit 0 without output. No application test runner exists for this data-only change. Physical experiments, hardware compatibility/procurement, visual demos, performance claims and independent verification remain untested. No Notion access, PR or main-branch changes.
+
+## Five-line summary
+
+Mapped 18 Sensing nodes and 33 reference sensors/tools, retaining To verify status and beginner-readable scope boundaries.
+Proposed 54 deduplicated projects: 18 Onboarding and 36 Project, with 3–6 candidates per node and schema-valid complexity/work-share fields.
+Audited 75 distinct substantive HTTP-200 sources; three further discovery batches added 0, 2 and 0 entries, reaching the <10% saturation rule.
+Top priorities are wrist/multi-camera rigs, RGB intrinsic calibration and depth cameras, supporting low-cost SO-101/LeRobot data acquisition.
+Schema, sources, relations, prerequisite DAG, coverage and duplicate-title checks passed; physical results and independent verification remain outstanding.
