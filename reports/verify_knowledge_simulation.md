@@ -161,4 +161,12 @@ Checked 70 rows: 14 knowledge nodes, 14 robots/models/tools and 42 project candi
 
 ## Validation
 
-Validation pending; this checkpoint contains the completed source/row audit and cleaned rows.
+Completed a standard-library Python validation against the checked-in schema and local pilot files:
+
+- PASS: all 616 select, multi-select and status values match schemas/notion-schema.md.
+- PASS: all 70 rows have exactly the writable field sets listed in the schema; text, arrays, checkbox and numeric types are valid. Thirteen unknown numeric years are null and Genesis is 2024. No private keys, formula fields or auto-managed reverse relations remain.
+- PASS: all 42 project work splits sum to 100, all local relation targets resolve, and the prerequisite graph is acyclic. Each knowledge node has three project candidates.
+- PASS: all source, reference and resource URLs belong to the 37-entry distinct source register; all three top3 node names resolve.
+- PASS: no exact node-name overlap with either knowledge pilot and no exact project-name overlap with output/existing_projects.json. Cross-file tool reuse intentionally retains existing names. Live Notion deduplication remains outside this task.
+- PASS: the 70 per-row report verdicts reconcile to 36 verified, 34 corrected and 0 rejected. All 28 knowledge/tool statuses are To verify and all 42 project statuses are Idea.
+- PASS: git diff --check. No active git hooks or build/test configuration are present. Validation checks data consistency; it does not demonstrate a running simulator or robot capability.
