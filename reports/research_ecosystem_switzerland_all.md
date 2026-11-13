@@ -2,9 +2,9 @@
 
 ## Scope and method
 
-Deliverable: `output/ecosystem_switzerland_all.json`, **121 organizations**, **49 robots/models/tools**, **228 distinct consulted URLs**, and **181 distinct row-cited URLs**. Every organization is Region **Europe** and every row remains **To verify**. Switzerland includes Zurich/canton, Dübendorf, Zug, the EPFL/Lausanne corridor, Geneva, Basel, Bern, Ticino, central/eastern Switzerland and national networks.
+Deliverable: `output/ecosystem_switzerland_all.json`, **124 organizations**, **50 robots/models/tools**, **242 distinct consulted URLs**, and **188 distinct row-cited URLs**. Every organization is Region **Europe** and every row remains **To verify**. Switzerland includes Zurich/canton, Dübendorf, Zug, the EPFL/Lausanne corridor, Geneva, Basel, Bern, Ticino, central/eastern Switzerland and national networks.
 
-Merged three work slices: Zurich (50 organizations / 22 robots/tools), rest plus Zurich top-ups (49 / 22), final gaps (22 / 5). The intermediate gap file is preserved in commit `94bb85b`; all three work files are removed from the final tree. The requested slice metadata says depth `exhaustive`; this describes research intent, **not evidence of a complete census**.
+Originally merged three work slices: Zurich (50 organizations / 22 robots/tools), rest plus Zurich top-ups (49 / 22), final gaps (22 / 5). The intermediate gap file is preserved in commit `94bb85b`; all three work files are removed from the final tree. A final bounded discovery pass added three startups (Jaipur Robotics, MESH and MIKAJAKI) and the EyeLib platform directly to the output, without restoring work/. The requested slice metadata says depth `exhaustive`; this describes research intent, **not evidence of a complete census**.
 
 Read CLAUDE.md, the ecosystem playbook, schema, Paris row format and US report. Discovery used search, official institution/company/community pages, product documentation and financing announcements. Existing `output/*.json` and both earlier work files were compared before gap row selection, then names and relations were audited again in the merged output. Existing global rows are not recreated: e.g. ABB Robotics, ANYbotics, maxon, Bota Systems and Stäubli remain in their original files. This slice therefore is not a standalone total of every Swiss robotics actor.
 
@@ -15,7 +15,7 @@ Every new row has an opened HTTP(S) citation. Descriptions and contact paths dis
 | Type | Organizations |
 |---|---:|
 | Research lab | 34 |
-| Startup | 27 |
+| Startup | 30 |
 | Association | 20 |
 | Corporate | 16 |
 | Event | 9 |
@@ -44,6 +44,7 @@ Every new row has an opened HTTP(S) citation. Descriptions and contact paths dis
 | Allschwil | 1 |
 | Bäretswil | 1 |
 | Biel/Bienne | 1 |
+| Birr | 1 |
 | Bonaduz | 1 |
 | Croglio | 1 |
 | Dübendorf / Visp | 1 |
@@ -58,9 +59,11 @@ Every new row has an opened HTTP(S) citation. Descriptions and contact paths dis
 | Lausanne (EPFL coordination; national network) | 1 |
 | Lugano (Viganello) | 1 |
 | Männedorf | 1 |
+| Manno | 1 |
 | Martigny | 1 |
 | Opfikon | 1 |
 | Paudex | 1 |
+| Plan-les-Ouates | 1 |
 | Rapperswil-Jona | 1 |
 | Saint-Sulpice | 1 |
 | Sonceboz-Sombeval | 1 |
@@ -78,7 +81,7 @@ Counts below are **new candidates promoted to a working comparison shortlist**, 
 
 Audit limitations: Zurich's inherited log has 34 entries. Rest has 31 entries, its first three explicitly reconstructed source-traversal summaries. The gap log has 33 entries: entries 1–27 are reconstructed thematic discovery counts from this research handoff, **not a contemporaneous complete query transcript**; the final six retain the actual broad search strings and shortlist counts. Some earlier exact strings and candidate-level counting provenance were lost during handoff compaction. Treat reconstructed counts as provisional, not an independently reproducible saturation statistic.
 
-**Saturation: NO — not demonstrated.** The final three broad queries returned shortlist increments 0, 1 and 5. The last query exposed additional component/drone/AI hardware candidates; result sets were not exhaustively enumerated with a stable denominator. Therefore three consecutive independent queries with <10% new entries have not been established. The 22-organization gap fill meets the requested approximate row range, but continuing discovery to the specified saturation stop remains unfinished. No percentage denominator has been invented by dividing by the entire accumulated corpus.
+**Earlier handoff saturation: NO — not demonstrated.** The final three broad queries returned shortlist increments 0, 1 and 5. The last query exposed additional component/drone/AI hardware candidates; result sets were not exhaustively enumerated with a stable denominator. Therefore three consecutive independent queries with <10% new entries have not been established. The 22-organization gap fill meets the requested approximate row range, but it did not establish the earlier saturation rule. The follow-up below supersedes this stopping assessment using the user's newly specified fixed denominator. No percentage denominator has been invented by dividing by the entire accumulated corpus.
 
 ### Zurich
 
@@ -193,11 +196,31 @@ Audit limitations: Zurich's inherited log has 34 entries. Rest has 31 entries, i
 | 32 | robotics Switzerland industry research innovation network | 1 |
 | 33 | Switzerland autonomous robotics ecosystem directory | 5 |
 
+### Final short discovery pass (supersedes earlier stopping assessment)
+
+**Saturation: YES under the user's fixed-121 rule**, not a claim of a complete Swiss census. Used five broad discovery searches, eight returned results per query, in submitted order. New candidate names were counted once across this pass after comparison against all existing output organization rows. Counts include unverified directory/technology-transfer candidates, not merely the three accepted rows; incidental foreign investors, people and obviously unrelated local businesses are not candidates. EPFL's mixed directory includes some uncertain robotics relevance/historical companies, retained conservatively in the candidate count rather than silently discarded to lower the yield.
+
+The denominator is **121**, fixed at the starting Swiss organization count as requested; the threshold is <12.1 candidates per query. Queries 3–5 yielded 3/121 (2.48%), 10/121 (8.26%) and 7/121 (5.79%). Discovery stopped immediately after query 5. The second query's 27 candidates reset the streak. This operational stopping test is different from the earlier undefined/global saturation metric; it does not establish geographical completeness or small marginal yield relative to each result set.
+
+| # | Discovery query | New candidate count | % of 121 | Candidate names absent from existing outputs |
+|---:|---|---:|---:|---|
+| 1 | Swiss robotics startup raises | 2 | 1.65% | Jaipur Robotics, Exclaim Robotics |
+| 2 | EPFL spin-off robot | 27 | 22.31% | AICA, Artiria Medical, Autonomyo, Bionomous, Clearspace Today, Didel, Dexterous Endoscopes, Dronistics, ELYTHOR, Foldaway Haptics, IMINA Technologies, Intento, Isochronic, KB Medical, MindMaze, MIROS Technology, Pomelo, SENSARS, senseFly, Simulatory, Feeltronix, Alpine Intuition, Exomotion, DAAV, Fastree3D, PI Imaging Technology, Asterivir |
+| 3 | ETH spin-off robot 2025 | 3 | 2.48% | RIVR, Witty Machines, MESH |
+| 4 | Geneva robotics startup | 10 | 8.26% | MIKAJAKI, RB Labs, FONGIT, Roboteq Europe, Hiro Robotics, Effetto Venturi, Autodose, Robotique Q, Geneva Robotic Factory, naviq |
+| 5 | Ticino robotics | 7 | 5.79% | Scuola di Robotica Ticino, Interroll, InnovaCH, AVISION ROBOTICS, Clinica del Robot, EVO ROBOTICS, Fela Ticino |
+
+Accepted **Jaipur Robotics**, **MESH**, **MIKAJAKI** and **EyeLib** after opening primary sources and checking organization/product duplicates. Jaipur's AGIRE announcement and current company site support Manno, seed financing and waste-to-energy vision software. ETH's MESH article plus current mesh.ch contact support Birr and industrial rebar robotics. MIKAJAKI's current site and its ESCRS 2025 presenter abstract support Plan-les-Ouates and EyeLib; diagnostic benefits remain vendor/presenter claims.
+
+Verification-only lookup: `MESH AG Birr robotics official website` (three results; 0 additional candidates) resolved the official domain to **mesh.ch** after mesh.swiss did not retrieve. It was not another broad discovery query. Subsequent page openings checked already surfaced candidates only. No Google News RSS fallback was necessary because web search returned usable results.
+
+Deferred candidates are not declared irrelevant. AICA's current homepage only announces a new chapter, while the detailed EPFL robotics article is from 2020; Autonomyo's current page emphasizes a fully mechanical SkyWalk with a US contact, so historical Swiss robotic-exoskeleton descriptions should not be copied as current offerings. Bionomous has current automation products but its Swiss address was not reconciled in this short pass. Witty Machines and Exclaim require official current-site/location verification. Other EPFL/Geneva/Ticino candidates remain a verification backlog, not automatic additions. Basel/Bern/St. Gallen searches were not run because the stopping condition had already been met.
+
 ## Evidence-quality caveats
 
-- The 228 consulted URLs are deduplicated across inherited lists. Zurich's inherited list includes unsuccessful access attempts. This is a count of consulted URL strings, **not 228 successfully retrieved distinct documents**. Every row has a source citation, but HTTP syntax validation does not independently prove historical retrieval. Redirect aliases may count separately.
+- The 242 consulted URLs are deduplicated across inherited lists. Zurich's inherited list includes unsuccessful access attempts. This is a count of consulted URL strings, **not 242 successfully retrieved distinct documents**. Every row has a source citation, but HTTP syntax validation does not independently prove historical retrieval. Redirect aliases may count separately.
 - Prefer current official pages for contact/status. Undated marketing pages do not establish release year, autonomous reliability, revenue, safety, clinical efficacy or customer adoption. Null release years and unset stage selects avoid guesses; older funding rounds are labeled historical, not current financing status.
-- **HackZurich is on hiatus** and its landing page contains unrelated promotional links. It is retained only as an explicitly inactive ecosystem brand, not a dependable upcoming hackathon. **Swiss Drone Days** is historical: opened archive covers 2017–2022; no 2026/27 edition was established. **NCCR Robotics** is a closed 2010–2022 program, not a live grant. These three historical/inactive rows are included in the 121 organizations, not current-access opportunities.
+- **HackZurich is on hiatus** and its landing page contains unrelated promotional links. It is retained only as an explicitly inactive ecosystem brand, not a dependable upcoming hackathon. **Swiss Drone Days** is historical: opened archive covers 2017–2022; no 2026/27 edition was established. **NCCR Robotics** is a closed 2010–2022 program, not a live grant. These three historical/inactive rows are included in the 124 organizations, not current-access opportunities.
 - START Summit's page advertises **18–19 March 2027**; START Hack's next flagship is 2027. Robotics-specific hardware cases are not guaranteed. BaselHack is a broad regional hackathon. Recheck dates, eligibility and hardware permissions before travel.
 - FIXME's October/November 2026 posts show a community relaunch after a pause. Do not infer continuous opening from older pages. FabLab Bern is explicitly an **89grad GmbH project**, hence Corporate rather than an assumed nonprofit. Renens community spaces share an address but have distinct official association identities.
 - FAULHABER SA is the consolidated Swiss operation since June 2023, headquartered in Croglio; its parent is German. Portescap SA is a Swiss operating location, not an assertion of Swiss global headquarters. Components relevance is explicit on manufacturer robotics pages, but affordability/student access remains unknown.
@@ -229,14 +252,14 @@ Additional exact-name financing context: **Swisscom Ventures** and **Verve Ventu
 - **Polytech Ventures**, **Alpine VC**, **4FOX Ventures**, **ACE & Company**: considered, but no sufficiently complete Swiss organization/location plus robotics-specific primary-evidence row was assembled in this handoff. A named round participant is not automatically a verified Swiss VC row. Distalmotion's Revival and 415 CAPITAL and Ecorobotix's AQTON/Cibus are foreign investors, not Swiss additions.
 - **Swiss AI Initiative / Swiss National AI Institute**: no separately opened robotics-specific primary evidence sufficient for a row was assembled; not conflated with ETH AI Center. **Bühler**, **Lambda**, **Akina**: no adequate independent robotics-specific inclusion case completed. This is a research gap, not a finding of no relevance.
 - Additional **Swiss hacker/founder houses**, **ROS Zurich/Swiss meetups**, **Swiss RoboCup@Home teams** and a separately named **Swiss Robotics Student association**: no independently verified current entity beyond existing ETH/EPFL clubs/European Robotics House/CVRA was established; do not invent names from generic queries.
-- Last broad discovery exposed **S3C**, **Jaipur Robotics**, **Rapid Manufacturing**, **Suter Industries**, **Roze Mobility**, **SwissDrones**, **RigiTech**, **Pix4D**, **Aerotainment**, **Distran**, **Fiveco**, **GCtronic**, **Mantis Technologies** and **Witty Machines**, among others. Some may already resolve to broader existing rows; primary-source, location and alias reconciliation is unfinished. Search snippets/directories alone do not justify new verified rows.
+- Earlier broad discovery exposed **S3C**, **Rapid Manufacturing**, **Suter Industries**, **Roze Mobility**, **SwissDrones**, **RigiTech**, **Pix4D**, **Aerotainment**, **Distran**, **Fiveco**, **GCtronic**, **Mantis Technologies** and **Witty Machines**, among others. Some may already resolve to broader existing rows; primary-source, location and alias reconciliation is unfinished. Search snippets/directories alone do not justify new verified rows. Jaipur Robotics, also surfaced earlier, was verified and added in the final short pass.
 - University-wide umbrella rows and sublabs can coexist where the lab has distinct research outputs and outreach contacts; a full entity-parent graph is not encoded. Historical networks/events are explicitly distinguished rather than excluded without explanation.
 
 ## Implications for 42AI and remaining work
 
 Start with a small French-speaking peer build exchange via Robopoly/CVRA, and accessible makerspaces for fabrication/electronics. Use LASA/Idiap demonstrations and simulation tools as educational paths, not evidence that a proprietary industrial system accepts LeRobot policies. For three teams, compare scripted, demonstration-trained and compatible pretrained approaches on the same low-cost task, tracking success, recovery, data collection, calibration, computation and hardware failures.
 
-High-priority unfinished work: actual discovery saturation, independent verifier/coverage-critic passes, current addresses and entity aliases, fundraising recency, product licensing and public access, non-Zurich smaller firms and current meetups, deployment corroboration and customer problem interviews. The lab's software strength does not remove mechanics/electronics/safety constraints; industrial/medical partnerships usually require more than a compelling demo.
+High-priority unfinished work: coverage beyond this bounded stopping test, independent verifier/coverage-critic passes, current addresses and entity aliases, fundraising recency, product licensing and public access, non-Zurich smaller firms and current meetups, deployment corroboration and customer problem interviews. The lab's software strength does not remove mechanics/electronics/safety constraints; industrial/medical partnerships usually require more than a compelling demo.
 
 ## Five-line summary
 
@@ -246,7 +269,7 @@ High-priority unfinished work: actual discovery saturation, independent verifier
 4. 42AI's best first contacts are ETH Robotics Club, Robopoly, CVRA and accessible makerspaces; pair small-arm demos with LASA/Idiap open software and scoped technical feedback.
 5. Low-cost imitation learning/VLAs are a hypothesis for learning and visibility, not a proven moat: compare against scripted baselines, measure recovery/data costs, and avoid expensive hardware before validating a task.
 
-## Validation
+## Earlier handoff validation (superseded counts)
 
 Final validation output is recorded below after the script run. Blueprint commands reference a `viz/` tree absent from this checkout; no UI/dependency installation was attempted. JSON/schema/name/relation checks are the applicable data checks.
 
@@ -265,3 +288,21 @@ PASS: merged rows exactly preserve the three checkpoint slices; no incidental da
 ```
 
 The validation harness initially compared against Paris without allowing the explicitly requested `_relationship_reason` extension; that assertion was corrected, with no data change needed. No other output files were modified. Final whitespace validation uses `git diff --cached --check` before committing.
+
+## Final short-pass validation
+
+Updated validation output follows the final script run. No existing organization/robot rows were edited; three organizations and one robot were appended. The five-line strategic summary remains unchanged.
+
+```text
+PASS: JSON loads; exact requested top-level/Paris row keys plus _relationship_reason; 5-line summary
+PASS: all select/multi-select values match schemas/notion-schema.md; Region Europe; Status To verify
+PASS: every row has an HTTP(S) Sources URL; all organization websites HTTP(S)
+PASS: no internal or other-output organization/robot name duplicates (case-insensitive)
+PASS: Built by/Used by relations resolve; consulted URLs deduplicated; work/ absent
+PASS: original 121 organizations, 49 robots/tools and strategic summary unchanged
+Organizations: 124 {'Association': 20, 'Corporate': 16, 'Event': 9, 'Investor': 8, 'Open-source community': 2, 'Research lab': 34, 'School': 5, 'Startup': 30}
+Robots/models/tools: 50
+Distinct consulted URLs: 242
+Distinct row-cited URLs: 188
+Saturation: YES under fixed-121 rule; last three discovery yields 3/121, 10/121, 7/121 (<10%)
+```
