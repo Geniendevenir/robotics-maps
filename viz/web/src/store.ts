@@ -78,7 +78,20 @@ export const useStore = create<State>((set, get) => ({
   showAllEdges: false,
   hideIsolated: true,
   setData: (d) => set({ data: d, index: buildIndex(d) }),
-  setGroups: (groups) => set({ groups }),
+  setGroups: (groups) => set((state) => {
+    const groupIds = new Set(groups.map((group) => group.id));
+    let filters = state.filters;
+    for (const view of ["graph", "map"] as const) {
+      const groupId = filters[view].group_id;
+      if (groupId && !groupIds.has(groupId)) {
+        if (filters === state.filters) filters = { ...state.filters };
+        const nextFilter = { ...filters[view] };
+        delete nextFilter.group_id;
+        filters = { ...filters, [view]: nextFilter };
+      }
+    }
+    return filters === state.filters ? { groups } : { groups, filters };
+  }),
   setView: (view) => set({ view }),
   setFilters: (v, f) => set({ filters: { ...get().filters, [v]: f } }),
   patchFilters: (v, f) => set({ filters: { ...get().filters, [v]: { ...get().filters[v], ...f } } }),
