@@ -92,7 +92,7 @@ export const useStore = create<State>((set, get) => ({
     }
     return filters === state.filters ? { groups } : { groups, filters };
   }),
-  setView: (view) => set({ view }),
+  setView: (view) => set((state) => state.view === view ? state : { view, multi: [] }),
   setFilters: (v, f) => set({ filters: { ...get().filters, [v]: f } }),
   patchFilters: (v, f) => set({ filters: { ...get().filters, [v]: { ...get().filters[v], ...f } } }),
   select: (id, opts) => {
@@ -113,6 +113,7 @@ export const useStore = create<State>((set, get) => ({
         }
       }
     }
+    if (opts?.focus || (s.view ?? get().view) === "map") s.multi = [];
     set(s);
   },
   setMulti: (multi) => set({ multi }),
