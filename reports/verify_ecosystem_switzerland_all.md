@@ -1,0 +1,199 @@
+# Verification report: output/ecosystem_switzerland_all.json
+
+Verifier: Devin (independent of the researcher). Date: 2026-11-13.
+
+## Summary
+- Rows in: 174 (124 organizations, 50 robots/models). Out: 169 (120 organizations, 49 robots/models).
+- Verified: 166 · Corrected: 3 · Rejected: 5.
+- All 214 distinct source/website URLs were opened: 205 returned HTTP 200 via curl; the 7 Cloudflare/Akamai 403s (Hamilton, Portescap, GlobeNewswire), the 307 (Distalmotion) and short JS-rendered pages were re-opened in Chrome via CDP and loaded. Only failures: amld.ai (NXDOMAIN) and jaipur-robotics.com (domain expired) — both corrected.
+- Every row's name was found in the text of its cited sources; every number/year in descriptive fields was found in a cited source (exceptions were the researcher's own "2026/27" caveats on rows rejected below).
+- Select values checked against schemas/notion-schema.md: all valid. Region "Europe" is correct for Switzerland (no Switzerland option). 45 orgs have empty `Size / stage` (stage not documented in sources; left empty rather than guessed).
+- Removed non-Notion key `_relationship_reason` from all 124 organization rows. Status set to "To verify" on every retained row. No `Used in projects` key present.
+- Cross-file duplicate check against every output/*.json on origin/main (463 orgs, 482 robots/models, normalized names + substring scan): no row duplicates an existing organization or robot/model. Near-misses kept on purpose: org "ETH Zurich" vs main org "ETH Zurich Robotic Systems Lab (RSL)" (different entity); orgs "iniVation", "Gravis Robotics", "PX4 open-source community" vs main robots/models "iniVation event-camera systems", "Gravis autonomous excavator retrofit kit", "PX4" (different table/entity).
+- All `Built by` / `Used by` relations resolve to organizations in this file.
+- Activity check (active in 2026): rejected rows whose own sources show no current activity.
+
+## Notes / caveats for the syncer
+- Disney Research Zurich: disneyresearch.com homepage now only shows "Los Angeles Studios"; Zurich provenance relies on IEEE Spectrum (2023) and Disney's 2025 BDX article. Kept, but worth a live recheck.
+- Daedalean is now part of Destinus (Jan 2026); kept as the Zurich AI/autonomy hub per the acquisition release.
+- Sevensense is an ABB business unit since Jan 2024 (Type Corporate, Public/Large) — consistent with sources.
+
+## organizations
+
+- VERIFIED — Sevensense Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Verity: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Wingtra: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Voliro: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Ascento: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Gravis Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Tethys Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Duatic: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Fixposition: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Auterion: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Embotech: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Fotokite: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Scewo: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — RoBoa: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — iniVation: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Lightly: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Loki Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Autonomous Systems Lab (ASL): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Computational Robotics Lab (CRL): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Soft Robotics Lab (SRL): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — University of Zurich Robotics and Perception Group (RPG): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Computer Vision and Geometry Group (CVG): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Institute for Dynamic Systems and Control (IDSC): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Multi-Scale Robotics Lab (MSRL): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Wyss Zurich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH AI Center: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich RobotX Center for Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ZHAW Institute of Mechatronic Systems (IMS): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — University of Zurich (UZH): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ZHAW School of Engineering: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Robotics Club: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Student Project House: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Bitwäscherei: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — AMZ Racing: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Swissloop: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ARIS: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — European Robotics House: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Switzerland Innovation Park Zurich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Founderful: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Swisscom Ventures: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Swiss Robotics Day: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Robotics and AI Hackathon — The Gallery Zurich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — PX4 open-source community: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Flink Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Nanoflex Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Tinamu: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — SAEKI: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Disney Research Zurich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Zurich Sensory-Motor Systems Lab (SMS): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Pioneer Fellowship: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Venture Kick: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH Entrepreneur Club: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FabLab Zürich: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Verve Ventures: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Zürcher Kantonalbank: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — ETH D-MAVT Focus Projects program: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — F&P Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Tecan: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Kistler: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Flyability: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Ecorobotix: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Distalmotion: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Emovo Care: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — TWIICE: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Learning Algorithms and Systems Laboratory (LASA): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Computational Robot Design & Fabrication Lab (CREATE): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Laboratory of Intelligent Systems (LIS): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Reconfigurable Robotics Lab (RRL): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Biorobotics Laboratory (BioRob): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Translational Neural Engineering Lab (TNE): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Soft Transducers Laboratory (LMTS): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Robotics Center: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Robopoly: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Xplore: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — EPFL Innovation Park: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Hydromea: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — BlueBotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Cyberbotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Idiap Robot Learning & Interaction group: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — CSEM: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — IDSIA USI-SUPSI Autonomous Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — BFH HuCE Robotics Laboratory: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — HEIG-VD Institute of Industrial Automation (iAi): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — HEPIA Robotics and Automation group: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FHNW Institute of Automation: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — HSLU Mobile and Industrial Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — OST Institute for Lab Automation and Mechatronics (ILT): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Güdel: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Hamilton AG (Swiss robotics operations): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Schindler: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Swiss Robotics Association: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Innosuisse: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- CORRECTED — AMLD Intelligence Summit (Applied Machine Learning Days): Website amld.ai is NXDOMAIN; replaced with official https://www.appliedmldays.org/ and added it to Sources.
+- VERIFIED — LauzHack: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Webots open-source community: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — University of Basel BIROMED-Lab: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Mobsya: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- REJECTED — HackZurich: Official landing page (hackzurich.com, opened via CDP) says HackZurich is "currently on hiatus"; not an active 2026 event.
+- VERIFIED — START Hack: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — START Summit: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — BaselHack: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- REJECTED — Swiss Drone Days: Only source is an NCCR archive page documenting editions up to June 2022; no 2025-2026 edition found, not active in 2026.
+- VERIFIED — Post Tenebras Lab: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FIXME Hackerspace: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FabLab Renens: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FabLab Bern (89grad project): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Starship Factory: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- REJECTED — Club Vaudois de Robotique Autonome (CVRA): cvra.ch shows nothing after the 2019 season / "Join us for 2022"; latest GitHub activity Mar 2024; no 2026 activity evidence.
+- REJECTED — NCCR Robotics (legacy program): Program ended 30 Nov 2022 per its own source; not an active organization in 2026 (successor Swiss Robotics Association is already a row).
+- VERIFIED — NCCR Automation: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Swiss Drone and Robotics Centre (SDRC): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — University of Geneva MIRALab: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — FAULHABER SA (Swiss operations): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Portescap SA (Swiss operations): official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Sonceboz: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- CORRECTED — Daedalean: daedalean.ai now redirects to destinus.com (acquisition completed Jan 2026 per PR Newswire); Website set to https://www.destinus.com/.
+- VERIFIED — Dufour Aerospace: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Kickfund: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — Coppelia Robotics: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- CORRECTED — Jaipur Robotics: Website jaipur-robotics.com has expired (Cloudflare domain-expired page); replaced with official https://www.jaipurrobotics.com/ linked from the AGIRE Sept 2026 release.
+- VERIFIED — MESH: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+- VERIFIED — MIKAJAKI: official site and all cited sources load (HTTP 200 or CDP) and name/describe the organization; select values valid.
+
+## robots_models
+
+- VERIFIED — Alphasense Position: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — WingtraRAY: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Voliro T: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Ascento Guard: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Tethys One: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DXTR: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DynaArm: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DuaTorso: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DuaRover: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Fotokite Sigma: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Scewo BRO: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — RoBoa confined-space robot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Loki facility-cleaning robot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — AuterionOS: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Flinkbot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Flinkbot mini: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — TINAMU RMS Automated Robotic Monitoring System: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — BDX droids: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — LightlyTrain: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — LightlyStudio: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Voxblox: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Flightmare: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Webots: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — PbDlib: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Lio: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Sola: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Fluent Automation Workstation: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Elios 3: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DEXTER: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — ARA620 UHP Sprayer: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Emovo Clinic: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Emovo Research: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — TWIICE personal exoskeleton: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — EXRAY: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — ANT navigation technology: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Mori3: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Tribot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Pleurobot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Salamandra robotica: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — AmphiBot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Kistler 9306A: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Schindler R.I.S.E: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Thymio 3: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — P-Rob: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — CoppeliaSim: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- REJECTED — Debra: Historical CVRA Eurobot robot (since 2011), current use unknown; builder club rejected as inactive.
+- VERIFIED — Nadine social robot: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — Aero-200: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — DufourOS: cited source(s) load and describe this product/model with the stated builder; select values valid.
+- VERIFIED — EyeLib: cited source(s) load and describe this product/model with the stated builder; select values valid.
