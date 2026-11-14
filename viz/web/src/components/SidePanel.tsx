@@ -4,6 +4,8 @@ import { api } from "../api";
 import { arr, isOpen, str } from "../filters";
 import { branchColor, GROUP_COLORS, TYPE_LABELS } from "../colors";
 import type { MapNode } from "../types";
+import Markdown from "./Markdown";
+import Resources from "./Resources";
 
 const linkify = (s: string) =>
   s.split(/(https?:\/\/[^\s<>"')\]]+)/g).map((part, i) =>
@@ -52,6 +54,7 @@ export function NodeChip({ id }: { id: string }) {
     <button className={`nchip t-${n.type}`} onClick={() => select(id, { focus: true })} title={TYPE_LABELS[n.type]}>
       {n.image ? <img src={n.image} alt="" /> : <i style={{ background: branchColor(n.branch, branches) }} />}
       {n.name}
+      {n.lesson && <span className="lesson-tag" title="Has a beginner explanation">lesson</span>}
     </button>
   );
 }
@@ -119,6 +122,15 @@ export default function SidePanel() {
         </div>
       </div>
       {sec.hero.map((k) => str(F[k]) && <p key={k} className="hero"><b>{k === "Deliverable" ? "Deliverable: " : ""}</b>{linkify(str(F[k]))}</p>)}
+      {n.lesson && (
+        <>
+          <details className="lesson" open>
+            <summary>Beginner explanation</summary>
+            <Markdown text={n.lesson.lesson_md} />
+          </details>
+          <Resources items={n.lesson.resources} />
+        </>
+      )}
       {n.type === "project" && (
         <div className="scores">
           <Axis label="Novelty" v={F["Novelty"]} /><Axis label="Autonomy" v={F["Autonomy"]} />

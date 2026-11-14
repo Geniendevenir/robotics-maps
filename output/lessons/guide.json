@@ -1,0 +1,601 @@
+{
+  "title": "Robotics from zero",
+  "intro_md": "## What is a robot?\nA robot is a machine that senses its surroundings, computes what to do, and acts on the physical world. It may be a wheeled base, a factory arm, a legged machine, or a small desktop companion. A useful mental model is the robot loop: measure → estimate → decide → move → measure again. A webcam provides pixels, a joint encoder provides an angle, and a motor turns an electrical command into torque. A program connects these parts, but the body and environment decide what actions are possible.\n\nA robot differs from a typical web service because its output can move something, contact a person, or fall over. The software must handle uncertain measurements, delays, mechanical limits, and changing surroundings. For example, if an SO-101 arm is told to reach a cube, its software must know the cube's position, translate that target into joint angles, move its servos, and check whether the gripper actually picked the object up. A successful command is not the same as a successful physical action.\n\n## The fields of robotics and how they fit together\nRobotics combines several fields into one working system. Mechanisms and actuation define the links, joints, wheels, and motors. Embedded electronics connect computers to sensors and actuators. Sensing measures the world; perception turns camera pixels into objects or marker poses. Kinematics relates joint angles to tool position, while dynamics describes forces and motion. Control chooses motor commands, and planning selects a route or arm trajectory that avoids obstacles.\n\nState estimation combines noisy measurements to estimate where the robot is; simultaneous localization and mapping (SLAM) estimates position while building a map. Simulation lets a team test a model before using hardware. Robot learning uses demonstrations or interaction data to train policies. Human–robot interaction (HRI) studies how people understand and safely work with robots. No single field solves the task alone. A pick-and-place robot may use an AprilTag for vision, a Kalman filter for position, inverse kinematics for arm angles, PID control for joints, and a learned policy for grasp timing.\n\n## Hardware vs software: what changes when code touches the real world\nRobotics software is still software: it uses functions, data structures, tests, logs, and version control. The difference is that its inputs and outputs are connected to noisy, delayed physical devices. A motor can take longer to move under load; a camera can return blurry frames; a wheel can slip. A command may also saturate at a hardware limit. These effects mean that a program that works in a small simulation can fail on the real robot.\n\nUse the same habits you use when debugging a distributed system: timestamp measurements, record versions, make failures observable, and test one component at a time. Add robotics-specific checks too: units, coordinate frames, joint limits, power, and physical clearance. For example, a target written as 0.3 may mean meters, centimeters, or a normalized value; label units at system boundaries. A controller should also report when a sensor is missing instead of silently treating a missing reading as zero.\n\n## How to use these maps\nThe world map helps you find organizations, robots, projects, and their connections. The Holygraph whiteboard arranges knowledge and projects by branch and learning level, showing prerequisites. Start from a node that looks interesting, read its summary, then open its lesson and resources. Use “start here” as a suggested path, not an exam: if you already understand a prerequisite, move forward. Use groups to collect a team's project stack, and use Guide chat to ask for clarification when it is available.\n\nWhen following a link, prefer the current official documentation or paper for exact commands and specifications. Blog posts and videos are useful for seeing a system move; they may show an older software version. Write down the device model, firmware, library version, and measurement units before reproducing an example. The map describes relationships, not guaranteed compatibility or support.\n\n## Suggested order\nFirst learn the physical vocabulary: links, joints, actuators, voltage, sensors, and coordinate frames. Next write a small controller in simulation, then use a camera or marker to estimate a target. Learn how a planner converts a target into motion, and how calibration and state estimation handle uncertainty. Only then collect demonstrations or train a robot policy. A practical first chain is: assemble a SO-101 → teleoperate it → record several safe demonstrations → train or run a baseline policy → evaluate on new object positions.\n\nAt every step, change one variable and measure the outcome. If the arm misses, check camera calibration, frame transforms, joint calibration, and gripper timing before changing the learned model. Keep the experiment reproducible: save code, data, software version, and a short note about the result. Robotics becomes less mysterious when each physical behavior can be traced through a sensor reading, a computation, and an actuator command.",
+  "chapters": [
+    {
+      "id": "mechanisms-actuation",
+      "title": "Mechanisms & actuation: giving a robot a body",
+      "branch": "Mechanisms & actuation",
+      "body_md": "## What this field is about\nMechanisms are the links, joints, wheels, gears, belts, and grippers that constrain how a robot can move; an actuator is the device that supplies motion. A LeRobot SO-101 arm makes this visible: six joints move a wrist-mounted gripper, and the follower uses six FEETECH STS3215 servos. Changing link length changes reach and leverage before a line of software is written.\n\n## Where it sits in the robot loop\nThe mechanism is the physical output stage. A command becomes motor torque, the gears and links turn that torque into movement, and encoders report joint position. A long arm can reach farther but magnifies the load at its shoulder. A wheel that slips can invalidate the controller's assumption that motor rotation equals distance traveled.\n\n## The big ideas\nA **link** is a relatively rigid part; a **joint** allows movement between links; **torque** is turning effort. A gear ratio trades speed for torque: ideal 1:345 reduction means a motor turns 345 times for one output turn, increasing output torque while reducing output speed. Real gears add friction and backlash, the small lost motion when direction reverses. Design for payload, reach, stiffness, and collision clearance together.\n\nThink of a mechanism like a software API: it exposes only the operations its structure can physically perform. A clean interface cannot make an arm reach behind its base if the links and joints cannot get there.\n\n## What you'll be able to build\nSketch a two-link arm, mark its joints, identify its motor and gripper, and predict which link sees the largest load. Compare the SO-101's compact tabletop reach with ANYmal's four-legged structure: both are robots, but their mechanisms solve different tasks. Start with actuator sizing and gear trains, then model a part in CAD. Before powering hardware, check that the arm can move through its full range without hitting a table or person.",
+      "start_here": [
+        "k:electric-actuator-architectures-mechanical-trade-offs",
+        "k:actuator-sizing-torque-inertia-and-thermal-duty",
+        "k:spur-and-planetary-gear-trains",
+        "p:intro-cad-and-3d-print-a-robot-part"
+      ],
+      "resources": [
+        {
+          "title": "Assemble SO-101",
+          "url": "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the LeRobot SO-101 build and see where its joints and six servos sit."
+        },
+        {
+          "title": "General Purpose Input/Output (GPIO)",
+          "url": "https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/gpio.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "A manufacturer example connects gear reduction, torque, encoder, and voltage to a real actuator."
+        },
+        {
+          "title": "The SO-ARM100 project",
+          "url": "https://github.com/TheRobotStudio/SO-ARM100",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The open mechanical design files let you inspect link shapes and printed parts."
+        },
+        {
+          "title": "Robotic Systems: Anatomy of a Robot",
+          "url": "https://motion.cs.illinois.edu/RoboticSystems/AnatomyOfARobot.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Kris Hauser’s robot anatomy chapter explains mechanisms and actuators rather than general control."
+        }
+      ]
+    },
+    {
+      "id": "embedded-electronics",
+      "title": "Embedded & electronics: connecting code to hardware",
+      "branch": "Embedded & electronics",
+      "body_md": "## What this field is about\nEmbedded electronics are the circuits and small computers that let software communicate with motors and sensors. A microcontroller reads a command, updates an output pin or bus, and repeats on a fixed schedule. On the SO-101, a host computer talks to FEETECH servos through a serial bus; the motor's control board handles the low-level position loop while LeRobot coordinates the arm.\n\n## Where it sits in the robot loop\nThe electronic path runs from program to processor, interface, actuator, and sensor feedback. **UART** sends serial bits between devices; **I²C** shares a clocked two-wire bus; **SPI** uses clock and data lines for faster peripheral exchange; **CAN** is a robust multi-node bus used in many mobile robots. The right choice depends on distance, speed, wiring, and fault tolerance.\n\n## The big ideas\nVoltage is electrical potential, current is charge flow, and power is voltage times current. Logic signals are not motor power: a microcontroller pin cannot safely drive a servo directly. A shared bus can address multiple devices, but each needs a unique ID and the protocol must define timing and error handling. A watchdog is a timer that puts the system into a safe state if commands stop arriving.\n\nTreat a bus like a network protocol: a packet has an address, a command, and a response. On the SO-101, each servo has an ID on the shared serial line, so software can command joint 3 without creating six separate USB connections.\n\n## What you'll be able to build\nYou will be able to trace a sensor wire to a processor and explain where motor power enters the circuit. Start with the LeRobot wiring and setup instructions, then read a servo's voltage and protocol limits before connecting it. A concrete debugging test is to send a position request to one servo ID and confirm that the reply reports the expected ID and position; silence suggests power, wiring, baud rate, or ID mismatch.",
+      "start_here": [
+        "k:electronics-fundamentals-for-robots",
+        "k:microcontrollers-bare-metal-firmware",
+        "k:communication-buses-uart-i2c-spi-can",
+        "p:intro-drive-a-servo-motor-from-code"
+      ],
+      "resources": [
+        {
+          "title": "Arduino Unit 5: Serial Communication",
+          "url": "https://www.youtube.com/watch?v=-cJ86aF_thg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A university lecture walks through Arduino serial and I²C communication, the same family of links used to connect embedded boards and devices."
+        },
+        {
+          "title": "General Purpose Input/Output (GPIO)",
+          "url": "https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/gpio.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The manufacturer specifies 7.4 V supply, TTL half-duplex serial, and device IDs."
+        },
+        {
+          "title": "Serial",
+          "url": "https://docs.arduino.cc/language-reference/en/functions/communication/serial/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the maintained hardware drivers and serial-bus implementation."
+        },
+        {
+          "title": "Universal Asynchronous Receiver/Transmitter (UART)",
+          "url": "https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/uart.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "A focused reference for processor pins, interfaces, and embedded program structure."
+        }
+      ]
+    },
+    {
+      "id": "sensing",
+      "title": "Sensing: measuring the world",
+      "branch": "Sensing",
+      "body_md": "## What this field is about\nSensing turns physical events into numbers a program can use. An encoder reports shaft rotation, an inertial measurement unit (IMU) reports acceleration and angular rate, and a camera reports pixels. The SO-101's joint servos include magnetic encoders, so LeRobot can observe joint positions; a separate webcam can show whether the gripper is over a target.\n\n## Where it sits in the robot loop\nSensors close the loop: a command changes the robot, sensors measure the result, and software updates its next action. Measurements are not the world itself. A camera sees a 2-D projection; an IMU measures motion plus bias and vibration; an encoder measures angle but cannot tell whether a wheel slipped on the floor.\n\n## The big ideas\n**Resolution** is the smallest step a sensor can distinguish; **noise** is random variation; **bias** is a persistent offset. A camera's intrinsic calibration describes its focal length and optical center, while distortion coefficients model a lens bending straight lines. For an AprilTag viewed by a calibrated camera, the tag's known corners provide geometric correspondences from image pixels to physical space.\n\nA sensor is like an API response with uncertainty: the field name can be correct while the value is stale or noisy. A controller should use timestamps and quality checks instead of trusting every number as perfect truth.\n\n## What you'll be able to build\nCompare encoder, IMU, and camera data by asking what each directly measures and what it only implies. In a webcam calibration, photograph a checkerboard from several angles, estimate the camera matrix, then use that calibration before estimating tag pose. OpenCV's current 4.x ArUco tutorial demonstrates detection and pose estimation; the same ideas apply to AprilTags, but the marker families and APIs are not interchangeable. Record a sensor value with its timestamp and units before using it in a robot loop.",
+      "start_here": [
+        "k:sensor-characteristics-uncertainty-noise",
+        "k:joint-encoders-proprioceptive-sensing",
+        "k:imus-accelerometers-gyroscopes-magnetometers",
+        "k:rgb-cameras-intrinsic-calibration"
+      ],
+      "resources": [
+        {
+          "title": "OpenCV: Detection of ArUco Markers",
+          "url": "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The OpenCV 4.13.0 tutorial explains marker dictionaries, detection, and pose estimation."
+        },
+        {
+          "title": "Camera calibration and 3D reconstruction",
+          "url": "https://docs.opencv.org/4.13.0/dc/dbb/tutorial_py_calibration.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The current OpenCV 4.13.0 Python tutorial explains intrinsic camera calibration with a checkerboard."
+        },
+        {
+          "title": "Camera Calibration using Zhang's Method (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=-9He7Nu3u8s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Cyrill Stachniss derives checkerboard calibration and explains how it estimates a camera's intrinsic parameters."
+        },
+        {
+          "title": "Robotic sensors and introduction to computer vision",
+          "url": "https://stanfordasl.github.io/PoRA-I/aa174a_aut2425/pdfs/lecture/lecture_9.pdf",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "This 2024 Stanford lecture defines sensor resolution, bandwidth, accuracy, and random versus systematic errors."
+        }
+      ]
+    },
+    {
+      "id": "kinematics-dynamics",
+      "title": "Kinematics & dynamics: describing robot motion",
+      "branch": "Kinematics & dynamics",
+      "body_md": "## What this field is about\nKinematics describes motion without asking what forces caused it; dynamics studies the forces and masses that do. A robot arm is a chain of coordinate frames attached to its base, links, and tool. If a camera sees a tag 0.30 m in front of it and the camera is mounted 0.10 m above the arm base, transforming between those frames lets the robot express the tag location relative to its gripper.\n\n## Where it sits in the robot loop\nA motion planner may ask the tool to move to a point in the room, but each motor needs a joint angle. **Forward kinematics** maps joint angles to tool pose; **inverse kinematics** searches for joint angles that produce a requested pose. Dynamics then predicts required torque while the links accelerate or hold a load.\n\n## The big ideas\nA coordinate frame is an origin plus three axes. A **homogeneous transform** is a 4×4 matrix that combines rotation and translation. Suppose frame B is rotated 90° counter-clockwise from frame A and its origin is 2 m to A's right. A point at B=(1,0,0) becomes A=(2,1,0): rotate to (0,1,0), then add (2,0,0). Order matters because rotation and translation do not generally commute.\n\nFrames behave like typed values in software: adding a camera-frame point to a map-frame point is a bug even if both are three floating-point numbers. ROS 2 tf2 stores timestamped transforms so components can convert between frames consistently.\n\n## What you'll be able to build\nDraw the base, shoulder, elbow, and tool frames on an SO-101, then explain how a target point moves through the chain. Use a 4×4 transform to convert a point by hand, and label both source and destination frames. Start with rigid-body transforms before forward kinematics; it prevents a common mistake—treating a robot's measured joint angle as if it were already a world-space position.",
+      "start_here": [
+        "k:rigid-body-motion-coordinate-frames",
+        "k:robot-description-formats-urdf-mjcf",
+        "k:forward-kinematics-dh-product-of-exponentials",
+        "p:intro-robot-anatomy-coordinate-frames-in-sim"
+      ],
+      "resources": [
+        {
+          "title": "3.3.1. Homogeneous Transformation Matrices",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The chapter video explains 4×4 transforms and changing between frames."
+        },
+        {
+          "title": "tf2 concepts",
+          "url": "https://docs.ros.org/en/humble/Concepts/Intermediate/About-Tf2.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "ROS 2 documents how timestamped coordinate transforms are represented and queried."
+        },
+        {
+          "title": "Quaternions interactive",
+          "url": "https://eater.net/quaternions",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "An interactive visualization makes 3-D rotation representation easier to explore."
+        },
+        {
+          "title": "Rotation",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+          "format": "Docs",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "The specific rigid-body motion chapter develops rotation and translation mathematically."
+        }
+      ]
+    },
+    {
+      "id": "control",
+      "title": "Control: making motors do what you mean",
+      "branch": "Control",
+      "body_md": "## What this field is about\nControl makes a robot follow a target despite disturbances and imperfect models. A motor controller compares desired position with measured position and changes motor effort to reduce the error. On a SO-101 joint, if the target is 30° and the encoder reads 24°, the error is +6°; the controller must move the joint toward the target without overshooting or oscillating.\n\n## Where it sits in the robot loop\nA controller runs repeatedly: read sensors, compute an error, choose an output, and send it to an actuator. The **proportional** term reacts to current error, the **integral** term accumulates persistent error, and the **derivative** term reacts to how quickly error changes. This is PID control. Too much gain can make the arm shake; too little makes it sluggish.\n\n## The big ideas\nThe sampling period is the time between updates. A controller that assumes a 10 ms period but actually runs every 100 ms can behave differently. Saturation means the requested output exceeds the motor's limit; integral windup happens when the integral keeps growing during saturation. Begin with a simple plant model and tune one term at a time. The robot's mass, gearing, friction, and load all affect the response.\n\nA PID loop resembles a retry-and-correct routine: compare the requested state with the observed state, then make a bounded adjustment. Unlike ordinary software, a bad update can physically move hardware, so timing and output limits matter.\n\n## What you'll be able to build\nImplement a tiny position loop in simulation before testing a motor. For a target of 10 units and measured value 8, error is 2; with proportional gain 0.4, output is 0.8 before limits. Then add integral action only if a constant load leaves a steady error. The MathWorks Tech Talk visualizes each term; ROS 2 Control documents the controller interface used in real robot stacks.",
+      "start_here": [
+        "k:feedback-control-pid",
+        "k:dynamic-system-modeling-state-space",
+        "k:stability-frequency-domain-analysis",
+        "p:pid-tuning-playground-in-simulation"
+      ],
+      "resources": [
+        {
+          "title": "What Is PID Control? | Understanding PID Control, Part 1",
+          "url": "https://fr.mathworks.com/videos/understanding-pid-control-part-1-what-is-pid-control--1527089264373.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "MathWorks’ focused video introduces P, I, and D with a control-system example."
+        },
+        {
+          "title": "PID controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/pid_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Current ROS 2 Control docs describe the PID controller parameters and interfaces."
+        },
+        {
+          "title": "CTM: PID Tutorial",
+          "url": "https://www2.ensc.sfu.ca/people/faculty/saif/ctm/PID/PID.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "This tutorial works through P, I, and D on a 1 kg mass-spring-damper plant and compares rise time, overshoot, and steady-state error."
+        },
+        {
+          "title": "PID Controller Types for Tuning",
+          "url": "https://www.mathworks.com/help/control/ug/pid-controller-types-for-tuning.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The MATLAB reference compares practical PID forms and tuning choices."
+        }
+      ]
+    },
+    {
+      "id": "simulation",
+      "title": "Simulation: practice in a computed world",
+      "branch": "Simulation",
+      "body_md": "## What this field is about\nA robot simulator computes a virtual robot's motion so a team can test ideas before using hardware. A scene contains geometry, mass, joints, contact surfaces, and sensors; a physics engine advances them in small time steps. MuJoCo is used for research and robotics examples, while NVIDIA Isaac Lab builds GPU-accelerated robot-learning environments on Isaac Sim.\n\n## Where it sits in the robot loop\nThe same loop runs in simulation and on hardware: policy or controller reads simulated sensors, produces actions, and receives the next state. But a simulator is a model, not a photocopy of reality. A gripper that succeeds in a frictionless simulation may fail on a smooth real object. Timing, contact, camera exposure, actuator limits, and noise can create sim-to-real gaps.\n\n## The big ideas\nA **time step** is the interval between physics updates. Smaller steps can resolve fast motion and collisions more accurately, but cost more computation. A **collision shape** approximates the solid geometry used to detect contact; a visual mesh can be detailed while its collision shape stays simple. Validate units, masses, joint limits, and friction before trusting a result.\n\nSimulation is like a test double in software: it enables repeatable experiments, but it only covers behaviors represented by the model. A passing simulated test is evidence about that model, not proof that a physical robot is safe or reliable.\n\n## What you'll be able to build\nStart with a one-joint pendulum or an arm moving a cube, then compare the same trajectory in MuJoCo and Isaac Lab. The Isaac Lab installation tutorial shows a real workflow: launch an example task and observe simulated agents learning locomotion. Record the simulator version, time step, and random seed so another student can reproduce the run. Add sensor noise and imperfect friction before judging whether a learned policy is robust.",
+      "start_here": [
+        "k:time-stepping-numerical-fidelity",
+        "k:collision-geometry-contact-solver-fidelity",
+        "k:robot-and-scene-formats-urdf-mjcf-sdf-usd",
+        "p:intro-train-an-rl-policy-in-a-gpu-simulator"
+      ],
+      "resources": [
+        {
+          "title": "Getting Started with Isaac Lab #1: Installation & Setup",
+          "url": "https://www.youtube.com/watch?v=YhoztKRNmE0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A hands-on Isaac Lab tutorial installs the simulator and launches a reinforcement-learning example."
+        },
+        {
+          "title": "Quickstart",
+          "url": "https://docs.nvidia.com/isaaclab/isaac-lab/quickstart",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The current Isaac Lab guide provides supported setup commands and first examples."
+        },
+        {
+          "title": "MuJoCo overview",
+          "url": "https://mujoco.readthedocs.io/en/stable/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The official overview describes MuJoCo’s physics engine and simulation concepts."
+        },
+        {
+          "title": "NVIDIA Isaac Lab",
+          "url": "https://github.com/isaac-sim/IsaacLab",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "The source repository contains the maintained simulator tasks and example environments."
+        }
+      ]
+    },
+    {
+      "id": "perception",
+      "title": "Perception: turning sensor data into meaning",
+      "branch": "Perception",
+      "body_md": "## What this field is about\nPerception turns sensor measurements into useful descriptions of objects and places. A camera gives an image; a perception program may report “AprilTag ID 7 is 0.6 m ahead, rotated 10°.” The estimate depends on camera calibration, image quality, and the geometry encoded in the marker. A robot can then align its gripper or estimate its location relative to a known tag.\n\n## Where it sits in the robot loop\nPerception sits between raw sensing and decisions. The camera driver returns pixels; the detector finds corners and decodes the marker; pose estimation converts corners to a 3-D transform; planning or control consumes that transform. An undetected tag is not the same as a tag at the origin, so software must distinguish “no detection” from a valid zero-valued measurement.\n\n## The big ideas\nA **fiducial marker** is a deliberately designed visual pattern with a machine-readable identity. AprilTag and ArUco are related square-marker systems, but their dictionaries and libraries differ. OpenCV 4.13.0's current ArUco tutorial demonstrates candidate detection, ID decoding, and pose estimation; it also includes AprilTag-family dictionaries. Camera intrinsics and the marker's real side length are needed to recover scale in meters.\n\nThink of perception as parsing a structured message from pixels: first locate a candidate, then validate its code, then attach a confidence and coordinate frame. Each stage can fail differently.\n\n## What you'll be able to build\nPrint a tag, place it in front of a calibrated webcam, and display its ID and corner locations. For example, use a known 0.10 m marker and a calibrated camera; pose estimation can then distinguish a small nearby tag from the same-sized tag far away. Use OpenCV's 4.x API rather than the obsolete 4.0.1 calibration page, and record the camera model and tag family with the result.",
+      "start_here": [
+        "k:camera-models-image-formation",
+        "k:camera-calibration-intrinsic-extrinsic-hand-eye",
+        "k:classical-image-processing-feature-matching",
+        "k:fiducial-markers-apriltag-aruco",
+        "p:intro-calibrate-a-webcam-and-track-apriltags"
+      ],
+      "resources": [
+        {
+          "title": "[GSoC 15] Detection of ArUco markers using OpenCV aruco module",
+          "url": "https://www.youtube.com/watch?v=IsXWrcB_Hvs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "This is the sample detection video embedded in OpenCV’s current marker tutorial."
+        },
+        {
+          "title": "Smoothing Images",
+          "url": "https://docs.opencv.org/4.13.0/d4/d13/tutorial_py_filtering.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "This OpenCV tutorial compares averaging, Gaussian, median, and bilateral filters used before feature detection."
+        },
+        {
+          "title": "AprilTag 3",
+          "url": "https://github.com/AprilRobotics/apriltag",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The official detector implements AprilTag decoding and returns tag corners and IDs."
+        },
+        {
+          "title": "AprilTag: A robust and flexible visual fiducial system",
+          "url": "https://april.eecs.umich.edu/software/apriltag",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The original project page links the paper that introduced the AprilTag family."
+        }
+      ]
+    },
+    {
+      "id": "state-estimation-slam",
+      "title": "State estimation & SLAM: knowing where the robot is",
+      "branch": "State estimation & SLAM",
+      "body_md": "## What this field is about\nState estimation combines imperfect sensor readings into a best estimate of what a robot is doing. A mobile robot may use wheel encoders for motion, an IMU for rotation, and a camera or GPS for position. **SLAM** means simultaneous localization and mapping: estimate the robot's location while building a map of an unknown environment.\n\n## Where it sits in the robot loop\nSensors supply measurements; an estimator turns them into a time-stamped state; planning uses that state to choose a route. Wheel odometry drifts because small wheel errors accumulate. A camera may correct that drift when it recognizes a landmark. A Kalman filter is one way to combine a prediction with a new, noisy measurement while tracking uncertainty.\n\n## The big ideas\nIn a one-dimensional example, a robot predicts position 10 m with variance 4 m². GPS measures 12 m with variance 1 m². The Kalman gain is 4/(4+1)=0.8, so the updated estimate is 10+0.8(12−10)=11.6 m; the updated variance is 0.8 m². The filter trusts the more precise GPS measurement more, but does not discard its motion prediction.\n\nAn estimator is like merging multiple logs with timestamps and confidence levels: the newest value is not automatically the best value. Sensor frames and clocks must agree, or a mathematically correct update can combine measurements from different moments.\n\n## What you'll be able to build\nPlot predicted and corrected position on a line, then add noisy wheel and GPS samples. Inspect how uncertainty shrinks after a reliable measurement and grows while the robot moves without observations. The ROS `robot_localization` package applies these ideas to robot messages, while the Python book makes the update equations runnable. Do not call the result “ground truth”: it is an estimate with assumptions and uncertainty.",
+      "start_here": [
+        "k:bayesian-state-estimation-uncertainty",
+        "k:wheel-inertial-dead-reckoning",
+        "k:kalman-filtering-multisensor-fusion",
+        "p:fuse-simulated-wheel-and-imu-messages"
+      ],
+      "resources": [
+        {
+          "title": "Why Use Kalman Filters? | Understanding Kalman Filters, Part 1",
+          "url": "https://ch.mathworks.com/videos/understanding-kalman-filters-part-1-why-use-kalman-filters--1485813028675.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "MathWorks illustrates noisy position measurements from IMU, odometer, and GPS."
+        },
+        {
+          "title": "The Kalman Filter",
+          "url": "https://www.kalmanfilter.net/default.aspx",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "A step-by-step guide derives the one-dimensional predict and update equations."
+        },
+        {
+          "title": "Kalman and Bayesian Filters in Python",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Executable notebooks let students reproduce a scalar filter and inspect uncertainty."
+        },
+        {
+          "title": "robot_localization",
+          "url": "https://github.com/cra-ros-pkg/robot_localization",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The ROS package fuses real odometry and sensor messages into a state estimate."
+        }
+      ]
+    },
+    {
+      "id": "planning",
+      "title": "Planning: choosing a route or motion",
+      "branch": "Planning",
+      "body_md": "## What this field is about\nPlanning chooses a sequence of safe motions from a start to a goal. A mobile robot may need a route through corridors; an arm may need a collision-free joint path to a cup. The map or robot geometry defines which motions are possible, while obstacles rule out others. Planning often returns a path; a controller still has to track it.\n\n## Where it sits in the robot loop\nA perception system supplies obstacles and robot pose, a planner searches for a route or trajectory, and a controller turns that plan into wheel or joint commands. In ROS 2, Nav2 handles mobile navigation tasks; MoveIt plans arm motion. The planner's output depends on the map, robot footprint, joint limits, and collision model, so a stale map can invalidate an otherwise good path.\n\n## The big ideas\nA **configuration** is the robot's pose or joint-angle vector. A **configuration space** treats each possible configuration as a point; collision configurations become forbidden regions. A* searches a graph using an estimate of remaining cost. RRT grows a tree by sampling configurations and is useful in high-dimensional arm spaces. Both trade computation against path quality and completeness.\n\nA planner resembles a route-finding service in software: it returns a proposed route given a graph and constraints, but the caller must validate those inputs and handle “no path.” A geometric path also needs timing and velocity limits before a robot can execute it.\n\n## What you'll be able to build\nCreate a 2-D grid with a rectangular obstacle, run A*, and compare the result with a straight-line route that collides. Then use a simulator or Nav2 to plan a path for a differential-drive robot. On an arm, inspect MoveIt's collision scene and plan a grasp approach. Start with a small deterministic map before debugging a full sensor-driven environment.",
+      "start_here": [
+        "k:configuration-space-collision-checking",
+        "k:graph-search-incremental-replanning",
+        "k:sampling-based-motion-planning",
+        "p:intro-ros-2-and-nav2-with-a-simulated-mobile-robot"
+      ],
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 10.5:  Sampling Methods for Motion Planning (Part 2 of 2)",
+          "url": "https://www.youtube.com/watch?v=Ao7p_xiUu4s",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Northwestern Robotics demonstrates sampling-based paths through configuration space, a core planning method."
+        },
+        {
+          "title": "Motion Planning Pipeline",
+          "url": "https://moveit.picknik.ai/main/doc/examples/motion_planning_pipeline/motion_planning_pipeline_tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "This focused tutorial shows how MoveIt combines a planner with request adapters that prepare and post-process a path."
+        },
+        {
+          "title": "Motion Planning",
+          "url": "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "MoveIt's motion-planning overview explains how a robot arm turns a goal into a collision-aware path."
+        },
+        {
+          "title": "Underactuated Robotics: Planning",
+          "url": "https://underactuated.mit.edu/planning.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Russ Tedrake’s specific planning chapter connects search, dynamics, and trajectory generation."
+        }
+      ]
+    },
+    {
+      "id": "manipulation",
+      "title": "Manipulation: reaching, grasping, and moving objects",
+      "branch": "Manipulation",
+      "body_md": "## What this field is about\nManipulation is using a robot arm, hand, or gripper to change the world. Pick-and-place sounds simple—reach, grasp, lift, move, release—but each step depends on geometry, force, contact, and uncertainty. The SO-101 has a parallel gripper at the end of a six-joint arm; ALOHA uses two low-cost arms to collect demonstrations for bimanual tasks.\n\n## Where it sits in the robot loop\nA manipulation pipeline estimates an object's pose, chooses a grasp, plans an approach, closes the gripper, checks whether the object moved, and then plans a transfer. A pose estimate that is off by 2 cm may cause a narrow gripper to miss. Tactile or motor-current feedback can help detect contact, but a basic setup may use camera images and joint positions only.\n\n## The big ideas\nA **grasp** is a contact arrangement that holds an object; a **workspace** is the set of positions the tool can reach. A grasp is stable when the object's weight and disturbances can be balanced by contact forces. A trajectory should approach along a clear direction, close only after alignment, and verify the result before lifting.\n\nThink of manipulation as a transaction: observe, attempt the grasp, verify that the object was acquired, then commit the transfer. If verification fails, retry or recover instead of pretending the action succeeded.\n\n## What you'll be able to build\nStart with a cube on a table and teleoperate the SO-101 to pick it up. Use a fixed camera and mark the object's center; record each attempt so misses become diagnosable. ALOHA's ACT work used action chunks to perform tasks such as bimanual manipulation, while LeRobot provides a current recording and rollout workflow. Keep objects lightweight and keep hands out of the arm's path during powered tests.",
+      "start_here": [
+        "k:grippers-end-effectors",
+        "k:grasp-mechanics",
+        "k:pick-and-place-pipeline",
+        "k:teleoperation-demonstration-collection-for-arms"
+      ],
+      "resources": [
+        {
+          "title": "ALOHA: A Bimanual Teleoperation System with Low-Cost Hardware",
+          "url": "https://tonyzhaozh.github.io/aloha",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The project page demonstrates bimanual manipulation and links the recorded task videos."
+        },
+        {
+          "title": "Ch. 3 - Basic Pick and Place",
+          "url": "https://manipulation.csail.mit.edu/pick.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "This chapter walks through a pick-and-place pipeline, from perception and grasp selection to moving an object."
+        },
+        {
+          "title": "Pick and Place with MoveIt Task Constructor",
+          "url": "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The official documentation connects a real six-joint arm, gripper, calibration, and teleoperation."
+        },
+        {
+          "title": "MoveIt 2 motion planning",
+          "url": "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "A focused page explains collision-aware arm trajectories."
+        }
+      ]
+    },
+    {
+      "id": "locomotion",
+      "title": "Locomotion: moving through the world",
+      "branch": "Locomotion",
+      "body_md": "## What this field is about\nLocomotion is how a robot moves its body through the world. Wheeled bases roll; legged robots alternate contact between feet; tracked robots distribute force over a belt. ETH Zurich's ANYmal is a quadruped designed for rough industrial environments. Its legs can step over uneven ground where a small differential-drive robot would get stuck.\n\n## Where it sits in the robot loop\nThe robot estimates its body motion, selects foot placements or wheel speeds, and controls joints or motors while the ground pushes back. A gait is a repeating pattern of contacts and swings. An IMU estimates body orientation; joint encoders report leg configuration; foot contact sensors can reveal whether a planned step actually landed.\n\n## The big ideas\nStatic stability means the robot can remain balanced without moving; dynamic stability uses motion and momentum to recover. A simple four-legged gait can keep three feet on the ground while one swings forward, but faster walking may require carefully timing the center of mass. Slippery ground, actuator delay, and uneven terrain create disturbances that a controller must handle.\n\nLocomotion is like a distributed service with changing connectivity: each foot alternates between being “available” for support and “in flight.” The controller must coordinate these phases rather than command each leg independently.\n\n## What you'll be able to build\nPlot a gait timeline for a slow quadruped, showing stance and swing for each leg. Then compare it with a two-wheeled robot that turns by setting left and right wheel speeds. ETH RSL's ANYmal videos make the terrain challenge concrete; the open `rsl_rl` project shows how reinforcement learning can train legged policies. Begin in simulation and measure body tilt and foot slip before judging a gait by appearance alone.",
+      "start_here": [
+        "k:static-dynamic-stability",
+        "k:gaits-gait-cycles",
+        "k:reduced-order-locomotion-models"
+      ],
+      "resources": [
+        {
+          "title": "ANYmal – Robotic Systems Lab | ETH Zurich",
+          "url": "https://rsl.ethz.ch/robots-media/anymal.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "ETH RSL’s robot page includes ANYmal field footage and describes its quadruped platform."
+        },
+        {
+          "title": "Learning quadrupedal locomotion over challenging terrain",
+          "url": "https://arxiv.org/abs/2010.11251",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The research paper describes a learned controller for legged terrain traversal."
+        },
+        {
+          "title": "leggedrobotics/rsl_rl",
+          "url": "https://github.com/leggedrobotics/rsl_rl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The research lab’s reinforcement-learning implementation is used for legged robot policies."
+        },
+        {
+          "title": "Quadruped locomotion in simulation",
+          "url": "https://leggedrobotics.github.io/legged_gym/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "The project documents a GPU simulator and locomotion training workflow."
+        }
+      ]
+    },
+    {
+      "id": "robot-learning",
+      "title": "Robot learning: improving behavior from data",
+      "branch": "Robot learning",
+      "body_md": "## What this field is about\nRobot learning uses data and optimization to produce a policy, a program that maps observations to actions. A student can teleoperate an SO-101 to pick up a cube, record camera images and joint positions, and train behavior cloning: imitate the action chosen by a human at each recorded moment. The policy is then tested on new starts, lighting, and object positions.\n\n## Where it sits in the robot loop\nA learned policy replaces or complements hand-written decision logic inside the robot loop. LeRobot records synchronized episodes, trains models, and runs rollouts. ACT, Action Chunking with Transformers, predicts short action sequences; SmolVLA is a 450-million-parameter vision-language-action model that accepts camera images, robot state, and a natural-language instruction and emits continuous action chunks.\n\n## The big ideas\nTraining data must cover the situations the robot will face. Demonstrations that all start from the same pose may not teach recovery from a shifted object. **Generalization** is success in situations not identical to training. **Evaluation** means measuring task completion, failures, and repeatability on held-out episodes rather than showing one successful clip.\n\nA policy is like a function learned from examples: it can interpolate patterns in its training data, but it does not automatically understand a new input. Track model version, dataset, camera names, and action representation so a result can be reproduced.\n\n## What you'll be able to build\nRecord 50 episodes of a simple pick-and-place task, train a baseline, and run it on positions that were not in the demonstrations. The SmolVLA docs recommend starting with about 50 episodes and give a current `lerobot-train` command; the LeRobot real-world tutorial documents recording and rollout. Compare success rates, not only model loss. Test first in simulation, then on a slow, supervised, low-payload setup.",
+      "start_here": [
+        "k:robot-learning-problem-formulation-observations-actions-policies",
+        "k:robot-learning-toolchains-data-formats",
+        "k:policy-evaluation-real-world-testing-methodology",
+        "p:intro-run-a-pretrained-policy-in-simulation"
+      ],
+      "resources": [
+        {
+          "title": "SmolVLA: Affordable, Efficient Robotics with a 450M Parameter VLA Model",
+          "url": "https://www.youtube.com/watch?v=bIlEsJQiBIo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A concise creator video introduces SmolVLA's 450-million-parameter vision-language-action model."
+        },
+        {
+          "title": "SmolVLA",
+          "url": "https://huggingface.co/docs/lerobot/smolvla",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current docs explain the model inputs, action chunks, and a training command."
+        },
+        {
+          "title": "SmolVLA: Efficient Vision-Language-Action Model trained on LeRobot Community Data",
+          "url": "https://huggingface.co/blog/smolvla",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The authors report its 450M parameters and training data of 487 SO-100 datasets."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The ACT paper gives the action-chunk method and real demonstration setup."
+        }
+      ]
+    },
+    {
+      "id": "hri-safety",
+      "title": "HRI & safety: working responsibly around people",
+      "branch": "HRI & safety",
+      "body_md": "## What this field is about\nHuman–robot interaction (HRI) studies how people and robots share tasks, spaces, and expectations. A robot can be technically correct yet confusing if its intent is invisible. Pollen Robotics' Reachy Mini is a small expressive desktop robot designed for interaction; an industrial collaborative robot, or cobot, shares a work area with people under specific risk controls.\n\n## Where it sits in the robot loop\nHRI spans sensing, planning, motion, and feedback to the person. The robot must detect relevant human actions, decide whether to move, and communicate what it will do through motion, lights, sound, or a screen. Risk assessment asks what can go wrong, who could be harmed, and which safeguards reduce the risk before a task is deployed.\n\n## The big ideas\nA **hazard** is a possible source of harm; **risk** combines the likelihood and severity of that harm. A robot's speed, reach, sharp edges, payload, and unexpected restart all matter. A safety-rated stop is not the same as an application-level “stop” message. Standards and the equipment manual determine which protective measures are appropriate for a specific system.\n\nA robot interface is like a public API: users need clear, predictable behavior and an explicit failure mode. A light or sound can communicate intent, but it cannot replace a physical safeguard or a validated risk assessment.\n\n## What you'll be able to build\nMap the arm's reachable workspace, identify pinch points, and write a short task-specific hazard table before a demo. Compare a low-force desktop Reachy Mini with a heavier arm carrying a tool; the same distance and speed do not imply the same risk. Use the CCOHS and NIOSH guidance to identify hazards, then consult the robot's manufacturer instructions for actual operating limits. Never test a powered arm near a person without the lab's approved risk controls.",
+      "start_here": [
+        "k:robot-safety-standards-risk-assessment",
+        "k:collaborative-operation-modes-cobots",
+        "k:hri-foundations-user-study-methods",
+        "p:intro-write-a-risk-assessment-for-the-lab-robot"
+      ],
+      "resources": [
+        {
+          "title": "Robots and Cobots",
+          "url": "https://www.ccohs.ca/oshanswers/safety_haz/robots_cobots.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The Canadian Centre for Occupational Health and Safety explains robot hazards and safeguards."
+        },
+        {
+          "title": "Robotics in the Workplace: An Overview",
+          "url": "https://www.cdc.gov/niosh/robotics/about/index.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "NIOSH summarizes workplace robotics and human-safety considerations."
+        },
+        {
+          "title": "ISO/TS 15066:2016 Robots and robotic devices — Collaborative robots",
+          "url": "https://www.iso.org/standard/62996.html",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "The ISO page identifies the collaborative robot safety standard and its scope."
+        },
+        {
+          "title": "Robotics - Overview | Occupational Safety and Health Administration",
+          "url": "https://www.osha.gov/robotics",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "OSHA outlines industrial robot applications and hazards during setup, maintenance, testing, and other non-routine work."
+        },
+        {
+          "title": "Human Robot Collaboration Essentials - Risk Assessment and Validation",
+          "url": "https://www.youtube.com/watch?v=_DP3tk3cTWQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Pilz's safety webinar explains collaborative operation types, risk assessment, and validation."
+        }
+      ]
+    },
+    {
+      "id": "robotics-world",
+      "title": "The robotics world",
+      "branch": null,
+      "body_md": "## What this field is about\nRobotics is a network of research labs, open-source projects, hardware companies, and user communities. A student may assemble a low-cost SO-101, use Hugging Face's LeRobot tools to record data, compare Pollen Robotics' expressive Reachy robots, and read ETH Zurich RSL's work on ANYmal. The field is not one product category: it spans tabletop arms, mobile robots, legged machines, and software that connects them.\n\n## Where it sits in the robot loop\nOrganizations contribute different layers. FEETECH supplies actuators; Hugging Face maintains robot-learning software and datasets; Pollen Robotics develops open humanoid platforms; ETH RSL publishes locomotion research and builds field robots. Research papers describe methods, repositories make code inspectable, and product documentation explains how to use a specific device.\n\n## The big ideas\nA useful map connection is a relation, not a ranking. “Built by” links a robot to its maker; “uses” links a project to software or hardware; “prerequisite” links a lesson to earlier knowledge. Open hardware can make design and repair inspectable, while a repository's existence does not guarantee that a component is maintained or supported.\n\nThink of the ecosystem as a software supply chain: a demo depends on hardware, drivers, datasets, libraries, and the people who maintain them. Verify each dependency before planning a project, especially when the documentation or product version changes.\n\n## What you'll be able to build\nPick one path through the map: SO-101 hardware → LeRobot teleoperation → recorded demonstrations → ACT or SmolVLA inference. Compare the path with ETH RSL's ANYmal research to see how different bodies require different controllers and testing. When approaching a lab or company, ask a concrete question about a project, dataset, event, or open issue rather than sending a generic request. Start with the linked papers, documentation, and repositories, then follow their contributors and releases.",
+      "start_here": [
+        "o:hugging-face-lerobot",
+        "o:pollen-robotics-hugging-face",
+        "o:eth-zurich-robotic-systems-lab-rsl"
+      ],
+      "resources": [
+        {
+          "title": "Hugging Face and Pollen Robotics acquisition announcement",
+          "url": "https://huggingface.co/blog/hugging-face-pollen-robotics-acquisition",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The announcement explains how the open-source robotics organizations connect."
+        },
+        {
+          "title": "ANYmal – Robotic Systems Lab | ETH Zurich",
+          "url": "https://rsl.ethz.ch/robots-media/anymal.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "ETH RSL’s page introduces a real robot platform and its research context."
+        },
+        {
+          "title": "Lab – Robotic Systems Lab | ETH Zurich",
+          "url": "https://rsl.ethz.ch/the-lab.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The repository is the maintained entry point for LeRobot hardware and learning tools."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "https://huggingface.co/docs/lerobot/so101",
+    "https://huggingface.co/docs/lerobot/smolvla",
+    "https://developer.nvidia.com/blog/nvidia-jetson-orin-nano-developer-kit-gets-a-super-boost/",
+    "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+    "https://tonyzhaozh.github.io/aloha"
+  ]
+}

@@ -42,6 +42,10 @@ interface State {
   chat: ChatMessage[];
   showAllEdges: boolean;
   hideIsolated: boolean;
+  learn: boolean;
+  chapterId: string;
+  setLearn: (b: boolean) => void;
+  setChapter: (id: string) => void;
   setData: (d: GraphData) => void;
   setGroups: (g: Group[]) => void;
   setView: (v: View) => void;
@@ -77,6 +81,10 @@ export const useStore = create<State>((set, get) => ({
   chat: [],
   showAllEdges: false,
   hideIsolated: true,
+  learn: false,
+  chapterId: "intro",
+  setLearn: (learn) => set({ learn, multi: [] }),
+  setChapter: (chapterId) => set({ chapterId, learn: true }),
   setData: (d) => set({ data: d, index: buildIndex(d) }),
   setGroups: (groups) => set((state) => {
     const groupIds = new Set(groups.map((group) => group.id));
@@ -92,7 +100,7 @@ export const useStore = create<State>((set, get) => ({
     }
     return filters === state.filters ? { groups } : { groups, filters };
   }),
-  setView: (view) => set((state) => state.view === view ? state : { view, multi: [] }),
+  setView: (view) => set((state) => state.view === view && !state.learn ? state : { view, learn: false, multi: [] }),
   setFilters: (v, f) => set({ filters: { ...get().filters, [v]: f } }),
   patchFilters: (v, f) => set({ filters: { ...get().filters, [v]: { ...get().filters[v], ...f } } }),
   select: (id, opts) => {
@@ -100,7 +108,9 @@ export const useStore = create<State>((set, get) => ({
     if (id) { s.rightTab = "details"; s.rightOpen = true; }
     if (id && opts?.focus) {
       const n = get().index?.byId.get(id);
-      if (n) {
+      if (n && get().learn) {
+        // Stay in the Learn view; the details panel shows the node.
+      } else if (n) {
         s.focusTick = get().focusTick + 1;
         if (n.type === "org" && get().view === "graph" && !(get().filters.graph.types ?? []).includes("org") && n.geo) s.view = "map";
         else if (n.type !== "org" && get().view === "map") s.view = "graph";

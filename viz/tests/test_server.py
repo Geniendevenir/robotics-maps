@@ -26,7 +26,7 @@ def test_api_data_counts(client):
     response = client.get("/api/data")
     assert response.status_code == 200
     graph = response.json()
-    assert set(graph) == {"generated_at", "nodes", "edges"}
+    assert {"generated_at", "nodes", "edges"} <= set(graph) <= {"generated_at", "nodes", "edges", "guide"}
     counts = Counter(node["type"] for node in graph["nodes"])
     expected = {"project": 624, "knowledge": 231, "robot": 542, "org": 615}
     assert counts == expected, (
