@@ -49,6 +49,39 @@ def test_group_store_instances_reload_before_mutations(tmp_path):
         assert groups[group_two["id"]]["name"] == "Group two"
 
 
+def test_group_store_uses_seed_and_persists_first_mutation(tmp_path):
+    path = tmp_path / "groups.json"
+    seed_path = tmp_path / "groups.seed.json"
+    seed_groups = [
+        {"id": "g_basic", "name": "Basic"},
+        {"id": "g_recommended", "name": "Recommended"},
+    ]
+    seed_path.write_text(
+        json.dumps(seed_groups, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    seed_bytes = seed_path.read_bytes()
+    store = GroupStore(path)
+
+    assert store.list() == seed_groups
+    created = store.create("Fresh group")
+
+    assert path.exists()
+    assert json.loads(path.read_text(encoding="utf-8")) == seed_groups + [created]
+    assert seed_path.read_bytes() == seed_bytes
+
+
+def test_group_store_prefers_persisted_groups_over_seed(tmp_path):
+    path = tmp_path / "groups.json"
+    seed_path = tmp_path / "groups.seed.json"
+    seed_groups = [{"id": "g_seed", "name": "Seed"}]
+    persisted_groups = [{"id": "g_saved", "name": "Saved"}]
+    seed_path.write_text(json.dumps(seed_groups), encoding="utf-8")
+    path.write_text(json.dumps(persisted_groups), encoding="utf-8")
+
+    assert GroupStore(path).list() == persisted_groups
+
+
 def test_group_crud_and_persistence(client, tmp_path):
     created = client.post(
         "/api/groups",
