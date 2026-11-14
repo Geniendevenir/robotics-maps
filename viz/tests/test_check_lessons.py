@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 
 from viz.scripts.check_lessons import (
+    BRANCHES,
+    GUIDE_INTRO_HEADINGS,
+    _check_resources,
+    _check_word_count,
     check_urls,
     load_graph_nodes,
     url_reuse_warnings,
@@ -31,6 +35,69 @@ def _fixture(tmp_path, lesson):
         encoding="utf-8",
     )
     return load_graph_nodes(graph_path), json.loads(data_path.read_text(encoding="utf-8"))
+
+
+def _valid_guide_payload():
+    intro = "\n\n".join(GUIDE_INTRO_HEADINGS) + (
+        "\n\nRobots sense, estimate, plan, act, and observe each result. " * 60
+    )
+    details = "Robots sense, estimate, plan, act, and observe each result. " * 8
+    body = (
+        "## What this field is about\n"
+        f"{details}\n\n"
+        "## Where it sits in the robot loop\n"
+        f"{details}\n\n"
+        "## The big ideas\n"
+        "- Ideas use a measured position.\n"
+        "- Plans respect joint limits.\n"
+        "- Evaluation checks physical behavior.\n\n"
+        "## Key terms\n"
+        "- **Robot**: a system that senses and acts.\n"
+        "- **State**: values describing the system.\n"
+        "- **Loop**: repeated sensing and action.\n\n"
+        "## What you'll be able to build\n"
+        f"{details}"
+    )
+    resources = [
+        {
+            "title": "Video",
+            "url": "https://example.org/video",
+            "format": "Video",
+            "level": "Beginner",
+            "why": "A visual introduction.",
+        },
+        {
+            "title": "Article",
+            "url": "https://example.org/article",
+            "format": "Article",
+            "level": "Intermediate",
+            "why": "A focused explanation.",
+        },
+        {
+            "title": "Reference",
+            "url": "https://example.org/reference",
+            "format": "Docs",
+            "level": "Advanced",
+            "why": "A technical reference.",
+        },
+    ]
+    chapters = [
+        {
+            "id": f"chapter-{index}",
+            "title": branch or "The robotics world",
+            "branch": branch,
+            "body_md": body,
+            "start_here": ["k:test", "k:test", "k:test"],
+            "resources": resources,
+        }
+        for index, branch in enumerate([*BRANCHES, None], 1)
+    ]
+    return {
+        "title": "Robotics from zero",
+        "intro_md": intro,
+        "chapters": chapters,
+        "sources": ["https://example.org/source"],
+    }
 
 
 def test_check_lesson_valid_and_broken_fixtures(tmp_path):
@@ -114,6 +181,29 @@ def test_check_lesson_valid_and_broken_fixtures(tmp_path):
     _, malformed_data = _fixture(tmp_path, malformed_lesson)
     malformed_problems = validate_payload(malformed_data, "malformed fixture", graph_nodes)
     assert any("unsupported type" in problem for problem in malformed_problems)
+
+
+def test_guide_chapters_require_bullet_lists():
+    graph_nodes = {"k:test": {"type": "knowledge", "name": "Test concept"}}
+    guide = _valid_guide_payload()
+    assert validate_payload(guide, "valid guide fixture", graph_nodes) == []
+
+    too_few_ideas = _valid_guide_payload()
+    too_few_ideas["chapters"][0]["body_md"] = (
+        too_few_ideas["chapters"][0]["body_md"]
+        .replace("- Evaluation checks physical behavior.\n", "", 1)
+    )
+    problems = validate_payload(too_few_ideas, "short bullet fixture", graph_nodes)
+    assert any("The big ideas: has 2 bullets; expected 3-5" in problem for problem in problems)
+
+    malformed_term = _valid_guide_payload()
+    malformed_term["chapters"][0]["body_md"] = (
+        malformed_term["chapters"][0]["body_md"]
+        .replace("- **Robot**: a system that senses and acts.",
+                 "- Robot: a system that senses and acts.", 1)
+    )
+    problems = validate_payload(malformed_term, "term format fixture", graph_nodes)
+    assert any("Key terms: bullets must use" in problem for problem in problems)
 
 
 def test_url_reuse_warns_across_guide_and_pilot_items():

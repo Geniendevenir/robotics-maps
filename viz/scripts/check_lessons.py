@@ -57,6 +57,7 @@ GUIDE_CHAPTER_HEADINGS = [
     "## What this field is about",
     "## Where it sits in the robot loop",
     "## The big ideas",
+    "## Key terms",
     "## What you'll be able to build",
 ]
 BRANCHES = [
@@ -136,6 +137,33 @@ def _check_headings(markdown: object, expected: list[str], label: str, errors: l
         )
     if any(line.startswith("# ") for line in markdown.splitlines()):
         errors.append(f"{label}: top-level '# ' heading is not allowed")
+
+
+def _check_bullet_section(markdown: str, heading: str, minimum: int, maximum: int,
+                          label: str, errors: list[str], term_format: bool = False) -> None:
+    lines = markdown.splitlines()
+    try:
+        start = lines.index(heading) + 1
+    except ValueError:
+        return
+    end = next(
+        (index for index in range(start, len(lines)) if lines[index].startswith("## ")),
+        len(lines),
+    )
+    section_lines = [line.strip() for line in lines[start:end] if line.strip()]
+    bullets = [line for line in section_lines if line.startswith("- ")]
+    if not minimum <= len(bullets) <= maximum:
+        errors.append(
+            f"{label} {heading}: has {len(bullets)} bullets; expected {minimum}-{maximum}"
+        )
+    if any(not line.startswith("- ") for line in section_lines):
+        errors.append(f"{label} {heading}: section must contain only bullets")
+    if term_format and any(
+        not re.fullmatch(r"- \*\*[^*\n]+\*\*: .+", line) for line in bullets
+    ):
+        errors.append(
+            f"{label} {heading}: bullets must use '- **term**: definition' format"
+        )
 
 
 def _check_word_count(text: str, minimum: int, maximum: int, label: str,
@@ -303,6 +331,9 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
         _check_headings(body, GUIDE_CHAPTER_HEADINGS, chapter_label, errors)
         if isinstance(body, str):
             _check_word_count(body, 250, 450, chapter_label, errors)
+            _check_bullet_section(body, "## The big ideas", 3, 5, chapter_label, errors)
+            _check_bullet_section(body, "## Key terms", 3, 6, chapter_label, errors,
+                                  term_format=True)
         start_here = chapter.get("start_here")
         if not isinstance(start_here, list) or not 3 <= len(start_here) <= 6:
             errors.append(f"{chapter_label}: start_here must contain 3-6 node IDs")
