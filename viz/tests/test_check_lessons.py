@@ -224,6 +224,20 @@ def test_resources_require_a_video():
     assert errors == ["lesson fixture: requires at least one resource with format 'Video'"]
 
 
+def test_word_count_bounds_are_strict():
+    for count in (250, 500):
+        errors = []
+        _check_word_count("word " * count, 250, 500, "lesson fixture", errors)
+        assert errors == []
+
+    for count in (249, 501):
+        errors = []
+        _check_word_count("word " * count, 250, 500, "lesson fixture", errors)
+        assert errors == [
+            f"lesson fixture: {count} words; expected 250-500"
+        ]
+
+
 def test_url_reuse_warns_across_guide_and_pilot_items():
     url = "https://example.org/shared"
     resource = {"url": url, "title": "Shared resource"}

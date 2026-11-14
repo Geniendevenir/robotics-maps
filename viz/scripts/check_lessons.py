@@ -169,13 +169,8 @@ def _check_bullet_section(markdown: str, heading: str, minimum: int, maximum: in
 def _check_word_count(text: str, minimum: int, maximum: int, label: str,
                       errors: list[str]) -> None:
     count = word_count(text)
-    lower = minimum * 0.85
-    upper = maximum * 1.15
-    if count < lower or count > upper:
-        errors.append(
-            f"{label}: {count} words; expected {minimum}-{maximum} "
-            f"(15% tolerance: {lower:g}-{upper:g})"
-        )
+    if count < minimum or count > maximum:
+        errors.append(f"{label}: {count} words; expected {minimum}-{maximum}")
 
 
 def _check_resources(resources: object, label: str, minimum: int, maximum: int,
