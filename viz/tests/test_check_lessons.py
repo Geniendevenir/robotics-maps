@@ -206,6 +206,24 @@ def test_guide_chapters_require_bullet_lists():
     assert any("Key terms: bullets must use" in problem for problem in problems)
 
 
+def test_resources_require_a_video():
+    resources = [
+        {
+            "title": f"Resource {index}",
+            "url": f"https://example.org/resource-{index}",
+            "format": resource_format,
+            "level": "Beginner",
+            "why": "A focused explanation.",
+        }
+        for index, resource_format in enumerate(["Article", "Blog", "Docs", "Repo"], 1)
+    ]
+    errors = []
+
+    _check_resources(resources, "lesson fixture", 4, 6, errors)
+
+    assert errors == ["lesson fixture: requires at least one resource with format 'Video'"]
+
+
 def test_url_reuse_warns_across_guide_and_pilot_items():
     url = "https://example.org/shared"
     resource = {"url": url, "title": "Shared resource"}

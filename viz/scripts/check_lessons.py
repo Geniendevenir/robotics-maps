@@ -213,6 +213,8 @@ def _check_resources(resources: object, label: str, minimum: int, maximum: int,
             seen_urls.add(normalized)
     if len(formats) < 2:
         errors.append(f"{label}: resources must use at least 2 distinct formats")
+    if "Video" not in formats:
+        errors.append(f"{label}: requires at least one resource with format 'Video'")
 
 
 def _check_sources(sources: object, label: str, errors: list[str]) -> None:
