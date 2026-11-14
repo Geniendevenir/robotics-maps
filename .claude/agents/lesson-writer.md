@@ -66,6 +66,7 @@ Use exactly these `##` headings, in this order. Skip a heading only if it truly 
 ## What it is made of / how it works
 (hardware: main parts and what each does; software: what it does, inputs/outputs; model: what goes in, what comes out, how it was trained)
 ## Key terms
+(bullet list, 3-6 terms, each `**term**: definition`)
 ## Getting started
 (how to get it, rough cost or "free", first thing to run or build; install command only if from official docs)
 ## Used in

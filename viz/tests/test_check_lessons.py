@@ -51,10 +51,6 @@ def _valid_guide_payload():
         "- Ideas use a measured position.\n"
         "- Plans respect joint limits.\n"
         "- Evaluation checks physical behavior.\n\n"
-        "## Key terms\n"
-        "- **Robot**: a system that senses and acts.\n"
-        "- **State**: values describing the system.\n"
-        "- **Loop**: repeated sensing and action.\n\n"
         "## What you'll be able to build\n"
         f"{details}"
     )
@@ -100,7 +96,7 @@ def _valid_guide_payload():
     }
 
 
-def test_check_lesson_valid_and_broken_fixtures(tmp_path):
+def _valid_knowledge_lesson():
     summary = "A test concept explains a small robot idea."
     body = (
         "## In one sentence\n"
@@ -158,6 +154,11 @@ def test_check_lesson_valid_and_broken_fixtures(tmp_path):
         "resources": resources,
         "sources": ["https://example.org/intro"],
     }
+    return valid_lesson
+
+
+def test_check_lesson_valid_and_broken_fixtures(tmp_path):
+    valid_lesson = _valid_knowledge_lesson()
     graph_nodes, valid_data = _fixture(tmp_path, valid_lesson)
     assert validate_payload(valid_data, "valid fixture", graph_nodes) == []
 
@@ -167,7 +168,7 @@ def test_check_lesson_valid_and_broken_fixtures(tmp_path):
         "name": "Wrong name",
         "summary": "This summary does not match the lesson.",
         "lesson_md": "# Not allowed\n## Wrong heading\nToo short.",
-        "resources": [{**resources[0], "format": []}],
+        "resources": [{**valid_lesson["resources"][0], "format": []}],
         "sources": [],
     }
     _, broken_data = _fixture(tmp_path, broken_lesson)
@@ -183,6 +184,24 @@ def test_check_lesson_valid_and_broken_fixtures(tmp_path):
     assert any("unsupported type" in problem for problem in malformed_problems)
 
 
+def test_knowledge_lesson_key_terms_must_be_bullets(tmp_path):
+    lesson = _valid_knowledge_lesson()
+    lesson["lesson_md"] = lesson["lesson_md"].replace(
+        "- **Robot**: a machine that can sense and act.\n"
+        "- **State**: values describing the system.\n"
+        "- **Loop**: repeated execution of a program.",
+        "Robot is a machine that can sense and act. "
+        "State means values describing the system. "
+        "Loop is repeated execution of a program.",
+        1,
+    )
+    graph_nodes, data = _fixture(tmp_path, lesson)
+
+    problems = validate_payload(data, "prose terms fixture", graph_nodes)
+
+    assert any("Key terms: has 0 bullets; expected 3-6" in problem for problem in problems)
+
+
 def test_guide_chapters_require_bullet_lists():
     graph_nodes = {"k:test": {"type": "knowledge", "name": "Test concept"}}
     guide = _valid_guide_payload()
@@ -195,15 +214,6 @@ def test_guide_chapters_require_bullet_lists():
     )
     problems = validate_payload(too_few_ideas, "short bullet fixture", graph_nodes)
     assert any("The big ideas: has 2 bullets; expected 3-5" in problem for problem in problems)
-
-    malformed_term = _valid_guide_payload()
-    malformed_term["chapters"][0]["body_md"] = (
-        malformed_term["chapters"][0]["body_md"]
-        .replace("- **Robot**: a system that senses and acts.",
-                 "- Robot: a system that senses and acts.", 1)
-    )
-    problems = validate_payload(malformed_term, "term format fixture", graph_nodes)
-    assert any("Key terms: bullets must use" in problem for problem in problems)
 
 
 def test_resources_require_a_video():

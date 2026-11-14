@@ -57,7 +57,6 @@ GUIDE_CHAPTER_HEADINGS = [
     "## What this field is about",
     "## Where it sits in the robot loop",
     "## The big ideas",
-    "## Key terms",
     "## What you'll be able to build",
 ]
 BRANCHES = [
@@ -267,6 +266,9 @@ def _check_lesson(lesson: object, index: int, graph_nodes: dict[str, dict[str, s
         if isinstance(markdown, str):
             minimum, maximum = (150, 300) if lesson_type == "org" else (250, 500)
             _check_word_count(markdown, minimum, maximum, label, errors)
+            if lesson_type in {"knowledge", "robot"}:
+                _check_bullet_section(markdown, "## Key terms", 3, 6, label, errors,
+                                      term_format=True)
     else:
         errors.append(f"{label}: unsupported type {lesson_type!r}")
     summary = lesson.get("summary")
@@ -329,8 +331,6 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
         if isinstance(body, str):
             _check_word_count(body, 250, 450, chapter_label, errors)
             _check_bullet_section(body, "## The big ideas", 3, 5, chapter_label, errors)
-            _check_bullet_section(body, "## Key terms", 3, 6, chapter_label, errors,
-                                  term_format=True)
         start_here = chapter.get("start_here")
         if not isinstance(start_here, list) or not 3 <= len(start_here) <= 6:
             errors.append(f"{chapter_label}: start_here must contain 3-6 node IDs")
