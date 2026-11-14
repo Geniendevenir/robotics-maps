@@ -24,8 +24,9 @@ def validate_color(color):
 
 
 class GroupStore:
-    def __init__(self, path=DEFAULT_GROUPS_PATH):
+    def __init__(self, path=DEFAULT_GROUPS_PATH, seed_path=None):
         self.path = Path(path)
+        self.seed_path = Path(seed_path) if seed_path else self.path.with_name("groups.seed.json")
         self.lock_path = self.path.with_name(f"{self.path.name}.lock")
         self._lock = threading.RLock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,6 +34,8 @@ class GroupStore:
 
     def _read(self):
         if not self.path.exists():
+            if self.seed_path.exists():
+                return json.loads(self.seed_path.read_text(encoding="utf-8"))
             return []
         return json.loads(self.path.read_text(encoding="utf-8"))
 

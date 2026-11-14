@@ -1,5 +1,18 @@
 # 42AI Robotics Lab — Research Maps (Claude Code project)
 
+## Explore the maps in your browser
+
+See [viz/README.md](viz/README.md) for the local Maps Visualizer guide. Quick start from the repository root (Python 3.10+ and Node 20+):
+
+```bash
+python -m pip install -r viz/requirements.txt
+cd viz/web
+npm install && npm run build
+cd ../.. && python -m viz.server
+```
+
+Then open <http://127.0.0.1:8765>.
+
 ## Setup (once)
 1. Install Claude Code: https://code.claude.com/docs/en/quickstart
 2. Connect Notion:
