@@ -1,0 +1,279 @@
+{
+  "batch": "projects_state_estimation_slam_1",
+  "lessons": [
+    {
+      "node_id": "p:add-preintegrated-imu-factors-to-a-trajectory",
+      "type": "project",
+      "name": "Add preintegrated IMU factors to a trajectory",
+      "summary": "Build a viewer showing how bundled inertial measurements connect trajectory states, with bias estimates and error plots.",
+      "lesson_md": "## In one sentence\n\nBuild a viewer showing how bundled inertial measurements connect trajectory states, with bias estimates and error plots.\n\n![Published preintegration simulation with a circular camera trajectory and observed wall features](/img/lessons/projects_state_estimation_slam_1-imu-factors.webp)\n*Published preintegration simulation with a circular camera trajectory and observed wall features. Source: [Forster and colleagues](https://arxiv.org/html/1512.02363v3), license unknown.*\n\n## What you will learn\n\n- **An inertial measurement unit (IMU)** measures acceleration and turning rate; a **pose** describes position and orientation.\n- **Preintegration** bundles readings between selected trajectory samples into a relative-motion constraint, called a **factor**, rather than adding every reading separately.\n- **Bias** is a persistent sensor offset; **covariance** describes uncertainty and relationships between estimation errors.\n- **Think of log aggregation:** retain a useful interval summary instead of sending every event into the global query.\n\n> **Key idea:** An IMU interval constrains motion only under explicit timing, gravity, frame, noise, and bias assumptions.\n\n## What you need\n\n- **Prerequisite graph practice:** Finish Reject a malicious loop constraint in a toy graph and Separate IMU bias from motion in replay.\n- **Offline setup:** Use GTSAM, Python plotting, and synthetic inertial data with known truth; OpenVINS provides supporting calibration guidance.\n- **Planning estimate:** This student proposal budgets 1–2 months and €0 hardware on an existing computer; purchased compute and storage are excluded.\n\n## Steps\n\n1. **Reproduce the documented accumulator:** GTSAM's example integrates ten measurements at 0.01 seconds each, giving a 0.1-second interval.\n2. **Label every coordinate frame:** Record axis directions, gravity convention, timestamp units, and which sensor frame owns each measurement.\n3. **Build the graph:** Connect endpoint poses, velocities, and bias using ImuFactor; retain pose observations as a comparison baseline.\n4. **Expose each interval:** Clicking a factor should highlight its contributing readings, accumulated duration, and uncertainty.\n5. **Compare controlled variants:** Change bias assumptions or noise separately; plot estimated bias and trajectory error against known truth.\n6. **Record the demo:** Show linked graph selection, interval readings, and before/after error plots without hiding a degraded run.\n\n```mermaid\nflowchart LR\n  I[\"IMU readings\"] --> P[\"Preintegrate interval\"]\n  P --> F[\"Motion factor\"]\n  C[\"Pose observations\"] --> G[\"Optimize graph\"]\n  F --> G\n  G --> V[\"Viewer and errors\"]\n```\n\n## Common pitfalls\n\n- **Bias evolution needs a model:** ImuFactor assumes constant bias within its interval; it does not itself connect successive bias variables.\n- **Smoothness is not accuracy:** Wrong gravity or frame conventions can produce plausible-looking trajectories. Validate on known motion before claiming improvement.\n- **Empty intervals need visibility:** Flag missing readings rather than silently inventing an inertial constraint.\n\n## When it's done\n\n- **Deliver a linked viewer:** Display pose samples, IMU intervals, bias traces, and trajectory errors together.\n- **Save the evidence:** Include data seed, graph configuration, conventions, and a failure example; connect your explanation to Factor graphs, smoothing & pose-graph SLAM.",
+      "resources": [
+        {
+          "title": "PreintegratedImuMeasurements",
+          "url": "https://borglab.github.io/gtsam/preintegratedimumeasurements/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Work through the accumulator's ten-sample example and inspect its covariance."
+        },
+        {
+          "title": "[RSS'21] Continuous Integration over SO(3) for IMU Preintegration",
+          "url": "https://www.youtube.com/watch?v=4erKqw6S5o0",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "The paper author's conference presentation explains why inertial readings are preintegrated."
+        },
+        {
+          "title": "ImuFactor",
+          "url": "https://borglab.github.io/gtsam/imufactor/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Identify the five connected variables and the limits of the bias model."
+        },
+        {
+          "title": "On-Manifold Preintegration for Real-Time Visual-Inertial Odometry",
+          "url": "https://arxiv.org/abs/1512.02363",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original derivation and inspect the published simulation setup."
+        }
+      ],
+      "sources": [
+        "https://borglab.github.io/gtsam/preintegratedimumeasurements/",
+        "https://www.youtube.com/watch?v=4erKqw6S5o0",
+        "https://borglab.github.io/gtsam/imufactor/",
+        "https://arxiv.org/abs/1512.02363",
+        "https://arxiv.org/html/1512.02363v3",
+        "https://docs.openvins.com/gs-calibration.html"
+      ]
+    },
+    {
+      "node_id": "p:align-two-recorded-robot-sessions",
+      "type": "project",
+      "name": "Align two recorded robot sessions",
+      "summary": "Align two independently recorded trajectories using a verified shared place, and show the transformation rather than merely overlapping plots.",
+      "lesson_md": "## In one sentence\n\nAlign two independently recorded trajectories using a verified shared place, and show the transformation rather than merely overlapping plots.\n\n![Kimera-Multi's published multi-robot trajectories, reconstructed maps, and recording platforms](/img/lessons/projects_state_estimation_slam_1-align-sessions.webp)\n*Kimera-Multi's published multi-robot trajectories, reconstructed maps, and recording platforms. Source: [Kimera-Multi repository](https://github.com/MIT-SPARK/Kimera-Multi), license unknown.*\n\n## What you will learn\n\n- **A local frame** is a session's own coordinate system; matching coordinate values do not imply matching physical places.\n- **Data association** means deciding which observations describe the same place. A **loop constraint** records a verified relationship between revisits.\n- **A rigid transform** rotates and translates coordinates without resizing the scene; show its direction explicitly.\n- **Think of merging git branches:** a plausible matching line is not enough; inspect surrounding context before accepting the merge.\n\n> **Key idea:** Independent maps need evidence of shared geometry, not an attractive visual overlap.\n\n## What you need\n\n- **Prerequisite projects:** Complete Close a tiny pose graph and Film a map correction after a verified loop.\n- **Software and recordings:** Use a small GTSAM viewer and genuinely overlapping sessions; study Kimera-Multi and CU-Multi for realistic data-association challenges.\n- **Planning estimate:** This student proposal budgets 2–4 weeks and €0 hardware on an existing computer, excluding purchased compute and storage.\n\n## Steps\n\n1. **Load sessions separately:** Color each trajectory differently and preserve its original frame, timestamps, and sensor calibration.\n2. **Choose a candidate revisit:** Display the corresponding observations side by side; explain why it might represent a shared place.\n3. **Verify the geometry:** Check actual correspondences before adding the cross-session constraint; retain a rejected look-alike as a negative example.\n4. **Insert the constraint:** Estimate and display the transform from session B into session A; show both unaligned and aligned results.\n5. **Measure agreement:** Compare against reference alignment where available, reporting alignment choices and disagreement rather than only a screenshot.\n6. **Demonstrate the switch:** Toggle the verified constraint and show exactly when the sessions become connected.\n\n```mermaid\nflowchart LR\n  A[\"Session A\"] --> M[\"Candidate place\"]\n  B[\"Session B\"] --> M\n  M --> V[\"Verify geometry\"]\n  V --> C[\"Cross-session constraint\"]\n  C --> T[\"Transform and compare\"]\n```\n\nFor a separate reference-trajectory check, evo documents this rigid-alignment comparison; it does not verify your shared-place match.\n\n```bash\nevo_ape tum reference.txt estimate.txt --align\n```\n\n## Common pitfalls\n\n- **Synthetic splitting is limited:** CU-Multi explains why cutting one trajectory into segments may miss viewpoint variation between independently collected runs.\n- **Alignment can hide scale mistakes:** evo distinguishes rotation/translation alignment from alignment that also changes scale; disclose which you use.\n- **Missing overlap is a valid outcome:** Keep sessions disconnected when no candidate survives verification.\n\n## When it's done\n\n- **Deliver two colored sessions:** Show the accepted shared-place evidence, transform, and reference comparison if available.\n- **Worked reference example:** Kimera-Multi's single-machine example launches six robots; this proposal deliberately narrows the exercise to two recorded sessions, not fleet deployment.\n- **Conceptual connection:** Explain the shared-place link using Multi-robot & distributed SLAM.\n- **Next challenge:** Carry the verified constraint into Keep cooperative maps consistent through packet loss.",
+      "resources": [
+        {
+          "title": "Kimera-Multi: a System for Distributed Multi-Robot Metric-Semantic SLAM",
+          "url": "https://www.youtube.com/watch?v=G8PktlQ82uw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch verified inter-robot constraints produce a shared reconstruction."
+        },
+        {
+          "title": "Kimera-Multi",
+          "url": "https://github.com/MIT-SPARK/Kimera-Multi",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the published system architecture and recorded multi-robot example."
+        },
+        {
+          "title": "Metrics",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish rigid alignment from scale correction when comparing trajectories."
+        },
+        {
+          "title": "CU-Multi: A Dataset for Multi-Robot Data Association",
+          "url": "https://arxiv.org/abs/2505.17576",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand why independent observations and controlled overlap matter."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=G8PktlQ82uw",
+        "https://github.com/MIT-SPARK/Kimera-Multi",
+        "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+        "https://arxiv.org/abs/2505.17576"
+      ]
+    },
+    {
+      "node_id": "p:animate-a-one-dimensional-robot-belief",
+      "type": "project",
+      "name": "Animate a one-dimensional robot belief",
+      "summary": "Animate a robot's uncertain position along a line, showing how motion and noisy measurements reshape its probability distribution.",
+      "lesson_md": "## In one sentence\n\nAnimate a robot's uncertain position along a line, showing how motion and noisy measurements reshape its probability distribution.\n\n![PythonRobotics histogram-filter example showing a blue position distribution, true position, and landmarks](/img/lessons/projects_state_estimation_slam_1-robot-belief.webp)\n*PythonRobotics histogram-filter example showing a blue position distribution, true position, and landmarks. Source: [PythonRobotics](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/histogram_filter_localization/histogram_filter_localization.html), license unknown.*\n\n## What you will learn\n\n- **Belief** is a probability distribution over possible positions, not the robot's true position.\n- **A histogram filter** stores probability in discrete bins. Your project reduces the published two-dimensional grid to a one-dimensional row.\n- **Prediction** moves and spreads probability using the motion model; **correction** favors positions compatible with a measurement.\n- **Think of a debugger:** keep every plausible program state alive until new evidence rules some out.\n\n> **Key idea:** Plotting the whole distribution reveals uncertainty that a single best-position marker hides.\n\n## What you need\n\n- **Starting point:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot; this exercise itself can run as an offline Python animation.\n- **Tools and topic:** Use NumPy, plotting, and PythonRobotics as a reference for Bayesian state estimation & uncertainty.\n- **Planning estimate:** This student proposal budgets one week and €0 hardware on an existing computer; additional compute and storage are excluded.\n\n## Steps\n\n1. **Create a tiny hallway:** Follow the discrete-Bayes notebook's ten positions, numbered 0–9, initially assigning probability 0.1 to each.\n2. **Keep truth separate:** Simulate the true position and generate noisy observations from it; never pass truth into the estimator.\n3. **Predict the next belief:** Shift probability according to motion, then spread it to represent motion uncertainty.\n4. **Apply the observation:** Multiply each bin by its measurement likelihood, meaning how compatible that observation is with that bin; normalize the total.\n5. **Vary observation noise:** Fix the random seed for comparisons, then repeat across seeds; plot belief width and position error.\n6. **Record the animation:** Show truth, raw readings, and all probability bins at every update, including a measurement-free interval.\n\n```mermaid\nflowchart LR\n  B[\"Current belief\"] --> P[\"Predict motion\"]\n  P --> U[\"Weight by observation\"]\n  U --> N[\"Normalize\"]\n  N --> D[\"Animate bins and truth\"]\n  N --> B\n```\n\n## Common pitfalls\n\n- **Boundary rules matter:** The notebook's hallway wraps from position 9 to 0; state whether your simulation wraps or has walls.\n- **Normalization needs checks:** Probabilities must sum to one. Flag an all-zero update rather than dividing by zero.\n- **A narrower belief can be wrong:** Compare its location against truth instead of equating confidence with correctness.\n\n## When it's done\n\n- **Deliver a screen recording:** Show how increased observation noise changes belief width, alongside reproducible seeds and error plots.\n- **Continue geometrically:** Try Make covariance visible on a 2D trajectory or Convert synthetic GNSS fixes into a local map frame.\n- **Continue with fusion:** Use the intuition in Fuse simulated wheel and IMU messages and Visualize a contact-aided inertial estimate.",
+      "resources": [
+        {
+          "title": "Bayes Filter  (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=0lKHFJpaZvE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn prediction and correction before implementing the animation."
+        },
+        {
+          "title": "Histogram filter localization",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/histogram_filter_localization/histogram_filter_localization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See the published grid animation and the four filtering stages."
+        },
+        {
+          "title": "histogram_filter.py",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/histogram_filter/histogram_filter.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect probability normalization, motion noise, and observation weighting."
+        },
+        {
+          "title": "02-Discrete-Bayes.ipynb",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Adapt the ten-position hallway example directly to a one-dimensional robot."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=0lKHFJpaZvE",
+        "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/histogram_filter_localization/histogram_filter_localization.html",
+        "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/histogram_filter/histogram_filter.py",
+        "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+        "https://raw.githubusercontent.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/master/02-Discrete-Bayes.ipynb",
+        "https://raw.githubusercontent.com/AtsushiSakai/PythonRobotics/master/Localization/histogram_filter/histogram_filter.py"
+      ]
+    },
+    {
+      "node_id": "p:animate-particles-in-a-repeated-corridor",
+      "type": "project",
+      "name": "Animate particles in a repeated corridor",
+      "summary": "Animate competing position hypotheses in a repetitive corridor, then reveal a distinctive landmark and inspect which hypotheses survive.",
+      "lesson_md": "## In one sentence\n\nAnimate competing position hypotheses in a repetitive corridor, then reveal a distinctive landmark and inspect which hypotheses survive.\n\n![PythonRobotics particle-filter reference animation with landmark ranges, particles, and estimated trajectory](/img/lessons/projects_state_estimation_slam_1-corridor-particles.webp)\n*PythonRobotics particle-filter reference animation with landmark ranges, particles, and estimated trajectory. Source: [PythonRobotics](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html), license unknown.*\n\n## What you will learn\n\n- **Particles** are sampled guesses about robot position; each carries a **weight**, its relative support from sensor evidence.\n- **Multimodal belief** means several competing location clusters. Repeated corridor features can support several explanations of the same reading.\n- **Resampling** copies supported particles and discards others; it does not independently discover the true position.\n- **Think of parallel test candidates:** identical test outputs cannot distinguish implementations until you add a discriminating test case.\n\n> **Key idea:** Preserve ambiguity until an observation genuinely distinguishes the competing places.\n\n## What you need\n\n- **Prerequisite practice:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot before building this offline visualization.\n- **Reference tools:** Adapt PythonRobotics for Particle filtering & global localization; its published example uses distances to known landmarks, not a repeated corridor.\n- **Planning estimate:** This student proposal budgets one week and €0 hardware on an existing computer, excluding purchased compute and storage.\n\n## Steps\n\n1. **Build an ambiguous scene:** Repeat corridor features and distribute particles across competing positions; keep simulated truth separate from the filter.\n2. **Predict every particle:** Apply motion plus sampled uncertainty, rather than moving every candidate identically.\n3. **Weight observations honestly:** Repeated features must remain ambiguous; do not expose a hidden unique landmark identifier to the estimator.\n4. **Display weight concentration:** Plot effective sample size, a measure of how many particles meaningfully contribute, before and after resampling.\n5. **Reveal distinctive evidence:** Introduce an observation available from only the correct region; show how cluster weights change.\n6. **Record comparative runs:** Contrast resampling choices with fixed seeds, then repeat across seeds and include a failed localization.\n\n```mermaid\nflowchart LR\n  P[\"Particle cloud\"] --> M[\"Sample motion\"]\n  M --> W[\"Weight observations\"]\n  W --> E[\"Check effective size\"]\n  E --> R[\"Resample if needed\"]\n  R --> P\n  W --> D[\"Show competing clusters\"]\n```\n\n## Common pitfalls\n\n- **Premature collapse is not success:** Resampling can remove the correct cluster before distinctive evidence arrives; track cluster survival against truth.\n- **Averages hide ambiguity:** A mean position between clusters may correspond to no plausible location. Display particles, not only their average.\n- **Empty observations still allow prediction:** Skip measurement weighting when nothing is observed; flag invalid or zero-total weights explicitly.\n\n## When it's done\n\n- **Deliver the competing-cluster animation:** Include truth, landmark visibility, effective sample size, and the moment distinctive evidence resolves ambiguity.\n- **Worked reference check:** PythonRobotics uses 100 particles and resamples below an effective count of 50; expose these as adjustable reference settings, not universal requirements.\n- **Next project:** Use the recorded failure cases to prepare Recover after a simulated robot kidnapping.",
+      "resources": [
+        {
+          "title": "Particle Filter and Monte Carlo Localization (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=MsYlueVDLI0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand competing pose hypotheses and the localization update loop."
+        },
+        {
+          "title": "Particle filter localization",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Watch the landmark-range example that supplies the project's starting point."
+        },
+        {
+          "title": "particle_filter.py",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the 100-particle default, effective-size calculation, and resampling threshold."
+        },
+        {
+          "title": "12-Particle-Filters.ipynb",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/12-Particle-Filters.ipynb",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Study sample impoverishment and compare resampling strategies."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=MsYlueVDLI0",
+        "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+        "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+        "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/12-Particle-Filters.ipynb",
+        "https://raw.githubusercontent.com/AtsushiSakai/PythonRobotics/master/Localization/particle_filter/particle_filter.py",
+        "https://raw.githubusercontent.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/master/12-Particle-Filters.ipynb"
+      ]
+    },
+    {
+      "node_id": "p:audit-a-city-scale-slam-claim-on-held-out-sessions",
+      "type": "project",
+      "name": "Audit a city-scale SLAM claim on held-out sessions",
+      "summary": "Audit a city-scale trajectory claim with held-out recordings, reporting failures, coverage, and runtime alongside the benchmark's prescribed accuracy measures.",
+      "lesson_md": "## In one sentence\n\nAudit a city-scale trajectory claim with held-out recordings, reporting failures, coverage, and runtime alongside the benchmark's prescribed accuracy measures.\n\n![LaMAria overview showing wearable sensors, surveyed control points, city trajectories, low light, and moving platforms](/img/lessons/projects_state_estimation_slam_1-city-slam-audit.webp)\n*LaMAria overview showing wearable sensors, surveyed control points, city trajectories, low light, and moving platforms. Source: [LaMAria](https://lamaria.ethz.ch/), license unknown.*\n\n## What you will learn\n\n- **SLAM**, simultaneous localization and mapping, estimates motion while building a map. A successful short clip does not establish reliable city-scale performance.\n- **Held-out sessions** are recordings excluded from tuning; they test whether a method generalizes beyond its development examples.\n- **Control points** are surveyed physical locations used as sparse reference constraints. **Pseudo ground truth** is an estimated dense reference, not equally precise surveying everywhere.\n- **Think of continuous integration:** report failed jobs and skipped tests, not just the average speed of passing ones.\n\n> **Key idea:** Accuracy numbers need their evaluation protocol, coverage, and failure cases to mean anything.\n\n## What you need\n\n- **Reproducibility prerequisite:** Complete Turn trajectory failures into a reproducible test suite.\n- **Geometry and timing prerequisites:** Finish Show where metric scale comes from and Audit clock offsets before running VIO.\n- **Offline tools:** Use a feasible LaMAria subset and documented baseline configurations; OpenVINS, ORB-SLAM3, and evo are neighboring tools, not interchangeable benchmark protocols.\n- **Planning estimate:** This student proposal budgets 1–2 months and €0 hardware on an existing computer; separately budget storage and purchased compute.\n\n## Steps\n\n1. **Freeze the audit plan:** Choose sessions, baseline configurations, resource limits, and exclusion rules before examining held-out results.\n2. **Reproduce the evaluation example:** LaMAria's quickstart supplies R_01_easy and sequence_1_19, illustrating different reference and evaluation paths.\n3. **Validate input conventions:** Match timestamp units and sensor frame; distinguish world-from-IMU poses from world-from-camera poses.\n4. **Run fixed baselines:** Record preprocessing, estimation, and evaluation time, plus crashes, missing poses, and resource use.\n5. **Apply the prescribed metrics:** Use control-point alignment where required; keep dense pseudo-reference analysis separate rather than substituting generic trajectory alignment.\n6. **Present the audit:** Show per-session results, aggregate statistics, coverage, and representative failure clips together.\n\n```mermaid\nflowchart LR\n  P[\"Freeze protocol\"] --> S[\"Held-out sessions\"]\n  S --> B[\"Fixed baselines\"]\n  B --> E[\"Official evaluation\"]\n  B --> F[\"Failures and runtime\"]\n  E --> R[\"Audit report\"]\n  F --> R\n```\n\n## Common pitfalls\n\n- **Reference types differ:** LaMAria warns that dense pseudo poses may be insufficiently accurate for moving-platform sequences; use sparse control points as documented.\n- **Missing output must stay visible:** The repository's pseudo-reference recall counts missing estimates as unrecalled, rather than silently dropping them.\n- **Subset results are not full-benchmark claims:** Disclose excluded sessions and avoid tuning repeatedly on the held-out set.\n\n## When it's done\n\n- **Deliver a multi-session dashboard:** Put success/failure coverage, runtime, and prescribed error or recall metrics beside failure clips.\n- **Make reruns possible:** Save commands, revisions, calibration, hardware details, and exclusions; explain conclusions through SLAM benchmarking, consistency & failure analysis.",
+      "resources": [
+        {
+          "title": "Project Aria at ICCV 2025 - Benchmarking Egocentric Visual-Intertial SLAM at City Scale",
+          "url": "https://www.youtube.com/watch?v=HD_eACowqW4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official tutorial's benchmark, metrics, and failure-analysis sections."
+        },
+        {
+          "title": "Documentation - LaMAria",
+          "url": "https://lamaria.ethz.ch/slam_documentation",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow sparse versus dense evaluation rules and required pose conventions."
+        },
+        {
+          "title": "The LaMAria Dataset",
+          "url": "https://github.com/cvg/lamaria",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reproduce the quickstart and official evaluation commands."
+        },
+        {
+          "title": "Benchmarking Egocentric Visual-Inertial SLAM at City Scale",
+          "url": "https://arxiv.org/abs/2509.26639",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the benchmark design and the limitations behind aggregate results."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HD_eACowqW4",
+        "https://lamaria.ethz.ch/slam_documentation",
+        "https://github.com/cvg/lamaria",
+        "https://arxiv.org/abs/2509.26639",
+        "https://lamaria.ethz.ch/",
+        "https://lamaria.ethz.ch/tutorial"
+      ]
+    },
+    {
+      "node_id": "p:audit-clock-offsets-before-running-vio",
+      "type": "project",
+      "name": "Audit clock offsets before running VIO",
+      "summary": "Plot camera and inertial timestamps, inject controlled offsets, and show how restoring synchronization changes visual-inertial trajectory error.",
+      "lesson_md": "## In one sentence\n\nPlot camera and inertial timestamps, inject controlled offsets, and show how restoring synchronization changes visual-inertial trajectory error.\n\n![Kalibr camera-IMU calibration demonstration with a moving sensor rig and printed target](/img/lessons/projects_state_estimation_slam_1-clock-offsets.webp)\n*Kalibr camera-IMU calibration demonstration with a moving sensor rig and printed target. Source: [Kalibr calibration tutorial](https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration), license unknown.*\n\n## What you will learn\n\n- **Visual-inertial odometry (VIO)** combines camera images and inertial measurements to estimate motion; both streams must describe compatible times.\n- **Clock offset** is a time shift between streams. **Dropped frames** are missing samples; shifting timestamps cannot restore missing information.\n- **Calibration** describes sensor geometry and timing. OpenVINS notes that timestamp errors can quickly degrade estimates during dynamic motion.\n- **Think of distributed traces:** joining events by arrival time instead of their actual timestamps can invent a false execution order.\n\n> **Key idea:** Treat time alignment as an explicit input assumption, not a knob for making one trajectory look better.\n\n## What you need\n\n- **Prerequisite replay:** Complete Replay a public visual-inertial trajectory and retain its documented calibration and untouched timestamps.\n- **Software setup:** Use OpenVINS for replay, Kalibr for timing conventions, and evo for consistent trajectory comparisons.\n- **Planning estimate:** This student proposal budgets 2–4 weeks and €0 hardware on an existing computer; purchased compute and storage are excluded.\n\n## Steps\n\n1. **Inspect both timelines:** Plot camera and IMU sample intervals, missing samples, and the dataset's documented camera-to-IMU shift.\n2. **Establish a baseline:** Replay the unmodified recording and save pose errors, configuration, and timestamp-association settings.\n3. **Check the shift direction:** Kalibr defines IMU time as camera time plus shift; its example shift, -8.121e-05 seconds, equals -81.21 microseconds.\n4. **Inject a recorded perturbation:** Alter one stream's timestamps in a copy, keeping calibration and all other estimator settings fixed.\n5. **Restore and compare:** Undo the exact injected shift, repeat across different motions, and compare against the unchanged baseline.\n6. **Record the interactive demo:** Link a timeline selection to image/IMU samples and the corresponding pose-error change.\n\n```mermaid\nflowchart LR\n  D[\"Recorded streams\"] --> A[\"Audit timing\"]\n  A --> B[\"Baseline replay\"]\n  A --> O[\"Inject known offset\"]\n  O --> R[\"Replay and restore\"]\n  B --> C[\"Compare pose errors\"]\n  R --> C\n```\n\n## Common pitfalls\n\n- **Sign conventions differ:** Translate the documented meaning of each configuration field; do not copy a Kalibr number blindly into another tool.\n- **Online calibration can compensate:** Record whether the estimator adjusts timing during replay, so compensation does not hide your injected perturbation.\n- **Association can hide failures:** Keep comparison settings fixed and report unmatched timestamps rather than silently discarding difficult sections.\n\n## When it's done\n\n- **Deliver linked plots:** Show original, shifted, and restored timelines with pose error and missing-sample counts.\n- **Conceptual connection:** Use Estimator calibration, timing & observability to explain why motion affects timing sensitivity.\n- **Calibration follow-up:** Continue with Design an observable calibration motion or Compare filter and graph VIO under visual loss.\n- **Evaluation follow-up:** Reuse the audit in Audit a city-scale SLAM claim on held-out sessions and Replay legged body-state estimates with camera outages.",
+      "resources": [
+        {
+          "title": "Visual-Inertial Sensor Calibration -- A Complete Tutorial and Discussion",
+          "url": "https://www.youtube.com/watch?v=BtzmsuJemgI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "OpenVINS's author walks through sensor calibration and timestamp inspection."
+        },
+        {
+          "title": "Getting Started » Sensor Calibration",
+          "url": "https://docs.openvins.com/gs-calibration.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand timestamp sensitivity and inspect calibration diagnostics."
+        },
+        {
+          "title": "Camera IMU calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the documented calibration workflow and IMU timing warnings."
+        },
+        {
+          "title": "Yaml formats",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/yaml-formats",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the exact camera/IMU shift equation and example value."
+        },
+        {
+          "title": "Metrics",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare trajectories with fixed alignment and error conventions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=BtzmsuJemgI",
+        "https://docs.openvins.com/gs-calibration.html",
+        "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+        "https://github.com/ethz-asl/kalibr/wiki/yaml-formats",
+        "https://github.com/MichaelGrupp/evo/wiki/Metrics"
+      ]
+    }
+  ]
+}
