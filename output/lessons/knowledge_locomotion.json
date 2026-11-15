@@ -172,6 +172,224 @@
         "https://arxiv.org/abs/2209.05309",
         "https://raw.githubusercontent.com/HybridRobotics/GenLoco/main/motion_imitation/robots/a1.py"
       ]
+    },
+    {
+      "node_id": "k:fall-recovery-get-up",
+      "type": "knowledge",
+      "name": "Fall recovery & get-up",
+      "summary": "Fall recovery uses coordinated contacts and joint movements to bring a fallen robot back to a stable standing posture.",
+      "lesson_md": "## In one sentence\n\nFall recovery uses coordinated contacts and joint movements to bring a fallen robot back to a stable standing posture.\n\n![VIGOR diagram showing human recovery demonstrations, robot poses, terrain alignment, and a recovery controller](/img/lessons/knowledge_locomotion-recovery.webp)\n*VIGOR learns terrain-aware fall recovery. Source: [VIGOR authors](https://vigor2026.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **A fall is not a reset:** a physical robot remains on the floor until something moves it; walking control alone does not solve this.\n- **Start with evidence:** the ANYmal study demonstrates learned recovery from complex fallen configurations after training in simulation.\n- **Terrain changes the task:** VIGOR studies humanoid recovery around stairs, gaps, and other non-flat surfaces, not merely standing up on an empty floor.\n\n> **Key idea:** Successful recovery means regaining usable support, not briefly passing through an upright-looking pose.\n\n## How it works\n\n- **Observe the starting state:** joint positions and body orientation describe how the robot is folded; depth sensing can reveal surrounding surfaces.\n- **Choose a recovery action:** a learned **policy**, a function mapping observations to commands, coordinates joints to change body pose and supporting contacts.\n- **Account for the ground:** VIGOR combines demonstrations of recovery movements with varied simulated terrain, then trains a controller using depth and internal sensing.\n- **Separate the stages:** impact mitigation reduces damage during a fall; get-up control moves an already fallen robot toward standing.\n- **Software analogy:** a database recovery procedure restores invariants before accepting requests; likewise, our walking supervisor should check support before resuming velocity commands.\n- **Worked example:** VIGOR activates its controller after a 20° tilt in fall tests; this is an experimental trigger, not a universal safe threshold.\n\n```mermaid\nflowchart LR\n  S[\"Pose and terrain\"] --> P[\"Recovery policy\"]\n  P --> A[\"Joint commands\"]\n  A --> C[\"Changing contacts\"]\n  C --> S\n```\n\n## Key terms\n\n- **Proprioception**: measurements of the robot's own state, such as joint positions, rather than an external view.\n- **Support contact**: a body part touching a surface and carrying load during movement.\n- **Impact mitigation**: reducing harmful contact effects while falling.\n- **Stand-up recovery**: coordinated motion from a fallen configuration toward standing.\n\n## Before / after\n\n- **Before:** Know joint limits and contact forces; classify a fallen pose separately from a temporary walking disturbance.\n- **After:** The project **Catalogue simulated fallen poses** supplies test cases for the project **Train or replay a simulated get-up controller**.\n\n## Try it in an afternoon\n\n1. **Watch the ANYmal video** and label back-down, side-down, and tangled-leg starting configurations where visible.\n2. **Inspect VIGOR's stand-up examples** and list surfaces that can support or obstruct a recovering limb.\n3. **Build a test table** with initial pose, terrain, final support, and whether the robot remains standing.\n4. **Specify a handover check** for the project **Switch safely between walking and recovery**; keep this first exercise in simulation or video analysis.",
+      "resources": [
+        {
+          "title": "Learning Agile and Dynamic Motor Skills for Legged Robots",
+          "url": "https://www.youtube.com/watch?v=aTDkYFZFWug",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch ANYmal recover from falls rather than merely resist pushes."
+        },
+        {
+          "title": "Unified Perceptive Fall Safety for Humanoids",
+          "url": "https://vigor2026.github.io/",
+          "format": "Interactive",
+          "level": "Intermediate",
+          "why": "Compare terrain-aware recovery examples and interactive rollouts."
+        },
+        {
+          "title": "Learning agile and dynamic motor skills for legged robots",
+          "url": "https://arxiv.org/abs/1901.08652",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the simulation-to-hardware study that includes ANYmal recovery."
+        },
+        {
+          "title": "Unified Perceptive Fall Safety for Humanoids",
+          "url": "https://arxiv.org/abs/2602.16511",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study recovery goals that depend on surrounding terrain."
+        }
+      ],
+      "sources": [
+        "https://vigor2026.github.io/",
+        "https://www.youtube.com/watch?v=aTDkYFZFWug",
+        "https://arxiv.org/abs/1901.08652",
+        "https://arxiv.org/abs/2602.16511"
+      ]
+    },
+    {
+      "node_id": "k:gaits-gait-cycles",
+      "type": "knowledge",
+      "name": "Gaits & gait cycles",
+      "summary": "A gait specifies when each foot supports the robot and when it swings toward its next contact.",
+      "lesson_md": "## In one sentence\n\nA gait specifies when each foot supports the robot and when it swings toward its next contact.\n\n![Stanford Pupper controller diagram routing each leg between stance and swing according to a gait scheduler](/img/lessons/knowledge_locomotion-gaits.webp)\n*Pupper separates contact scheduling from foot movement. Source: [Stanford Robotics Club](https://github.com/stanfordroboticsclub/StanfordQuadruped), MIT.*\n\n## Why it matters for us\n\n- **One body, different rhythms:** a quadruped can move its diagonal legs together in a trot instead of moving every leg independently.\n- **Timing comes before angles:** a gait scheduler decides which feet should support the body; other controllers decide how those feet move.\n- **Make coordination visible:** the project **Build an interactive gait phase viewer** turns an invisible timing schedule into something we can inspect and debug.\n\n> **Key idea:** A gait is a contact schedule, not proof that the robot can physically execute it without slipping or falling.\n\n## How it works\n\n- **Repeat a cycle:** track progress through one repeating sequence, then wrap around to its beginning.\n- **Assign foot roles:** a stance foot stays on the ground while the body moves; a swing foot lifts and returns toward its next touchdown.\n- **Coordinate pairs:** Pupper's trot moves diagonal pairs together, with intervals when all four feet are scheduled to remain in contact.\n- **Software analogy:** Pupper uses a modulo counter, like indexing a circular buffer; a lookup table converts the current phase into four contact flags.\n- **Worked timing example:** its configuration uses 0.10 s overlap, 0.15 s swing, then repeats those durations: one cycle lasts 0.50 s.\n- **Derive the support fraction:** each leg's configured stance lasts 0.35 s, so its duty factor is 0.35 / 0.50 = 0.70.\n\n```mermaid\nflowchart LR\n  T[\"Tick counter\"] --> P[\"Cycle phase\"]\n  P --> F[\"Contact flags\"]\n  F --> S[\"Stance or swing\"]\n  S --> J[\"Joint targets\"]\n```\n\n## Key terms\n\n- **Stance**: the interval when a foot supports the robot.\n- **Swing**: the interval when a foot travels to its next contact.\n- **Phase**: progress through a repeating movement cycle.\n- **Duty factor**: the fraction of a cycle that a foot spends in stance.\n- **Touchdown**: the transition from swing to ground contact.\n\n## Before / after\n\n- **Before:** Understand time-based loops and a foot's position relative to the body; distinguish a planned contact from a measured one.\n- **After:** The project **Compare gait energy and slip** asks whether an attractive timing pattern also produces useful physical movement.\n\n## Try it in an afternoon\n\n1. **Read Pupper's contact table** and draw four horizontal timelines, one per leg.\n2. **Mark the four phases** using the configured overlap and swing durations; check the total against 0.50 s.\n3. **Implement a modulo counter** and display the four contact flags across two cycles.\n4. **Compare with the video:** identify diagonal pairing, then explain which parts of foot movement the contact flags do not specify.",
+      "resources": [
+        {
+          "title": "Stanford Pupper",
+          "url": "https://www.youtube.com/watch?v=NIjodHA78UE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Identify the diagonal leg pairing in a real robot's trot."
+        },
+        {
+          "title": "Controller Description",
+          "url": "https://pupper.readthedocs.io/en/latest/reference/controller.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand gait scheduling, stance movement, and swing-foot return."
+        },
+        {
+          "title": "Gaits.py",
+          "url": "https://raw.githubusercontent.com/stanfordroboticsclub/StanfordQuadruped/master/src/Gaits.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow modulo-based phase indexing and the contact flag lookup."
+        },
+        {
+          "title": "Config.py",
+          "url": "https://raw.githubusercontent.com/stanfordroboticsclub/StanfordQuadruped/master/pupper/Config.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the contact table and calculate the configured cycle duration."
+        }
+      ],
+      "sources": [
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+        "https://www.youtube.com/watch?v=NIjodHA78UE",
+        "https://pupper.readthedocs.io/en/latest/reference/controller.html",
+        "https://raw.githubusercontent.com/stanfordroboticsclub/StanfordQuadruped/master/src/Gaits.py",
+        "https://raw.githubusercontent.com/stanfordroboticsclub/StanfordQuadruped/master/pupper/Config.py",
+        "https://news.mit.edu/2014/mit-cheetah-robot-runs-jumps-0915"
+      ]
+    },
+    {
+      "node_id": "k:humanoid-motion-imitation-retargeting",
+      "type": "knowledge",
+      "name": "Humanoid motion imitation & retargeting",
+      "summary": "Retargeting maps human movement onto a robot's body, while motion imitation trains a controller to perform that movement under physical constraints.",
+      "lesson_md": "## In one sentence\n\nRetargeting maps human movement onto a robot's body, while motion imitation trains a controller to perform that movement under physical constraints.\n\n![ASAP pipeline mapping human videos to humanoid imitation goals, simulation training, and real-world motion](/img/lessons/knowledge_locomotion-retargeting.webp)\n*ASAP separates motion goals, tracking policies, and physics alignment. Source: [ASAP authors](https://agile.human2humanoid.com/), license unknown.*\n\n## Why it matters for us\n\n- **Human joints are not robot joints:** a captured dance cannot simply become an array of motor commands for a differently proportioned humanoid.\n- **References express intent:** motion data tells a controller what movement to reproduce; physics still determines whether the robot stays supported.\n- **A visible learning goal:** the project **Retarget your own dance to a humanoid** exposes the difference between matching a pose and executing a motion.\n\n> **Key idea:** Retargeting supplies a movement target; a tracking controller must make that target work on the robot.\n\n## How it works\n\n- **Describe the example:** a motion clip records a sequence of body poses rather than a single image.\n- **Map between bodies:** retargeting converts that sequence into robot movement goals despite differences in structure and proportions.\n- **Train a tracker:** DeepMimic combines a motion-imitation objective with task goals in physical simulation; it is foundational character-control research, not automatic hardware deployment.\n- **Address deployment mismatch:** ASAP first trains tracking policies using retargeted human motion, then uses real trajectories to learn a correction model inside the simulator.\n- **Software analogy:** a compiler translates source into another machine's representation; retargeting is translation, while physical tracking resembles executing and testing the compiled program.\n- **Worked pipeline example:** ASAP evaluates three transfers: IsaacGym to IsaacSim, IsaacGym to Genesis, and IsaacGym to a real Unitree G1.\n- **Keep the correction separate:** ASAP fine-tunes with its correction model inside simulation, then deploys the improved policy without that model.\n\n```mermaid\nflowchart LR\n  H[\"Human motion\"] --> R[\"Retarget\"]\n  R --> G[\"Robot motion goals\"]\n  G --> T[\"Train tracker\"]\n  T --> P[\"Tracking policy\"]\n  P --> B[\"Robot movement\"]\n```\n\n## Key terms\n\n- **Pose**: the positions and orientations describing the body at one instant.\n- **Retargeting**: adapting motion goals from one body structure to another.\n- **Tracking error**: the difference between desired movement and movement actually achieved.\n- **Dynamics mismatch**: differences between simulated and real physical responses.\n- **Residual model**: a model of a correction to another model or command.\n\n## Before / after\n\n- **Before:** Understand joint coordinates, physical contacts, and learned control; separate an example trajectory from a controller.\n- **After:** The project **Compare nominal and residual-dynamics tracking** tests whether physics alignment improves execution rather than only making a reference animation look better.\n\n## Try it in an afternoon\n\n1. **Watch the ASAP comparisons** and choose one movement with clear support changes.\n2. **Annotate the motion pipeline** with human poses, robot reference poses, and executed poses as three separate outputs.\n3. **Inspect the before/after clips** and describe one visible tracking difference without claiming a numerical improvement.\n4. **Write a retargeting checklist** covering body proportions, joint limits, and foot contacts before planning a simulation-only dance experiment.",
+      "resources": [
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See retargeted whole-body skills and tracking comparisons."
+        },
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://agile.human2humanoid.com/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Follow the separation between motion tracking and physics correction."
+        },
+        {
+          "title": "DeepMimic: Example-Guided Deep Reinforcement Learning of Physics-Based Character Skills",
+          "url": "https://xbpeng.github.io/projects/DeepMimic/index.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand imitation objectives through foundational simulated character examples."
+        },
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://arxiv.org/abs/2502.01143",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study how retargeted motions and real trajectories support deployable tracking."
+        }
+      ],
+      "sources": [
+        "https://agile.human2humanoid.com/",
+        "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+        "https://xbpeng.github.io/projects/DeepMimic/index.html",
+        "https://arxiv.org/abs/2502.01143"
+      ]
+    },
+    {
+      "node_id": "k:leg-design-proprioceptive-actuation",
+      "type": "knowledge",
+      "name": "Leg design & proprioceptive actuation",
+      "summary": "Leg geometry and transmission design determine how joint motors move the feet, deliver forces, and respond when the feet hit the ground.",
+      "lesson_md": "## In one sentence\n\nLeg geometry and transmission design determine how joint motors move the feet, deliver forces, and respond when the feet hit the ground.\n\n![MIT Cheetah's custom motors and amplifier electronics](/img/lessons/knowledge_locomotion-leg-design.webp)\n*Custom high-torque-density motors and amplifier for MIT Cheetah. Source: [Jose-Luis Olivares/MIT](https://news.mit.edu/2014/mit-cheetah-robot-runs-jumps-0915), Creative Commons Attribution Non-Commercial No Derivatives.*\n\n## Why it matters for us\n\n- **A leg is a transmission:** changing link lengths or gearing changes what motor movement means at the foot, even with identical control software.\n- **Ground contact is unavoidable:** a walking leg must swing freely, support weight, and tolerate repeated collisions with the floor.\n- **Design before purchasing:** the project **Plot a leg workspace and force map** helps us compare mechanical choices before building a complete quadruped.\n\n> **Key idea:** Select leg geometry and actuation together; accurate joint positioning alone does not guarantee controllable ground forces.\n\n## How it works\n\n- **Choose the geometry:** link lengths and joint arrangements determine where the foot can reach.\n- **Choose the transmission:** a gearbox trades motor speed against output torque, the twisting effort applied around a joint.\n- **Limit reflected inertia:** high reduction can make the motor's inertia harder to accelerate from the joint side, affecting impact response.\n- **Allow backdriving:** an external foot force can move the joints and motor rather than meeting an almost rigid transmission.\n- **Control interaction internally:** MIT's proprioceptive approach controls foot interaction through joint-level torque control, using low-ratio transmission and low-inertia legs.\n- **Software analogy:** choosing storage by throughput alone ignores latency; choosing an actuator by peak torque alone ignores how quickly and gently it can respond to contact.\n- **Worked design example:** the MIT Cheetah study reports controlled ground contacts as short as 85 ms with peak forces exceeding 450 N.\n\n```mermaid\nflowchart LR\n  C[\"Joint torque command\"] --> M[\"Motor and transmission\"]\n  M --> L[\"Leg geometry\"]\n  L --> F[\"Foot interaction\"]\n  F --> J[\"Joint response\"]\n  J --> C\n```\n\n## Key terms\n\n- **Workspace**: the set of foot positions reachable with the chosen leg geometry.\n- **Torque**: rotational effort around a joint.\n- **Gear reduction**: a transmission ratio that reduces speed while increasing available output torque, subject to losses.\n- **Backdrivability**: how readily external load motion can drive the transmission backward.\n- **Proprioceptive actuation**: controlling interaction through sensing and control local to the robot's actuators rather than relying on foot-force feedback.\n\n## Before / after\n\n- **Before:** Understand linkage motion and joint torque; distinguish a position-controlled servo from a force-control-oriented actuator design.\n- **After:** The project **Compare virtual leg ratios** can evaluate reach and interaction trade-offs, not simply whether a leg animation looks plausible.\n\n## Try it in an afternoon\n\n1. **Inspect the motor photo** and locate the actuator as a separate component from the leg links.\n2. **Sketch two leg geometries** and mark which foot positions each can reach.\n3. **Read the paper's actuator comparison** and label high-ratio gearing, a series spring, and proprioceptive actuation.\n4. **Make a comparison table** for reach, impact response, and sensing needs; keep this first study virtual rather than testing impacts on hardware.",
+      "resources": [
+        {
+          "title": "MIT Robotic Cheetah",
+          "url": "https://www.youtube.com/watch?v=XMKQbqnXXhQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how custom leg actuation enables force-controlled bounding."
+        },
+        {
+          "title": "Bound for robotic glory",
+          "url": "https://news.mit.edu/2014/mit-cheetah-robot-runs-jumps-0915",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read an accessible explanation of motors, leg design, and short ground-contact force control."
+        },
+        {
+          "title": "Mechanical Design",
+          "url": "https://pupper.readthedocs.io/en/latest/reference/design.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect Pupper's linked CAD model as a concrete leg-geometry example."
+        },
+        {
+          "title": "Proprioceptive Actuator Design in the MIT Cheetah: Impact Mitigation and High-Bandwidth Physical Interaction for Dynamic Legged Robots",
+          "url": "https://www.mit.edu/~pwensing/Papers/Wensing_et_al-2017-TRO.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study low-ratio transmissions, backdrivability, and impact mitigation."
+        }
+      ],
+      "sources": [
+        "https://news.mit.edu/2014/mit-cheetah-robot-runs-jumps-0915",
+        "https://www.youtube.com/watch?v=XMKQbqnXXhQ",
+        "https://pupper.readthedocs.io/en/latest/reference/design.html",
+        "https://www.mit.edu/~pwensing/Papers/Wensing_et_al-2017-TRO.pdf",
+        "https://api.crossref.org/works/10.1109/TRO.2016.2640183"
+      ]
+    },
+    {
+      "node_id": "k:loco-manipulation-coordination",
+      "type": "knowledge",
+      "name": "Loco-manipulation coordination",
+      "summary": "Loco-manipulation coordinates stepping, body posture, and object interaction so the robot can move and manipulate without treating balance as a separate problem.",
+      "lesson_md": "## In one sentence\n\nLoco-manipulation coordinates stepping, body posture, and object interaction so the robot can move and manipulate without treating balance as a separate problem.\n\n![RoboDuet quadruped robots with arms in different coordinated body and arm configurations](/img/lessons/knowledge_locomotion-loco-manipulation.webp)\n*RoboDuet coordinates an arm with a legged body. Source: [RoboDuet authors](https://locomanip-duet.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **The arm moves the problem:** reaching with an arm changes the whole robot's configuration, so a fixed walking posture can unnecessarily restrict useful reach.\n- **Objects push back:** contact-rich manipulation requires reasoning about force as well as the hand's position.\n- **Start with a controlled task:** the project **Step while pushing a known object** isolates coordination without also requiring general object recognition.\n\n> **Key idea:** The hand's task and the feet's supporting role must agree on what the whole body should do.\n\n## How it works\n\n- **Specify the interaction:** provide a desired hand position and orientation; some methods also accept force commands for contact with objects.\n- **Coordinate body and arm:** RoboDuet uses cooperating locomotion and arm policies rather than treating the arm as an independent passenger.\n- **Share useful commands:** its arm policy adjusts body-orientation commands while controlling the arm joints, allowing body posture to assist reaching.\n- **Handle contact forces:** position-and-force-control research estimates interaction forces from state history and compensates through position and velocity adjustments.\n- **Software analogy:** two services updating one shared record need a coordination protocol; independently valid arm and walking commands can still conflict over the body's posture.\n- **Worked task example:** RoboDuet demonstrates object transport at ground, chair, cabinet, and desk levels: 0, 20, 60, and 100 cm in its setup.\n- **Distinguish evidence from scope:** these demonstrations show coordinated tasks, not a guarantee of success with arbitrary objects, payloads, or surfaces.\n\n```mermaid\nflowchart LR\n  G[\"Hand goal\"] --> A[\"Arm policy\"]\n  A --> L[\"Locomotion policy\"]\n  A --> J[\"Arm commands\"]\n  L --> F[\"Leg commands\"]\n  J --> R[\"Robot and object\"]\n  F --> R\n  R --> A\n  R --> L\n```\n\n## Key terms\n\n- **End effector**: the working tool at the arm's tip, such as a gripper.\n- **Pose tracking**: following a requested position and orientation over time.\n- **Whole-body coordination**: choosing limb and body actions together to accomplish a task.\n- **Interaction force**: a force exchanged between the robot and an object or surface.\n- **Compliance**: allowing motion in response to contact rather than rigidly opposing every displacement.\n\n## Before / after\n\n- **Before:** Understand supporting contacts and body balance; separate a hand target from the body motion needed to achieve it.\n- **After:** The project **Walk with a moving virtual payload** can test coordination, while the project **Step while pushing a known object** adds external interaction.\n\n## Try it in an afternoon\n\n1. **Watch RoboDuet's door-opening clip** and identify arm motion, body-posture changes, and steps as separate observations.\n2. **Compare its transport demonstrations** at the four published heights; note when arm motion alone would be insufficient.\n3. **Sketch a pushing test** with one known object and one requested hand trajectory, entirely in simulation.\n4. **Define evaluation columns** for hand error, object movement, and falls; a successful hand trajectory alone is not enough.",
+      "resources": [
+        {
+          "title": "RoboDuet: Learning a Cooperative Policy for Whole-body Legged Loco-Manipulation",
+          "url": "https://www.youtube.com/watch?v=pTjqUUVgt7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe coordinated arm, body, and leg movement in manipulation tasks."
+        },
+        {
+          "title": "RoboDuet: Learning a Cooperative Policy for Whole-body Legged Loco-Manipulation",
+          "url": "https://locomanip-duet.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Examine the two-policy mechanism and door-opening and transport demonstrations."
+        },
+        {
+          "title": "RoboDuet: Learning a Cooperative Policy for Whole-body Legged Loco-Manipulation",
+          "url": "https://arxiv.org/abs/2403.17367",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study how locomotion and arm policies cooperate as a whole-body controller."
+        },
+        {
+          "title": "Learning a Unified Policy for Position and Force Control in Legged Loco-Manipulation",
+          "url": "https://proceedings.mlr.press/v305/zhi25a.html",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Extend pose tracking to object-contact forces and compliant behavior."
+        }
+      ],
+      "sources": [
+        "https://locomanip-duet.github.io/",
+        "https://www.youtube.com/watch?v=pTjqUUVgt7k",
+        "https://arxiv.org/abs/2403.17367",
+        "https://proceedings.mlr.press/v305/zhi25a.html"
+      ]
     }
   ]
 }
