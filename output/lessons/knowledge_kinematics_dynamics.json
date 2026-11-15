@@ -376,6 +376,144 @@
         "https://www.youtube.com/watch?v=5wCK6XGC3ig",
         "https://commons.wikimedia.org/wiki/File:Hexapod_positioner_aka_Stewart_platform_x2.jpg"
       ]
+    },
+    {
+      "node_id": "k:differential-ik-redundancy-resolution-qp-based",
+      "type": "knowledge",
+      "name": "Differential IK & redundancy resolution (QP-based)",
+      "summary": "Differential IK repeatedly chooses small joint motions that reduce task errors while respecting explicitly configured limits.",
+      "lesson_md": "## In one sentence\n\nDifferential IK repeatedly chooses small joint motions that reduce task errors while respecting explicitly configured limits.\n\n![Simulated robots illustrating mink differential inverse kinematics](/img/lessons/knowledge_kinematics_dynamics-differential-ik.webp)\n*Mink combines robot tasks and limits in one local optimization. Source: [mink documentation](https://kevinzakka.github.io/mink/), license unknown.*\n\n## Why it matters for us\n\n- **Teleoperation changes the target continuously:** the arm must update its motion rather than solve once and forget.\n- **Extra joints create choices:** several joint motions can move the hand similarly, leaving freedom to prefer a comfortable posture.\n- **Conflicting requests need trade-offs:** tracking position, tracking orientation, and staying near a reference posture may not all be possible together.\n\n> **Key idea:** A preferred posture is an objective; a joint bound is a constraint, and those are different promises.\n\n## How it works\n\n- **Measure the current configuration:** joint positions determine the hand's current position and orientation, together called its pose.\n- **Think constrained scheduling:** a software scheduler balances priorities while obeying hard capacity limits; this solver balances motion tasks while obeying configured bounds.\n- **Linearize locally:** a Jacobian maps small joint changes to approximate changes in a task, such as moving the hand.\n- **Build a quadratic program:** minimize weighted squared task errors subject to constraints, then integrate the returned velocity into the configuration.\n- **Recompute after each step:** the approximation describes nearby motion, not an entire collision-free route to a distant goal.\n- **Resolve redundancy:** add a posture task to prefer a reference configuration in directions that the hand task leaves unused.\n- **Tune costs deliberately:** weighted tasks compete; a larger posture weight can also worsen hand tracking rather than creating strict task priority.\n- **Worked mink example:** its tutorial uses a posture cost of 0.1 alongside position and orientation costs of 1.0, with a 0.01-second update.\n- **Configure limits separately:** joint-position, velocity, and collision limits restrict motion only when included with the appropriate model information.\n\n```mermaid\nflowchart LR\n  Q[\"Current configuration\"] --> J[\"Task errors and Jacobians\"]\n  T[\"Targets and limits\"] --> J\n  J --> S[\"Solve QP\"]\n  S --> I[\"Integrate velocity\"]\n  I --> Q\n```\n\n## Key terms\n\n- **Redundancy**: motion freedom beyond what the selected task requires.\n- **Nullspace**: joint-motion directions that leave a task unchanged to first order.\n- **Quadratic program**: optimization with a quadratic objective and linear constraints.\n- **Regularization**: an additional preference that discourages unstable or unwanted solutions.\n\n## Before / after\n\n- **Before:** Study Velocity kinematics, Jacobians & singularities and Inverse kinematics (analytic & numerical).\n- **After:** Try Follow a moving target with mink, then Human-to-robot motion retargeting.\n\n## Try it in an afternoon\n\n1. **Run the mink quickstart** with its supplied Panda model and inspect the reported position error.\n2. **Add the posture task** from Tasks and Limits; move the target and compare the arm's shape.\n3. **Enable velocity bounds** and compare convergence with the same target.\n4. **Request an unreachable pose:** inspect residual error instead of interpreting solver success as perfect tracking.",
+      "resources": [
+        {
+          "title": "Example Gallery",
+          "url": "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator's embedded arm-tracking demonstrations before exploring their source code."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build a pose task and follow the solve-and-integrate loop."
+        },
+        {
+          "title": "Tasks and Limits",
+          "url": "https://kevinzakka.github.io/mink/tutorial/tasks_and_limits.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare posture regularization, task weights, and explicit motion constraints."
+        },
+        {
+          "title": "Inverse kinematics",
+          "url": "https://kevinzakka.github.io/mink/api/inverse_kinematics.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect the QP-building and solving interfaces."
+        }
+      ],
+      "sources": [
+        "https://kevinzakka.github.io/mink/",
+        "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+        "https://kevinzakka.github.io/mink/tutorial/tasks_and_limits.html",
+        "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+        "https://kevinzakka.github.io/mink/api/inverse_kinematics.html"
+      ]
+    },
+    {
+      "node_id": "k:kinematic-hand-eye-calibration",
+      "type": "knowledge",
+      "name": "Kinematic & hand-eye calibration",
+      "summary": "Kinematic calibration adjusts a robot's geometric model, while hand-eye calibration finds the fixed transform connecting its camera and robot frames.",
+      "lesson_md": "## In one sentence\n\nKinematic calibration adjusts a robot's geometric model, while hand-eye calibration finds the fixed transform connecting its camera and robot frames.\n\n![Robot arm viewing a stationary calibration board from multiple camera poses](/img/lessons/knowledge_kinematics_dynamics-hand-eye.webp)\n*An eye-in-hand dataset pairs different robot poses with camera observations of a fixed target. Source: [Zivid calibration process](https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-process.html), license unknown.*\n\n## Why it matters for us\n\n- **Seeing is not reaching:** an object's coordinates in a camera image or point cloud are not automatically coordinates the robot can use.\n- **Model parameters affect predictions:** joint offsets and link geometry influence the tool position computed from joint readings.\n- **Calibration solves different unknowns:** improving the robot's geometry and locating its camera are related tasks, but not interchangeable ones.\n\n> **Key idea:** A camera measurement becomes useful to an arm only when every transform in the coordinate chain has a known direction.\n\n## How it works\n\n- **Start with named frames:** a frame is a coordinate system attached to the base, tool, camera, or calibration target.\n- **Think API adapters:** camera and robot expose coordinates in different interfaces; a transform converts between them without changing the physical point.\n- **Kinematic calibration fits parameters:** compare observations with model predictions, then optimize selected joint offsets or frame adjustments to reduce disagreement.\n- **Eye-in-hand means** the camera moves rigidly with the tool; the unknown camera-to-tool relationship stays fixed as the arm moves.\n- **Eye-to-hand means** the camera stays fixed relative to the robot base, so calibration instead estimates that fixed relationship.\n- **Collect paired observations:** after each distinct robot movement, record the robot pose and the target pose measured by the camera.\n- **Solve across the dataset:** estimate one fixed relationship that explains all those paired observations, rather than fitting each image independently.\n- **Worked transform example:** for an eye-in-hand camera, compose base-to-tool, tool-to-camera, and camera-to-object transforms, in that order.\n- **Write the chain explicitly:** `T_base_object = T_base_tool @ T_tool_camera @ T_camera_object`; each adjacent frame name must match.\n- **Vary the observations:** Zivid recommends 10–20 pose/point-cloud pairs, with diverse viewing angles and no near-duplicate poses for its calibration workflow.\n\n```mermaid\nflowchart LR\n  P[\"Varied robot poses\"] --> D[\"Paired robot and target poses\"]\n  C[\"Camera observations\"] --> D\n  D --> F[\"Fit fixed transform\"]\n  F --> V[\"Check independent observations\"]\n```\n\n## Key terms\n\n- **Transform**: a rotation and translation relating two coordinate frames.\n- **Joint offset**: a correction to a joint's reported zero position.\n- **Calibration target**: an object whose detectable geometry supports pose measurements.\n- **Residual**: disagreement remaining between a prediction and its observation.\n\n## Before / after\n\n- **Before:** Study Rigid-body motion & coordinate frames and Forward kinematics (DH & product of exponentials).\n- **After:** Try Hand-eye calibration in sim or Camera-to-arm hand-eye calibration for the SO-101.\n\n## Try it in an afternoon\n\n1. **Label the frames** in Zivid's eye-in-hand illustration and mark which relationships remain constant.\n2. **Implement the transform chain** with synthetic rigid transforms and verify it against direct composition.\n3. **Invert one transform deliberately:** observe how a frame-direction mistake changes the resulting object pose.\n4. **Reserve observations for validation:** compare predicted target positions on these, not only the observations used for fitting.",
+      "resources": [
+        {
+          "title": "Zivid Hand-Eye GUI Tutorial (1/2) | Successfully complete hand-eye calibration! | Zivid 3D Vision",
+          "url": "https://www.youtube.com/watch?v=m59xd2s5veY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch an actual camera-and-arm calibration workflow."
+        },
+        {
+          "title": "Hand-Eye Calibration Problem",
+          "url": "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-problem.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow eye-in-hand and eye-to-hand transform chains."
+        },
+        {
+          "title": "Hand-Eye Calibration Process",
+          "url": "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-process.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See how robot poses and target observations are collected together."
+        },
+        {
+          "title": "How to get Good Dataset for Hand-Eye Calibration",
+          "url": "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-getting-good-dataset.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand pose diversity, visibility, and consistent translation units."
+        },
+        {
+          "title": "robot_calibration",
+          "url": "https://github.com/mikeferguson/robot_calibration",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Read how joint offsets and frame parameters become optimization variables."
+        }
+      ],
+      "sources": [
+        "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-problem.html",
+        "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-process.html",
+        "https://support.zivid.com/en/latest/academy/applications/hand-eye/hand-eye-calibration-getting-good-dataset.html",
+        "https://github.com/mikeferguson/robot_calibration",
+        "https://www.youtube.com/watch?v=m59xd2s5veY"
+      ]
+    },
+    {
+      "node_id": "k:human-to-robot-motion-retargeting",
+      "type": "knowledge",
+      "name": "Human-to-robot motion retargeting",
+      "summary": "Motion retargeting converts human movement into robot configurations that approximate the motion despite different body shapes and joint arrangements.",
+      "lesson_md": "## In one sentence\n\nMotion retargeting converts human movement into robot configurations that approximate the motion despite different body shapes and joint arrangements.\n\n![Video frame showing GMR retargeting human motion to humanoid robots](/img/lessons/knowledge_kinematics_dynamics-retargeting.webp)\n*GMR maps a human motion to different robot bodies. Source: [Humanoid Foundation](https://yanjieze.github.io/humanoid-foundation/#GMR), license unknown.*\n\n## Why it matters for us\n\n- **Humans are not robot templates:** copying a person's joint angles does not account for different limb proportions or joint arrangements.\n- **Demonstrations need translation:** captured human movement can supply reference motions for robot animation, teleoperation, or learned motion tracking.\n- **Bad references matter:** the GMR paper reports that retargeting artifacts can reduce the robustness of policies trained to follow them.\n\n> **Key idea:** A visually similar sequence of robot poses is a reference motion, not proof that motors can execute it successfully.\n\n## How it works\n\n- **Recover a human skeleton:** motion capture supplies body poses; a video-based pipeline must estimate them before retargeting can begin.\n- **Think schema migration:** source and destination describe similar concepts, but field names, structure, and valid values differ; an explicit mapping connects them.\n- **Choose corresponding bodies:** match human pelvis, feet, or hands to robot bodies, then account for scale and coordinate-frame offsets.\n- **Solve inverse kinematics:** adjust robot joints so selected body positions and orientations approach their human-derived targets.\n- **Weight the matches:** position and rotation costs specify which discrepancies matter most; different weights can change the resulting movement.\n- **Worked GMR configuration:** its documented pelvis match uses position weight 100 and rotation weight 10, plus translation and quaternion rotation offsets.\n- **Interpret weights as tuning:** those values are not distances or universal settings; inspect the motion rather than assuming one configuration suits every robot.\n- **Store a robot trajectory:** GMR represents each robot frame with base translation, base rotation, and joint positions.\n- **Inspect contact artifacts:** feet may slide, bodies may intersect, or motion may be physically infeasible even when individual poses look plausible.\n- **Separate tracking from retargeting:** a learned controller can follow the resulting reference, but that is another stage with its own failures.\n\n```mermaid\nflowchart LR\n  H[\"Human body poses\"] --> M[\"Scale and body mapping\"]\n  M --> I[\"IK with robot model\"]\n  I --> R[\"Robot reference motion\"]\n  R --> V[\"Inspect artifacts\"]\n  R --> C[\"Tracking controller\"]\n```\n\n## Key terms\n\n- **Embodiment**: a body's geometry, joints, and physical capabilities.\n- **Retargeting**: mapping motion between bodies with different structures.\n- **Quaternion**: a four-component representation of rotation; component order must be checked.\n- **Foot sliding**: a supposedly planted foot moving across the ground.\n- **Reference motion**: a desired movement sequence for a controller to follow.\n\n## Before / after\n\n- **Before:** Learn Differential IK & redundancy resolution (QP-based) and Robot description formats (URDF / MJCF).\n- **After:** Try Retarget your own dance to a humanoid or Retarget human arm video to the SO-101.\n\n## Try it in an afternoon\n\n1. **Watch the GMR demonstration** and compare the same source motion across robot bodies.\n2. **Read the IK configuration:** identify one body match, its two costs, and its frame offsets.\n3. **Follow the BVH example** with an available LAFAN1 clip and a supported robot, keeping execution in simulation.\n4. **Inspect a planted foot:** compare sliding and posture after changing one matching weight; retain both successful and failed examples.",
+      "resources": [
+        {
+          "title": "Humanoid Foundation",
+          "url": "https://yanjieze.github.io/humanoid-foundation/#GMR",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator's embedded GMR retargeting demonstration across different humanoids."
+        },
+        {
+          "title": "GMR: General Motion Retargeting",
+          "url": "https://github.com/YanjieZe/GMR",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the BVH-to-robot example and inspect the human and robot motion representations."
+        },
+        {
+          "title": "IK Config",
+          "url": "https://raw.githubusercontent.com/YanjieZe/GMR/master/DOC.md",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Decode body correspondences, position and rotation costs, and quaternion offsets."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the evaluation connecting retargeting artifacts to downstream tracking robustness."
+        }
+      ],
+      "sources": [
+        "https://yanjieze.github.io/humanoid-foundation/#GMR",
+        "https://github.com/YanjieZe/GMR",
+        "https://raw.githubusercontent.com/YanjieZe/GMR/master/DOC.md",
+        "https://arxiv.org/abs/2510.02252"
+      ]
     }
   ]
 }
