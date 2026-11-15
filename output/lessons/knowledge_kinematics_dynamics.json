@@ -195,6 +195,187 @@
         "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
         "https://www.youtube.com/watch?v=BcjHyhV0kIs"
       ]
+    },
+    {
+      "node_id": "k:rigid-body-dynamics-equations-of-motion",
+      "type": "knowledge",
+      "name": "Rigid-body dynamics (equations of motion)",
+      "summary": "Rigid-body dynamics predicts how forces and torques change a robot's motion, or calculates the effort needed for a desired acceleration.",
+      "lesson_md": "## In one sentence\n\nRigid-body dynamics predicts how forces and torques change a robot's motion, or calculates the effort needed for a desired acceleration.\n\n![Simple pendulum diagram showing a mass, suspension length, gravity direction and swing arc](/img/lessons/knowledge_kinematics_dynamics-dynamics.webp)\n*A pendulum is a small model of a rotating robot joint. Image by Mormegil. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Pendulum.svg), CC BY-SA 3.0.*\n\n## Why it matters for us\n\n- **Geometry does not explain effort:** forward kinematics locates a gripper, but does not tell us which motor torques will hold or accelerate it.\n- **Simulation needs dynamics:** applied effort produces acceleration; integrating that acceleration updates velocity and position.\n- **Arm posture matters:** moving one joint can affect others, and the same tool acceleration can require different effort in different configurations.\n\n> **Key idea:** Joint angles describe where the robot is; dynamics also needs velocity, inertia, and applied effort to predict what happens next.\n\n## How it works\n\n- **Think of a state-update function:** its inputs are current position, velocity, and actuator effort; its output supplies accelerations for the next simulation step.\n- **For an arm with a motor at every joint** without friction or external contact, group the effort into acceleration, velocity-dependent, and gravity contributions.\n- **Equation:** `tau = M(q) qddot + c(q,qdot) + g(q)`: q is joint position, qdot is speed, and qddot is acceleration.\n- **The mass matrix M** captures inertia and coupling between joints. The vector c collects products of speeds; g is effort needed to balance gravity.\n- **Forward dynamics** solves for acceleration given effort. **Inverse dynamics** evaluates the effort needed for specified acceleration at the current position and speed.\n- **Worked example:** in the simple-pendulum model, choose zero speed and acceleration. Holding torque is mass × gravity × length × sine of angle from downward vertical.\n- **At zero angle,** that holding torque is zero. At 90°, it is mass × gravity × length: position alone changes the required effort.\n- **More complete models** add damping, friction, and contact forces; the equation above deliberately leaves those out.\n\n```mermaid\nflowchart LR\n  S[\"Position and velocity\"] --> D[\"Forward dynamics\"]\n  U[\"Applied effort\"] --> D\n  D --> A[\"Acceleration\"]\n  A --> I[\"Integrate\"]\n  I --> S\n```\n\n## Key terms\n\n- **Torque**: turning effort about an axis, measured in newton-metres.\n- **Inertia**: resistance to acceleration, influenced by mass distribution.\n- **Coriolis terms**: velocity-dependent contributions containing products of different joint speeds.\n- **Gravity compensation**: applying effort that balances gravity at a configuration.\n\n## Before / after\n\n- **Before:** Study Forward kinematics (DH & product of exponentials), forces, derivatives, and numerical integration.\n- **After:** Try Gravity compensation for a simulated arm, then Efficient dynamics algorithms & analytical derivatives for faster computation.\n\n## Try it in an afternoon\n\n1. **Open the pendulum example** and identify its angle convention, mass, length, damping, and input torque.\n2. **Compute holding torque** at zero and 90° using the same model parameters.\n3. **Simulate release from rest** with no applied torque and compare against a gravity-compensated case.\n4. **Check the model boundary:** add damping and explain why a frictionless prediction no longer matches.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.1:  Lagrangian Formulation of Dynamics (Part 1 of 2)",
+          "url": "https://www.youtube.com/watch?v=1U6y_68CjeY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how energy produces the arm's mass, velocity-product, and gravity terms."
+        },
+        {
+          "title": "Ch. 2 - The Simple Pendulum",
+          "url": "https://underactuated.mit.edu/pend.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Use one rotating mass to understand applied torque, damping, and gravity."
+        },
+        {
+          "title": "Modern Robotics, Chapter 8.1.3:  Understanding the Mass Matrix",
+          "url": "https://www.youtube.com/watch?v=7PFQou5l9do",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Visualize how configuration changes the mapping between effort and acceleration."
+        },
+        {
+          "title": "Ch. 23 - Multi-Body Dynamics",
+          "url": "https://underactuated.mit.edu/multibody.html#manipulator",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Read the manipulator equations and their worked double-pendulum example."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/chapter-8-1-lagrangian-formulation-of-dynamics-part-1-of-2/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-1-3-understanding-the-mass-matrix/",
+        "https://underactuated.mit.edu/pend.html",
+        "https://underactuated.mit.edu/multibody.html",
+        "https://www.youtube.com/watch?v=1U6y_68CjeY",
+        "https://www.youtube.com/watch?v=7PFQou5l9do",
+        "https://underactuated.mit.edu/multibody.html#manipulator",
+        "https://commons.wikimedia.org/wiki/File:Pendulum.svg"
+      ]
+    },
+    {
+      "node_id": "k:trajectory-generation-time-scaling",
+      "type": "knowledge",
+      "name": "Trajectory generation & time scaling",
+      "summary": "Trajectory generation adds timing to a robot's path so motion can respect limits on speed, acceleration, and changes in acceleration.",
+      "lesson_md": "## In one sentence\n\nTrajectory generation adds timing to a robot's path so motion can respect limits on speed, acceleration, and changes in acceleration.\n\n![Ruckig plot with position, velocity, acceleration and piecewise constant jerk over time](/img/lessons/knowledge_kinematics_dynamics-time-scaling.webp)\n*One motion has several linked profiles; changing its timing changes more than position. Source: [Ruckig tutorial](https://docs.ruckig.com/tutorial.html), license unknown.*\n\n## Why it matters for us\n\n- **A destination is not a schedule:** knowing the start and end joint positions does not specify what command to send between them.\n- **Timing changes demands:** following the same path faster increases velocity and acceleration requirements.\n- **Smoothness needs a definition:** continuous position alone does not prevent abrupt changes in velocity or acceleration.\n\n> **Key idea:** Decide where the robot should go separately from how quickly it should progress along that route.\n\n## How it works\n\n- **A path parameter s** measures progress from zero at the start to one at the end. A time-scaling function chooses s at each instant.\n- **Think animation easing:** the geometric keyframes stay fixed, while the timing curve determines how quickly the animation moves between them.\n- **For a joint-space line,** each joint interpolates between its starting and ending positions using the same progress value.\n- **A cubic timing rule** is `s(t) = 3(t/T)^2 - 2(t/T)^3`, where T is the chosen total duration.\n- **Worked example:** choose T = 2 seconds. At t = 1 second, progress is 3 × 0.25 − 2 × 0.125 = 0.5.\n- **A 0-to-1-radian joint move** therefore reaches 0.5 radians halfway through this example; speed is zero at both endpoints.\n- **Cubic timing still has** acceleration jumps at the boundaries. A fifth-order polynomial can also make endpoint accelerations zero.\n- **Jerk-limited generators** such as Ruckig accept current and target states plus motion limits, then produce intermediate states. This is not automatically a collision-free planner.\n- **Fixed-path retiming** instead chooses a feasible speed schedule along an existing route; TOPP-RA is an example of this distinct problem.\n\n```mermaid\nflowchart LR\n  P[\"Geometric path\"] --> R[\"Choose time scaling\"]\n  L[\"Motion limits\"] --> R\n  R --> T[\"Timed trajectory\"]\n  T --> C[\"Sample joint targets\"]\n```\n\n## Key terms\n\n- **Path**: a geometric route without a timetable.\n- **Trajectory**: position or configuration as a function of time.\n- **Acceleration**: rate of change of velocity.\n- **Jerk**: rate of change of acceleration.\n- **Retiming**: changing progress along a path without changing its geometry.\n\n## Before / after\n\n- **Before:** Learn Forward kinematics (DH & product of exponentials), derivatives, and basic interpolation.\n- **After:** Try Smooth arm motions with Ruckig; connect torque-aware timing to Rigid-body dynamics (equations of motion).\n\n## Try it in an afternoon\n\n1. **Plot the cubic rule** over the two-second example, alongside its velocity and acceleration.\n2. **Double the duration** and compare peaks while keeping the same start and end positions.\n3. **Inspect endpoint acceleration** and explain why stationary periods expose a discontinuity.\n4. **Follow the Ruckig tutorial** with one joint and no intermediate waypoints; inspect working, finished, and invalid-input outcomes.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapters 9.1 and 9.2:  Point-to-Point Trajectories (Part 1 of 2)",
+          "url": "https://www.youtube.com/watch?v=1JRMqfEm79c",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Separate a geometric path from its timing and compare joint-space and tool-space routes."
+        },
+        {
+          "title": "9.1 and 9.2. Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compare cubic, fifth-order, trapezoidal, and S-curve timing."
+        },
+        {
+          "title": "Ruckig: Tutorial",
+          "url": "https://docs.ruckig.com/tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Generate bounded motion from current and target states and inspect result codes."
+        },
+        {
+          "title": "A New Approach to Time-Optimal Path Parameterization based on Reachability Analysis",
+          "url": "https://arxiv.org/abs/1707.07239",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explore retiming a prescribed path through reachable and controllable speed sets."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-1-of-2/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+        "https://docs.ruckig.com/tutorial.html",
+        "https://www.youtube.com/watch?v=1JRMqfEm79c",
+        "https://arxiv.org/abs/1707.07239"
+      ]
+    },
+    {
+      "node_id": "k:wheeled-mobile-robot-kinematics",
+      "type": "knowledge",
+      "name": "Wheeled mobile robot kinematics",
+      "summary": "Wheeled robot kinematics relates wheel motion to the base's translation and turning, assuming the wheels roll without slipping.",
+      "lesson_md": "## In one sentence\n\nWheeled robot kinematics relates wheel motion to the base's translation and turning, assuming the wheels roll without slipping.\n\n![Differential-drive diagram showing left and right wheel speeds, wheel separation, heading and instantaneous centre of rotation](/img/lessons/knowledge_kinematics_dynamics-wheeled-kinematics.webp)\n*Different wheel speeds make the base turn around an instantaneous centre of rotation. Image by Mr.Doctor.No. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Differential_Drive_Kinematics_of_a_Wheeled_Mobile_Robot.svg), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Navigation commands describe the body:** “move forward while turning” must become commands for individual wheel motors.\n- **Encoders enable odometry:** measured wheel rotations can estimate how the base has moved since its last known pose.\n- **Not all bases move alike:** conventional differential-drive wheels prevent sideways sliding in the ideal model; omnidirectional wheel arrangements can support sideways motion.\n\n> **Key idea:** A wheel model predicts rolling motion, not whether the ground actually lets the robot follow that prediction.\n\n## How it works\n\n- **Differential drive** uses independently driven left and right wheels. Their average ground speed gives forward speed; their difference produces turning.\n- **Use linear wheel speeds:** convert angular encoder rates using wheel radius before combining them. Keep metres per second separate from radians per second.\n- **Wheel mapping:** `v = (vR + vL)/2; omega = (vR - vL)/b`, with wheel separation b and positive wheel motion defined forward.\n- **Worked example:** choose b = 0.4 metres, left speed 0.1 metres/second, and right speed 0.3 metres/second.\n- **The base moves forward** at 0.2 metres/second and turns left at 0.5 radians/second. Equal wheel speeds instead produce zero turning rate.\n- **Think dead-reckoning logs:** accumulate small motion increments from a known starting pose, just as an event log reconstructs state from updates.\n- **Rotate each increment** into the world frame using the current heading before updating world position; body-forward is not always world-x.\n- **Car-like steering differs:** it shares a useful forward-speed/turn-rate model, but steering geometry restricts possible turns. It cannot copy every differential-drive command.\n- **Odometry accumulates errors:** wheel slip and numerical integration can make the estimate drift away from the actual pose.\n\n```mermaid\nflowchart LR\n  E[\"Wheel encoder increments\"] --> K[\"Wheel-to-base model\"]\n  K --> B[\"Body motion increment\"]\n  B --> W[\"Transform and integrate\"]\n  W --> P[\"Estimated pose\"]\n  P --> W\n```\n\n## Key terms\n\n- **Wheel separation**: distance between left and right wheels.\n- **Heading**: the base's orientation in the floor plane.\n- **Odometry**: estimating pose by accumulating measured motion.\n- **Nonholonomic constraint**: a velocity restriction that does not reduce to a restriction on configuration alone.\n- **Instantaneous centre of rotation**: the point around which the base is turning at that instant.\n\n## Before / after\n\n- **Before:** Study Rigid-body motion & coordinate frames and basic integration.\n- **After:** Build Diff-drive odometry from scratch or Calibrate wheel-radius mismatch in simulation.\n\n## Try it in an afternoon\n\n1. **Implement the wheel mapping** and reproduce the numeric example above.\n2. **Test equal, zero, and opposite speeds**; expect straight motion, rest, and turning in place.\n3. **Integrate a sequence of commands** and plot the estimated floor-plane path.\n4. **Change the assumed wheel radius** and observe why incorrect geometry corrupts odometry.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.3.1:  Modeling of Nonholonomic Wheeled Mobile Robots",
+          "url": "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compare differential-drive, unicycle, and car-like kinematic models."
+        },
+        {
+          "title": "Wheeled Mobile Robot Kinematics",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/doc/mobile_robot_kinematics.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Work through wheel-to-body velocity equations and compare base types."
+        },
+        {
+          "title": "13.4. Odometry",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See how measured wheel increments update the chassis pose and why errors accumulate."
+        },
+        {
+          "title": "diff_drive_controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/diff_drive_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Connect body velocity commands, wheel geometry, feedback, and published odometry in ROS 2."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+        "https://control.ros.org/rolling/doc/ros2_controllers/doc/mobile_robot_kinematics.html",
+        "https://control.ros.org/rolling/doc/ros2_controllers/diff_drive_controller/doc/userdoc.html",
+        "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+        "https://commons.wikimedia.org/wiki/File:Differential_Drive_Kinematics_of_a_Wheeled_Mobile_Robot.svg"
+      ]
+    },
+    {
+      "node_id": "k:parallel-closed-chain-mechanisms",
+      "type": "knowledge",
+      "name": "Parallel & closed-chain mechanisms",
+      "summary": "Closed-chain mechanisms contain mechanical loops; parallel robots use several legs between a fixed base and a shared moving platform.",
+      "lesson_md": "## In one sentence\n\nClosed-chain mechanisms contain mechanical loops; parallel robots use several legs between a fixed base and a shared moving platform.\n\n![Two yellow Stewart-platform positioners on a workshop floor](/img/lessons/knowledge_kinematics_dynamics-closed-chains.webp)\n*Each Stewart platform connects its moving top to its base through several legs. Photo by Mike1024. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Hexapod_positioner_aka_Stewart_platform_x2.jpg), Public domain.*\n\n## Why it matters for us\n\n- **Not every robot is a serial arm:** Delta robots, Stewart platforms, and smaller linkages can have several mechanical routes to the same moving part.\n- **Connected branches must agree:** calculating each branch independently can place their supposedly shared endpoint in different locations.\n- **Software representations matter:** a tree-shaped robot description needs additional closing constraints to represent a mechanical loop.\n\n> **Key idea:** A closed loop is a geometric consistency requirement, not just another branch drawn in the robot model.\n\n## How it works\n\n- **Start with two routes** from the base to a shared part. Both routes must predict the same physical connection point.\n- **Think shared-state invariants:** two code paths can compute a value, but the mechanism requires their results to remain consistent at every step.\n- **Loop-closure equations** express this agreement. They restrict which combinations of joint values are physically possible.\n- **Some joints are passive:** they move because the linkage moves, rather than receiving independent motor commands.\n- **A Stewart platform** has six actuated extending legs. Given a desired platform pose, inverse kinematics computes the distance between each leg's attachment points.\n- **Worked single-leg example:** choose base attachment (0,0,0) metres and transformed platform attachment (0,0,1) metres. Their distance, and required leg length, is 1 metre.\n- **Raise that attachment** to (0,0,1.1) metres and this leg requires 1.1 metres. A full platform must satisfy every leg's geometry simultaneously.\n- **Forward kinematics can be harder:** a set of leg lengths may admit multiple platform poses. A nearby known solution helps select a consistent pose.\n- **In simulation,** split a loop into a tree and add constraints at the cut. MuJoCo equality constraints and onshape-to-robot exports support this workflow.\n\n```mermaid\nflowchart LR\n  Q[\"Joint values\"] --> A[\"Pose through branch A\"]\n  Q --> B[\"Pose through branch B\"]\n  A --> C[\"Check loop closure\"]\n  B --> C\n  C --> S[\"Solve consistent configuration\"]\n```\n\n## Key terms\n\n- **Serial chain**: a sequence of links with one mechanical route from base to tool.\n- **Parallel robot**: a platform connected to a base through multiple actuated legs.\n- **Passive joint**: a joint without its own actuator.\n- **Assembly mode**: one possible physical configuration satisfying the same actuator coordinates.\n- **Closure error**: the mismatch between connection points that should coincide.\n\n## Before / after\n\n- **Before:** Study Forward kinematics (DH & product of exponentials) and Inverse kinematics (analytic & numerical).\n- **After:** Try Delta robot IK/FK in simulation or Closed-loop leg linkage in MuJoCo.\n\n## Try it in an afternoon\n\n1. **Trace a loop** in the closed-chain video and label its actuated and passive joints.\n2. **Compute the single-leg example** with a vector-distance function, then change the attachment position.\n3. **Read the exporter example** and locate the tree cut and closing constraint.\n4. **Compare connect and weld constraints:** explain which relative motions each allows before choosing one for a linkage.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 7:  Kinematics of Closed Chains",
+          "url": "https://www.youtube.com/watch?v=5wCK6XGC3ig",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compare serial arms, Delta robots, and Stewart platforms, then follow leg-length IK."
+        },
+        {
+          "title": "Handling kinematic loops",
+          "url": "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow a planar mechanism from a tree representation to enforced closing constraints."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#equality",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the equality section to distinguish MuJoCo connect and weld constraints."
+        },
+        {
+          "title": "Ch. 23 - Multi-Body Dynamics",
+          "url": "https://underactuated.mit.edu/multibody.html#bilateral",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Read Bilateral Position Constraints to understand how loop closure enters the equations of motion."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/kinematics-of-closed-chains/",
+        "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#equality",
+        "https://underactuated.mit.edu/multibody.html#bilateral",
+        "https://www.youtube.com/watch?v=5wCK6XGC3ig",
+        "https://commons.wikimedia.org/wiki/File:Hexapod_positioner_aka_Stewart_platform_x2.jpg"
+      ]
     }
   ]
 }
