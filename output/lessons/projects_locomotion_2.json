@@ -911,6 +911,234 @@
         "https://github.com/google-deepmind/mujoco_playground/blob/main/rss2025/learning/notebooks/locomotion.ipynb",
         "https://arxiv.org/abs/2502.08844"
       ]
+    },
+    {
+      "node_id": "p:train-randomized-versus-nominal-walkers",
+      "type": "project",
+      "name": "Train randomized versus nominal walkers",
+      "summary": "Train two simulated walking policies with equal budgets, changing only dynamics randomization, then compare them on held-out mass, friction and action-delay settings.",
+      "lesson_md": "## In one sentence\n\nTrain two simulated walking policies with equal budgets, changing only dynamics randomization, then compare them on held-out mass, friction and action-delay settings.\n\n![Parallel quadruped simulation from the Learning to Walk in Minutes project](/img/lessons/projects_locomotion_2-randomized-walkers.webp)\n*Published training setup; the nominal-versus-randomized comparison is a student experiment. Source: [Robotic Systems Lab](https://leggedrobotics.github.io/legged_gym/), license unknown.*\n\n## What you will learn\n\n- **Domain randomization** varies simulated physical properties during training so the policy encounters more than one set of dynamics.\n- **A nominal policy** trains on fixed reference dynamics; the randomized policy must differ only in the declared randomization treatment.\n- **Action delay** means an older command reaches the simulated actuators; measure it in both control steps and seconds.\n- **Think controlled A/B testing:** equal budgets and paired evaluation cases help distinguish a randomization effect from extra training or easier tests.\n\n> **Key idea:** Randomization earns its place only through better measured performance on untouched evaluation conditions, not a more complicated training configuration.\n\n## What you need\n\n- **Prerequisite:** finish Replay and audit a locomotion policy; preserve its observation, action and checkpoint compatibility checks.\n- **A concrete starting point:** use legged_gym's configuration and dynamics callbacks; Isaac Sim / Isaac Lab and MuJoCo Playground are alternative map tools.\n- **An explicit delay extension:** add a bounded command-history queue if the selected environment lacks delay randomization; apply the same actuator interface to both policies.\n- **Planning estimate:** allow 2–4 weeks and €0 hardware, excluding computing; this develops RL locomotion with sim-to-real without claiming physical transfer.\n\n## Steps\n\n1. **Freeze the protocol:** keep robot, terrain, rewards, observations, optimizer and training transitions identical; repeat with paired seeds and report wall-clock cost separately.\n2. **Verify treatment:** explicitly enable base-mass randomization and declare friction ranges; inspect instantiated properties rather than assuming every configuration flag is active.\n3. **Implement delay:** validate queue length, initialization and zero-delay passthrough; reject negative delays and reset history between episodes.\n4. **Train both groups:** save seeds, configuration snapshots and checkpoints; do not give one group extra tuning or discard unsuccessful training runs.\n5. **Evaluate held-out settings:** reserve mass, friction and delay combinations before training; log velocity errors, falls and timeouts for both policies.\n6. **Demo the comparison:** include nominal conditions, zero command, no support, invalid observations, actuator-limit errors and empty evaluation lists; publish failures alongside successful replays.\n\n```python\nqueue.append(action)\napplied_action = queue.pop(0)\n```\n\n```mermaid\nflowchart LR\n A[\"Shared training budget\"] --> B[\"Fixed dynamics\"]\n A --> C[\"Randomized dynamics\"]\n B --> D[\"Held-out evaluation\"]\n C --> D\n D --> E[\"Errors and failures\"]\n```\n\n## Common pitfalls\n\n- **A flag is not evidence:** legged_gym's base configuration enables friction randomization but disables base-mass randomization.\n- **Test leakage:** changing ranges after viewing held-out failures turns the test set into tuning data.\n- **A delay is not noise:** delayed commands retain temporal structure; random independent action noise tests a different disturbance.\n\n## When it's done\n\n- **Publish paired result tables** with budgets, seeds, ranges, delay semantics and failure counts.\n- **Continue with Audit transfer across two simulators** or Transfer a conservative gait to Bittle only after this baseline is reproducible.",
+      "resources": [
+        {
+          "title": "Learning to Walk in Minutes Using Massively Parallel Deep RL",
+          "url": "https://www.youtube.com/watch?v=8sO7VS3q8d0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the parallel simulated-walking setup underlying the controlled training comparison."
+        },
+        {
+          "title": "legged_robot_config.py",
+          "url": "https://raw.githubusercontent.com/leggedrobotics/legged_gym/master/legged_gym/envs/base/legged_robot_config.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect friction, added-mass and disturbance flags before defining nominal and randomized groups."
+        },
+        {
+          "title": "legged_robot.py",
+          "url": "https://raw.githubusercontent.com/leggedrobotics/legged_gym/master/legged_gym/envs/base/legged_robot.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Verify where randomized friction and base mass actually enter simulated robot properties."
+        },
+        {
+          "title": "Learning to Walk in Minutes Using Massively Parallel Deep Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2109.11978",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the published locomotion training protocol rather than assuming every randomization improves transfer."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=8sO7VS3q8d0",
+        "https://leggedrobotics.github.io/legged_gym/",
+        "https://raw.githubusercontent.com/leggedrobotics/legged_gym/master/legged_gym/envs/base/legged_robot_config.py",
+        "https://raw.githubusercontent.com/leggedrobotics/legged_gym/master/legged_gym/envs/base/legged_robot.py",
+        "https://arxiv.org/abs/2109.11978"
+      ]
+    },
+    {
+      "node_id": "p:transfer-a-conservative-gait-to-bittle",
+      "type": "project",
+      "name": "Transfer a conservative gait to Bittle",
+      "summary": "Adapt a small, slow gait to a calibrated Bittle, then film supported flat-mat walking and compare commanded leg phases with observed foot contacts.",
+      "lesson_md": "## In one sentence\n\nAdapt a small, slow gait to a calibrated Bittle, then film supported flat-mat walking and compare commanded leg phases with observed foot contacts.\n\n![Bittle calibration diagram with joint zero references and rotation directions](/img/lessons/projects_locomotion_2-bittle-gait-transfer.webp)\n*Calibration establishes the joint conventions needed before transferring gait frames. Source: [Petoi](https://docs.petoi.com/desktop-app/joint-calibrator), license unknown.*\n\n## What you will learn\n\n- **A gait cycle** is a repeating sequence of leg motions; a phase identifies where a leg is within that sequence.\n- **Calibration offsets** correct mechanical joint alignment; the same numerical angle is not meaningful until model and hardware conventions agree.\n- **Observed contact** comes from evidence such as synchronized video, not from assuming a commanded stance phase actually touches the mat.\n- **Think porting a driver:** preserve the gait's intent while adapting joint indices, signs, offsets and supported command formats to Petoi Bittle.\n\n> **Key idea:** Transfer the verified timing and small joint motions, not an assumption that a simulator checkpoint can directly drive Bittle.\n\n## What you need\n\n- **Prerequisites:** complete Compare gait energy and slip and Train randomized versus nominal walkers; retain their evaluation habits even though this transfer is scripted.\n- **Hardware:** a Bittle, its supported battery and communication adapter, a flat mat, camera and a support arrangement that does not obstruct the legs.\n- **Software:** use the matching Petoi Desktop App and firmware; Stanford Pupper is related on the map, not a source of interchangeable Bittle joint commands.\n- **Planning estimate:** allow 1–2 months; procurement cost is unknown until quoted, or reuse existing equipment.\n\n> **Watch out:** Complete a hardware risk review, use guarded supported tests and a reachable power cutoff, and stop immediately on unexpected motion.\n\n## Steps\n\n1. **Calibrate and save:** follow Petoi's procedure, confirm the selected robot model and retain offsets; verify neutral posture before importing motion frames.\n2. **Map the gait:** document joint indices, angle signs, units, limits and leg phases; preview a small-amplitude cycle using the Bittle model.\n3. **Validate without motion:** reject empty frame lists, invalid joint indices, excessive targets and unsupported firmware commands before enabling hardware output.\n4. **Test the stop path:** verify communication-loss handling and the chosen supported stop/rest procedure with the robot supported; do not call a serial command safety-rated.\n5. **Transfer incrementally:** verify individual poses, then a slow cycle, then supported mat walking; record firmware, gyro settings, frame timing and any manual intervention.\n6. **Film and compare:** align command timestamps with video contacts; include zero command, failed touchdown and rejected-input tests, reporting slips, falls and aborted trials.\n\n```text\nkbalance\n```\n\n```mermaid\nflowchart LR\n A[\"Calibrate\"] --> B[\"Map joint conventions\"]\n B --> C[\"Validate frames\"]\n C --> D[\"Supported pose test\"]\n D --> E[\"Slow walking\"]\n E --> F[\"Compare contact timing\"]\n```\n\n## Common pitfalls\n\n- **Different leg directions:** Petoi warns that Nybble and Bittle skill data are not interchangeable.\n- **A slower frame is not automatically stable:** measure actual contacts and support interventions rather than inferring balance from playback speed.\n- **Gyro settings:** record whether balancing adjustment is enabled.\n\n## When it's done\n\n- **Publish the slow supported-walking clip** with a commanded-phase/observed-contact timeline, calibration record and every failed or aborted trial.\n- **Connect the results to Gaits & gait cycles** without claiming autonomous walking or simulation-to-hardware policy transfer.",
+      "resources": [
+        {
+          "title": "Petoi Bittle in Action | Exploring Multiple Gaits | PetoiCamp",
+          "url": "https://www.youtube.com/watch?v=ZIg6FhTj7m0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the target robot performing distinct gaits before attempting a conservative adaptation."
+        },
+        {
+          "title": "Joint Calibrator",
+          "url": "https://docs.petoi.com/desktop-app/joint-calibrator",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Establish zero poses, joint directions and saved offsets before sending gait frames."
+        },
+        {
+          "title": "Skill Composer",
+          "url": "https://docs.petoi.com/desktop-app/skill-composer",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build and preview frame sequences while selecting the correct robot model."
+        },
+        {
+          "title": "Skill Creation",
+          "url": "https://docs.petoi.com/applications/skill-creation",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand gait arrays and the distinction between postures, gaits and behaviors."
+        },
+        {
+          "title": "Serial Protocol",
+          "url": "https://docs.petoi.com/apis/serial-protocol",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the actual skill-call tokens instead of inventing a hardware command interface."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ZIg6FhTj7m0",
+        "https://docs.petoi.com/desktop-app/joint-calibrator",
+        "https://docs.petoi.com/desktop-app/skill-composer",
+        "https://docs.petoi.com/applications/skill-creation",
+        "https://docs.petoi.com/apis/serial-protocol"
+      ]
+    },
+    {
+      "node_id": "p:tune-a-simulated-hover-cascade",
+      "type": "project",
+      "name": "Tune a simulated hover cascade",
+      "summary": "Tune a simulated multirotor from its inner rate loop outward, then plot rate, attitude and altitude errors under controlled gust and mass perturbations.",
+      "lesson_md": "## In one sentence\n\nTune a simulated multirotor from its inner rate loop outward, then plot rate, attitude and altitude errors under controlled gust and mass perturbations.\n\n![Published PX4 cascaded position, velocity, attitude and angular-rate control architecture](/img/lessons/projects_locomotion_2-hover-cascade.webp)\n*PX4's reference control architecture; use the timing of your pinned build rather than treating diagram labels as tuning targets. Source: [PX4](https://docs.px4.io/main/en/flight_stack/controller_diagrams.html), license unknown.*\n\n## What you will learn\n\n- **Angular rate** measures how fast the body rotates; **attitude** describes its orientation, while altitude describes height.\n- **A cascade** nests controllers: an outer loop requests behavior that an inner loop must track.\n- **PID control** combines proportional error, accumulated error and change-of-error terms; PX4 mixes P and PID controllers across its loops.\n- **Think layered services:** validate the inner service's response before blaming an outer client; a poor rate loop can spoil attitude tracking.\n\n> **Key idea:** Tune and measure inner-loop behavior first, then add outer-loop demands without hiding actuator saturation.\n\n## What you need\n\n- **Prerequisite:** finish Animate thrust and attitude coupling; revisit Multirotor flight dynamics & control.\n- **A simulation baseline:** use PX4 software-in-the-loop with Gazebo; its documented X500 launch target is a concrete starting point.\n- **A repeatable experiment:** pin software, vehicle model and controller parameters; retain the untuned baseline logs and use simulation only.\n- **Planning estimate:** allow 2–4 weeks and €0 hardware, excluding computing; the MATLAB video teaches tuning concepts, not a required paid implementation.\n\n## Steps\n\n1. **Launch the baseline:** verify stable simulated hover and record loop rates, mode, mass, rate/attitude references, measured states, thrust and saturation indicators.\n2. **Tune rates first:** make small documented changes, one axis and parameter group at a time; compare tracking, overshoot and oscillation against the baseline.\n3. **Tune attitude next:** keep rate gains fixed; compare attitude commands, measured orientation and generated rate requests without conflating the two errors.\n4. **Tune vertical motion:** inspect altitude and vertical-velocity tracking, hover thrust and saturation; do not treat altitude as a single isolated motor-gain parameter.\n5. **Perturb the plant:** apply a declared gust trace and separate mass variants; repeat identical trials without retuning, then compare all three error families.\n6. **Demo limits:** include unchanged hover targets, zero setpoint changes, missing setpoints, invalid observations, invalid gains and exhausted thrust authority; report crashes and timeouts.\n\n```bash\nmake px4_sitl gz_x500\n```\n\n```mermaid\nflowchart LR\n A[\"Altitude target\"] --> B[\"Vertical velocity\"]\n B --> C[\"Thrust request\"]\n D[\"Attitude target\"] --> E[\"Rate target\"]\n E --> F[\"Rate controller\"]\n C --> G[\"Motor allocation and plant\"]\n F --> G\n G --> H[\"State feedback\"]\n```\n\n## Common pitfalls\n\n- **An outer loop cannot repair bad rate tracking:** confirm the inner loop before raising outer gains.\n- **Integrator windup:** accumulated error can persist when commands saturate; inspect PX4's limits and anti-windup behavior.\n- **Zero is ambiguous:** zero setpoint change means hold hover, not zero thrust or permission to ignore missing commands.\n\n## When it's done\n\n- **Publish aligned rate, attitude and altitude plots** for baseline, tuned, gust and mass cases, including saturation and failure markers.\n- **Explain one trade-off** between fast response and oscillation without claiming the same gains are safe on a physical aircraft.",
+      "resources": [
+        {
+          "title": "Drone Simulation and Control, Part 5: Tuning the PID controller",
+          "url": "https://www.youtube.com/watch?v=BqrRfoH-19s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn why controller tuning depends on the plant model and inspect an altitude-loop tuning example."
+        },
+        {
+          "title": "Gazebo Simulation",
+          "url": "https://docs.px4.io/main/en/sim_gazebo_gz/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Launch a PX4 multirotor in software-in-the-loop and locate model/world configuration."
+        },
+        {
+          "title": "Multicopter PID Tuning Guide (Manual/Advanced)",
+          "url": "https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow the rate-before-attitude tuning order and recognize oscillation or saturation problems."
+        },
+        {
+          "title": "Controller Diagrams",
+          "url": "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Trace the actual cascaded rate, attitude, velocity and position controller interfaces."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=BqrRfoH-19s",
+        "https://docs.px4.io/main/en/sim_gazebo_gz/",
+        "https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html",
+        "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html"
+      ]
+    },
+    {
+      "node_id": "p:visualize-competing-balance-tasks",
+      "type": "project",
+      "name": "Visualize competing balance tasks",
+      "summary": "Display a simulated robot’s foot-contact, body-posture and joint-limit residuals together, then show how conflicting tasks change the compromise or make a solve infeasible.",
+      "lesson_md": "## In one sentence\n\nDisplay a simulated robot’s foot-contact, body-posture and joint-limit residuals together, then show how conflicting tasks change the compromise or make a solve infeasible.\n\n![Romeo humanoid robot, the platform modeled by the TSID biped exercise](/img/lessons/projects_locomotion_2-competing-balance-tasks.webp)\n*Romeo platform reference, not the student's simulation. Softbank Robotics Europe; converted to WebP. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Romeo_.png), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **A task** expresses a control objective, such as approaching a posture; **a residual** measures disagreement between the current and desired values.\n- **A hard constraint** must be satisfied; a soft objective may remain imperfect when tasks compete.\n- **Weights** influence compromises between soft objectives, while priority levels distinguish required constraints from lower-priority objectives.\n- **Think a constrained build system:** required dependencies differ from optional preferences; increasing weights cannot resolve contradictory requirements.\n\n> **Key idea:** A moving robot is not enough evidence; plot which objectives remain unsatisfied and whether required constraints still hold.\n\n## What you need\n\n- **Prerequisite:** complete Intro: train an RL policy in a GPU simulator; this exercise uses a scripted optimizer, not another learned controller.\n- **A small starting point:** run TSID's Romeo biped exercise, which already logs center-of-mass tracking and contact forces.\n- **Model computations:** TSID uses Pinocchio; Crocoddyl is optional for visualizing Whole-body control for legged robots.\n- **Planning estimate:** allow one week and €0 hardware, excluding computing; keep the first experiment in double support, with both feet planted.\n\n## Steps\n\n1. **Record the baseline:** save foot reference poses, posture targets, joint limits, solver status and measured robot state.\n2. **Build the dashboard:** place contact drift, posture error and joint-limit violations on one time axis; label units separately rather than adding incompatible residuals.\n3. **Add a competing request:** change a posture target toward a declared joint bound while retaining the same foot contacts and initial state.\n4. **Vary soft weights:** compare identical runs with different posture weights; keep the contact and bound policies explicit and do not silently relax required constraints.\n5. **Audit the bounds:** independently measure position violations and inspect enabled optimizer bounds; TSID's supplied Romeo configuration disables its joint-bound task by default.\n6. **Demo diagnostic cases:** include unchanged targets, conflicting requests, missing contacts, invalid limits and empty logs; mark solver failures instead of plotting uncomputed samples as zeros.\n\n```python\nlower_violation = np.maximum(lower_limits - joint_positions, 0)\nupper_violation = np.maximum(joint_positions - upper_limits, 0)\njoint_limit_violation = np.maximum(lower_violation, upper_violation)\n```\n\n```mermaid\nflowchart LR\n A[\"Contacts and posture\"] --> B[\"Constrained solve\"]\n C[\"Weights and bounds\"] --> B\n B --> D[\"Simulated state\"]\n D --> E[\"Residual dashboard\"]\n E --> F[\"Compare compromises\"]\n```\n\n## Common pitfalls\n\n- **A zero residual can be fake:** disabled constraints or missing samples cannot prove a physical limit was respected.\n- **Weights and units interact:** report task scaling before interpreting a larger numerical weight as greater importance.\n- **Model bounds differ:** distinguish joint-position measurements from velocity bounds or soft penalties used by the optimizer.\n\n## When it's done\n\n- **Publish one synchronized replay and dashboard** showing contacts, posture, joint limits and solver status for every requested case.\n- **Continue with Track a body pose with fixed feet** after you can explain which task lost the competition and why.",
+      "resources": [
+        {
+          "title": "[memmows] QP-based task-space inverse dynamics: theory and implementation. Part 1",
+          "url": "https://www.youtube.com/watch?v=lSPSLbgrtQg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn how contact constraints and competing motion objectives enter inverse-dynamics optimization."
+        },
+        {
+          "title": "ex_1.py",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/ex_1.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Start from the biped exercise’s tracking logs, contact forces and solver-failure checks."
+        },
+        {
+          "title": "romeo_conf.py",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/romeo_conf.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the actual weights, contact settings and disabled joint-bound task before visualizing trade-offs."
+        },
+        {
+          "title": "Home · stack-of-tasks/tsid Wiki",
+          "url": "https://github.com/stack-of-tasks/tsid/wiki",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Distinguish tasks, rigid contacts, weights and the solver’s hard-constraint/soft-cost levels."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=lSPSLbgrtQg",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/ex_1.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/romeo_conf.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/tsid_biped.py",
+        "https://github.com/stack-of-tasks/tsid/wiki",
+        "https://commons.wikimedia.org/wiki/File:Romeo_.png"
+      ]
+    },
+    {
+      "node_id": "p:walk-with-a-moving-virtual-payload",
+      "type": "project",
+      "name": "Walk with a moving virtual payload",
+      "summary": "Walk a simulated robot while its carried mass moves, comparing fixed torso-posture references with whole-body compensation under identical payload and gait conditions.",
+      "lesson_md": "## In one sentence\n\nWalk a simulated robot while its carried mass moves, comparing fixed torso-posture references with whole-body compensation under identical payload and gait conditions.\n\n![OmniH2O humanoid carrying baskets during the authors’ published teleoperation demonstration](/img/lessons/projects_locomotion_2-moving-virtual-payload.webp)\n*Published basket-carrying reference; the simulated moving-mass comparison is a student addition, not a reported OmniH2O benchmark. Source: [OmniH2O](https://omni.human2humanoid.com/), license unknown.*\n\n## What you will learn\n\n- **A payload** is carried mass; moving it changes the mass distribution of the robot-plus-load system.\n- **Whole-body compensation** coordinates body and limb motion instead of requiring the torso to keep the same height and orientation reference.\n- **Loco-manipulation** combines moving the robot with manipulating something; a successful walking replay alone does not prove the payload stayed controlled.\n- **Think shared resource scheduling:** walking and carrying compete for the same joints and contact forces, so evaluate their interaction rather than testing each subsystem alone.\n\n> **Key idea:** A fair compensation comparison changes the allowed body response while keeping the payload motion, gait requests and physical limits comparable.\n\n## What you need\n\n- **Prerequisite:** finish Animate payload-induced balance shifts; retain its combined center-of-mass calculations and coordinate conventions.\n- **A compatibility gate:** first obtain a walking model, controller and articulated payload attachment that run together; a visible basket mesh alone adds no payload dynamics.\n- **Implementation choice:** Crocoddyl provides contact-aware whole-body optimal control; OmniH2O provides a humanoid carrying reference, not a turnkey moving-payload benchmark.\n- **Planning estimate:** allow 1–2 months and €0 hardware, excluding computing; simulator/model integration is part of the project.\n\n## Steps\n\n1. **Validate unloaded walking:** record gait references, contact sequence, speed tracking, torso pose, actuator limits and falls before adding mass.\n2. **Build the payload:** attach a physical body with declared mass and inertia to the carried link; move it through articulated motion, not geometry teleportation.\n3. **Declare two controllers:** hold torso height/orientation references fixed in the baseline; permit coordinated torso/limb compensation in the alternative while retaining translation along the walking path.\n4. **Validate comparability:** use identical payload paths, gait commands, limits and initial states; record actual payload tracking so abandoning the carrying task cannot count as improvement.\n5. **Sweep payload conditions:** compile separate validated mass variants and test declared motion timings; log combined center of mass, contact forces, slip, falls and saturation.\n6. **Demo failure cases:** include zero payload motion, zero walking command, lost support, invalid mass/inertia, malformed observations and empty trials; report timeouts and controller failures.\n\n```python\ncombined_com = (\n    robot_mass * robot_com + payload_mass * payload_com\n) / (robot_mass + payload_mass)\n```\n\n```mermaid\nflowchart LR\n A[\"Walking and payload targets\"] --> B[\"Posture baseline\"]\n A --> C[\"Whole-body compensation\"]\n B --> D[\"Matched simulated trials\"]\n C --> D\n D --> E[\"Tracking and balance metrics\"]\n```\n\n## Common pitfalls\n\n- **A fixed torso is not a fixed base:** the baseline still needs to travel; only the declared posture references are held unchanged.\n- **Animation is not dynamics:** rendering a moving object does not establish its inertial coupling to the robot.\n- **Moving the goalposts:** changing speed or payload tracking tolerance between controllers invalidates the comparison.\n\n## When it's done\n\n- **Publish matched carrying replays** with body motion, payload tracking and contact/limit diagnostics across payload variants.\n- **Connect to Loco-manipulation coordination** and Step while pushing a known object without claiming physical payload-transfer performance.",
+      "resources": [
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See coordinated whole-body motion and object-carrying behaviors that motivate the simulated comparison."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://omni.human2humanoid.com/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the authors’ basket-carrying clips and separate demonstrated capabilities from the proposed moving-load experiment."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://arxiv.org/abs/2406.08858",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the whole-body motion-tracking approach without assuming it includes this payload benchmark."
+        },
+        {
+          "title": "Crocoddyl",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Explore contact-aware trajectory optimization as an implementation foundation; a compatible walking-and-payload model still needs integration."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+        "https://omni.human2humanoid.com/",
+        "https://arxiv.org/abs/2406.08858",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://github.com/LeCAR-Lab/human2humanoid",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-inertial"
+      ]
     }
   ]
 }
