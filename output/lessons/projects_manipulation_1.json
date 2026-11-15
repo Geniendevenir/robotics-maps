@@ -1,0 +1,182 @@
+{
+  "batch": "projects_manipulation_1",
+  "lessons": [
+    {
+      "node_id": "p:adapt-insertion-to-pose-error",
+      "type": "project",
+      "name": "Adapt insertion to pose error",
+      "summary": "Test whether a simulated peg can still enter its hole when the estimated target position and orientation are wrong.",
+      "lesson_md": "## In one sentence\n\nTest whether a simulated peg can still enter its hole when the estimated target position and orientation are wrong.\n\n![robosuite two-arm peg-in-hole setup](/img/lessons/projects_manipulation_1-insertion.webp)\n*robosuite two-arm peg-in-hole setup. Source: [Official source](https://robosuite.ai/docs/modules/environments.html), license unknown.*\n\n## What you will learn\n\n- **Pose** means position and orientation; an error in either can turn a straight insertion into a jam.\n- **Compliance** lets contact deflect motion instead of treating the target as an immovable command.\n- **Regression testing** is the software analogy: preserve the same randomized cases when comparing controllers.\n\n> **Key idea:** Test uncertainty around the target, not just the perfectly aligned trajectory.\n\n## What you need\n\n- **Start from Insert a peg with compliance** and the map topic Force/compliant & contact-rich manipulation.\n- **Use robosuite** on your computer; this proposed experiment needs no purchased robot.\n- **Inspect TwoArmPegInHole:** its documented setup has one arm holding a board and another holding the peg, with randomized initial arm configurations.\n\n## Steps\n\n1. **Reproduce aligned insertion** and save the simulator, controller configuration, random seed, and success condition.\n2. **Add controlled pose perturbations** to the estimate, not the physical hole; label the coordinate frame and units.\n3. **Keep the baseline fixed** and compare it with one contact-aware correction, such as reducing stiffness during contact.\n4. **Log every attempt:** estimated pose, true pose, insertion depth, contact force, elapsed time, and termination reason.\n5. **Run paired cases** with identical offsets; include an absent hole, unreachable target, and missing observation.\n6. **Demo the comparison** with motion replay, force traces, and a failure table grouped by error magnitude.\n\nWorked example: define your own sweep before testing; these are experimental settings, not published performance claims.\n\n| Proposed case | Estimated target offset | Report |\n|---|---|---|\n| Aligned | Zero translation and rotation | Baseline completion |\n| Shifted | Small lateral displacement | Completion or jam |\n| Tilted | Small angular displacement | Completion or timeout |\n\n```mermaid\nflowchart LR\n  S[Seeded offset] --> E[Target estimate]\n  E --> C[Compliant controller]\n  C --> P[Simulated contact]\n  P --> C\n  P --> L[Outcome log]\n```\n\n## Common pitfalls\n\n- **Changing geometry and estimates together** hides whether the controller handled perception error or merely encountered a different task.\n- **A force spike is not insertion:** check final depth and alignment, and stop on your declared force or time limit.\n\n## When it's done\n\n- **Deliver repeatable evidence:** replay successes and jams, report counts for every error group, and retain the exact seeds.\n- **State the boundary:** simulation results do not establish hardware safety or robustness.",
+      "resources": [
+        {
+          "title": "Guided Uncertainty Aware Policy Optimization",
+          "url": "https://www.youtube.com/watch?v=NwMukXa8kys",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See insertion fail under uncertain hole localization and how a local learned policy can help."
+        },
+        {
+          "title": "Environments",
+          "url": "https://robosuite.ai/docs/modules/environments.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the actual two-arm peg-in-hole setup and its reset distribution."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand stiffness, contact forces, and compliant motion before modifying insertion."
+        },
+        {
+          "title": "Controllers",
+          "url": "https://robosuite.ai/docs/modules/controllers.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Choose controller parameters deliberately rather than confusing motion commands with force limits."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/environments.html",
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://robosuite.ai/docs/modules/controllers.html",
+        "https://www.youtube.com/watch?v=NwMukXa8kys"
+      ]
+    },
+    {
+      "node_id": "p:add-failed-grasp-recovery",
+      "type": "project",
+      "name": "Add failed-grasp recovery",
+      "summary": "Make a pick-and-place controller detect a missed grasp, observe again, and retry within a fixed budget instead of continuing empty-handed.",
+      "lesson_md": "## In one sentence\n\nMake a pick-and-place controller detect a missed grasp, observe again, and retry within a fixed budget instead of continuing empty-handed.\n\n![Simulated cluttered bin of YCB objects](/img/lessons/projects_manipulation_1-grasp-recovery.webp)\n*Simulated cluttered bin of YCB objects. Source: [Official source](https://manipulation.csail.mit.edu/clutter.html), license unknown.*\n\n## What you will learn\n\n- **Execution monitoring** checks what actually happened after a command, rather than trusting that a planned motion succeeded.\n- **Recovery** is a separate branch that returns to observation and replans from the current scene.\n- **Think of an API retry loop:** distinguish a retryable miss from invalid input, and cap retries.\n\n> **Key idea:** A successful motion command is not evidence that an object is in the gripper.\n\n## What you need\n\n- **Finish Build a clutter-clearing state machine** and Assemble & teleoperate an SO-101; revisit Pick-and-place pipeline.\n- **Start in ManiSkill** or your existing simulator, then use SO-101 only after the failure logic works.\n- **MoveIt 2** can supply motion plans; your higher-level controller must decide whether the grasp outcome warrants another attempt.\n- **Reuse existing hardware** if available; new hardware cost is unknown here, not inferred from the project's planning band.\n\n## Steps\n\n1. **Expose states** for observe, approach, close, verify, lift, retry, and abort; display the active state beside the robot.\n2. **Define grasp evidence** using available observations; in simulation, check object motion after a small lift rather than the commanded finger position alone.\n3. **Inject a miss** by shifting the target estimate; preserve the true scene for later evaluation.\n4. **Retry from fresh observations:** retreat along a checked path, update the scene, and select a new grasp.\n5. **Test empty scenes and sensor loss:** abort explicitly when there is no target or no trustworthy observation.\n6. **Film the demo** showing the miss, detection, recovery attempt, and final outcome without editing away failures.\n\nProposed controller trace, not a hardware-ready motion program:\n\n```text\nclose -> verify\nobject_not_held -> retreat -> observe\ntarget_found and budget_remaining -> replan\nno_target or sensor_missing -> abort\nobject_held -> place\n```\n\n```mermaid\nflowchart LR\n  O[Observe] --> G[Attempt grasp]\n  G --> V[Verify hold]\n  V -->|Held| P[Place]\n  V -->|Miss| R[Retreat]\n  R -->|Budget remains| O\n  R -->|Budget exhausted| A[Abort]\n```\n\n## Common pitfalls\n\n- **Planning fallbacks are not runtime recovery:** the linked MoveIt maintainer discussion explicitly distinguishes these responsibilities.\n- **Repeated identical misses** waste attempts; log whether a new observation or grasp actually changed the next plan.\n\n> **Watch out:** On hardware, use low speed, soft objects, workspace limits, and a tested stop.\n\n## When it's done\n\n- **Show detected failures and bounded retries**, with initial successes, recovered successes, false detections, and aborts counted separately.\n- **Save the event log** and include missing targets, unreachable goals, and lost observations, not just a successful recovery clip.",
+      "resources": [
+        {
+          "title": "IROS 2018 - Tactile Regrasp: Grasp Adjustments via Simulated Tactile Transformations",
+          "url": "https://www.youtube.com/watch?v=gjn7DmfpwDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch evidence-driven grasp adjustment; this tactile research system is inspiration, not a stock SO-101 capability."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Study the clutter-clearing state machine and why grasp outcomes need feedback."
+        },
+        {
+          "title": "Pick and Place with MoveIt Task Constructor",
+          "url": "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate the planned approach, grasp, and lift stages that your monitor must supervise."
+        },
+        {
+          "title": "failure recovery during runtime",
+          "url": "https://github.com/moveit/moveit_task_constructor/issues/473",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the maintainer's distinction between planning fallbacks and higher-level execution recovery."
+        }
+      ],
+      "sources": [
+        "https://manipulation.csail.mit.edu/clutter.html",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+        "https://www.youtube.com/watch?v=gjn7DmfpwDk",
+        "https://github.com/moveit/moveit_task_constructor/issues/473"
+      ]
+    },
+    {
+      "node_id": "p:audit-demonstration-timing",
+      "type": "project",
+      "name": "Audit demonstration timing",
+      "summary": "Audit recorded camera and joint data so each training example pairs an image with the right moment of robot motion.",
+      "lesson_md": "## In one sentence\n\nAudit recorded camera and joint data so each training example pairs an image with the right moment of robot motion.\n\n![SO-101 follower arm used for demonstration collection](/img/lessons/projects_manipulation_1-demonstration-timing.webp)\n*SO-101 follower arm used for demonstration collection. Source: [Official source](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **A timestamp** labels when a sample was recorded; a frame index only labels its place in a sequence.\n- **Alignment** chooses which camera frame and joint sample represent a shared observation time.\n- **Treat streams like database tables:** join on time with a declared tolerance, not row number.\n\n> **Key idea:** A smooth replay can hide stale images paired with newer robot states.\n\n## What you need\n\n- **Start after Assemble & teleoperate an SO-101** and revisit Teleoperation & demonstration collection for arms.\n- **Work offline** with existing SO-101 recordings, a computer, and access to original timestamps; no new hardware is required.\n- **Compare data conventions:** LeRobot stores tabular signals and video separately; Diffusion Policy exposes explicit timestamp alignment in its real-world environment code.\n\n## Steps\n\n1. **Inventory the recording:** list camera names, joint units, episode boundaries, declared frame rate, and the meaning of each timestamp.\n2. **Preserve raw timestamps** before resampling; distinguish sensor capture time, computer receipt time, and synthesized dataset time where available.\n3. **Plot each stream** against time, marking gaps, duplicates, out-of-order samples, and camera-to-joint time differences.\n4. **Replay a short movement** with joint traces and selected frames side by side; display the age of each selected image.\n5. **Inject known faults** into a copy: remove a frame, shift one stream, and provide an empty or truncated episode.\n6. **Export an audit report** with flagged intervals, untestable properties, example replays, and the alignment rule used.\n\nWorked example: the linked Diffusion Policy implementation defaults to 30-frame-per-second capture and a 10-Hz observation grid.\n\n| Alignment detail | Audit consequence |\n|---|---|\n| **Grid spacing is 0.1 seconds** | The code selects the latest sample strictly before each grid time when one exists. |\n| **Fallback selects the first buffered sample** | Flag grid times without an earlier sample. |\n| **Your recording may differ** | Read its metadata before defining missing frames. |\n\n```mermaid\nflowchart LR\n  C[Camera timestamps] --> A[Time alignment]\n  J[Joint timestamps] --> A\n  A --> P[Plots and replay]\n  P --> F[Flag suspicious intervals]\n```\n\n## Common pitfalls\n\n- **A nominal frame rate is not a capture log:** without original timing evidence, mark physical synchronization unknown rather than certifying it.\n- **Resampling can hide gaps:** retain raw sample ages and episode boundaries alongside the aligned view.\n\n## When it's done\n\n- **Show clean and corrupted examples**, including empty input and missing-camera errors, with an explanation for every flag.\n- **Hand off audited data** to Autonomous pick-and-place with ACT; this proposal audits timing, not policy quality.",
+      "resources": [
+        {
+          "title": "Diffusion Policy: LeRobot Research Presentation #2 by Cheng Chi",
+          "url": "https://www.youtube.com/watch?v=M03sZFfW-qU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the demonstration-driven policy context from its author before auditing observation histories."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Locate timestamps, video shards, frame rates, and episode metadata before attempting a time join."
+        },
+        {
+          "title": "diffusion_policy/real_world/real_env.py",
+          "url": "https://github.com/real-stanford/diffusion_policy/blob/main/diffusion_policy/real_world/real_env.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the actual camera and robot sample selection on a common observation grid."
+        },
+        {
+          "title": "diffusion_policy/common/timestamp_accumulator.py",
+          "url": "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/common/timestamp_accumulator.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Trace how irregular timestamps are assigned to regular time-grid slots."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://github.com/real-stanford/diffusion_policy/blob/main/diffusion_policy/real_world/real_env.py",
+        "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/common/timestamp_accumulator.py",
+        "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/real_world/real_env.py",
+        "https://www.youtube.com/watch?v=M03sZFfW-qU"
+      ]
+    },
+    {
+      "node_id": "p:benchmark-cluttered-bin-picking",
+      "type": "project",
+      "name": "Benchmark cluttered bin picking",
+      "summary": "Execute reachability-filtered grasp candidates in a simulated cluttered bin and measure which failures remain after planning.",
+      "lesson_md": "## In one sentence\n\nExecute reachability-filtered grasp candidates in a simulated cluttered bin and measure which failures remain after planning.\n\n![Contact-GraspNet grasp proposals over a cluttered scene](/img/lessons/projects_manipulation_1-bin-picking.webp)\n*Contact-GraspNet grasp proposals over a cluttered scene. Source: [Official source](https://github.com/NVlabs/contact_graspnet), license unknown.*\n\n## What you will learn\n\n- **A grasp candidate** is a proposed gripper position, orientation, and opening, not a promise of successful lifting.\n- **Clutter** adds nearby objects that can block the arm, disturb a grasp, or move during contact.\n- **Think of integration tests:** a detector score is a unit-test result; the full pick tests perception, planning, contact, and execution together.\n\n> **Key idea:** Measure completed picks separately from predicted grasp quality and feasible motion plans.\n\n## What you need\n\n- **Complete Filter grasps by reachability** and revisit Learning-based grasp detection before adding execution.\n- **Use Contact-GraspNet** for candidate generation and MoveIt 2 for your existing reachability and collision-checking pipeline.\n- **Use GraspNet-1Billion** as benchmark context, not as proof that your simulated execution matches its evaluation protocol.\n- **Run on an existing computer** with a compatible simulator and model environment; this proposal requires no purchased robot.\n\n## Steps\n\n1. **Freeze a scene set** with recorded object identities, poses, bin geometry, camera settings, random seeds, and simulator version.\n2. **Generate grasp candidates** from depth observations, then retain the exact candidates surviving your existing reachability and collision checks.\n3. **Execute approach, close, lift, and transfer** using the same controller settings for every comparison.\n4. **Record outcomes** separately: no candidate, unreachable, planning failure, collision, empty grasp, slip, and completed transfer.\n5. **Test edge cases** including an empty bin, missing depth input, a fully blocked target, and a failed contact.\n6. **Present the benchmark** with success counts, runtime breakdowns, and replay clips of representative failures.\n\nProposed result-table structure; fill it from measured trials rather than copying a paper's success rate.\n\n| Stage | Record |\n|---|---|\n| Detection | Candidate count and score |\n| Filtering | Surviving count and rejection reasons |\n| Execution | Object lifted and transferred |\n| Failure | Label and replay location |\n\n```mermaid\nflowchart LR\n  D[Depth scene] --> G[Grasp candidates]\n  G --> F[Reachability filter]\n  F --> E[Simulated execution]\n  E --> L[Outcome and replay]\n```\n\n## Common pitfalls\n\n- **Changing scenes between methods** confounds the comparison; reuse seeds and reset objects before each paired trial.\n- **Ground truth is for evaluation:** do not feed perfect object poses to one method while another receives only noisy depth.\n- **No surviving grasps is an outcome**, not a trial to silently discard from the denominator.\n\n## When it's done\n\n- **Report the full funnel** from scenes to proposed grasps, feasible plans, lifts, and completed transfers, with explicit denominators.\n- **Show remaining failures** and state that simulated success does not establish real-world bin-picking reliability.",
+      "resources": [
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes (ICRA 2021)",
+          "url": "https://www.youtube.com/watch?v=qRLKYSLXElM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors' cluttered-scene grasping experiments and the intended execution setting."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Learn how to generate settled cluttered scenes and evaluate a complete picking loop."
+        },
+        {
+          "title": "NVlabs/contact_graspnet",
+          "url": "https://github.com/NVlabs/contact_graspnet",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Load depth inputs and inspect candidate generation, segmentation, and grasp filtering."
+        },
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes",
+          "url": "https://arxiv.org/abs/2103.14127",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish the paper's structured-clutter experiments from your own simulated protocol."
+        }
+      ],
+      "sources": [
+        "https://github.com/NVlabs/contact_graspnet",
+        "https://manipulation.csail.mit.edu/clutter.html",
+        "https://arxiv.org/abs/2103.14127",
+        "https://graspnet.net/",
+        "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+        "https://www.youtube.com/watch?v=qRLKYSLXElM"
+      ]
+    }
+  ]
+}
