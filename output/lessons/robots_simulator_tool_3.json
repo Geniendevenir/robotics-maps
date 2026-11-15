@@ -860,6 +860,310 @@
         "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/LICENSE",
         "https://www.roboticsproceedings.org/rss14/p50.html"
       ]
+    },
+    {
+      "node_id": "r:iql-reference-implementation",
+      "name": "IQL reference implementation",
+      "type": "robot",
+      "summary": "The IQL reference implementation is the authors’ JAX code for learning a decision-making policy from recorded experience without collecting new training interactions.",
+      "lesson_md": "## In one sentence\n\nThe IQL reference implementation is the authors’ JAX code for learning a decision-making policy from recorded experience without collecting new training interactions.\n\n![The paper’s IQL value-function visualization in a toy U-shaped maze.](/img/lessons/robots_simulator_tool_3-iql-reference-implementation.webp)\n*The paper’s IQL value-function visualization in a toy U-shaped maze. Source: [Ilya Kostrikov, Ashvin Nair and Sergey Levine](https://arxiv.org/html/2110.06169), license unknown.*\n\n## Why it matters for us\n\n- **Learn from logs:** Offline reinforcement learning trains using recorded states, actions, rewards and next states rather than repeated live robot experiments.\n- **Inspect a reference:** This repository is the paper authors’ implementation, not an unrelated library with the same algorithm name.\n- **Compare dataset quality:** CQL and IQL dataset-quality ladder asks how learning changes when the available experience changes.\n\n> **Key idea:** IQL improves decisions using recorded actions without asking its training value estimator to score invented, out-of-dataset actions.\n\n## What it is made of / how it works\n\nThink of the dataset as an immutable event log: training can revisit existing transitions, but cannot request missing outcomes from the real world.\n\n- **Value network:** Learns which recorded situations look promising using expectile regression, an asymmetric prediction loss.\n- **Action-value network:** Learns the expected future reward of recorded state-action pairs using the value network’s predictions.\n- **Policy extraction:** Advantage-weighted behavioural cloning imitates recorded actions, giving more weight to actions estimated to be better than typical.\n- **Inputs and outputs:** Training reads benchmark experience; the resulting policy maps observations to actions, not English explanations.\n\n| MuJoCo configuration detail | Reference value |\n| --- | --- |\n| Network hidden layers | 256, 256 units |\n| Discount factor | 0.99 |\n| Expectile | 0.7 |\n| Actor learning rate | 0.0003 |\n| Value learning rate | 0.0003 |\n\n- **Worked example:** The paper compares expectiles 0.5 and 0.9: 0.5 gives ordinary squared-error averaging, while 0.9 weights positive residuals more strongly.\n- **Not a guarantee:** A better-looking value function is not evidence that a learned policy is safe on physical hardware.\n\n## Key terms\n\n- **Policy**: a function that chooses an action from an observation.\n- **Expectile**: a prediction fitted with unequal penalties for positive and negative errors.\n- **Advantage**: an action’s estimated value minus the estimated value of its state.\n\n## Getting started\n\n1. **Watch the author presentation:** Use the embedded ICLR recording to connect the algorithm to the paper’s diagrams.\n2. **Read the free source:** Inspect `configs/mujoco_config.py` before running the documented HalfCheetah command; GPU and dataset costs are separate.\n3. **Preserve the software environment:** The reference uses historical JAX/CUDA instructions; resolve compatible dependencies rather than assuming today’s defaults reproduce the paper.\n4. **Evaluate held-out behaviour:** Compare learned actions with recorded experience before considering online fine-tuning.\n\n## Used in\n\n- **Knowledge:** Offline reinforcement learning provides the background for dataset-only policy training.\n- **Diagnostic project:** Offline value optimism microscope investigates whether predicted values deserve trust.\n",
+      "resources": [
+        {
+          "title": "ICLR Poster Offline Reinforcement Learning with Implicit Q-Learning",
+          "url": "https://iclr.cc/virtual/2022/poster/5941",
+          "format": "Video",
+          "why": "Watch the authors’ paper presentation embedded on the official ICLR page.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GitHub - ikostrikov/implicit_q_learning · GitHub",
+          "url": "https://github.com/ikostrikov/implicit_q_learning",
+          "format": "Repo",
+          "why": "Find the official training commands and supported benchmarks.",
+          "level": "Beginner"
+        },
+        {
+          "title": "implicit_q_learning/configs/mujoco_config.py at master · ikostrikov/implicit_q_learning · GitHub",
+          "url": "https://github.com/ikostrikov/implicit_q_learning/blob/master/configs/mujoco_config.py",
+          "format": "Repo",
+          "why": "Inspect the actual network and optimization settings.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Offline Reinforcement Learning with Implicit Q-Learning",
+          "url": "https://arxiv.org/html/2110.06169",
+          "format": "Paper",
+          "why": "Read the expectile example, maze figure and algorithm.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://github.com/ikostrikov/implicit_q_learning",
+        "https://arxiv.org/html/2110.06169",
+        "https://github.com/ikostrikov/implicit_q_learning/blob/master/configs/mujoco_config.py",
+        "https://iclr.cc/virtual/2022/poster/5941",
+        "https://raw.githubusercontent.com/ikostrikov/implicit_q_learning/master/README.md",
+        "https://raw.githubusercontent.com/ikostrikov/implicit_q_learning/master/configs/mujoco_config.py"
+      ]
+    },
+    {
+      "node_id": "r:isaac-ros",
+      "name": "Isaac ROS",
+      "type": "robot",
+      "summary": "Isaac ROS is NVIDIA’s collection of GPU-accelerated ROS 2 packages for robot perception and related workflows on supported NVIDIA computers.",
+      "lesson_md": "## In one sentence\n\nIsaac ROS is NVIDIA’s collection of GPU-accelerated ROS 2 packages for robot perception and related workflows on supported NVIDIA computers.\n\n![Isaac ROS FoundationPose demonstration of object-pose estimation for manipulation.](/img/lessons/robots_simulator_tool_3-isaac-ros.webp)\n*Isaac ROS FoundationPose demonstration of object-pose estimation for manipulation. Source: [NVIDIA](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/index.html), license unknown.*\n\n## Why it matters for us\n\n- **Reuse accelerated components:** Image processing, depth estimation and object-pose estimation can be assembled from existing ROS packages instead of implemented from scratch.\n- **Bridge software and hardware:** Supported platforms include Jetson and compatible desktop GPUs; Isaac ROS is not itself a simulator or physical robot.\n- **Start with recordings:** Official quickstarts include recorded sensor data, so initial experiments need not depend on owning a camera.\n\n> **Key idea:** GPU acceleration helps a perception pipeline only when its inputs, models, dependencies and target platform are compatible.\n\n## What it is made of / how it works\n\nThink of ROS nodes as cooperating services: one publishes camera data, another computes a result, and a viewer subscribes to inspect it.\n\n- **Package collection:** Each repository addresses a problem area; individual packages provide specific implementations and quickstarts.\n- **Concrete example:** FoundationPose combines image/depth information and an object mesh to estimate the object’s position and orientation.\n- **Inference engines:** Its quickstart converts downloaded neural-network models into TensorRT engine plans before launching the pipeline.\n- **Inspection:** RViz displays the estimated three-dimensional bounding box over the incoming image, making failures easier to see.\n\n| Current FoundationPose documentation | Published requirement or setting |\n| --- | --- |\n| ROS distribution | ROS 2 Lyrical |\n| Recommended GPU memory | At least 8 GB |\n| Tutorial peak GPU memory | Approximately 7 GB, FP32 pipeline |\n| Default refinement iterations | 3 |\n| Default minimum depth | 0.1 m |\n\n- **Worked example:** The quickstart replays data with `ros2 bag play -l ${ISAAC_ROS_WS}/isaac_ros_assets/isaac_ros_foundationpose/quickstart.bag/`; `-l` loops the same recording.\n- **Benchmark honestly:** Faster tracking after initialization does not mean first detection has the same computational cost.\n\n## Key terms\n\n- **Node**: an independently running ROS computation that exchanges typed messages.\n- **Pose**: an object’s position and orientation together.\n- **Inference**: running an already-trained model to produce predictions.\n- **Rosbag**: a recording of ROS messages that can be replayed.\n\n## Getting started\n\n1. **Check the current platform table:** Match the documented release, operating system and GPU requirements; open packages do not remove hardware costs.\n2. **Prepare the documented environment:** Follow Getting Started rather than mixing commands from older Isaac ROS releases.\n3. **Run recorded FoundationPose data:** Download its assets and models, then follow the complete quickstart and inspect the overlay.\n4. **Measure before deployment:** Compare timing on the actual intended computer before adding live sensor input.\n\n## Used in\n\n- **Map project:** Edge YOLO on a Jetson with ROS 2 connects perception packages to an embedded-computing workflow.\n- **Related tool:** Isaac Sim / Isaac Lab can provide simulated worlds; Isaac ROS processes sensor messages and produces robot-facing results.\n",
+      "resources": [
+        {
+          "title": "Isaac ROS Teleop for Robot Control | Robotics Office Hours",
+          "url": "https://www.youtube.com/watch?v=yN0PZsCjnw4",
+          "format": "Video",
+          "why": "See NVIDIA explain Isaac ROS nodes and demonstrate robot-control integration.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Getting Started — Isaac ROS",
+          "url": "https://nvidia-isaac-ros.github.io/getting_started/index.html",
+          "format": "Docs",
+          "why": "Select the correct platform and development environment.",
+          "level": "Beginner"
+        },
+        {
+          "title": "isaac_ros_foundationpose — Isaac ROS",
+          "url": "https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html",
+          "format": "Docs",
+          "why": "Replay a specific perception pipeline and inspect its outputs.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Isaac ROS Pose Estimation — Isaac ROS",
+          "url": "https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/index.html",
+          "format": "Docs",
+          "why": "Compare the pose-estimation packages and platform requirements.",
+          "level": "Intermediate"
+        }
+      ],
+      "sources": [
+        "https://nvidia-isaac-ros.github.io/getting_started/index.html",
+        "https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/index.html",
+        "https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html"
+      ]
+    },
+    {
+      "node_id": "r:isaac-sim-isaac-lab",
+      "name": "Isaac Sim / Isaac Lab",
+      "type": "robot",
+      "summary": "Isaac Sim supplies robot simulation, while Isaac Lab organizes robot-learning environments and training workflows, including workflows that use other simulation backends.",
+      "lesson_md": "## In one sentence\n\nIsaac Sim supplies robot simulation, while Isaac Lab organizes robot-learning environments and training workflows, including workflows that use other simulation backends.\n\n![Official Isaac Lab illustration showing simulated robot-learning environments.](/img/lessons/robots_simulator_tool_3-isaac-sim-isaac-lab.webp)\n*Official Isaac Lab illustration showing simulated robot-learning environments. Source: [Isaac Lab contributors](https://github.com/isaac-sim/IsaacLab), license unknown.*\n\n## Why it matters for us\n\n- **Practise before hardware:** A simulated robot can generate training experience and expose mistakes before a policy is tested on a physical machine.\n- **Keep the names separate:** Isaac Sim is a simulation platform; Isaac Lab adds reusable learning tasks, observations, rewards and training integrations.\n- **Check current architecture:** The current Isaac Lab repository supports multiple backends; not every workflow requires the Isaac Sim application.\n\n> **Key idea:** A simulator supplies consequences of actions; the learning task defines which observations, actions and outcomes the policy is trained around.\n\n## What it is made of / how it works\n\nThink of a learning environment as a test harness: reset the fixture, send an action, read observations, score the result and repeat.\n\n- **Scenes and robots:** Assets describe bodies, joints and objects; physics computes how they move and make contact.\n- **Task configuration:** Actions, observations, resets, rewards and termination conditions specify the actual learning problem.\n- **Parallel environments:** Many independent copies generate experience on a GPU rather than waiting for one simulated robot at a time.\n- **Training interface:** Reinforcement-learning frameworks use the collected transitions to update a policy; evaluation checks its behaviour separately.\n\n| Current SO-101 tutorial setting | Documented value |\n| --- | --- |\n| Python prerequisite | 3.12 |\n| Default parallel environments | 4096 |\n| Simulation frequency | 120 Hz |\n| Physics steps per policy action | 4 |\n| Policy control frequency | 30 Hz |\n| Policy action dimensions | 6 |\n\n- **Worked example:** Dividing 120 physics steps per second by four steps per policy action gives 30 decisions per second, not 120 independent policy decisions.\n- **Backend example:** The current SO-101 vial-placement tutorial uses Newton with MJWarp and explicitly does not require the Isaac Sim application.\n\n## Key terms\n\n- **Reward**: a numerical training signal that rates an outcome.\n- **Observation**: the information provided to the policy at a decision step.\n- **Termination**: a condition that ends an episode, such as success or dropping an object.\n- **Backend**: the engine providing physics or rendering behind the task interface.\n\n## Getting started\n\n1. **Read the current tutorial:** Check NVIDIA GPU, Python and operating-system prerequisites before installing; compute costs are separate from source access.\n2. **Validate a small batch:** Follow its zero-action test before training; reduce the number of environments if GPU memory is insufficient.\n3. **Train the state-based baseline:** Understand observations and success checks before moving to the wrist-camera policy.\n4. **Respect component licenses:** Isaac Lab, its extensions, dependencies and assets do not all share one license.\n\n## Used in\n\n- **Map project:** Intro: train an RL policy in a GPU simulator turns environment configuration into a first learning experiment.\n- **Related platform:** NVIDIA connects the simulator and learning framework to the wider robotics ecosystem.\n",
+      "resources": [
+        {
+          "title": "Getting Started with NVIDIA Isaac Sim & Isaac Lab on Brev | Robotics Office Hours",
+          "url": "https://www.youtube.com/watch?v=ta-1RJzcDNs",
+          "format": "Video",
+          "why": "See NVIDIA introduce the two tools and their learning workflow.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Tutorial — Isaac Lab Documentation",
+          "url": "https://isaac-sim.github.io/IsaacLab/main/source/isaaclab/tutorial.html",
+          "format": "Docs",
+          "why": "Build and validate the documented SO-101 vial-placement task.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GitHub - isaac-sim/IsaacLab: Unified framework for robot learning with multi-physics/renderer support · GitHub",
+          "url": "https://github.com/isaac-sim/IsaacLab",
+          "format": "Repo",
+          "why": "Check current backends, version compatibility and component licenses.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "What Is Isaac Sim? — Isaac Sim Documentation",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/index.html",
+          "format": "Docs",
+          "why": "Explore the simulator layer separately from the learning framework.",
+          "level": "Intermediate"
+        }
+      ],
+      "sources": [
+        "https://github.com/isaac-sim/IsaacLab",
+        "https://isaac-sim.github.io/IsaacLab/main/source/isaaclab/tutorial.html",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/index.html",
+        "https://raw.githubusercontent.com/isaac-sim/IsaacLab/main/README.md"
+      ]
+    },
+    {
+      "node_id": "r:kachaka-api-sdk",
+      "name": "Kachaka API SDK",
+      "type": "robot",
+      "summary": "Kachaka API SDK is Preferred Robotics’ official Python and ROS 2 interface for reading Kachaka robot state and commanding supported robot functions.",
+      "lesson_md": "## In one sentence\n\nKachaka API SDK is Preferred Robotics’ official Python and ROS 2 interface for reading Kachaka robot state and commanding supported robot functions.\n\n![Official Kachaka API illustration connecting the robot to developer software.](/img/lessons/robots_simulator_tool_3-kachaka-api-sdk.webp)\n*Official Kachaka API illustration connecting the robot to developer software. Source: [Preferred Robotics](https://github.com/pf-robotics/kachaka-api), license unknown.*\n\n## Why it matters for us\n\n- **A concrete programming surface:** Read robot pose and sensors, or request movement and docking, through documented interfaces rather than modifying robot firmware.\n- **Use familiar tools:** Python clients and ROS 2 integration let software students explore a mobile-robot API without designing its electronics.\n- **Separate SDK from robot:** Apache-2.0 source access does not include a compatible robot or waive API terms; delivered hardware cost is unknown.\n\n> **Key idea:** Calling a robot API resembles calling a network service, except some successful requests make a physical machine move.\n\n## What it is made of / how it works\n\nThink of the SDK as a typed client for a service on your local network: connect to the robot endpoint, send requests and interpret responses.\n\n- **Communication:** gRPC provides the underlying request-and-response interface; other languages can also use that interface directly.\n- **Python wrapper:** One `KachakaApiClient` instance corresponds to one robot; its methods expose individual API functions.\n- **ROS integration:** The official ROS 2 bridge makes the robot accessible within a ROS application.\n- **Enablement:** The smartphone app must enable the API after agreement to its terms, and the client needs the robot’s address.\n\n| Official SDK detail | Documented value |\n| --- | --- |\n| Python requirement | 3.10+ |\n| ROS integration | ROS 2 Humble |\n| ROS host system | Ubuntu 22.04 LTS |\n| Example API port | 26400 |\n| SDK license | Apache-2.0 |\n\n- **Worked example:** After installing `kachaka-api`, the official Python pattern reads state without commanding movement:\n\n```python\nfrom kachaka_api import KachakaApiClient\nclient = KachakaApiClient(target=\"192.168.1.100:26400\")\ncurrent_pose = client.get_robot_pose()\nprint(current_pose)\n```\n\n- **Replace the address:** The IP above is the documentation’s example; use the address of the robot you are authorized to access.\n\n## Key terms\n\n- **SDK**: software development kit, including client code and examples.\n- **Docking**: aligning and connecting the robot to supported furniture or charging equipment.\n- **Asynchronous call**: an operation that can be awaited without blocking all other program work.\n\n## Getting started\n\n1. **Read the official quickstart:** It explains the browser-based JupyterLab route and where examples live; most documentation is Japanese.\n2. **Enable authorized API access:** Follow the app instructions and identify the correct robot address.\n3. **Read state first:** Install with `pip install kachaka-api` and test the pose query before trying motion commands.\n4. **Inspect the ROSCon talk:** Compare direct client calls with the ROS 2 bridge before choosing an integration approach.\n\n## Used in\n\n- **Builder connection:** Preferred Robotics maintains the official SDK and its contribution surface.\n- **First exercise:** Log pose responses with timestamps and inspect failures before building an autonomous application.\n",
+      "resources": [
+        {
+          "title": "家庭用自律移動ロボット「カチャカ」の開発者API公開とROS 2インターフェイス実装",
+          "url": "https://vimeo.com/883809138",
+          "format": "Video",
+          "why": "Watch the developer’s ROSCon JP presentation about the API and ROS 2 bridge.",
+          "level": "Beginner"
+        },
+        {
+          "title": "kachaka-api/docs/QUICKSTART.md at main · pf-robotics/kachaka-api · GitHub",
+          "url": "https://github.com/pf-robotics/kachaka-api/blob/main/docs/QUICKSTART.md",
+          "format": "Docs",
+          "why": "Start with official browser-based notebooks.",
+          "level": "Beginner"
+        },
+        {
+          "title": "kachaka-api/docs/PYTHON.md at main · pf-robotics/kachaka-api · GitHub",
+          "url": "https://github.com/pf-robotics/kachaka-api/blob/main/docs/PYTHON.md",
+          "format": "Docs",
+          "why": "Install the client and read robot state from Python.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GitHub - pf-robotics/kachaka-api: スマートファニチャープラットフォーム「カチャカ」API · GitHub",
+          "url": "https://github.com/pf-robotics/kachaka-api",
+          "format": "Repo",
+          "why": "Check API enablement, supported SDKs and licensing.",
+          "level": "Intermediate"
+        }
+      ],
+      "sources": [
+        "https://github.com/pf-robotics/kachaka-api",
+        "https://github.com/pf-robotics/kachaka-api/blob/main/docs/PYTHON.md",
+        "https://github.com/pf-robotics/kachaka-api/blob/main/docs/QUICKSTART.md",
+        "https://kachaka.life/",
+        "https://discourse.openrobotics.org/t/the-ros-2-bridge-of-the-smart-furniture-robot-kachaka/34704",
+        "https://raw.githubusercontent.com/pf-robotics/kachaka-api/main/docs/PYTHON.md"
+      ]
+    },
+    {
+      "node_id": "r:kalibr",
+      "name": "Kalibr",
+      "type": "robot",
+      "summary": "Kalibr is an open-source calibration toolbox that estimates camera parameters and the spatial and timing relationships between cameras and inertial sensors.",
+      "lesson_md": "## In one sentence\n\nKalibr is an open-source calibration toolbox that estimates camera parameters and the spatial and timing relationships between cameras and inertial sensors.\n\n![Camera-IMU calibration tutorial preview from Kalibr’s official wiki.](/img/lessons/robots_simulator_tool_3-kalibr.webp)\n*Camera-IMU calibration tutorial preview from Kalibr’s official wiki. Source: [SimpleKernel](https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration), license unknown.*\n\n## Why it matters for us\n\n- **Sensors must agree:** A camera and an inertial measurement unit, or IMU, cannot be fused reliably without knowing their relative geometry and timing.\n- **Calibrate before estimating:** Camera-IMU calibration with Kalibr makes those relationships explicit instead of asking a navigation algorithm to hide installation errors.\n- **Use recorded data:** Calibration runs on a ROS bag containing images and inertial readings, not necessarily on a moving robot connected live.\n\n> **Key idea:** Correct individual sensor readings can still disagree if they describe different coordinate frames or different moments in time.\n\n## What it is made of / how it works\n\nThink of calibration as aligning logs from two services: both event timestamps and the meaning of their coordinate values must match.\n\n- **Camera calibration:** Estimates internal camera parameters and relationships within a multi-camera system.\n- **Camera-IMU calibration:** Fits spatial transformations and time offsets using a fixed target observed while the rigid sensor assembly moves.\n- **Batch optimization:** Processes the recorded sequence together, using smooth curves to represent motion rather than solving each instant independently.\n- **Outputs:** Writes a PDF report, a text summary and YAML calibration data for downstream software.\n\n| Official camera-IMU example | Documented value |\n| --- | --- |\n| Example camera rate | 20 Hz |\n| Example IMU rate | 200 Hz |\n| Aprilgrid template | 6 columns × 6 rows |\n| Template tag edge | 0.088 m |\n| Template gap-to-edge ratio | 0.3 |\n\n- **Worked example:** At the suggested example rates, ten inertial samples arrive per camera frame on average: 200 divided by 20 equals 10.\n- **Measure the print:** Template dimensions are examples; printers can rescale targets, so configure the measured physical dimensions rather than blindly copying YAML.\n\n## Key terms\n\n- **Intrinsic calibration**: properties inside one sensor, such as a camera’s projection and distortion parameters.\n- **Extrinsic calibration**: the position and orientation relating one sensor frame to another.\n- **Time offset**: the difference between timestamps representing the same physical event.\n- **Aprilgrid**: a calibration board made from individually identifiable AprilTag markers.\n\n## Getting started\n\n1. **Use the free toolbox’s documented environment:** The main repository documents ROS 1 builds; do not assume every ROS 2 setup works unchanged.\n2. **Begin with sample data:** Follow the camera-IMU wiki example before collecting your own recordings; compute and sensors are separate costs.\n3. **Inspect target and motion:** Keep the target flat and excite rotations and translations along all sensor axes without excessive image blur.\n4. **Read the report:** Examine timestamp intervals and residual plots before accepting the generated calibration file.\n\n## Used in\n\n- **Calibration project:** Camera-IMU calibration with Kalibr links this toolbox to a practical sensor-fusion prerequisite.\n- **Timing project:** Audit clock offsets before running VIO investigates whether apparent geometry problems are actually timestamp problems.\n",
+      "resources": [
+        {
+          "title": "DIY Indoor Autonomous Drone! - Part 2 (Kalibr & Calibration)",
+          "url": "https://www.youtube.com/watch?v=puNXsnrYWTY",
+          "format": "Video",
+          "why": "Follow the Kalibr tutorial explicitly linked by its official wiki.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Calibration targets · ethz-asl/kalibr Wiki · GitHub",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/calibration-targets",
+          "format": "Docs",
+          "why": "Choose and measure the target correctly.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Camera IMU calibration · ethz-asl/kalibr Wiki · GitHub",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+          "format": "Docs",
+          "why": "Run the documented recorded-data workflow.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "IMU Noise Model · ethz-asl/kalibr Wiki · GitHub",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "why": "Understand the inertial-noise inputs required by calibration.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://github.com/ethz-asl/kalibr",
+        "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+        "https://github.com/ethz-asl/kalibr/wiki/calibration-targets",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://raw.githubusercontent.com/ethz-asl/kalibr/master/README.md"
+      ]
+    },
+    {
+      "node_id": "r:kicad",
+      "name": "KiCad",
+      "type": "robot",
+      "summary": "KiCad is a free, open-source electronics-design suite for turning circuit schematics into printed circuit board layouts and manufacturing files.",
+      "lesson_md": "## In one sentence\n\nKiCad is a free, open-source electronics-design suite for turning circuit schematics into printed circuit board layouts and manufacturing files.\n\n![The official website’s iCEBreaker Bitsy board shown in the KiCad PCB Editor.](/img/lessons/robots_simulator_tool_3-kicad.webp)\n*The official website’s iCEBreaker Bitsy board shown in the KiCad PCB Editor. Source: [KiCad project](https://www.kicad.org/), CC BY 3.0 or later / GPL 3 or later.*\n\n## Why it matters for us\n\n- **Move beyond loose wires:** A printed circuit board, or PCB, turns a circuit into a repeatable physical assembly with defined component positions and copper connections.\n- **Keep design inspectable:** Schematics record intended electrical connections; layout records how those connections are implemented on a board.\n- **Connect to robotics:** PCB design for robots supports the custom electronics that connect computers, sensors, power and actuators.\n\n> **Key idea:** A correct-looking schematic and a correct-looking board are different things; both need checks before manufacturing.\n\n## What it is made of / how it works\n\nThink of the workflow like compiling software: the schematic expresses intent, layout makes implementation choices, and manufacturing files are build outputs.\n\n- **Schematic editor:** Connect symbols representing electrical parts, assign names and associate each part with a physical footprint.\n- **PCB editor:** Place footprints, define the board outline and route copper tracks between the required pads.\n- **Rule checks:** Electrical rules check the schematic; design rules check the board against configured layout constraints.\n- **Fabrication outputs:** Gerber files describe board layers, while drill files specify holes; the manufacturer uses these rather than the schematic alone.\n\n| Documented tool capability | Concrete detail |\n| --- | --- |\n| Getting-started manual used here | KiCad 10.0 |\n| Interactive routing modes | 3 |\n| Routing choices | Collision highlight, shove, walkaround |\n| Spatial inspection | 3D viewer |\n| Software access | Free and open source |\n\n- **Worked example:** The beginner tutorial assigns a 3 V coin cell to BT1 and a 1 kΩ resistor to R1; each symbol still needs a footprint.\n- **Review the model:** A 3D view helps inspect component placement, but is not proof that an electrical circuit or enclosure fit is correct.\n\n## Key terms\n\n- **Symbol**: the schematic representation of a component’s electrical pins.\n- **Footprint**: the pads and physical outline used to place a component on a PCB.\n- **Track**: a copper connection routed across a board layer.\n- **Via**: a conductive hole connecting copper between layers.\n\n## Getting started\n\n1. **Install the free application:** Follow the official manual for your operating system; fabricated boards and components still cost money.\n2. **Follow the beginner project:** Draw its schematic and assign footprints before opening the board layout.\n3. **Run both rule checks:** Resolve violations and inspect the 3D view before generating fabrication files.\n4. **Start small:** Reproduce the tutorial before adapting a design to robot batteries, motors or emergency-stop circuitry.\n\n## Used in\n\n- **Knowledge:** PCB design for robots provides the electronics-design context.\n- **Map project:** Custom power & e-stop board for the SO-101 needs a reviewed circuit and layout, not merely a manufactured board.\n",
+      "resources": [
+        {
+          "title": "KiCad 9.0 - Getting Started Part 1: Intro & Download | DigiKey",
+          "url": "https://www.youtube.com/watch?v=0WCi1rhueH4",
+          "format": "Video",
+          "why": "Learn the workflow from DigiKey; its version-9 interface differs from the current version-10 manual.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Getting Started in KiCad | 10.0 | English | Documentation | KiCad",
+          "url": "https://docs.kicad.org/10.0/en/getting_started_in_kicad/getting_started_in_kicad.html",
+          "format": "Docs",
+          "why": "Follow the current stable beginner schematic-to-board tutorial.",
+          "level": "Beginner"
+        },
+        {
+          "title": "PCB Design in PcbNew | KiCad",
+          "url": "https://www.kicad.org/discover/pcb-design/",
+          "format": "Docs",
+          "why": "Understand routing modes and layout checks.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "KiCad - Schematic Capture & PCB Design Software",
+          "url": "https://www.kicad.org/",
+          "format": "Docs",
+          "why": "Find official downloads and the suite’s component tools.",
+          "level": "Intermediate"
+        }
+      ],
+      "sources": [
+        "https://www.kicad.org/",
+        "https://docs.kicad.org/10.0/en/getting_started_in_kicad/getting_started_in_kicad.html",
+        "https://www.kicad.org/discover/pcb-design/"
+      ]
+    },
+    {
+      "node_id": "r:kimera-multi",
+      "name": "Kimera-Multi",
+      "type": "robot",
+      "summary": "Kimera-Multi is a distributed multi-robot mapping system that combines local visual-inertial estimates into consistent three-dimensional maps with semantic labels.",
+      "lesson_md": "## In one sentence\n\nKimera-Multi is a distributed multi-robot mapping system that combines local visual-inertial estimates into consistent three-dimensional maps with semantic labels.\n\n![Kimera-Multi’s official demonstration figure combines robots, trajectories and a reconstructed map.](/img/lessons/robots_simulator_tool_3-kimera-multi.webp)\n*Kimera-Multi’s official demonstration figure combines robots, trajectories and a reconstructed map. Source: [MIT SPARK and collaborators](https://github.com/MIT-SPARK/Kimera-Multi), license unknown.*\n\n## Why it matters for us\n\n- **Share useful evidence:** Multiple robots can observe the same place from different trajectories and improve their estimates by matching those observations.\n- **Reject false matches:** Similar-looking places can create incorrect connections; robust mapping must avoid warping a map around those mistakes.\n- **Start from recordings:** Align two recorded robot sessions is a more accessible first exercise than buying and coordinating a fleet.\n\n> **Key idea:** Sharing a map is not just merging point coordinates; robots must agree which observations refer to the same places and reject misleading matches.\n\n## What it is made of / how it works\n\nThink of distributed version control with geometry: each robot maintains local work, exchanges selected evidence and revises its history when shared constraints justify it.\n\n- **Local estimation:** Visual-inertial processing combines cameras and inertial sensors to estimate motion and reconstruct a local mesh.\n- **Place recognition:** Robots exchange compact visual summaries and selected frames to propose matches between different trajectories.\n- **Distributed optimization:** A pose graph represents estimated poses and their relationships; robust optimization reduces inconsistency while handling incorrect matches.\n- **Mesh correction:** Improved trajectories deform local meshes, whose faces can carry labels describing what surfaces represent.\n\n| Repository detail | Documented value |\n| --- | --- |\n| Current documented build OS | Ubuntu 20.04 |\n| Current documented ROS build | ROS Noetic |\n| Single-machine example | 6 robots |\n| Released dataset collection | 8 robots |\n| Remote Topic Manager | Listed as coming soon |\n\n- **Worked example:** The supplied single-machine launch starts six recorded robot processes with one ROS master; it is not a six-machine communication-loss experiment.\n- **Availability limit:** The README says separate-master deployment needs the unreleased Remote Topic Manager; do not promise a complete deployable distributed stack from this index repository.\n\n## Key terms\n\n- **SLAM**: simultaneous localization and mapping, estimating motion while building a map.\n- **Loop closure**: recognizing a previously observed place and using it to constrain trajectory estimates.\n- **Semantic mesh**: a surface model whose elements also carry category labels.\n- **Peer-to-peer**: communication directly between participants rather than through a central coordinator.\n\n## Getting started\n\n1. **Watch the authors’ demonstration:** Identify local robot trajectories and the combined map before reading the architecture.\n2. **Inspect the free repositories:** Check component availability and licenses separately; storage and compute requirements are additional costs.\n3. **Use the recorded example:** Follow the documented ROS Noetic build and Campus-Outdoor instructions on one machine.\n4. **Compare constraints:** Inspect how inter-robot matches change trajectories before attempting distributed networking or packet-loss tests.\n\n## Used in\n\n- **Knowledge:** Multi-robot & distributed SLAM provides the wider estimation context.\n- **Map project:** Align two recorded robot sessions isolates the map-alignment problem before full fleet deployment.\n",
+      "resources": [
+        {
+          "title": "Kimera-Multi: a System for Distributed Multi-Robot Metric-Semantic SLAM",
+          "url": "https://www.youtube.com/watch?v=G8PktlQ82uw",
+          "format": "Video",
+          "why": "See the original system demonstration from MIT SPARK Lab.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GitHub - MIT-SPARK/Kimera-Multi: Index repo for Kimera-Multi system · GitHub",
+          "url": "https://github.com/MIT-SPARK/Kimera-Multi",
+          "format": "Repo",
+          "why": "Read architecture, build instructions and unreleased-component limitations.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GitHub - MIT-SPARK/Kimera-Multi-Data: A large-scale multi-robot dataset for multi-robot SLAM · GitHub",
+          "url": "https://github.com/MIT-SPARK/Kimera-Multi-Data",
+          "format": "Repo",
+          "why": "Find the recorded sequences used for reproducible experiments.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Kimera-Multi: Robust, Distributed, Dense Metric-Semantic SLAM for Multi-Robot Systems",
+          "url": "https://arxiv.org/abs/2106.14386",
+          "format": "Paper",
+          "why": "Study robust distributed estimation and mesh correction.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://github.com/MIT-SPARK/Kimera-Multi",
+        "https://github.com/MIT-SPARK/Kimera-Multi-Data",
+        "https://arxiv.org/abs/2106.14386",
+        "https://raw.githubusercontent.com/MIT-SPARK/Kimera-Multi/main/README.md"
+      ]
     }
   ]
 }
