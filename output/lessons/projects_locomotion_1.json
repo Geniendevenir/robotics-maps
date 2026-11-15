@@ -868,6 +868,275 @@
         "https://github.com/nico-bohlinger/one_policy_to_run_them_all",
         "https://www.ias.informatik.tu-darmstadt.de/uploads/Team/NicoBohlinger/one_policy_to_run_them_all.pdf"
       ]
+    },
+    {
+      "node_id": "p:compare-virtual-leg-ratios",
+      "type": "project",
+      "name": "Compare virtual leg ratios",
+      "summary": "Sweep simulated leg lengths and transmission ratios while holding mass and joint limits fixed, then compare reachable positions and achievable forces.",
+      "lesson_md": "## In one sentence\n\nSweep simulated leg lengths and transmission ratios while holding mass and joint limits fixed, then compare reachable positions and achievable forces.\n\n![Completed left and right Stanford Pupper leg assemblies with motors and linkages](/img/lessons/projects_locomotion_1-leg-ratios.webp)\n*Pupper leg assemblies illustrate geometry and mechanical transmission, not results of the proposed sweep. Source: [Stanford Pupper](https://pupper.readthedocs.io/en/latest/guide/assembly.html), license unknown.*\n\n## What you will learn\n\n- **Link lengths** set the geometry between joints; changing their proportions changes where a foot can reach.\n- **A transmission ratio** relates motor rotation to joint motion; it affects force and speed together, not just the size of a torque command.\n- **The Jacobian** maps small joint motions to foot motion; its transpose maps a desired foot force to required joint torques.\n\n> **Key idea:** More reach or more force in one pose does not mean a universally better leg.\n\n## What you need\n\n- **Background:** Complete Plot a leg workspace and force map and review Leg design & proprioceptive actuation.\n- **Setup:** A virtual leg, a grid of target foot positions, documented motor assumptions and a reproducible parameter file.\n- **Tools:** Pinocchio can calculate geometry and dynamics; use a simulator separately if testing contacts or falls.\n- **Planning estimate:** 2-4 weeks; hardware €0 in simulation, excluding computer/GPU costs. This is a student design study, not a manufacturing recommendation.\n\n## Steps\n\n1. **Save a baseline:** Record link lengths, mass distribution, joint-angle limits and motor limits; confirm the leg reaches a normal test trajectory.\n2. **Sweep geometry:** Vary the upper-to-lower link proportion while keeping total length fixed first; reject self-collisions and unreachable targets.\n3. **Sweep transmission separately:** Keep the motor model fixed and declare joint-side caps; enforce both limits rather than silently increasing available joint torque.\n4. **Compare forces:** At each valid pose, calculate the joint torque required for the same foot force; include gravity compensation if modeling a loaded leg.\n\n`required_joint_torque = foot_jacobian.T @ desired_foot_force`\n\n5. **Exercise edge cases:** Include zero-force requests, no-contact motion, invalid lengths, straight-leg configurations and motor saturation; log infeasible samples rather than dropping them.\n6. **Demo the parameter sweep:** Animate matched trajectories beside reach and force maps; report successful targets, rejected poses, timeouts and any simulated falls.\n\n```mermaid\nflowchart LR\n  A[Geometry and transmission] --> B[Shared target grid]\n  B --> C[Pose and force calculation]\n  C --> D[Motor and joint limits]\n  D --> E[Reach and force maps]\n```\n\n## Common pitfalls\n\n- **Scaling only the visual mesh** changes appearance without necessarily changing joint locations, collisions or mass properties.\n- **A singular pose** loses motion capability in a direction; do not interpret an unstable matrix inverse as unlimited useful force.\n- **Changing mass accidentally** creates a different experiment; preserve masses and explicitly state how their distribution and rotational resistance change with geometry.\n\n## When it's done\n\n- **Deliver a reproducible comparison:** Treat each design like a versioned software configuration; show trade-offs on identical targets, with all rejected cases counted.\n- **Explain the limits:** Separate geometric reach from dynamic performance; use findings to inform Prototype a passive leg linkage without claiming hardware validation.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.2:  Statics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=eBti6XIoR5U",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn why the same foot force requires different joint torques in different poses."
+        },
+        {
+          "title": "5.3. Singularities",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand why straightened and other singular configurations distort motion and force comparisons."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-general-gear",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check precisely what actuator gear scaling changes, and distinguish it from force gain."
+        },
+        {
+          "title": "Cheetah-Software/common/include/Dynamics/MiniCheetah.h at master · mit-biomimetics/Cheetah-Software · GitHub",
+          "url": "https://github.com/mit-biomimetics/Cheetah-Software/blob/master/common/include/Dynamics/MiniCheetah.h",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect an explicit model containing link lengths, gear ratios, masses and motor parameters."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=eBti6XIoR5U",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-general-gear",
+        "https://github.com/mit-biomimetics/Cheetah-Software/blob/master/common/include/Dynamics/MiniCheetah.h",
+        "https://pupper.readthedocs.io/en/latest/guide/assembly.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-2-statics-of-open-chains/"
+      ]
+    },
+    {
+      "node_id": "p:couple-four-gait-oscillators",
+      "type": "project",
+      "name": "Couple four gait oscillators",
+      "summary": "Animate four coupled leg oscillators and show how changing their desired phase differences produces different gait rhythms.",
+      "lesson_md": "## In one sentence\n\nAnimate four coupled leg oscillators and show how changing their desired phase differences produces different gait rhythms.\n\n![AllGaits control diagram showing four coupled oscillators, foot trajectory formation and a quadruped](/img/lessons/projects_locomotion_1-four-oscillators.webp)\n*AllGaits separates rhythm generation from foot-trajectory formation; the proposed viewer implements only a small illustrative subset. Source: [AllGaits](https://arxiv.org/html/2411.04787), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **An oscillator** repeats a cycle; its **phase** describes progress around that cycle, while frequency describes how quickly it repeats.\n- **Coupling** adjusts each oscillator using the others; a **phase offset** specifies their intended relative timing rather than a separate animation start time.\n- **A central pattern generator (CPG)** coordinates rhythmic signals; converting those signals into foot motion and balanced walking requires additional layers.\n\n> **Key idea:** A convincing gait rhythm is a timing pattern, not evidence that a robot can balance.\n\n## What you need\n\n- **Background:** The map links Intro: train an RL policy in a GPU simulator; this timing exercise needs no new policy.\n- **Concepts:** Review Central pattern generators, then build a standalone phase viewer before attaching it to a robot.\n- **Planning estimate:** One week; hardware €0, excluding computer/GPU costs. Use a plotting library and integration loop.\n\n## Steps\n\n1. **Label the legs:** Use the same order everywhere: front right, front left, hind right, hind left; display four phase circles and time traces.\n2. **Run uncoupled clocks:** Give each leg a phase and frequency; perturb one phase to show that independent clocks do not correct their relative timing.\n3. **Add coupling:** Following the published phase equation, pull each phase toward the desired differences; the weighted sine term supplies the correction.\n\n`phase_rate[i] = frequency[i] + sum(amplitude[j] * weight[i,j] * sin(phase[j] - phase[i] - offset[i,j]) for j in legs)`\n\n4. **Select gait offsets:** Make diagonal pairs share phase for trot; make same-side pairs share phase for pace, with opposing pairs half a cycle apart.\n5. **Test disruptions:** Compare coupling disabled and enabled after a phase perturbation; also test zero frequency, invalid inputs and an empty contact stream.\n6. **Demo the rhythms:** Animate contact-intent bars from a declared phase-to-stance rule; show convergence errors and transitions, not just four attractive sine waves.\n\n```mermaid\nflowchart LR\n  A[Desired gait offsets] --> B[Coupled phase update]\n  B --> C[Phase traces]\n  B --> D[Stance intent]\n  C --> E[Timing error]\n  E --> B\n```\n\n## Common pitfalls\n\n- **Inconsistent phase signs** produce the wrong lead-lag order; test one oscillator pair before wiring all four.\n- **Shared-clock animation** can imitate coordination without coupling; the perturbation test distinguishes an actual correction mechanism from scripted playback.\n- **Intended stance** is not measured contact; an open-loop rhythm can continue even when feet would miss the ground.\n\n## When it's done\n\n- **Deliver a repeatable viewer:** Like debugging cooperating event loops, show each clock's state, target timing and correction after a disturbance.\n- **Report scope honestly:** Count invalid-input and timeout cases; falls and motor-limit results are not applicable until a physics adapter exists.\n- **Connect the next project:** Add contact phase resets introduces real contact feedback; this oscillator demo alone establishes no hardware transfer.",
+      "resources": [
+        {
+          "title": "AllGaits: Learning All Quadruped Gaits and Transitions",
+          "url": "https://www.youtube.com/watch?v=OLoWSX_R868",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the gait families whose relative timing the viewer will illustrate."
+        },
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe the distinction between rhythmic signals and a complete locomotion controller."
+        },
+        {
+          "title": "AllGaits: Learning All Quadruped Gaits and Transitions",
+          "url": "https://arxiv.org/html/2411.04787",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Use the explicit phase coupling equation and stated leg ordering."
+        },
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://arxiv.org/abs/2211.00458",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how oscillator coordination and sensory feedback fit into a learned quadruped controller."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=OLoWSX_R868",
+        "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+        "https://arxiv.org/html/2411.04787",
+        "https://arxiv.org/abs/2211.00458"
+      ]
+    },
+    {
+      "node_id": "p:design-a-risk-limited-parkour-benchmark",
+      "type": "project",
+      "name": "Design a risk-limited parkour benchmark",
+      "summary": "Build a simulation-only parkour evaluation that rewards progress only within declared impact, clearance and abort limits, with every failure counted.",
+      "lesson_md": "## In one sentence\n\nBuild a simulation-only parkour evaluation that rewards progress only within declared impact, clearance and abort limits, with every failure counted.\n\n![Extreme Parkour simulated terrain types: tilted ramp, hurdle, gap and step](/img/lessons/projects_locomotion_1-risk-parkour.webp)\n*Published Extreme Parkour terrain examples provide a reference for course design, not certified safe obstacle limits. Source: [Extreme Parkour paper](https://arxiv.org/html/2309.14341), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **A benchmark** is a fixed evaluation protocol, not a selection of impressive clips; it defines starts, commands, measurements and termination rules.\n- **Clearance** measures separation from obstacles; **impact impulse** accumulates contact force over a collision, unlike a single peak-force sample.\n- **An abort condition** terminates an unacceptable trial; crossing it must remain a recorded failure even if the robot later recovers.\n\n> **Key idea:** Finishing faster should not hide excessive impacts, forbidden contacts or discarded failures.\n\n## What you need\n\n- **Background:** Complete Build a held-out virtual parkour course and review Agile & parkour locomotion before defining the risk score.\n- **Setup:** A compatible simulated robot and policy, fixed obstacle courses, collision geometry, contact-force logs and saved starting states.\n- **Compatibility:** Isaac Sim / Isaac Lab is related map infrastructure; the Extreme Parkour release uses Isaac Gym, so assets and policies need explicit compatibility checks.\n- **Planning estimate:** 3+ months; hardware €0 in simulation, excluding computer/GPU costs. This proposal establishes simulator-specific limits, not physical safety certification.\n\n## Steps\n\n1. **Freeze the course split:** Separate tuning and held-out routes; publish obstacle geometry, starting states and commands so failed runs cannot disappear through regeneration.\n2. **Declare limits first:** Choose documented simulation thresholds for impact, body clearance, joint limits and timeout; explain the rationale without borrowing unsupported hardware damage limits.\n3. **Instrument the measurements:** Record contact pairs and forces, body-to-obstacle distance and applied motor commands; specify units, sampling and collision-model settings.\n4. **Implement the verdict:** Keep route completion separate from constraint compliance; label threshold crossings and preserve the earliest abort reason.\n\n```python\nviolation = impact_over_limit or clearance_breached or forbidden_contact or motor_limit_breached\naccepted = reached_goal and not violation and not fell and not timed_out\nrecord(accepted, violation, fell, timed_out, abort_reason)\n```\n\n5. **Test the evaluator:** Replay ordinary completion, standstill, no-contact starts, invalid observations, motor saturation and lost landings; verify each expected label before comparing policies.\n6. **Demo the benchmark:** Pair full-route videos with speed, clearance and impact plots; include aborted runs and publish success, fall, timeout and violation counts.\n\n```mermaid\nflowchart LR\n  A[Fixed course and policy] --> B[Simulation logs]\n  B --> C[Progress metrics]\n  B --> D[Constraint checks]\n  D --> E[Abort or continue]\n  C --> F[Complete trial ledger]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Reward penalties** encourage behavior but do not enforce hard evaluation limits; keep the scoring harness independent from the policy's training reward.\n- **Peak-force rankings** can change with simulation timestep; record the integration settings and distinguish force from impulse.\n- **Retries** are not free successes; use a declared retry budget and report every attempt.\n\n## When it's done\n\n- **Deliver an auditable evaluator:** Treat each policy like an untrusted submission to an automated judge; version the courses, limits, logs and verdict code.\n- **Bound the conclusion:** Report the progress-versus-violation trade-off in this simulator; do not describe a policy as safe for hardware on this evidence.",
+      "resources": [
+        {
+          "title": "Extreme Parkour with Legged Robots via a Single Neural Net",
+          "url": "https://www.youtube.com/watch?v=cqvAgcQl6s4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe obstacle types and athletic behaviors that motivate a constrained evaluation."
+        },
+        {
+          "title": "Extreme Parkour",
+          "url": "https://extreme-parkour.github.io/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Inspect the terrain demonstrations and failure examples before defining benchmark cases."
+        },
+        {
+          "title": "chengxuxin/extreme-parkour",
+          "url": "https://github.com/chengxuxin/extreme-parkour",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check the actual simulator dependency and camera-policy workflow before selecting compatible assets."
+        },
+        {
+          "title": "Extreme Parkour with Legged Robots",
+          "url": "https://arxiv.org/abs/2309.14341",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how clearance objectives and obstacle conditions shape the reference task."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=cqvAgcQl6s4",
+        "https://extreme-parkour.github.io/",
+        "https://github.com/chengxuxin/extreme-parkour",
+        "https://arxiv.org/abs/2309.14341",
+        "https://arxiv.org/html/2309.14341"
+      ]
+    },
+    {
+      "node_id": "p:draw-a-moving-support-polygon",
+      "type": "project",
+      "name": "Draw a moving support polygon",
+      "summary": "Animate ground contacts and center-of-mass projection, updating a support polygon and labeling quasi-static balance under explicit flat-ground assumptions.",
+      "lesson_md": "## In one sentence\n\nAnimate ground contacts and center-of-mass projection, updating a support polygon and labeling quasi-static balance under explicit flat-ground assumptions.\n\n![HRP-4 humanoid with its center of mass projected into the green support polygon between its feet](/img/lessons/projects_locomotion_1-support-polygon.webp)\n*Published HRP-4 illustration shows the center-of-mass projection within a horizontal support polygon. Source: [Stéphane Caron](https://scaron.info/robotics/support-polygon.html), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **The center of mass (CoM)** is the mass-weighted average position of the robot; its vertical projection is where that point falls on horizontal ground.\n- **A support polygon** encloses active ground-contact regions; for point feet, use their contact locations, not every foot's commanded destination.\n- **Quasi-static balance** treats motion as slow enough to neglect acceleration; a CoM projection inside the polygon is not a general dynamic-balance guarantee.\n\n> **Key idea:** Recompute support from actual contacts; a foot in the air cannot support the robot merely because its target is on the ground.\n\n## What you need\n\n- **Background:** Review Static & dynamic stability; the map prerequisite is Intro: train an RL policy in a GPU simulator, but saved pose data also works.\n- **Setup:** A level-ground animation with contact flags, world-coordinate feet and a mass-based CoM estimate.\n- **Tools:** Pinocchio can supply model-based geometry; a plotting library draws contacts, hull and CoM.\n- **Planning estimate:** One week; hardware €0 in simulation, excluding computer/GPU costs. Begin with point contacts and document that simplification.\n\n## Steps\n\n1. **Check coordinates:** Put contacts and CoM in one world frame; display the vertical projection and verify a stationary pose by inspection.\n2. **Filter supporting contacts:** Exclude swing feet; for flat soles, use contacting surface corners rather than pretending the sole has no area.\n3. **Compute the hull:** A convex hull is the smallest convex boundary enclosing the selected points; order its vertices before drawing edges.\n\n```python\npoints = contact_xy[active_contacts]\nif enough_noncollinear_points(points):\n    hull = ConvexHull(points)\n    draw_polygon(points[hull.vertices])\nelse:\n    show_degenerate_support(points)\n```\n\n4. **Classify slow poses:** Test whether the projected CoM is inside, outside or on the boundary; show boundary and degenerate cases separately.\n5. **Exercise failures:** Test no command, no contacts, duplicate or collinear points, invalid coordinates and unexpected contact loss; avoid retaining yesterday's polygon after failure.\n6. **Demo changing support:** Animate foot lifts and body shifts; overlay contact labels, CoM projection and quasi-static classification with the same timestamp.\n\n```mermaid\nflowchart LR\n  A[Pose and contacts] --> B[World-frame contact points]\n  B --> C[Hull or degenerate case]\n  A --> D[CoM projection]\n  C --> E[Containment label]\n  D --> E\n```\n\n## Common pitfalls\n\n- **Two point contacts** form a line segment, not an area; do not let a hull-library exception crash the animation.\n- **Fast motion** violates the quasi-static assumption; label the limitation instead of predicting inevitable falls from geometry alone.\n- **Uneven terrain or hand contacts** require a more general contact analysis than this flat-ground convex-hull construction.\n\n## When it's done\n\n- **Deliver a tested overlay:** Like rebuilding a UI from current state, recompute the polygon every frame and demonstrate all contact-degeneracy cases.\n- **Connect the next project:** Push a simulated standing quadruped tests dynamic response; report motor-limit, fall and timeout results only if a physics rollout was actually used.",
+      "resources": [
+        {
+          "title": "Lecture 4: Princeton: Introduction to Robotics | \"Stability and PD Control\"",
+          "url": "https://www.youtube.com/watch?v=XQolfBt8e4s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Start with the lecture's center-of-mass and static-stability discussion."
+        },
+        {
+          "title": "Support polygon",
+          "url": "https://scaron.info/robotics/support-polygon.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the static-equilibrium support region and the flat-ground convex-hull construction."
+        },
+        {
+          "title": "ConvexHull",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.ConvexHull.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement ordered 2D hull vertices and handle geometric degeneracy explicitly."
+        },
+        {
+          "title": "ZMP support area",
+          "url": "https://scaron.info/robotics/zmp-support-area.html",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "See why dynamic support constraints are more subtle than a CoM-inside-hull test."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=XQolfBt8e4s",
+        "https://scaron.info/robotics/support-polygon.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.ConvexHull.html",
+        "https://scaron.info/robotics/zmp-support-area.html"
+      ]
+    },
+    {
+      "node_id": "p:inject-depth-delay-into-rough-terrain-walking",
+      "type": "project",
+      "name": "Inject depth delay into rough-terrain walking",
+      "summary": "Delay, drop and corrupt terrain observations in a fixed simulated walking policy, then chart tracking and failures against measured observation age.",
+      "lesson_md": "## In one sentence\n\nDelay, drop and corrupt terrain observations in a fixed simulated walking policy, then chart tracking and failures against measured observation age.\n\n![Perceptive locomotion pipeline showing terrain height scans, noisy observations, policy training and deployment](/img/lessons/projects_locomotion_1-depth-delay.webp)\n*ETH's published pipeline uses terrain height samples; distinguish that representation from a raw depth-camera image when adding faults. Source: [ETH Robotic Systems Lab](https://leggedrobotics.github.io/rl-perceptiveloco/), license unknown.*\n\n## What you will learn\n\n- **Depth** measures distance along camera rays; a **height map** represents terrain elevation. Corrupting one is not automatically equivalent to corrupting the other.\n- **Latency** is how old an observation is when consumed; **dropout** means a scheduled observation is missing, while noise changes its values.\n- **A policy** maps observations to commands; holding its parameters fixed isolates sensing failures from changes introduced by retraining.\n\n> **Key idea:** Delay terrain input, not simulation time, and measure the data age the controller actually receives.\n\n## What you need\n\n- **Background:** Complete Compare blind and terrain-aware walking and review Perceptive rough-terrain locomotion.\n- **Setup:** A working terrain-aware policy, compatible robot/camera assets, timestamped observations, repeatable courses and contact logs.\n- **Compatibility:** Isaac Sim / Isaac Lab is related infrastructure; Extreme Parkour's released code uses Isaac Gym, not interchangeable model files.\n- **Planning estimate:** 1-2 months; hardware €0 in simulation, excluding computer/GPU costs. Start from a working rollout.\n\n## Steps\n\n1. **Trace the observation path:** Identify raw depth, processed terrain input and internal joint sensing; choose and document exactly where to insert faults.\n2. **Build a timestamped queue:** Store frames as they arrive; retrieve the newest frame old enough for the requested delay, without slowing simulation time.\n\n```python\nhistory.append((capture_time, depth.copy()))\neligible = [item for item in history if item[0] <= control_time - delay]\nif eligible:\n    frame_time, delayed_depth = eligible[-1]\n    observation_age = control_time - frame_time\n```\n\n3. **Define missing-data behavior:** Explicitly choose frame hold, a valid missing-data mask or episode abort; handle startup before enough history exists and clear history on reset.\n4. **Separate the sweeps:** Test delay, dropout and noise individually before combining them; keep initial states, commands, course geometry and policy weights fixed.\n5. **Test fault handling:** Include zero delay, standstill, no-contact starts, empty history, invalid depth, motor limits and lost landings; preserve falls and timeout counts.\n6. **Film matched courses:** Overlay capture time, observation age and contacts; chart completion, speed error, falls and aborts for each setting.\n\n```mermaid\nflowchart LR\n  A[Depth capture] --> B[Timestamped queue]\n  B --> C[Delay dropout noise]\n  C --> D[Fixed policy]\n  D --> E[Simulation step]\n  E --> A\n  E --> F[Failure ledger]\n```\n\n## Common pitfalls\n\n- **Buffer steps** are not milliseconds unless the recording cadence is known; use timestamps when camera and control rates differ.\n- **A delay flag** may affect actions rather than images; inspect the actual insertion point instead of trusting a command-line name.\n- **Fresh ground truth** must not bypass the corrupted input through another observation field, or the experiment tests a hidden workaround.\n\n## When it's done\n\n- **Deliver reproducible fault injection:** Like testing a service with stale cache entries, show actual consumed data age and the resulting behavior.\n- **Keep claims bounded:** Report simulator-specific degradation and missing-data handling; no measured delay threshold here establishes safe real-world operation.",
+      "resources": [
+        {
+          "title": "Learning robust perceptive locomotion for quadrupedal robots in the wild",
+          "url": "https://www.youtube.com/watch?v=zXbb6KQ0xV8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See terrain perception challenges and the behavior the fault-injection study aims to characterize."
+        },
+        {
+          "title": "Learning robust perceptive locomotion for quadrupedal robots in the wild",
+          "url": "https://leggedrobotics.github.io/rl-perceptiveloco/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Distinguish sampled elevation-map inputs from raw depth and inspect degraded-perception examples."
+        },
+        {
+          "title": "isaaclab.utils",
+          "url": "https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.utils.html#isaaclab.utils.buffers.DelayBuffer",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read DelayBuffer lag, recording cadence, startup and per-environment reset semantics."
+        },
+        {
+          "title": "chengxuxin/extreme-parkour",
+          "url": "https://github.com/chengxuxin/extreme-parkour",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect the camera-policy rollout path and verify what existing delay flags actually affect."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=zXbb6KQ0xV8",
+        "https://leggedrobotics.github.io/rl-perceptiveloco/",
+        "https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.utils.html#isaaclab.utils.buffers.DelayBuffer",
+        "https://github.com/chengxuxin/extreme-parkour"
+      ]
+    },
+    {
+      "node_id": "p:inspect-a-contact-force-mpc-rollout",
+      "type": "project",
+      "name": "Inspect a contact-force MPC rollout",
+      "summary": "Visualize one contact-force MPC plan with predicted body motion, contact-force arrows and friction limits, then compare its first step with simulation.",
+      "lesson_md": "## In one sentence\n\nVisualize one contact-force MPC plan with predicted body motion, contact-force arrows and friction limits, then compare its first step with simulation.\n\n![OCS2 legged-robot visualization showing a quadruped and its contact-force arrows](/img/lessons/projects_locomotion_1-mpc-rollout.webp)\n*OCS2's published legged example illustrates the kind of force and motion overlay to inspect. Source: [OCS2](https://leggedrobotics.github.io/ocs2/robotic_examples.html), license unknown.*\n\n## What you will learn\n\n- **Model predictive control (MPC)** solves a short future plan, applies its first command and replans; the **horizon** is the duration of that predicted future.\n- **Ground-reaction forces** are forces the ground applies to the robot at its contacts; they are not identical to motor torques.\n- **A friction cone** bounds sideways force relative to normal force; excessive sideways force can demand a contact that would slip.\n\n> **Key idea:** A predicted rollout is a conditional plan, not a recording of what the robot will certainly do.\n\n## What you need\n\n- **Background:** Review Model predictive control for legged robots; the map links Intro: train an RL policy in a GPU simulator as a prerequisite.\n- **Setup:** A running controller with logged predictions, contact schedule, applied forces, friction parameters and simulator state.\n- **References:** OCS2 and Cheetah-Software provide relevant examples; select one working stack rather than combining their model conventions blindly.\n- **Planning estimate:** One week for inspection of an existing rollout; hardware €0 in simulation, excluding computer/GPU costs. Controller development exceeds this scope.\n\n## Steps\n\n1. **Capture one update:** Save starting state, command, solver status and horizon timestamps; distinguish predicted samples from control-loop timestamps.\n2. **Draw the predicted body:** Plot position and orientation through the horizon; use a different style for the actual trajectory recorded afterward.\n3. **Overlay contact forces:** Draw arrows at planned contacts, with one declared scale and coordinate frame; mark swing feet and actual contact separately.\n4. **Check friction limits:** With local normal along positive z, compare tangential force magnitude with friction coefficient times normal force; test nonnegative normal force too.\n\n```python\nnormal = force[2]\ntangent = hypot(force[0], force[1])\ncone_ok = normal >= 0 and tangent <= friction_coefficient * normal\n```\n\n5. **Exercise abnormal inputs:** Include standstill, no planned contacts, invalid force samples, solver failure and motor limits; label infeasible predictions rather than drawing misleading arrows.\n6. **Demo prediction versus execution:** Apply only the first planned command, replan, and scrub through updates; count slip, lost contacts, falls, timeouts and completed trials.\n\n```mermaid\nflowchart LR\n  A[Measured state] --> B[MPC solve]\n  B --> C[Predicted motion and forces]\n  C --> D[Overlay and limit checks]\n  B --> E[Apply first command]\n  E --> F[New simulated state]\n  F --> A\n```\n\n## Common pitfalls\n\n- **Force direction errors** arise when mixing ground-on-robot and robot-on-ground conventions; verify a stationary support case before interpreting motion.\n- **A friction pyramid** approximates a cone with flat faces; draw the controller's constraints and disclose differences from the circular check.\n- **A feasible plan** can still fail through model mismatch, tracking errors or motor limits; inspect measured contacts and applied commands.\n\n## When it's done\n\n- **Deliver an explainable replay:** Like stepping through a debugger, inspect each prediction, its constraints and the next measured state.\n- **Connect the next project:** Reproduce a simulated MPC trot uses these diagnostics during execution; a plausible overlay alone establishes no hardware transfer.",
+      "resources": [
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=q6zxCvCxhic",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the force-planning controller in motion before inspecting an individual prediction."
+        },
+        {
+          "title": "Robotic Examples",
+          "url": "https://leggedrobotics.github.io/ocs2/robotic_examples.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect OCS2's legged model, contact schedule and reference visualization."
+        },
+        {
+          "title": "Friction cones",
+          "url": "https://scaron.info/robotics/friction-cones.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand tangential and normal forces, unilateral contact and linearized friction limits."
+        },
+        {
+          "title": "mit-biomimetics/Cheetah-Software",
+          "url": "https://github.com/mit-biomimetics/Cheetah-Software",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Locate the reference convex-MPC controller and simulator for logging predictions."
+        },
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model-Predictive Control",
+          "url": "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the short-horizon ground-reaction-force formulation and its simplifying assumptions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=q6zxCvCxhic",
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html",
+        "https://scaron.info/robotics/friction-cones.html",
+        "https://github.com/mit-biomimetics/Cheetah-Software",
+        "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf"
+      ]
     }
   ]
 }
