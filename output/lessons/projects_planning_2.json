@@ -1,0 +1,1234 @@
+{
+  "batch": "projects_planning_2",
+  "lessons": [
+    {
+      "node_id": "p:planning-lab-compare-jerk-limited-retargeting-with-path-retiming",
+      "type": "project",
+      "name": "Planning lab: compare jerk-limited retargeting with path retiming",
+      "summary": "Compare changing a simulated motion's target with changing the timing along a fixed path, using Ruckig and TOPP-RA.",
+      "lesson_md": "## In one sentence\n\nCompare changing a simulated motion's target with changing the timing along a fixed path, using Ruckig and TOPP-RA.\n\n![Ruckig example plots of position, velocity, acceleration and jerk](/img/lessons/projects_planning_2-jerk-retiming.webp)\n*Ruckig example plots of position, velocity, acceleration and jerk. Source: [Project media](https://github.com/pantor/ruckig), MIT.*\n\n## What you will learn\n\n- **Path versus trajectory:** A path describes where joints go; a trajectory also specifies when they get there.\n- **Jerk** is how quickly acceleration changes. Ruckig generates motion profiles respecting velocity, acceleration and jerk limits.\n- **Retiming** keeps a geometric path and chooses its speed profile. TOPP-RA takes that path and constraints as inputs.\n- **Software analogy:** Retiming resembles scheduling an existing job queue; retargeting changes the job itself.\n\n> **Key idea:** A faster result is meaningful only after checking which geometry and derivative limits each method actually preserves.\n\n## What you need\n\n- **Simulation sandbox:** Use an existing computer, Ruckig, TOPP-RA, a plotting library and the background from Smooth arm motions with Ruckig.\n- **Common inputs:** Save joint units, starting state, targets, geometric waypoints and velocity/acceleration limits in one configuration file.\n- **No hardware purchase:** This exercise commands arrays, not motors; workstation time is outside the project cost.\n\n## Steps\n\n1. **Establish the fixed-path case:** Generate a small joint-space path and retime it with TOPP-RA; plot positions, velocities and accelerations.\n2. **Generate a matching endpoint motion:** Give Ruckig the same start, target and shared limits; separately record its jerk bound.\n3. **Introduce a target change:** Reinitialize from the simulated current state, not the original start; rebuild the retiming baseline's path explicitly.\n4. **Validate every result:** Check endpoint error, sampled limit violations and geometric deviation; count input-validation errors instead of plotting invalid output.\n5. **Exercise boundary cases:** Test an unchanged target, an empty waypoint list and an invalid limit; reject malformed requests before execution.\n6. **Record the demo:** Animate both motions with synchronized clocks; publish configurations, durations, planning timings and failures alongside derivative plots.\n\n```mermaid\nflowchart LR\n  S[Current state] --> R[Ruckig target]\n  S --> P[Fixed path]\n  P --> T[TOPP-RA timing]\n  R --> V[Validate and compare]\n  T --> V\n```\n\n\n**Worked API example:** Ruckig's documented offline call is `ruckig.calculate(input, trajectory)`; inspect its result before sampling `trajectory.at_time(t)`.\n\n## Common pitfalls\n\n- **Different constraints:** A velocity/acceleration-constrained TOPP-RA run is not a jerk-constrained benchmark; report the distinction instead of declaring an overall winner.\n- **Changed geometry:** Reaching the same endpoint does not establish that Ruckig followed the original obstacle-free path.\n\n## When it's done\n\n- **Reproducible comparison:** Another student can replay the target change and identify which contract each method satisfied.\n- **Honest results:** Keep normal, empty and rejected-input outcomes in the report, including the sampling interval used for checks.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapters 9.1 and 9.2:  Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See time scaling and why acceleration jumps motivate jerk-limited motion."
+        },
+        {
+          "title": "Ruckig",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Use state-to-state generation, validation and result codes."
+        },
+        {
+          "title": "toppra: Time-Optimal Path Parameterization",
+          "url": "https://github.com/hungpham2511/toppra",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "See the fixed-path input and supported constraint types."
+        },
+        {
+          "title": "9.1 and 9.2. Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the transcript comparing polynomial, trapezoidal and S-curve timing."
+        }
+      ],
+      "sources": [
+        "https://github.com/pantor/ruckig",
+        "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+        "https://github.com/hungpham2511/toppra",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-latent-tree-search-and-mpc-on-held-out-detour-tasks",
+      "type": "project",
+      "name": "Planning lab: compare latent tree search and MPC on held-out detour tasks",
+      "summary": "Compare tree exploration and action-sequence optimization inside the same visual world-model loop on detours excluded from training.",
+      "lesson_md": "## In one sentence\n\nCompare tree exploration and action-sequence optimization inside the same visual world-model loop on detours excluded from training.\n\n![DINO-WM figure showing visual feature prediction and goal-directed planning](/img/lessons/projects_planning_2-latent-detours.webp)\n*DINO-WM figure showing visual feature prediction and goal-directed planning. Source: [Project media](https://dino-wm.github.io/), license unknown.*\n\n## What you will learn\n\n- **Latent state:** A compact numerical representation of an image, rather than the full pixel array; DINO-WM predicts future visual features.\n- **Tree search:** Keep branches of candidate action sequences, including routes that initially move away from the goal.\n- **Model predictive control (MPC):** Plan ahead, execute a prefix, observe again and replan. Tree search can also operate inside this loop.\n- **Software analogy:** The world model is a predictive API; comparing search strategies should not silently replace that API.\n\n> **Key idea:** Separate the search algorithm from the execution loop, then compare both with the same frozen predictor and held-out tasks.\n\n## What you need\n\n- **Starting point:** DINO-WM's PointMaze environment, a saved checkpoint and the experience from Planning lab: compare CEM and random shooting under dynamics mismatch.\n- **Research implementation:** Use the cited sampling-based world-model method or document your own compatible tree-search implementation; do not describe it as shipped DINO-WM functionality.\n- **Compute budget:** Use simulation and existing compute; GPU availability and runtime cost depend on your setup.\n\n## Steps\n\n1. **Reproduce the baseline:** Run the repository's PointMaze planning configuration and retain its checkpoint, configuration and environment revision.\n2. **Freeze the test split:** Reserve detour layouts before tuning; include open-space controls and goals that cannot be reached within the episode.\n3. **Connect tree expansion:** Propagate candidate actions through the same predictor used by the optimization baseline; preserve observation history and action bounds.\n4. **Match evaluation budgets:** Compare wall time and model calls; keep execution-prefix length, goal tolerance and episode cutoff identical.\n5. **Check edge cases:** Test an already-reached goal, missing observations and a blocked destination; stop bounded runs without inventing successful predictions.\n6. **Make the demo:** Show predicted branches beside actual rollouts; publish success counts, collisions, model calls and timings for every held-out layout.\n\n```mermaid\nflowchart LR\n  O[Observe] --> Z[Encode]\n  Z --> S[Tree or optimizer]\n  S --> W[Predict features]\n  W --> S\n  S --> A[Execute prefix]\n  A --> O\n```\n\n\n**Worked baseline command:** After configuring checkpoint paths, the authors document `python plan.py --config-name plan_point_maze.yaml model_name=point_maze`.\n\n## Common pitfalls\n\n- **Predicted success:** A small feature distance is not proof of physical success; score actual simulator outcomes separately.\n- **Leaked evaluation:** Retuning on failed held-out mazes turns the test set into development data.\n\n## When it's done\n\n- **Replayable evidence:** Show both methods on identical detours, including failures, without claiming the student benchmark reproduces published performance.",
+      "resources": [
+        {
+          "title": "PointMaze: Success3",
+          "url": "https://dino-wm.github.io/mfiles/env/point_maze/PointMaze_H5_3.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors' PointMaze predicted and actual rollout."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://dino-wm.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand visual goals and feature-space prediction before implementation."
+        },
+        {
+          "title": "gaoyuezhou/dino_wm",
+          "url": "https://github.com/gaoyuezhou/dino_wm",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the documented PointMaze checkpoint and planning configuration."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://arxiv.org/abs/2411.04983",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the model and optimization baseline."
+        },
+        {
+          "title": "Sampling-based Kinodynamic Planning with World Models",
+          "url": "https://arxiv.org/abs/2610.12910",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study RRT/KPIECE expansion using DINO-WM as the propagator."
+        }
+      ],
+      "sources": [
+        "https://dino-wm.github.io/",
+        "https://dino-wm.github.io/mfiles/env/point_maze/PointMaze_H5_3.mp4",
+        "https://github.com/gaoyuezhou/dino_wm",
+        "https://arxiv.org/abs/2411.04983",
+        "https://arxiv.org/abs/2610.12910",
+        "https://arxiv.org/html/2610.12910v1"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-lattice-and-hybrid-a-star-parking-routes",
+      "type": "project",
+      "name": "Planning lab: compare lattice and Hybrid A-star parking routes",
+      "summary": "Compare two car-like route planners on the same simulated parking problems, including reversing, tight turns and impossible goals.",
+      "lesson_md": "## In one sentence\n\nCompare two car-like route planners on the same simulated parking problems, including reversing, tight turns and impossible goals.\n\n![Nav2 comparison of 2D A-star, Hybrid-A-star and state-lattice paths](/img/lessons/projects_planning_2-parking.webp)\n*Nav2 comparison of 2D A-star, Hybrid-A-star and state-lattice paths. Source: [Project media](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/), license unknown.*\n\n## What you will learn\n\n- **Nonholonomic motion:** A car cannot move directly sideways; reaching a nearby parking pose may require a longer maneuver.\n- **Hybrid A-star** searches using vehicle motions and heading information; Nav2's implementation supports car-like planning.\n- **State lattice:** Search a graph built from motion primitives, short motions generated for a particular vehicle model.\n- **Software analogy:** A lattice is like a precomputed instruction set; its available instructions determine which maneuvers the search can assemble.\n\n> **Key idea:** Compare planners using the same vehicle constraints, not merely the same start and destination dots.\n\n## What you need\n\n- **Simulation stack:** Nav2 with SmacPlannerHybrid and SmacPlannerLattice, a map, a car-shaped footprint and route visualization.\n- **Background:** Begin with Planning lab: animate Dubins-style turns versus impossible sideways moves and Kinodynamic & nonholonomic planning.\n- **Matched model:** Choose an Ackermann lattice, meaning car-like steering; record its resolution and turning radius with the Hybrid-A-star settings.\n- **Budget:** No robot purchase is needed; use existing computing resources.\n\n## Steps\n\n1. **Build parking fixtures:** Save start and goal positions plus headings; include perpendicular entry, parallel parking and an unobstructed reference map.\n2. **Configure comparable motion:** Enable appropriate reversing behavior for both; use a Reeds-Shepp search model for the Hybrid-A-star reversing comparison.\n3. **Run identical requests:** Keep footprint, map costs, resolution, goal tolerance and planning timeout fixed; save both configurations.\n4. **Validate the full route:** Check footprint collisions, turning-radius violations, endpoint heading and direction changes, not only the centerline.\n5. **Test rejection paths:** Submit an occupied start, an unreachable bay and an empty obstacle map; count failures and timeouts explicitly.\n6. **Record the demo:** Overlay both routes and animate vehicle footprints; publish path length, reversals, planning latency and valid-solution counts.\n\n```mermaid\nflowchart LR\n  M[Map and vehicle] --> H[Hybrid A-star]\n  M --> L[State lattice]\n  H --> C[Footprint validation]\n  L --> C\n  C --> D[Parking comparison]\n```\n\n\n**Worked configuration:** Nav2's Hybrid-A-star example uses 72 heading bins: one full rotation divided into 72 bins gives 5 degrees per bin.\n\n**Interpretation:** Heading resolution is a search setting, not a claim that steering commands jump by five degrees.\n\n## Common pitfalls\n\n- **Different control sets:** An omnidirectional lattice can sidestep; that is not a fair opponent for a car-like Hybrid-A-star planner.\n- **Pretty curves:** Smoothing and reversing penalties can change results; record them instead of crediting every difference to search.\n\n## When it's done\n\n- **Comparable evidence:** A viewer can explain one successful maneuver and one rejected case from the saved model and collision checks.",
+      "resources": [
+        {
+          "title": "On Use of Nav2 Smac Planners",
+          "url": "https://vimeo.com/767157646",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The planner author explains Hybrid-A-star and lattice selection."
+        },
+        {
+          "title": "Smac Planner",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See the three planners and their supported motion models."
+        },
+        {
+          "title": "Smac Hybrid-A* Planner",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/smac_hybrid/configuring_smac_hybrid/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure heading bins, reversing model and bounded search."
+        },
+        {
+          "title": "Smac State Lattice Planner",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/smac_lattice/configuring_smac_lattice/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure the primitive file and reverse expansion."
+        },
+        {
+          "title": "nav2_smac_planner",
+          "url": "https://github.com/ros-navigation/navigation2/tree/main/nav2_smac_planner",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect primitive generation and implementation trade-offs."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/",
+        "https://vimeo.com/767157646",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/smac_hybrid/configuring_smac_hybrid/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/smac/smac_lattice/configuring_smac_lattice/",
+        "https://github.com/ros-navigation/navigation2/tree/main/nav2_smac_planner"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-prioritized-planning-and-conflict-based-search",
+      "type": "project",
+      "name": "Planning lab: compare prioritized planning and conflict-based search",
+      "summary": "Compare planning robots one by one with resolving their path conflicts jointly, using the same timed grid-world tasks.",
+      "lesson_md": "## In one sentence\n\nCompare planning robots one by one with resolving their path conflicts jointly, using the same timed grid-world tasks.\n\n![Conflict-based search animation frame with colored agents on a grid](/img/lessons/projects_planning_2-multi-robot.webp)\n*Conflict-based search animation frame with colored agents on a grid. Source: [Project media](https://github.com/atb033/multi_agent_path_planning), MIT.*\n\n## What you will learn\n\n- **Prioritized planning:** Choose a robot order; plan later robots around reservations made by earlier ones.\n- **Safe intervals:** Times when a location is free. The example repository uses Safe Interval Path Planning (SIPP) for its prioritized baseline.\n- **Conflict-based search (CBS):** Detect colliding paths and branch on constraints that forbid one robot's conflicting occupancy or movement.\n- **Software analogy:** Prioritized planning resembles scheduling jobs in a fixed order; CBS revisits scheduling decisions when incompatible reservations appear.\n\n> **Key idea:** Priority order can determine whether a route is found, while conflict resolution introduces additional search work.\n\n## What you need\n\n- **Tools:** Python, the Multi-agent path planning examples repository, its dependencies and a grid animation viewer; existing compute is sufficient.\n- **Background:** Start from Planning lab: animate two robots resolving a corridor conflict and Multi-robot path finding & conflict resolution.\n- **Shared contract:** Define movement duration, waiting, goal occupancy and forbidden edge swaps before comparing planners.\n\n## Steps\n\n1. **Save shared fixtures:** Begin with a corridor and passing place; store starts, goals and obstacles in the repository's YAML input format.\n2. **Run prioritized SIPP:** Try different robot orders; preserve unsuccessful orderings instead of rerunning until one looks good.\n3. **Run CBS:** Use equivalent grid and timing rules; include total search time, not only the final single-robot searches.\n4. **Validate schedules independently:** Detect shared-cell occupancy and opposite-direction edge swaps at matching times; verify every robot reaches its assigned goal.\n5. **Exercise special cases:** Test no agents, an obstacle-free map, duplicate starts and a disconnected goal; reject invalid input and bound planning time.\n6. **Record the comparison:** Animate synchronized schedules; publish completion counts, sum of arrival times, final completion time and collision counts.\n\n```mermaid\nflowchart LR\n  I[Timed grid task] --> P[Priority reservations]\n  I --> C[CBS constraints]\n  P --> V[Independent schedule check]\n  C --> V\n  V --> D[Side-by-side demo]\n```\n\n\n**Worked command:** From the repository's `centralized/cbs` directory, run `python3 cbs.py input.yaml output.yaml`, then visualize the saved schedule.\n\n**Timing vocabulary:** Final completion time is when the last robot arrives; sum of arrival times adds every robot's arrival time.\n\n## Common pitfalls\n\n- **Unequal models:** SIPP and CBS examples need compatible movement and goal-occupancy semantics before their costs can be compared.\n- **Solver failure:** Failure under one priority ordering does not prove that the joint task has no solution.\n\n## When it's done\n\n- **Replayable report:** Include priority order, input files, limits and unsuccessful schedules; explain a case where resolving a conflict changes another robot's route.",
+      "resources": [
+        {
+          "title": "ICAPS 2018: Ariel Felner on \"Adding Heuristics to Conflict-Based Search for Multi-Agent Path ...\"",
+          "url": "https://www.youtube.com/watch?v=GUrYkm0BEM4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear a CBS researcher explain conflict-search behavior."
+        },
+        {
+          "title": "Multi-Agent path planning in Python",
+          "url": "https://github.com/atb033/multi_agent_path_planning",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run both prioritized SIPP and CBS with supplied visualizers."
+        },
+        {
+          "title": "multi_agent_path_planning/centralized/cbs at master",
+          "url": "https://github.com/atb033/multi_agent_path_planning/tree/master/centralized/cbs",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Locate CBS input, output and low-level A-star implementation."
+        },
+        {
+          "title": "libMultiRobotPlanning",
+          "url": "https://github.com/whoenig/libMultiRobotPlanning",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Compare another implementation offering CBS and prioritized SIPP."
+        }
+      ],
+      "sources": [
+        "https://github.com/atb033/multi_agent_path_planning",
+        "https://www.youtube.com/watch?v=GUrYkm0BEM4",
+        "https://github.com/atb033/multi_agent_path_planning/tree/master/centralized/cbs",
+        "https://github.com/whoenig/libMultiRobotPlanning"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-shortest-path-and-information-gathering-policies",
+      "type": "project",
+      "name": "Planning lab: compare shortest-path and information-gathering policies",
+      "summary": "Compare a direct route with a policy that sometimes spends actions sensing, using a simulated robot that cannot directly observe rock quality.",
+      "lesson_md": "## In one sentence\n\nCompare a direct route with a policy that sometimes spends actions sensing, using a simulated robot that cannot directly observe rock quality.\n\n![RockSample simulation with robot, uncertain rock-quality bars and exit area](/img/lessons/projects_planning_2-information.webp)\n*RockSample simulation with robot, uncertain rock-quality bars and exit area. Source: [Project media](https://juliapomdp.github.io/POMDPs.jl/stable/gallery/), license unknown.*\n\n## What you will learn\n\n- **Partial observability:** The robot knows its grid position but not whether each rock is good; sensing produces noisy evidence.\n- **Belief:** The information used to choose actions, represented here as probabilities over hidden rock qualities.\n- **Policy:** A rule for choosing an action from current information, rather than a fixed route ignoring future observations.\n- **Software analogy:** Sensing resembles paying for a database query before committing a transaction whose outcome depends on an unknown value.\n\n> **Key idea:** Information is useful when it changes a later decision enough to justify the cost of obtaining it.\n\n## What you need\n\n- **Simulation sandbox:** Julia, POMDPs.jl, RockSample and a compatible solver from the documented gallery example; no physical robot purchase.\n- **Preparation:** Complete Planning lab: animate a noisy corridor decision with belief bars and revisit Planning under uncertainty & belief space.\n- **Fair objective:** Both policies must receive the same movement, sensing, sampling and exit rewards; a pure shortest-exit objective gives sensing no benefit.\n\n## Steps\n\n1. **Reproduce RockSample:** Run the gallery's solver and animation before changing rewards or observation behavior.\n2. **Define the route baseline:** Visit a fixed set of candidate rocks along a short route, sampling without sensing; document its selection rule.\n3. **Add belief-aware decisions:** Let the second policy sense and choose sampling actions from its updated belief, under the same reward model.\n4. **Pair evaluation episodes:** Share hidden rock qualities and random seeds; record movement, sensing actions, bad samples, return and exit success.\n5. **Test boundaries:** Include no rocks, already-at-exit starts and impossible observations; explicitly handle unsupported empty models rather than silently substituting rocks.\n6. **Record the demo:** Show beliefs beside both trajectories; explain one sensing action that changes the eventual sampling choice.\n\n```mermaid\nflowchart LR\n  B[Belief] --> P[Choose move or sense]\n  P --> E[Environment]\n  E --> O[Observation]\n  O --> U[Update belief]\n  U --> B\n```\n\n\n**Worked example:** The gallery uses rocks at `(2,3)`, `(4,4)` and `(4,2)`, sensor efficiency `20.0` and discount `0.95`.\n\n**Interpretation:** Sensor efficiency controls how observation quality changes with distance; it is not an accuracy percentage.\n\n## Common pitfalls\n\n- **Privileged information:** Do not give either decision policy the hidden true rock qualities used for scoring.\n- **Free information:** Changing the sensing penalty for only one policy invalidates the comparison.\n\n## When it's done\n\n- **Measured trade-off:** Publish paired returns and action counts, including cases where sensing costs more than it helps.",
+      "resources": [
+        {
+          "title": "POMDPs: Partially Observable Markov Decision Processes | Decision Making Under Uncertainty POMDPs.jl",
+          "url": "https://www.youtube.com/watch?v=KDFzObtE6cs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Robert Moss introduces choosing actions from incomplete information."
+        },
+        {
+          "title": "Gallery of POMDPs.jl Problems",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/gallery/#RockSample",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run the exact RockSample example and visualize uncertain rock states."
+        },
+        {
+          "title": "RockSample.jl",
+          "url": "https://github.com/JuliaPOMDP/RockSample.jl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read movement, observation, reward and sensor-efficiency definitions."
+        },
+        {
+          "title": "Concepts and Architecture",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate beliefs, updaters, policies and simulators."
+        }
+      ],
+      "sources": [
+        "https://juliapomdp.github.io/POMDPs.jl/stable/gallery/",
+        "https://www.youtube.com/watch?v=KDFzObtE6cs",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/gallery/#RockSample",
+        "https://github.com/JuliaPOMDP/RockSample.jl",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-straight-line-and-sampling-based-initializations",
+      "type": "project",
+      "name": "Planning lab: compare straight-line and sampling-based initializations",
+      "summary": "Compare a trajectory optimizer starting from a straight line with the same optimizer starting from a sampling-based route around obstacles.",
+      "lesson_md": "## In one sentence\n\nCompare a trajectory optimizer starting from a straight line with the same optimizer starting from a sampling-based route around obstacles.\n\n![MoveIt CHOMP demonstration with a simulated Panda arm and obstacles](/img/lessons/projects_planning_2-initializations.webp)\n*MoveIt CHOMP demonstration with a simulated Panda arm and obstacles. Source: [Project media](https://moveit.ai/moveit!/ros/2018/10/25/gsoc-motion-planning-support.html), license unknown.*\n\n## What you will learn\n\n- **Initialization:** The first trajectory supplied to an optimizer; it influences which nearby solution the optimizer reaches.\n- **CHOMP** is a trajectory optimizer that improves motion using smoothness and obstacle costs.\n- **Sampling-based planning:** Search candidate robot configurations to find a route; OMPL can provide an initial path for further optimization.\n- **Software analogy:** An optimizer resembles iterative debugging from a particular starting implementation, not an exhaustive search through every possible program.\n\n> **Key idea:** Compare the whole pipeline, including the time spent finding a better initial trajectory.\n\n## What you need\n\n- **Starting skills:** Complete Planning lab: optimize smooth waypoints around a two-dimensional obstacle and revisit Optimization-based trajectory planning.\n- **Simulation tools:** MoveIt 2's CHOMP demonstration, OMPL and a configured simulated robot, or an explicitly documented equivalent two-dimensional experiment.\n- **Shared settings:** Freeze collision geometry, waypoint count, smoothness weights, iteration limit and planning timeout; use existing compute without a hardware purchase.\n\n## Steps\n\n1. **Reproduce the optimizer:** Launch the documented CHOMP demo and add an obstacle that intersects the naive start-to-goal motion.\n2. **Create matched seeds:** Interpolate straight-line joint positions for one run; resample an OMPL route to the same waypoint count for the other.\n3. **Optimize both trajectories:** Keep endpoints and objective identical; log initial collision status, optimizer status and total elapsed time.\n4. **Check final motions:** Validate interpolated segments against obstacles; measure clearance and smoothness separately instead of hiding both inside one score.\n5. **Probe boundary cases:** Include an empty obstacle scene, an invalid start and an unreachable goal; preserve failed initialization and optimization outcomes.\n6. **Record the demo:** Overlay initial and final paths; show whether the optimizer escaped collision and publish all seeds and pipeline timings.\n\n```mermaid\nflowchart LR\n  Q[Start and goal] --> L[Linear seed]\n  Q --> O[OMPL seed]\n  L --> C[Same optimizer]\n  O --> C\n  C --> V[Validate and measure]\n```\n\n\n**Worked launch command:** The current tutorial starts the simulated demo with `ros2 launch moveit2_tutorials chomp_demo.launch.py rviz_tutorial:=True`.\n\n**Integration boundary:** The adapters page explains OMPL-to-CHOMP seeding but retains older launch syntax; use it for the concept, not copied ROS 1 commands.\n\n## Common pitfalls\n\n- **Local improvement:** A lower objective does not guarantee a collision-free result or the globally best route.\n- **Unfair accounting:** Excluding OMPL time makes a more expensive initialization appear free.\n\n## When it's done\n\n- **Replayable comparison:** Report valid-solution counts, total latency and failures across the same scenes; explain where a useful seed helped and where it did not.",
+      "resources": [
+        {
+          "title": "Motion Planners and Planning Adapter in MoveIt",
+          "url": "https://www.youtube.com/watch?v=I18VnECGTr0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the GSoC author's planner and adapter demonstrations; the interface shown is historical."
+        },
+        {
+          "title": "Using CHOMP Planner",
+          "url": "https://moveit.picknik.ai/main/doc/how_to_guides/chomp_planner/chomp_planner_tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Launch the ROS 2 simulation and inspect initialization and optimizer settings."
+        },
+        {
+          "title": "Planning Adapter Tutorials",
+          "url": "https://moveit.picknik.ai/main/doc/examples/planning_adapters/planning_adapters_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the OMPL-as-initializer explanation; avoid its legacy launch commands."
+        },
+        {
+          "title": "Google Summer Of Code Project Improvements to Motion Planning Support",
+          "url": "https://moveit.ai/moveit!/ros/2018/10/25/gsoc-motion-planning-support.html",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "See the original CHOMP, OMPL and adapter comparison and result screenshots."
+        }
+      ],
+      "sources": [
+        "https://moveit.ai/moveit!/ros/2018/10/25/gsoc-motion-planning-support.html",
+        "https://www.youtube.com/watch?v=I18VnECGTr0",
+        "https://moveit.picknik.ai/main/doc/how_to_guides/chomp_planner/chomp_planner_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/examples/planning_adapters/planning_adapters_tutorial.html"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-sweep-direction-and-turning-cost-for-irregular-fields",
+      "type": "project",
+      "name": "Planning lab: compare sweep direction and turning cost for irregular fields",
+      "summary": "Compare coverage stripes at different angles while counting both productive travel and the turns connecting stripes in an irregular simulated field.",
+      "lesson_md": "## In one sentence\n\nCompare coverage stripes at different angles while counting both productive travel and the turns connecting stripes in an irregular simulated field.\n\n![Fields2Cover example field with swaths chosen to minimize their number](/img/lessons/projects_planning_2-field-sweeps.webp)\n*Fields2Cover example field with swaths chosen to minimize their number. Source: [Project media](https://fields2cover.github.io/source/tutorials/swath_generator.html), license unknown.*\n\n## What you will learn\n\n- **Swath:** One strip covered by the working tool; the robot's body width and coverage width need not match.\n- **Headland:** Space reserved near the field boundary for turning between strips.\n- **Turning cost:** Travel connecting useful strips can change which sweep direction gives the best overall route.\n- **Software analogy:** Counting swaths alone resembles counting database queries without including connection setup and network overhead.\n\n> **Key idea:** Optimize the route you can drive, not only the stripes you can draw.\n\n## What you need\n\n- **Starting point:** Fields2Cover, a field polygon, a vehicle model and the background from Planning lab: animate stripe coverage with a visible missed-area heatmap.\n- **Metrics:** Keep Coverage path planning quantities separate: covered area, overlap, swath length, connecting-turn length and boundary violations.\n- **Budget:** Simulation on an existing computer; no tractor, sensors or hardware purchases are required.\n\n## Steps\n\n1. **Fix field geometry:** Use a reproducible irregular field and save its units, boundary, holes and headland settings.\n2. **Generate candidate swaths:** Vary direction while holding coverage width fixed; compare minimizing swath count with minimizing swath length.\n3. **Connect the strips:** Use the same route-ordering rule and turning model for every candidate; retain the actual connecting curves.\n4. **Score full paths:** Measure uncovered area and overlap alongside strip and turn distances; reject turns outside the permitted area.\n5. **Test difficult inputs:** Include a rectangle, an empty field, malformed boundaries and a field too narrow for the vehicle; report rejected cases.\n6. **Record the demo:** Animate both sweep choices over a coverage heatmap; publish geometry, angles, constraint violations and separate distance totals.\n\n```mermaid\nflowchart LR\n  F[Field and headland] --> S[Candidate sweep angles]\n  S --> R[Order swaths]\n  R --> T[Generate turns]\n  T --> C[Coverage and travel costs]\n  C --> D[Compare full routes]\n```\n\n\n**Worked model:** The tutorial uses a 2-metre-wide robot covering a 6-metre swath, then reserves headland width equal to three robot widths: 6 metres.\n\n**Turning fixture:** Its path-planning example sets a minimum turning radius of 2 metres; keep that setting identical when comparing directions.\n\n## Common pitfalls\n\n- **Wrong objective:** Fewer swaths may reduce turns but does not automatically minimize the full drivable path.\n- **Missing clearance:** Centerlines inside the boundary do not prove the vehicle and tool remain inside it.\n\n## When it's done\n\n- **Explainable result:** Show which angle wins under each metric and whether adding turning distance changes the ranking.",
+      "resources": [
+        {
+          "title": "Open Navigation Coverage Planning Demo",
+          "url": "https://www.youtube.com/watch?v=XC_qf5AyNpU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a Fields2Cover-based coverage route executed in simulation."
+        },
+        {
+          "title": "Part 4: Swath generator",
+          "url": "https://fields2cover.github.io/source/tutorials/swath_generator.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Generate fixed-angle and objective-selected stripe directions."
+        },
+        {
+          "title": "Part 2: Objective functions",
+          "url": "https://fields2cover.github.io/source/tutorials/objective_functions.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Separate swath count, coverage, overlap and distance objectives."
+        },
+        {
+          "title": "Part 6: Path planning",
+          "url": "https://fields2cover.github.io/source/tutorials/path_planning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Connect swaths with a fixed vehicle turning model."
+        },
+        {
+          "title": "Fields2Cover",
+          "url": "https://github.com/Fields2Cover/Fields2Cover",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the modular implementation and reproduce tutorial examples."
+        }
+      ],
+      "sources": [
+        "https://fields2cover.github.io/source/tutorials/swath_generator.html",
+        "https://www.youtube.com/watch?v=XC_qf5AyNpU",
+        "https://fields2cover.github.io/source/tutorials/objective_functions.html",
+        "https://fields2cover.github.io/source/tutorials/path_planning.html",
+        "https://github.com/Fields2Cover/Fields2Cover",
+        "https://discourse.openrobotics.org/t/nav2-new-complete-coverage-planning-capabilities/34625"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-connect-pddl-goals-to-monitored-simulated-navigation-actions",
+      "type": "project",
+      "name": "Planning lab: connect PDDL goals to monitored simulated navigation actions",
+      "summary": "Connect symbolic room-level goals to simulated navigation, reporting success only when the navigation action actually finishes successfully.",
+      "lesson_md": "## In one sentence\n\nConnect symbolic room-level goals to simulated navigation, reporting success only when the navigation action actually finishes successfully.\n\n![PlanSys2 and Navigation2 demonstration showing terminals, a navigation map and a simulated robot](/img/lessons/projects_planning_2-pddl-navigation.webp)\n*PlanSys2 and Navigation2 demonstration showing terminals, a navigation map and a simulated robot. Source: [Project media](https://www.youtube.com/watch?v=fAEGySqefwo), license unknown.*\n\n## What you will learn\n\n- **PDDL:** Planning Domain Definition Language describes actions, their requirements and their effects using symbols such as rooms and robot locations.\n- **Predicate:** A true-or-false statement about the world, such as the robot being at a waypoint.\n- **Action performer:** Software that translates a symbolic action into work, monitors progress and reports success or failure.\n- **Software analogy:** A symbolic plan resembles a build graph; dispatching a command is not the same as receiving its successful exit status.\n\n> **Key idea:** Keep symbolic state consistent with observed execution, not with what the planner hoped would happen.\n\n## What you need\n\n- **Preparation:** Complete Planning lab: replan a courier task after a door action fails and revisit Symbolic task planning with PDDL.\n- **Tools:** PlanSys2, a compatible ROS 2 installation and the documented simulated-navigation example; existing compute replaces physical hardware.\n- **Version discipline:** The current controller tutorial uses EasyNav; its linked older video shows Navigation2. Choose one documented integration rather than mixing their APIs.\n\n## Steps\n\n1. **Run the symbolic example:** Inspect the domain, problem, goal and generated plan before attaching navigation.\n2. **Define waypoint bindings:** Map each room symbol to a named navigation destination; reject unknown names before dispatch.\n3. **Implement the performer:** Send one navigation request, track its status and forward progress without blocking the monitoring loop.\n4. **Handle terminal results:** Report success only after successful navigation; propagate failure, cancellation and timeout without claiming arrival.\n5. **Test state consistency:** Exercise a reachable goal, an already-satisfied goal, an unreachable destination and stale feedback; bound retries and inspect symbolic effects.\n6. **Record the demo:** Show the requested goal, symbolic action, navigation status and resulting predicates together, including an injected navigation failure.\n\n```mermaid\nflowchart LR\n  G[PDDL goal] --> P[Symbolic plan]\n  P --> A[Action performer]\n  A --> N[Simulated navigation]\n  N --> M[Monitor result]\n  M --> E[Success or failure]\n  E --> G\n```\n\n\n**Worked terminal example:** The tutorial uses `set goal (and (robot_at leia bathroom))`, followed by `get plan`.\n\n**Important boundary:** That terminal tutorial cannot execute the plan without nodes implementing its actions; a plan listing alone is not a navigation demo.\n\n## Common pitfalls\n\n- **Fake completion:** A timer reaching its expected duration does not establish that the robot reached the room.\n- **Late callbacks:** Do not let feedback from a cancelled request complete a newer action; track request identity.\n\n## When it's done\n\n- **Traceable execution:** Another student can follow each symbolic action through navigation feedback to its terminal result, including the failed case.\n- **Replay bundle:** Save domain, problem, waypoint mapping, software revisions and execution logs.",
+      "resources": [
+        {
+          "title": "Plansys2 and Navigation2",
+          "url": "https://www.youtube.com/watch?v=fAEGySqefwo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the author's symbolic-planning and simulated-navigation integration."
+        },
+        {
+          "title": "Using a planning controller",
+          "url": "https://plansys2.github.io/4.0.0/tutorials/docs/controller_example.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the current monitored navigation performer and simulator example."
+        },
+        {
+          "title": "The first planning package",
+          "url": "https://plansys2.github.io/4.0.0/tutorials/docs/simple_example.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand action performers, progress feedback and completion reporting."
+        },
+        {
+          "title": "Terminal Usage",
+          "url": "https://plansys2.github.io/4.0.0/tutorials/docs/terminal_usage.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Create predicates and goals, inspect plans and see the execution boundary."
+        },
+        {
+          "title": "PlanSys2 design",
+          "url": "https://plansys2.github.io/4.0.0/design/index.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Read action dispatch, cancellation and performer result contracts."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=fAEGySqefwo",
+        "https://plansys2.github.io/4.0.0/tutorials/docs/controller_example.html",
+        "https://plansys2.github.io/4.0.0/tutorials/docs/simple_example.html",
+        "https://plansys2.github.io/4.0.0/tutorials/docs/terminal_usage.html",
+        "https://plansys2.github.io/4.0.0/design/index.html"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-film-a-star-versus-dijkstra-maze-expansions",
+      "type": "project",
+      "name": "Planning lab: film A-star versus Dijkstra maze expansions",
+      "summary": "Run Dijkstra and A-star on the same grid maze, film which cells each expands, and show both find equally short paths.",
+      "lesson_md": "## In one sentence\n\nRun Dijkstra and A-star on the same grid maze, film which cells each expands, and show both find equally short paths.\n\n![A-star search on an 8-connected grid: coloured dots are expanded cells, the light line is the final path](/img/lessons/projects_planning_2-astar-maze.webp)\n*A-star search on an 8-connected grid around a grey obstacle; red dots were expanded early, green ones late. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Astar_progress_animation.gif), CC BY 3.0, Subh83.*\n\n## What you will learn\n\n- **Graph search:** A maze becomes a **graph**: cells are nodes, moves between neighbours are edges with a cost.\n- **The frontier** holds cells waiting to be explored; each algorithm pops it and pushes neighbours.\n- **Dijkstra** orders the frontier by cost from the start, so it floods outward in every direction.\n- **A-star (A*)** adds a **heuristic**, an estimate of the remaining distance, and orders by cost-so-far plus estimate.\n- **Software analogy:** The programs differ by one line, the priority key, like swapping a sort comparator.\n\n> **Key idea:** A-star expands fewer cells than Dijkstra yet finds an equally short path, as long as its heuristic never overestimates.\n\n## What you need\n\n- **A laptop and Python:** `heapq` for the queue, Matplotlib for frames. No hardware; €0.\n- **Background:** Intro: ROS 2 and Nav2 with a simulated mobile robot shows where a grid planner sits in a real stack.\n\n## Steps\n\n1. **Load the maze** as a 2D array (`#` = wall) with a `neighbors(cell)` function that skips walls.\n2. **Write Dijkstra** with `cost_so_far`, `came_from` and a queue keyed by `new_cost`.\n3. **Derive A-star** by keying on `new_cost + heuristic(goal, next)`, with Manhattan distance on a 4-way grid.\n4. **Log every expansion,** then render both runs side by side on a shared frame counter.\n5. **Test edge cases:** An empty maze, a start inside a wall and a walled-off goal must each return a clear error.\n6. **Publish the film** with seeds, path costs, expanded-cell counts and timings.\n\n```mermaid\nflowchart LR\n  M[Maze grid] --> G[Graph of cells]\n  G --> D[Dijkstra key: cost]\n  G --> A[A-star key: cost + heuristic]\n  D --> L[Expansion log]\n  A --> L\n  L --> V[Side-by-side film]\n```\n\n![Dijkstra's algorithm on the same kind of grid expands cells in every direction before reaching the goal](/img/lessons/projects_planning_2-dijkstra-maze.webp)\n*Dijkstra's algorithm on the same grid and obstacle. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Dijkstras_progress_animation.gif), CC BY 3.0, Subh83.*\n\n## Common pitfalls\n\n- **Overestimating heuristic:** An inflated heuristic can make A-star return a longer path.\n- **Early exit placement:** Test for the goal when popping a cell, not when pushing it, or costs may be wrong.\n- **Mismatched moves:** Manhattan distance overestimates on 8-way grids; use a diagonal-aware distance there.\n\n> **Watch out:** On tiny mazes, wall-clock time mostly measures plotting; count expansions instead.\n\n## When it's done\n\n- **A side-by-side video:** Dijkstra floods the maze while A-star heads for the goal, both ending on equal-cost paths.\n- **A results table:** Expansions, costs and failure cases per seed, reused in Planning lab: replay D-star Lite when a corridor closes.\n- **A Nav2 link:** Nav2's NavFn planner picks between both via `use_astar` (default `false`, Dijkstra).\n",
+      "resources": [
+        {
+          "title": "Dijkstra's Algorithm - Computerphile",
+          "url": "https://www.youtube.com/watch?v=GazC3A4OQTE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Walks through Dijkstra's frontier and priority queue on a small graph by hand."
+        },
+        {
+          "title": "A* (A Star) Search Algorithm - Computerphile",
+          "url": "https://www.youtube.com/watch?v=ySN5Wnu88nE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow-up video showing how a heuristic steers the same search toward the goal."
+        },
+        {
+          "title": "Introduction to the A* Algorithm",
+          "url": "https://www.redblobgames.com/pathfinding/a-star/introduction.html",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Interactive grids comparing breadth-first, Dijkstra, greedy and A* expansions, with the Python loops to copy."
+        },
+        {
+          "title": "NavFn Planner - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/configuring_navfn/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows the real ROS 2 planner that switches between Dijkstra and A* with one parameter."
+        }
+      ],
+      "sources": [
+        "https://www.redblobgames.com/pathfinding/a-star/introduction.html",
+        "https://commons.wikimedia.org/wiki/File:Astar_progress_animation.gif",
+        "https://commons.wikimedia.org/wiki/File:Dijkstras_progress_animation.gif",
+        "https://www.youtube.com/watch?v=GazC3A4OQTE",
+        "https://www.youtube.com/watch?v=ySN5Wnu88nE",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/planners_plugins/configuring_navfn/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-replay-d-star-lite-when-a-corridor-closes",
+      "type": "project",
+      "name": "Planning lab: replay D-star Lite when a corridor closes",
+      "summary": "Drive a simulated robot through a grid, close a corridor mid-route, and compare D* Lite repair with A-star replanning from scratch.",
+      "lesson_md": "## In one sentence\n\nDrive a simulated robot through a grid, close a corridor mid-route, and compare D* Lite repair with A-star replanning from scratch.\n\n![PythonRobotics D* Lite run: the red path taken bends where newly seen walls forced a replan](/img/lessons/projects_planning_2-dstar-lite.webp)\n*PythonRobotics D* Lite animation, final frame: light cyan is the earlier plan, red is the path actually driven. Source: [PythonRoboticsGifs](https://github.com/AtsushiSakai/PythonRoboticsGifs/tree/master/PathPlanning/DStarLite), MIT.*\n\n## What you will learn\n\n- **Incremental replanning:** When the map changes, reuse the previous search instead of starting over.\n- **D* Lite** (Koenig and Likhachev, 2002) searches **from the goal to the robot**, so moving the robot does not invalidate stored distances.\n- **Two values per cell:** Each cell keeps a distance estimate `g` and a one-step lookahead `rhs`; cells where they differ are **inconsistent** and get re-expanded.\n- **Software analogy:** Like an incremental build, only targets whose inputs changed are recompiled.\n\n> **Key idea:** After a local map change, D* Lite repairs only the affected cells, so replanning cost scales with the change, not with the map.\n\n## What you need\n\n- **Python and a grid simulator:** Your maze code from Planning lab: film A-star versus Dijkstra maze expansions; cost €0.\n- **A reference implementation:** PythonRobotics' `DStarLite` class to check your results against.\n- **Optional ROS context:** Nav2 replans with its own planners; this lab stays in plain Python.\n\n## Steps\n\n1. **Build a corridor map** with two routes to the goal, the shorter through one corridor.\n2. **Run A-star** on the known map and record the path and expansion count.\n3. **Implement or wrap D* Lite** following the paper's pseudocode: `CalculateShortestPath`, `UpdateVertex` and the `km` key offset.\n4. **Close the corridor** when the robot is halfway, by marking cells blocked inside the sensing radius only.\n5. **Replan both ways:** D* Lite updates edge costs and repairs; A-star restarts from the robot cell. Count expansions for each.\n6. **Replay the run** side by side and publish seeds, expansion counts, timings and the unreachable-goal case.\n\n```mermaid\nflowchart LR\n  P[Plan goal to robot] --> M[Move one step]\n  M --> S[Sense cells]\n  S -->|no change| M\n  S -->|corridor closed| U[Update edge costs]\n  U --> R[Repair inconsistent cells]\n  R --> M\n```\n\n## Common pitfalls\n\n- **Wrong search direction:** Running D* Lite from start to goal throws away its main advantage when the robot moves.\n- **Forgotten key offset:** Skipping `km` after the robot moves leaves stale priorities in the queue.\n- **Unfair baseline:** Give A-star the same map knowledge and heuristic, or the comparison measures information, not algorithms.\n\n> **Watch out:** If every route closes, the goal's distance becomes infinite; stop with an explicit \"no path\" instead of looping.\n\n## When it's done\n\n- **A replay video:** Both planners reroute after the corridor closes, with expansion counters on screen.\n- **A results table:** Initial and repair expansions per seed, plus the blocked-goal case, feeding Planning lab: compare incremental and fresh search across changing warehouse maps.\n",
+      "resources": [
+        {
+          "title": "Advanced 1. Incremental Path Planning",
+          "url": "https://www.youtube.com/watch?v=_4u9W1xOuts",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "MIT 16.412J lecture building from A* to incremental replanning and D* Lite step by step."
+        },
+        {
+          "title": "Grid based search — PythonRobotics documentation",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Short entries and animations for Dijkstra, A*, D* and D* Lite grid planners."
+        },
+        {
+          "title": "PythonRobotics/PathPlanning/DStarLite",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/DStarLite",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Readable Python D* Lite implementation that replans as new obstacles appear."
+        },
+        {
+          "title": "Improved Fast Replanning for Robot Navigation in Unknown Terrain",
+          "url": "https://www.cs.cmu.edu/~maxim/files/dlite_icra02.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original D* Lite paper with pseudocode, rhs-values and the key offset."
+        }
+      ],
+      "sources": [
+        "https://www.cs.cmu.edu/~maxim/files/dlite_icra02.pdf",
+        "https://www.youtube.com/watch?v=_4u9W1xOuts",
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+        "https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/DStarLite",
+        "https://github.com/AtsushiSakai/PythonRoboticsGifs/tree/master/PathPlanning/DStarLite"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-measure-footprint-inflation-effects-in-narrow-corridors",
+      "type": "project",
+      "name": "Planning lab: measure footprint inflation effects in narrow corridors",
+      "summary": "Shrink a simulated corridor step by step and measure how robot footprint and costmap inflation settings decide whether Nav2 finds, hugs or refuses the route.",
+      "lesson_md": "## In one sentence\n\nShrink a simulated corridor step by step and measure how robot footprint and costmap inflation settings decide whether Nav2 finds, hugs or refuses the route.\n\n![RViz showing a robot model with its green polygon footprint published by the Nav2 local costmap](/img/lessons/projects_planning_2-footprint.webp)\n*A polygon footprint (green) drawn around a simulated robot in RViz. Source: [Nav2 Docs, Setting Up the Robot's Footprint](https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/), Apache-2.0.*\n\n## What you will learn\n\n- **Footprint versus radius:** Nav2 accepts a `footprint` polygon or a `robot_radius` circle; if both are set, the polygon wins.\n- **Inflation layer:** It adds lethal cost inside the robot's **inscribed radius** and an exponential decay of cost out to `inflation_radius`.\n- **Two tuning knobs:** `inflation_radius` (default 0.55 m) and `cost_scaling_factor` (default 10.0) shape how fast cost falls away from walls.\n- **Software analogy:** Inflation is a safety margin around every obstacle, like padding a bounding box before a collision test.\n\n> **Key idea:** A planner never sees the walls directly; it sees the costmap, so footprint and inflation decide which corridors exist.\n\n## What you need\n\n- **Nav2 in simulation:** The setup from Intro: ROS 2 and Nav2 with a simulated mobile robot; cost €0.\n- **A corridor world** whose width you can change, plus RViz to view the global and local costmaps.\n- **A parameter sweep script** that relaunches with new values and logs results.\n\n## Steps\n\n1. **Measure the robot** and write both a circular `robot_radius` and a true rectangular `footprint` config.\n2. **Build corridors** from wide to just wider than the robot's width, using fixed seeds and start poses.\n3. **Sweep parameters:** For each width, try several `inflation_radius` and `cost_scaling_factor` values with each shape.\n4. **Send the same goal** each run and log success, path length, minimum wall clearance and planning time.\n5. **Screenshot the costmaps** at the failure boundary to show which cells turned lethal.\n6. **Publish a table and video** comparing the widest failing corridor for circle versus polygon.\n\n```mermaid\nflowchart LR\n  F[Footprint or radius] --> C[Costmap]\n  W[Corridor width] --> C\n  I[Inflation radius and scaling] --> C\n  C --> P[Global planner]\n  P --> R[Path found or refused]\n  R --> T[Results table]\n```\n\n## Common pitfalls\n\n- **Circle for a long robot:** The Nav2 tuning guide notes a circular shape can block spaces a long, skinny robot would fit through.\n- **Only tiny inflation:** The guide recommends a smooth cost gradient across halls and aisles so planners stay centred.\n- **Changing two things at once:** Vary one parameter per run or the table cannot explain a failure.\n\n> **Watch out:** The docs flag `custom_inscribed_radius` as a potential safety issue; leave it at -1 unless you understand the consequences.\n\n## When it's done\n\n- **A sweep table:** Success and clearance per corridor width, shape and inflation setting, with seeds.\n- **A side-by-side video** of a passing and a refused corridor, ready for Planning lab: build a multi-stop simulated delivery route with recoveries.\n",
+      "resources": [
+        {
+          "title": "Nav2 Costmaps: Robot Footprint, Obstacles & Clearance Explained | Lecture 31",
+          "url": "https://www.youtube.com/watch?v=iX2IcqZ1MPY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short lecture on how footprint, obstacles and clearance appear in Nav2 costmaps."
+        },
+        {
+          "title": "Inflation Layer Parameters - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/costmap_plugins/inflation/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Every inflation parameter with defaults: inflation_radius, cost_scaling_factor and inscribed radius."
+        },
+        {
+          "title": "Tuning Guide - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Maintainers' advice on inflation potential fields and footprint versus radius."
+        },
+        {
+          "title": "Setting Up the Robot's Footprint - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Step-by-step footprint and robot_radius configuration with RViz checks."
+        },
+        {
+          "title": "Making robot navigation easy with Nav2 and ROS!",
+          "url": "https://www.youtube.com/watch?v=jkoGkAd0GYk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Articulated Robotics walkthrough of running Nav2 and viewing its costmaps."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/costmap_plugins/inflation/",
+        "https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/",
+        "https://www.youtube.com/watch?v=iX2IcqZ1MPY"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-optimize-smooth-waypoints-around-a-two-dimensional-obstacle",
+      "type": "project",
+      "name": "Planning lab: optimize smooth waypoints around a two-dimensional obstacle",
+      "summary": "Treat a 2D path as a list of waypoints, then let an optimizer move them until the path is short, smooth and clear of one obstacle.",
+      "lesson_md": "## In one sentence\n\nTreat a 2D path as a list of waypoints, then let an optimizer move them until the path is short, smooth and clear of one obstacle.\n\n![Blue waypoints from start to goal bending around a red square obstacle](/img/lessons/projects_planning_2-smooth-waypoints.webp)\n*Waypoints routed around a square obstacle, an example of a non-convex constraint. Source: [Underactuated Robotics, Trajectory Optimization](https://underactuated.mit.edu/trajopt.html), license unknown.*\n\n## What you will learn\n\n- **Decision variables:** In trajectory optimization the waypoints themselves are the unknowns the solver changes.\n- **Cost terms:** A smoothness term penalises sharp bends; an obstacle term penalises points that come too close.\n- **Non-convex constraints:** \"Stay outside the obstacle\" has two separate sides, so the starting guess decides which side you end on.\n- **CHOMP** in MoveIt 2 uses the same recipe: it pulls an infeasible naive trajectory out of collision while optimising smoothness.\n- **Software analogy:** Like gradient descent training a model, each iteration nudges every waypoint a little downhill on the total cost.\n\n> **Key idea:** Optimization polishes a path you already have; it is fast, but it only finds a nearby answer.\n\n## What you need\n\n- **Python with NumPy, SciPy and Matplotlib:** Free; no ROS needed. Optional context: Intro: ROS 2 and Nav2 with a simulated mobile robot.\n- **Basic calculus:** Know what a gradient is, as covered in Optimization-based trajectory planning.\n\n## Steps\n\n1. **Define the scene:** A start, a goal and one circular obstacle of known radius in a 2D plane.\n2. **Initialise** N waypoints on the straight line from start to goal, so the middle ones sit inside the obstacle.\n3. **Write the cost** and minimise it with SciPy, keeping start and goal fixed:\n\n```python\ndef cost(flat):\n    P = np.vstack([start, flat.reshape(-1, 2), goal])\n    smooth = np.sum(np.diff(P, 2, axis=0) ** 2)\n    d = np.linalg.norm(P - center, axis=1)\n    clear = np.sum(np.maximum(0, radius + margin - d) ** 2)\n    return smooth + w * clear\n```\n\n4. **Sweep the weight** `w` and the waypoint count, and log final cost, minimum clearance and iterations.\n5. **Animate the iterations** so viewers watch the path slide off the obstacle.\n\n```mermaid\nflowchart LR\n  S[Straight-line guess] --> C[Total cost]\n  C --> G[Optimizer step]\n  G --> W[Moved waypoints]\n  W --> C\n  W --> V[Collision check]\n  V --> R[Report clearance]\n```\n\n## Common pitfalls\n\n- **Symmetric start:** A guess through the obstacle centre can leave the gradient pointing nowhere useful; add a tiny offset.\n- **Checking only waypoints:** Segments between points can still cut the obstacle; check sampled points along each segment.\n- **Weight too low:** The optimizer happily trades collisions for smoothness.\n\n## When it's done\n\n- **An animation and table:** Iterations, final clearance and cost for several weights and waypoint counts.\n- **A clear failure case** showing a local minimum, motivating Planning lab: compare straight-line and sampling-based initializations.\n",
+      "resources": [
+        {
+          "title": "Introduction to Trajectory Optimization",
+          "url": "https://www.youtube.com/watch?v=wlkRYMVUZTs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Matthew Kelly's accessible talk on turning motion into an optimization problem."
+        },
+        {
+          "title": "Trajectory Optimization — Underactuated Robotics",
+          "url": "https://underactuated.mit.edu/trajopt.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "MIT course notes on transcription, decision variables and obstacle constraints."
+        },
+        {
+          "title": "Using CHOMP Planner — MoveIt Documentation",
+          "url": "https://moveit.picknik.ai/main/doc/how_to_guides/chomp_planner/chomp_planner_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Real optimizer with smoothness and obstacle cost weights you can compare to your own."
+        },
+        {
+          "title": "Motion Planning course (Orthey and Hönig)",
+          "url": "https://imrclab.github.io/teaching/motion-planning",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Free lectures with a full optimization-based motion planning unit."
+        },
+        {
+          "title": "Trajectory Optimization tutorials — Matthew Kelly",
+          "url": "https://www.matthewpeterkelly.com/tutorials/trajectoryOptimization/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Slides and a beginner-friendly written tutorial on direct collocation."
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/trajopt.html",
+        "https://moveit.picknik.ai/main/doc/how_to_guides/chomp_planner/chomp_planner_tutorial.html",
+        "https://imrclab.github.io/teaching/motion-planning",
+        "https://www.youtube.com/watch?v=wlkRYMVUZTs"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-orchestrate-simulated-inspection-with-injected-action-failures",
+      "type": "project",
+      "name": "Planning lab: orchestrate simulated inspection with injected action failures",
+      "summary": "Drive a simulated inspection route with a behavior tree, inject action failures, and prove each one ends in a bounded recovery or a clean report.",
+      "lesson_md": "## In one sentence\n\nDrive a simulated inspection route with a behavior tree, inject action failures, and prove each one ends in a bounded recovery or a clean report.\n\n![Nav2 behavior-tree diagram: a RecoveryNode wraps ComputePathToPose and a contextual recovery that clears the global costmap](/img/lessons/projects_planning_2-inspection-bt.webp)\n*Nav2's ComputePathToPose subtree: the action on the left, its contextual recovery on the right. Source: [Nav2 Docs, Detailed Behavior Tree Walkthrough](https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/), Apache-2.0.*\n\n## What you will learn\n\n- **Behavior tree (BT):** A tree of nodes \"ticked\" from the root; each node returns `SUCCESS`, `FAILURE` or `RUNNING`.\n- **Sequence and Fallback:** A Sequence stops at the first failure; a **Fallback** tries the next child when one fails.\n- **Bounded retries:** Nav2's `RecoveryNode` has a `number_of_retries` parameter before it gives up and returns failure.\n- **Software analogy:** A Fallback is a `try` / `except` chain; a `RecoveryNode` is a retry loop with a maximum count.\n\n> **Key idea:** Failures are normal events in a robot mission; the executive must decide, in advance, how many times to retry and when to stop.\n\n## What you need\n\n- **ROS 2 with Nav2** in simulation and BehaviorTree.CPP, both free; see Behavior trees & task executives.\n- **An inspection list:** Three or four waypoints, with Nav2's `PhotoAtWaypoint` plugin saving an image at each arrival.\n- **A failure injector:** A small node that makes chosen actions fail on command.\n\n## Steps\n\n1. **Write the mission tree:** For each waypoint, navigate, then take a photo, inside a Sequence.\n2. **Wrap actions** in a `RecoveryNode` with a small `number_of_retries` and a recovery child, such as clearing the costmap.\n3. **Add a top-level Fallback** that, when a waypoint is abandoned, logs it and moves on or returns home.\n4. **Inject failures:** Block a waypoint, fail the camera, and cancel mid-route, each under a fixed seed.\n5. **Log every tick** with node name and status, and record a side-by-side video of nominal and faulty runs.\n\n```mermaid\nflowchart TD\n  R[Mission root] --> S[Sequence per waypoint]\n  S --> N[Navigate with RecoveryNode]\n  S --> C[Take photo]\n  N -->|retries used up| F[Fallback: skip and log]\n  C -->|camera fails| F\n  F --> H[Return home and report]\n```\n\n## Common pitfalls\n\n- **Infinite retries:** Unbounded recovery loops look like progress but never end; always cap retries and time.\n- **Blocking actions:** An action that never returns `RUNNING` freezes the whole tree.\n- **Silent skips:** A skipped waypoint must appear in the final report, not vanish.\n\n## When it's done\n\n- **An outcome table:** Each injected failure, the recovery taken, retries used and final mission status.\n- **A video and tick logs** that let a reviewer replay why the robot skipped or retried each waypoint.\n",
+      "resources": [
+        {
+          "title": "5 minute Behavior Tree tutorial",
+          "url": "https://www.youtube.com/watch?v=KeShMInMjro",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Petter Ögren, a BT researcher, explains Sequences, Fallbacks and ticks in five minutes."
+        },
+        {
+          "title": "Introduction to BTs | BehaviorTree.CPP",
+          "url": "https://www.behaviortree.dev/docs/learn-the-basics/BT_basics",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official explanation of ticks, return statuses, Sequence and Fallback nodes."
+        },
+        {
+          "title": "Detailed Behavior Tree Walkthrough - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows how Nav2 nests RecoveryNode, contextual recoveries and system-level recoveries."
+        },
+        {
+          "title": "PhotoAtWaypoint - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/waypoint_follower/waypoint_follower_plugins/photo_at_waypoint/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Ready-made plugin that saves a photo at every waypoint, perfect for an inspection route."
+        },
+        {
+          "title": "BehaviorTree/BehaviorTree.CPP",
+          "url": "https://github.com/BehaviorTree/BehaviorTree.CPP",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The C++ behavior-tree library Nav2 builds on, with examples."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/",
+        "https://www.behaviortree.dev/docs/learn-the-basics/BT_basics",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/waypoint_follower/waypoint_follower_plugins/photo_at_waypoint/",
+        "https://www.youtube.com/watch?v=KeShMInMjro"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-visualize-a-pddl-courier-plan-between-rooms",
+      "type": "project",
+      "name": "Planning lab: visualize a PDDL courier plan between rooms",
+      "summary": "Write a tiny PDDL world of rooms and parcels, get a courier plan from a planner, and animate its actions on a room map.",
+      "lesson_md": "## In one sentence\n\nWrite a tiny PDDL world of rooms and parcels, get a courier plan from a planner, and animate its actions on a room map.\n\n![VS Code PDDL extension: domain and problem files on the left, planner output below, and a coloured swim-lane plan view on the right](/img/lessons/projects_planning_2-pddl-plan.webp)\n*The VS Code PDDL extension runs a planner and draws the returned plan as timed bars. Source: [jan-dolejsi/vscode-pddl](https://github.com/jan-dolejsi/vscode-pddl), MIT.*\n\n## What you will learn\n\n- **PDDL** (Planning Domain Definition Language) is a family of languages for describing planning problems to a generic planner.\n- **Domain and problem:** The domain lists action types; the problem lists objects, the initial state and the goal.\n- **Preconditions and effects:** An action can run only when its precondition holds, and its effect changes the state.\n- **Software analogy:** The domain is an API, the problem is a test fixture, and the plan is the call sequence that makes the test pass.\n\n> **Key idea:** A symbolic plan is just an ordered list of actions; visualizing it is how you catch modelling bugs before a robot drives.\n\n## What you need\n\n- **VS Code with the PDDL extension** or the free online PDDL Editor at planning.domains.\n- **Python and Matplotlib** to draw rooms, doors and the courier.\n- **Background:** Symbolic task planning with PDDL, and ideally Intro: ROS 2 and Nav2 with a simulated mobile robot.\n\n## Steps\n\n1. **Model the domain** with actions `move`, `pick` and `drop`:\n\n```lisp\n(:action move\n  :parameters (?r - robot ?from ?to - room)\n  :precondition (and (at ?r ?from) (connected ?from ?to))\n  :effect (and (not (at ?r ?from)) (at ?r ?to)))\n```\n\n2. **Write a problem** with four rooms, their connections, one parcel and a delivery goal.\n3. **Run a planner** from the editor and save the returned plan file.\n4. **Parse the plan** line by line and replay each action on a room map, one frame per action.\n5. **Break the world on purpose:** Remove a connection or make the goal unreachable, and show the planner's failure message.\n\n```mermaid\nflowchart LR\n  D[Domain file] --> P[Planner]\n  Q[Problem file] --> P\n  P --> A[Plan: action list]\n  A --> R[Parser]\n  R --> V[Room map animation]\n```\n\n## Common pitfalls\n\n- **Name mismatch:** The problem's `(:domain ...)` name must match the domain file, or parsing fails.\n- **One-way doors:** Forgetting to list `connected` in both directions makes rooms unreachable.\n- **Trusting the plan blindly:** Check that each step's precondition holds in your replay.\n\n## When it's done\n\n- **An animation** of the courier visiting rooms, synced with the plan text.\n- **Committed PDDL files** and a failure case, ready for Planning lab: replan a courier task after a door action fails.\n",
+      "resources": [
+        {
+          "title": "How to Model Classical Planning Problems with PDDL",
+          "url": "https://www.youtube.com/watch?v=I_LGLniqRxw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Walkthrough of writing domain and problem files from scratch."
+        },
+        {
+          "title": "PDDL Tooling - Episode 4: Working with plans",
+          "url": "https://www.youtube.com/watch?v=BFlCz49ETcA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The extension's author shows how to run planners and inspect plans visually."
+        },
+        {
+          "title": "What is PDDL? - Planning.wiki",
+          "url": "https://planning.wiki/guide/whatis/pddl",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Plain-language guide to PDDL versions, actions, preconditions and effects."
+        },
+        {
+          "title": "jan-dolejsi/vscode-pddl",
+          "url": "https://github.com/jan-dolejsi/vscode-pddl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "VS Code extension with syntax checking, planner integration and plan visualization."
+        },
+        {
+          "title": "PDDL Editor (planning.domains)",
+          "url": "https://editor.planning.domains/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Browser editor with an online solver, no install needed."
+        }
+      ],
+      "sources": [
+        "https://planning.wiki/guide/whatis/pddl",
+        "https://github.com/jan-dolejsi/vscode-pddl",
+        "https://www.youtube.com/watch?v=BFlCz49ETcA",
+        "https://editor.planning.domains/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-replan-a-courier-task-after-a-door-action-fails",
+      "type": "project",
+      "name": "Planning lab: replan a courier task after a door action fails",
+      "summary": "Make a simulated courier's open-door action fail, update the robot's PDDL world model, and get a new plan that reaches the goal another way or reports why it cannot.",
+      "lesson_md": "## In one sentence\n\nMake a simulated courier's open-door action fail, update the robot's PDDL world model, and get a new plan that reaches the goal another way or reports why it cannot.\n\n![PlanSys2 architecture: Executor, Planner, Domain Expert and Problem Expert nodes connected to client applications and action nodes](/img/lessons/projects_planning_2-plansys2-arch.webp)\n*PlanSys2's four nodes and the action performers they call. Source: [PlanSys2 design](https://plansys2.github.io/4.0.0/design/index.html), Apache-2.0.*\n\n## What you will learn\n\n- **PlanSys2's four nodes:** Domain Expert, Problem Expert, Planner and Executor; the Executor runs a plan as a **behavior tree**.\n- **Execution result:** An `ExecutePlan` run ends with `SUCCESS`, `FAILURE` or `PREEMPT`, and feedback marks which action `FAILED`.\n- **Replan loop:** PlanSys2's controller example logs the failed action, then asks the Planner for a fresh plan from the current problem.\n- **Software analogy:** Like a CI pipeline that, after a failed job, updates its inputs and reruns instead of retrying the same broken step forever.\n\n> **Key idea:** Replanning only helps if you first write what you learned into the world model; otherwise the planner returns the same failing plan.\n\n## What you need\n\n- **PlanSys2 on ROS 2** in simulation, free; finish Planning lab: visualize a PDDL courier plan between rooms first.\n- **A courier domain** with `move`, `open-door`, `pick` and `drop`, and two routes to the goal room.\n- **Background:** Symbolic task planning with PDDL.\n\n## Steps\n\n1. **Load the domain and problem** into PlanSys2 and execute a plan through the closed door.\n2. **Make `open-door` fail** on command and confirm the executor result is `FAILURE`.\n3. **Update the model:** Remove the failed door's `connected` facts, or add a `(door-stuck d1)` predicate.\n4. **Replan** with `getPlan` from the updated problem and execute the detour plan.\n5. **Bound attempts:** Stop after N replans and report an unreachable goal clearly.\n6. **Record** a video and log of plan, failure, model update and new plan for several seeds.\n\n```mermaid\nflowchart LR\n  P[Plan] --> E[Execute]\n  E -->|SUCCESS| G[Goal reached]\n  E -->|FAILURE| L[Log failed action]\n  L --> U[Update PDDL facts]\n  U --> R{Replans left?}\n  R -->|yes| P\n  R -->|no| X[Report failure]\n```\n\n## Common pitfalls\n\n- **No model update:** Retrying without changing facts makes the planner choose the same door again.\n- **Half-applied effects:** An interrupted action may have changed state; the design docs describe undoing started-but-unfinished effects.\n- **Unbounded loops:** Always cap replans and time.\n\n## When it's done\n\n- **A replay video** showing failure, model update and the detour route.\n- **A results table** of seeds, replans used and outcomes, feeding Planning lab: connect PDDL goals to monitored simulated navigation actions.\n",
+      "resources": [
+        {
+          "title": "PlanSys2 Presentation at IROS 2021",
+          "url": "https://www.youtube.com/watch?v=58pvI8rgUvk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "PlanSys2's author explains its architecture and plan execution."
+        },
+        {
+          "title": "PlanSys2 design — ROS2 Planning System 2",
+          "url": "https://plansys2.github.io/4.0.0/design/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Nodes, execute_plan results and the replanning-problem service."
+        },
+        {
+          "title": "Using a planning controller — PlanSys2",
+          "url": "https://plansys2.github.io/4.0.0/tutorials/docs/controller_example.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Example controller that checks the result and replans after a failure."
+        },
+        {
+          "title": "PlanSys2/ros2_planning_system",
+          "url": "https://github.com/PlanSys2/ros2_planning_system",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Source code and examples of the PDDL planning system for ROS 2."
+        },
+        {
+          "title": "What is PDDL? - Planning.wiki",
+          "url": "https://planning.wiki/guide/whatis/pddl",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Refresher on predicates, actions, preconditions and effects."
+        }
+      ],
+      "sources": [
+        "https://plansys2.github.io/4.0.0/design/index.html",
+        "https://plansys2.github.io/4.0.0/tutorials/docs/controller_example.html",
+        "https://github.com/PlanSys2/ros2_planning_system",
+        "https://www.youtube.com/watch?v=58pvI8rgUvk"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-translate-courier-requests-to-pddl-with-schema-rejection",
+      "type": "project",
+      "name": "Planning lab: translate courier requests to PDDL with schema rejection",
+      "summary": "Turn plain-English courier requests into a checked JSON goal and then a PDDL problem, rejecting any request that names unknown rooms, objects or actions.",
+      "lesson_md": "## In one sentence\n\nTurn plain-English courier requests into a checked JSON goal and then a PDDL problem, rejecting any request that names unknown rooms, objects or actions.\n\n![SayCan example: a human asks to put a sponge on the counter and the robot scores each candidate skill by language and affordance](/img/lessons/projects_planning_2-saycan.webp)\n*SayCan picks each next step by combining a language score with what the robot can actually do. Source: [SayCan project page](https://say-can.github.io/), license unknown.*\n\n## What you will learn\n\n- **Language-grounded planning:** Language models know a lot about tasks but not your robot; SayCan grounds them with skills the robot can actually perform.\n- **LLM+P pattern:** An LLM converts the request into PDDL, a **classical planner** finds the plan, then the plan is translated back.\n- **Schema rejection:** A JSON Schema lists allowed rooms, parcels and verbs; Python's `jsonschema.validate` raises `ValidationError` when output breaks it.\n- **Software analogy:** It is input validation at an API boundary: never pass unchecked user text into your backend.\n\n> **Key idea:** Let the language model only fill a small, typed form; the validator and the planner decide what is allowed and possible.\n\n## What you need\n\n- **Python with `jsonschema`** and any LLM API or a local model; a rule-based parser works as a baseline.\n- **Your courier PDDL domain** from Planning lab: visualize a PDDL courier plan between rooms, plus PlanSys2 or another planner.\n- **Background:** Language-grounded task planning.\n\n## Steps\n\n1. **Write a schema** with an `enum` of known rooms and parcels and `additionalProperties: false`:\n\n```python\nschema = {\"type\": \"object\",\n  \"properties\": {\"parcel\": {\"enum\": [\"p1\", \"p2\"]},\n                 \"to\": {\"enum\": [\"lab\", \"office\", \"kitchen\"]}},\n  \"required\": [\"parcel\", \"to\"], \"additionalProperties\": False}\nvalidate(instance=llm_json, schema=schema)\n```\n\n2. **Prompt the model** to answer only with JSON matching that schema.\n3. **Validate**, then fill a PDDL problem template from the accepted fields.\n4. **Plan and execute** in simulation; log request, JSON, PDDL and plan.\n5. **Build a test set** of normal, ambiguous, unknown-room and malicious requests, and count accepts, rejects and wrong plans.\n\n```mermaid\nflowchart LR\n  T[User request] --> M[LLM to JSON]\n  M --> V{Schema valid?}\n  V -->|no| X[Reject with reason]\n  V -->|yes| P[PDDL problem]\n  P --> L[Planner]\n  L --> E[Simulated execution]\n```\n\n## Common pitfalls\n\n- **Free-form PDDL from the model:** Generated PDDL can reference objects that do not exist; generate JSON and template the PDDL.\n- **Silent repair:** Guessing a \"close\" room name hides errors; reject and ask instead.\n- **Testing only happy paths:** Include prompt-injection and out-of-scope requests.\n\n## When it's done\n\n- **A table** of accept, reject and wrong-plan rates on your request set.\n- **A demo video** of accepted and rejected requests, a base for Planning lab: build a monitored language-to-inspection executive with adversarial requests.\n",
+      "resources": [
+        {
+          "title": "Supplementary video for Do As I Can, Not As I Say: Grounding Language in Robotic Affordances",
+          "url": "https://www.youtube.com/watch?v=ysFav0b472w",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Authors' video of a robot turning spoken requests into feasible skill sequences."
+        },
+        {
+          "title": "LLM+P: Empowering Large Language Models with Optimal Planning Proficiency",
+          "url": "https://arxiv.org/abs/2304.11477",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The language-to-PDDL-to-planner pipeline this project copies."
+        },
+        {
+          "title": "Cranial-XIX/llm-pddl",
+          "url": "https://github.com/Cranial-XIX/llm-pddl",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official LLM+P code with prompts and PDDL domains."
+        },
+        {
+          "title": "Schema Validation - jsonschema documentation",
+          "url": "https://python-jsonschema.readthedocs.io/en/stable/validate/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How validate() and ValidationError work for rejecting bad model output."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page explaining why language models need grounding in robot skills."
+        }
+      ],
+      "sources": [
+        "https://say-can.github.io/",
+        "https://arxiv.org/abs/2304.11477",
+        "https://python-jsonschema.readthedocs.io/en/stable/validate/",
+        "https://github.com/Cranial-XIX/llm-pddl",
+        "https://www.youtube.com/watch?v=ysFav0b472w"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-replan-a-simulated-fleet-after-execution-delays-and-blocked-cells",
+      "type": "project",
+      "name": "Planning lab: replan a simulated fleet after execution delays and blocked cells",
+      "summary": "Plan collision-free grid paths for a small simulated fleet, then inject robot delays and newly blocked cells and measure how replanning keeps everyone safe and moving.",
+      "lesson_md": "## In one sentence\n\nPlan collision-free grid paths for a small simulated fleet, then inject robot delays and newly blocked cells and measure how replanning keeps everyone safe and moving.\n\n![Grid with red obstacle blocks and numbered orange robots moving toward square goal markers](/img/lessons/projects_planning_2-fleet-cbs.webp)\n*A frame from a Conflict-Based Search run: nine robots share a grid with obstacles. Source: [atb033/multi_agent_path_planning](https://github.com/atb033/multi_agent_path_planning), MIT.*\n\n## What you will learn\n\n- **Multi-agent path finding (MAPF):** Plan paths for many robots at once so no two occupy the same cell or swap places at the same time.\n- **Prioritized planning versus CBS:** Prioritized planning plans robots one by one; **Conflict-Based Search** (CBS) resolves conflicts between robots globally.\n- **Execution gap:** Plans are computed in discrete time; the repository's post-processing builds a schedule that handles kinematic limits and imperfect execution.\n- **Software analogy:** Like database transactions, a delayed robot is a slow writer; you need ordering rules, not just a timetable.\n\n> **Key idea:** A perfect timed plan breaks the moment one robot is late; keep the order in which robots pass shared cells, not the clock times.\n\n## What you need\n\n- **Python** and the atb033 repository's CBS and prioritized SIPP planners, free.\n- **Background:** Planning lab: compare prioritized planning and conflict-based search, and Multi-robot path finding & conflict resolution.\n- **A simple step simulator** that moves each robot one cell per tick.\n\n## Steps\n\n1. **Plan a fleet** of four to eight robots on a seeded grid with CBS; save the YAML output.\n2. **Execute** step by step, recording for each shared cell which robot enters first.\n3. **Inject delays:** Freeze a random robot for k ticks; let others wait whenever entering a cell would break the recorded order.\n4. **Block cells** mid-run, then replan only affected robots, or the whole fleet, from current positions.\n5. **Compare policies:** Measure collisions, deadlocks, makespan and replanning time per seed.\n6. **Render** side-by-side videos of the nominal and disturbed runs.\n\n```mermaid\nflowchart LR\n  P[CBS plan] --> O[Record cell order]\n  O --> X[Execute ticks]\n  X -->|delay| W[Wait to keep order]\n  W --> X\n  X -->|blocked cell| R[Replan from current poses]\n  R --> O\n  X --> M[Metrics and video]\n```\n\n## Common pitfalls\n\n- **Ignoring swap conflicts:** Two robots exchanging cells in one tick collide even though cells never overlap.\n- **Replanning from the start:** Always replan from current positions and times.\n- **Unbounded waiting:** Detect deadlock and trigger a replan after a timeout.\n\n## When it's done\n\n- **A table** of collisions, deadlocks and makespan per policy and disturbance level.\n- **Videos** of a delayed and a blocked-cell run with the recovered schedule.\n",
+      "resources": [
+        {
+          "title": "ICAPS 2020: Barták et al. on \"Multi-agent path finding on real robots\"",
+          "url": "https://www.youtube.com/watch?v=uY4g86d3vRA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Conference talk on what breaks when grid MAPF plans run on physical robots."
+        },
+        {
+          "title": "Conflict Based Search (CBS) in a Nutshell - Handle MAPF Conflicts",
+          "url": "https://www.youtube.com/watch?v=OKshYo1_UZA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Step-by-step explanation of how CBS finds and splits conflicts."
+        },
+        {
+          "title": "atb033/multi_agent_path_planning",
+          "url": "https://github.com/atb033/multi_agent_path_planning",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Python CBS, prioritized SIPP and a post-processing scheduler with visualizers."
+        },
+        {
+          "title": "whoenig/libMultiRobotPlanning",
+          "url": "https://github.com/whoenig/libMultiRobotPlanning",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "C++ library of MAPF solvers from a multi-robot planning researcher."
+        },
+        {
+          "title": "Motion Planning course (Orthey and Hönig)",
+          "url": "https://imrclab.github.io/teaching/motion-planning",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Free course with a dedicated multi-robot motion planning lecture."
+        }
+      ],
+      "sources": [
+        "https://github.com/atb033/multi_agent_path_planning",
+        "https://www.youtube.com/watch?v=uY4g86d3vRA",
+        "https://imrclab.github.io/teaching/motion-planning",
+        "https://www.youtube.com/watch?v=OKshYo1_UZA"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-plot-batched-collision-check-timing-against-a-cpu-baseline",
+      "type": "project",
+      "name": "Planning lab: plot batched collision-check timing against a CPU baseline",
+      "summary": "Time the same 2D collision checks as a plain CPU loop and as one batched GPU call, then plot how each scales as the batch grows.",
+      "lesson_md": "## In one sentence\n\nTime the same 2D collision checks as a plain CPU loop and as one batched GPU call, then plot how each scales as the batch grows.\n\n![A Franka robot arm next to the same arm approximated by green collision spheres](/img/lessons/projects_planning_2-curobo-spheres.webp)\n*cuRobo represents a robot as bounding spheres so many configurations can be checked in parallel. Source: [cuRobo paper on arXiv](https://arxiv.org/abs/2310.17274), CC BY-NC-ND 4.0, Sundaralingam et al. (NVIDIA).*\n\n## What you will learn\n\n- **GPU-parallel motion planning:** Planners like cuRobo check thousands of candidate poses at once on a GPU instead of one at a time.\n- **Sphere models:** Approximating a robot or obstacle by spheres turns collision checking into simple distance math that batches well.\n- **Fair benchmarking:** The PyTorch benchmark recipe warns about caveats such as thread counts and **CUDA synchronization**.\n- **Software analogy:** It is like replacing a `for` loop of SQL queries with one bulk query: overhead is paid once.\n\n> **Key idea:** A GPU only wins when the batch is big enough to hide launch and copy overhead, so the interesting result is the crossover point.\n\n## What you need\n\n- **Python with NumPy and PyTorch;** a CUDA GPU if available, otherwise a free cloud notebook GPU.\n- **Background:** Intro: ROS 2 and Nav2 with a simulated mobile robot, and GPU-parallel motion planning.\n- **Optional:** cuRobo installed, for the follow-up project.\n\n## Steps\n\n1. **Build a scene** of random circle obstacles and a robot made of three circles.\n2. **Write the CPU baseline** as a Python loop over poses, then a vectorized NumPy version.\n3. **Write the batched check** in PyTorch:\n\n```python\ndef collide(P, O, r):\n    # P: (batch, n, 2) robot circles, O: (m, 2) obstacles\n    d = torch.cdist(P.reshape(-1, 2), O)\n    return (d < r).reshape(P.shape[0], -1).any(1)\n```\n\n4. **Time fairly** with `torch.utils.benchmark.Timer`, after warm-up, for batch sizes from 1 to about 100,000.\n5. **Check correctness:** Assert that every version returns identical collision flags for the same seed.\n6. **Plot** time per pose against batch size on log axes and record an animation of the checked poses.\n\n```mermaid\nflowchart LR\n  S[Seeded scene] --> C[CPU loop]\n  S --> N[NumPy vectorized]\n  S --> G[GPU batch]\n  C --> V[Compare flags]\n  N --> V\n  G --> V\n  V --> T[Timing plot]\n```\n\n## Common pitfalls\n\n- **Timing without sync:** GPU calls return early; unsynchronized timers measure almost nothing.\n- **Counting the first call:** Warm-up includes setup costs that later calls skip.\n- **Copying every batch:** Moving data between CPU and GPU each call can erase the speedup.\n\n## When it's done\n\n- **A log-log plot** with the crossover batch size marked and your seeds published.\n- **A correctness report** showing zero mismatched flags, ready for Planning lab: benchmark cuRobo planning seeds and collision resolution.\n",
+      "resources": [
+        {
+          "title": "cuRobo: CUDA Accelerated Robot Motion Generation",
+          "url": "https://www.youtube.com/watch?v=Ux9tFBRLR-A",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Author's overview of GPU-parallel collision checking and motion generation."
+        },
+        {
+          "title": "cuRobo: Parallelized Collision-Free Minimum-Jerk Robot Motion Generation",
+          "url": "https://arxiv.org/abs/2310.17274",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Technical report explaining sphere models and parallel optimization."
+        },
+        {
+          "title": "cuRobo documentation",
+          "url": "https://curobo.org/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Official library docs listing its GPU collision-checking and planning modules."
+        },
+        {
+          "title": "NVlabs/curobo",
+          "url": "https://github.com/NVlabs/curobo",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Source code and examples for the follow-up cuRobo benchmark."
+        },
+        {
+          "title": "PyTorch Benchmark",
+          "url": "https://pytorch.org/tutorials/recipes/recipes/benchmark.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How to time PyTorch code correctly, including CUDA synchronization."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2310.17274",
+        "https://curobo.org/",
+        "https://pytorch.org/tutorials/recipes/recipes/benchmark.html",
+        "https://github.com/NVlabs/curobo",
+        "https://www.youtube.com/watch?v=Ux9tFBRLR-A"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-integrate-obstacle-aware-coverage-and-return-to-base-scheduling",
+      "type": "project",
+      "name": "Planning lab: integrate obstacle-aware coverage and return-to-base scheduling",
+      "summary": "Plan a lawnmower-style coverage path over a field with obstacles, then schedule the robot to drive back to base when its simulated battery runs low and resume afterwards.",
+      "lesson_md": "## In one sentence\n\nPlan a lawnmower-style coverage path over a field with obstacles, then schedule the robot to drive back to base when its simulated battery runs low and resume afterwards.\n\n![Coverage plan in a slanted field: blue parallel swaths joined by green U-turns inside a green headland boundary](/img/lessons/projects_planning_2-coverage-swaths.webp)\n*Nav2 coverage demo: swaths fill the field and turns link them. Source: [open-navigation/opennav_coverage](https://github.com/open-navigation/opennav_coverage), Apache-2.0.*\n\n## What you will learn\n\n- **Coverage path planning:** Instead of reaching one goal, the robot must pass over every part of an area, like mowing or spraying.\n- **The Fields2Cover pipeline:** Headlands, then swaths, then a route ordering them, then a drivable path with feasible **Dubins or Reeds-Shepp turns**.\n- **Obstacles as voids:** Fields2Cover handles non-convex fields and obstacles with boustrophedon decomposition; opennav_coverage takes internal voids as extra polygons.\n- **Software analogy:** Docking is like a job scheduler's checkpoint and resume: save progress, pause, restart from the saved swath.\n\n> **Key idea:** Coverage is an ordered list of swaths, so return-to-base is just inserting a trip home between two swaths and resuming from a saved index.\n\n## What you need\n\n- **Python with `fields2cover`** (pip install), free; ROS 2 with opennav_coverage is optional.\n- **Background:** Coverage path planning, and Planning lab: compare sweep direction and turning cost for irregular fields.\n- **A simple battery model** where each metre and turn costs charge.\n\n## Steps\n\n1. **Load a field** polygon and add one or two obstacle polygons inside it.\n2. **Generate** headlands, swaths and a route with Fields2Cover; keep the ordered swath list.\n3. **Simulate driving** the path while draining the battery per metre.\n4. **Schedule returns:** Before each swath, check that charge covers the swath plus the trip home with a margin:\n\n```python\nfor i, swath in enumerate(route):\n    if battery < cost(swath) + cost_home(swath.end) + margin:\n        go_home(); recharge(); resume_from(i)\n    drive(swath)\n```\n\n5. **Compare** total distance, base trips and uncovered area for several margins and start points.\n\n```mermaid\nflowchart LR\n  F[Field and obstacles] --> S[Swaths and route]\n  S --> C{Enough charge?}\n  C -->|yes| D[Drive next swath]\n  D --> C\n  C -->|no| H[Return to base]\n  H --> R[Recharge and resume]\n  R --> D\n```\n\n## Common pitfalls\n\n- **Checking charge only at the start:** Re-check before every swath.\n- **Forgetting the trip home:** Low charge far from base strands the robot.\n- **Resuming at the wrong swath:** Save the next index, not the last completed one.\n\n## When it's done\n\n- **A plot** of the coverage path with each return trip highlighted.\n- **A table** of distance, trips and uncovered area per margin, with seeds and a video.\n",
+      "resources": [
+        {
+          "title": "Open Navigation Coverage Planning Demo Using Pre-Annotated Rows",
+          "url": "https://www.youtube.com/watch?v=NMznTft56jE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short demo of Nav2 coverage planning following field rows."
+        },
+        {
+          "title": "open-navigation/opennav_coverage",
+          "url": "https://github.com/open-navigation/opennav_coverage",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Nav2 coverage server built on Fields2Cover, with voids and swath outputs."
+        },
+        {
+          "title": "Fields2Cover/Fields2Cover",
+          "url": "https://github.com/Fields2Cover/Fields2Cover",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Coverage library with obstacle handling, route optimization and Python bindings."
+        },
+        {
+          "title": "Fields2Cover path planning tutorial",
+          "url": "https://fields2cover.github.io/source/tutorials/path_planning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Turns an ordered swath route into a drivable path."
+        },
+        {
+          "title": "open-navigation/opennav_docking",
+          "url": "https://github.com/open-navigation/opennav_docking",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Nav2 docking server meant to be called when tasks finish or battery is low."
+        }
+      ],
+      "sources": [
+        "https://github.com/open-navigation/opennav_coverage",
+        "https://github.com/Fields2Cover/Fields2Cover",
+        "https://github.com/open-navigation/opennav_docking",
+        "https://fields2cover.github.io/source/tutorials/path_planning.html",
+        "https://www.youtube.com/watch?v=NMznTft56jE"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-integrate-online-retargeting-with-collision-revalidation-and-stop-handling",
+      "type": "project",
+      "name": "Planning lab: integrate online retargeting with collision revalidation and stop handling",
+      "summary": "Let a simulated arm switch to a new target mid-motion with a jerk-limited generator, re-check every new trajectory for collisions, and stop safely when no valid one exists.",
+      "lesson_md": "## In one sentence\n\nLet a simulated arm switch to a new target mid-motion with a jerk-limited generator, re-check every new trajectory for collisions, and stop safely when no valid one exists.\n\n![MoveIt planning pipeline: a request passes through adapters, a motion planner, then more adapters such as time parameterization](/img/lessons/projects_planning_2-moveit-pipeline.webp)\n*MoveIt wraps the planner with adapters; time parameterization runs after planning. Source: [MoveIt motion planning docs](https://moveit.picknik.ai/main/doc/concepts/motion_planning.html), BSD-3-Clause.*\n\n## What you will learn\n\n- **Online retargeting:** Ruckig computes a trajectory from **any current state** (position, velocity, acceleration) to a new target within velocity, acceleration and jerk limits.\n- **Collision revalidation:** A new trajectory is a new path, so it must be collision-checked again before it is sent.\n- **Safe stop:** MoveIt Servo scales velocities down near collisions and singularities and reports a status code you can act on.\n- **Software analogy:** Like hot-reloading config: validate the new version first, keep serving the old one, and fail closed.\n\n> **Key idea:** Never send a retargeted trajectory that has not passed the same collision check as the first one; when in doubt, brake.\n\n## What you need\n\n- **Python with `ruckig`** (pip install) and a 2D or simple arm simulator with a collision checker.\n- **Background:** Trajectory generation & time parameterization, and Planning lab: compare jerk-limited retargeting with path retiming.\n- **Optional:** MoveIt 2 with Servo for a full arm demo.\n\n## Steps\n\n1. **Run a nominal move** with Ruckig at a fixed control cycle and log position, velocity, acceleration and jerk.\n2. **Retarget mid-motion:** At a random cycle, change the target and recompute from the current state:\n\n```python\ninp.current_position = out.new_position\ninp.current_velocity = out.new_velocity\ninp.target_position = new_goal\n```\n\n3. **Revalidate:** Sample the new trajectory densely and check each sample against obstacles.\n4. **Handle failure:** If the check fails, set the target velocity to zero and brake within the same limits, then report the stop.\n5. **Stress test** with many seeds, including targets inside obstacles and moving obstacles.\n\n```mermaid\nflowchart LR\n  T[New target] --> G[Ruckig from current state]\n  G --> C{Collision free?}\n  C -->|yes| E[Execute]\n  C -->|no| B[Brake to stop]\n  B --> R[Report status]\n  E --> T\n```\n\n## Common pitfalls\n\n- **Restarting from zero velocity:** Always feed the current velocity and acceleration, or the arm jerks.\n- **Checking only waypoints:** Collisions happen between samples; sample densely.\n- **Assuming braking is free:** A stop also takes time and space, so check it too.\n\n## When it's done\n\n- **Plots** of jerk and clearance for nominal, retargeted and stopped runs.\n- **A table** of seeds, outcomes and constraint violations, with a video.\n",
+      "resources": [
+        {
+          "title": "RSS 2021, Spotlight Talk 24: Jerk-limited Real-time Trajectory Generation with Arbitrary Target...",
+          "url": "https://www.youtube.com/watch?v=b6y_3JvGFJo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Conference talk presenting the Ruckig method for online retargeting."
+        },
+        {
+          "title": "pantor/ruckig",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Jerk-limited trajectory generator from any current state, with Python bindings."
+        },
+        {
+          "title": "Jerk-limited Real-time Trajectory Generation with Arbitrary Target States",
+          "url": "https://arxiv.org/abs/2105.04830",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The paper behind Ruckig."
+        },
+        {
+          "title": "Realtime Servo - MoveIt Documentation",
+          "url": "https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Online arm control with collision checking, slowdown and status codes."
+        },
+        {
+          "title": "Motion Planning - MoveIt Documentation",
+          "url": "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How MoveIt chains planners, collision checks and time parameterization."
+        }
+      ],
+      "sources": [
+        "https://github.com/pantor/ruckig",
+        "https://arxiv.org/abs/2105.04830",
+        "https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+        "https://www.youtube.com/watch?v=b6y_3JvGFJo"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-evaluate-belief-aware-routing-under-sensor-dropout-and-model-mismatch",
+      "type": "project",
+      "name": "Planning lab: evaluate belief-aware routing under sensor dropout and model mismatch",
+      "summary": "Route a simulated robot using a belief, a probability cloud over its position, then cut its sensors and corrupt its motion model to see which policy stays safe.",
+      "lesson_md": "## In one sentence\n\nRoute a simulated robot using a belief, a probability cloud over its position, then cut its sensors and corrupt its motion model to see which policy stays safe.\n\n![Particle filter run: blue true path, black drifting dead-reckoning path and red estimated path near star landmarks](/img/lessons/projects_planning_2-particle-filter.webp)\n*Blue is the true path, black is dead reckoning, red is the particle-filter estimate. Source: [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics), MIT, Atsushi Sakai and contributors.*\n\n## What you will learn\n\n- **Belief space:** Under uncertainty the robot plans over a belief, a distribution of possible states, not one known position.\n- **POMDPs:** A partially observable Markov decision process formalizes this; POMDPs.jl provides policies, **belief updaters** and simulators.\n- **Sensor dropout:** Without measurements the belief spreads, as the black dead-reckoning line drifts in the figure.\n- **Model mismatch:** If the simulator's real noise differs from the planner's model, the belief becomes overconfident.\n- **Software analogy:** It is like a cache with a staleness bound: the longer since the last refresh, the less you trust it.\n\n> **Key idea:** A belief-aware router trades a slightly longer path for staying near landmarks, so dropouts never leave it blind near walls.\n\n## What you need\n\n- **Python** with the PythonRobotics particle filter, or Julia with POMDPs.jl.\n- **Background:** Planning under uncertainty & belief space, and Planning lab: compare shortest-path and information-gathering policies.\n- **A grid world** with walls, landmarks and a goal.\n\n## Steps\n\n1. **Build two routers:** Shortest path, and a belief-aware router whose cost adds a penalty for belief spread.\n2. **Track belief** with a particle filter along each route.\n3. **Inject dropout:** Turn landmark measurements off in chosen zones or random windows.\n4. **Inject mismatch:** Make the simulator's motion noise larger than the planner's model:\n\n```python\ntrue_noise = model_noise * k   # k = 1, 2, 4\n```\n\n5. **Run many seeds** and log collisions, goal reached, path length and final error.\n\n```mermaid\nflowchart LR\n  B[Belief particles] --> R[Router]\n  R --> M[Move]\n  M --> S{Sensors on?}\n  S -->|yes| U[Update belief]\n  S -->|no| P[Predict only]\n  U --> B\n  P --> B\n```\n\n## Common pitfalls\n\n- **Matched noise in every test:** Real robots never match their model exactly.\n- **Too few particles:** The belief collapses and looks falsely certain.\n- **Averages without worst cases:** Show worst-case collisions too.\n\n## When it's done\n\n- **A table** of collisions, success and path length per policy, dropout rate and k.\n- **Side-by-side videos** of both routers under the same seed.\n",
+      "resources": [
+        {
+          "title": "POMDPS",
+          "url": "https://www.youtube.com/watch?v=1TRoIuvWNuI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short Udacity intro to acting when the state is only partly observed."
+        },
+        {
+          "title": "JuliaPOMDP/POMDPs.jl",
+          "url": "https://github.com/JuliaPOMDP/POMDPs.jl",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Interface and tools for defining, solving and simulating POMDPs, including belief updaters."
+        },
+        {
+          "title": "PythonRobotics particle filter localization",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/tree/master/Localization/particle_filter",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Small Python particle filter to track the robot's belief."
+        },
+        {
+          "title": "Planning Algorithms (LaValle)",
+          "url": "https://lavalle.pl/planning/",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Free book; chapters 11 and 12 cover information spaces and planning under sensing uncertainty."
+        },
+        {
+          "title": "Sampling-based Task and Kinodynamic Motion Planning under Semantic Uncertainty",
+          "url": "https://arxiv.org/abs/2604.00401",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Recent research on planning in partially observable environments."
+        }
+      ],
+      "sources": [
+        "https://github.com/AtsushiSakai/PythonRobotics",
+        "https://github.com/JuliaPOMDP/POMDPs.jl",
+        "https://github.com/AtsushiSakai/PythonRobotics/tree/master/Localization/particle_filter",
+        "https://lavalle.pl/planning/",
+        "https://arxiv.org/abs/2604.00401",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/",
+        "https://www.youtube.com/watch?v=1TRoIuvWNuI"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-evaluate-cascaded-diffusion-planning-with-repair-and-classical-fallback",
+      "type": "project",
+      "name": "Planning lab: evaluate cascaded diffusion planning with repair and classical fallback",
+      "summary": "Generate 2D paths with a two-level diffusion model, repair any segment that collides, and fall back to a classical OMPL planner when repair fails, then compare success, collisions and time.",
+      "lesson_md": "## In one sentence\n\nGenerate 2D paths with a two-level diffusion model, repair any segment that collides, and fall back to a classical OMPL planner when repair fails, then compare success, collisions and time.\n\n![Cascaded diffusion: a high-level model proposes sub-goals and a coarse plan, a low-level model refines it locally](/img/lessons/projects_planning_2-cascaded-diffusion.webp)\n*The higher model outputs sub-goals; the lower one refines the plan to satisfy local constraints. Source: [Cascaded Diffusion Models for Neural Motion Planning](https://arxiv.org/abs/2505.15157), CC BY 4.0, Sharma et al.*\n\n## What you will learn\n\n- **Learned & diffusion motion planners:** A diffusion model starts from noise and denoises it step by step into a trajectory, like an image generator drawing a path.\n- **Cascaded hierarchy:** The paper combines **global prediction and local refinement** with online plan repair to make trajectories collision free.\n- **Why repair matters:** The authors note generative models often miss subtle constraint violations in hard global planning problems.\n- **Classical fallback:** OMPL provides planners such as RRTConnect, a bidirectional RRT that grows two trees.\n- **Software analogy:** It is a fast cache backed by a slow, correct database: try the learned answer, verify, then fall back.\n\n> **Key idea:** A learned planner is only safe inside a pipeline that checks every output and has a classical planner behind it.\n\n## What you need\n\n- **Python with PyTorch** and a small diffusion example, plus OMPL's Python bindings, all free.\n- **Training data** from Planning lab: train a tiny maze waypoint predictor on generated plans.\n- **Background:** Learned & diffusion motion planners, and OMPL.\n\n## Steps\n\n1. **Generate maps** and expert paths with RRTConnect; hold out unseen maps for testing.\n2. **Train** a coarse model for sub-goals and a fine model for local segments.\n3. **Check** every output densely for collisions.\n4. **Repair** colliding segments by re-sampling only that window with the fine model, at most N times.\n5. **Fall back** to RRTConnect when repair fails:\n\n```python\npath = diffuse(map)\nfor _ in range(N):\n    bad = colliding_segments(path, map)\n    if not bad: break\n    path = refine(path, bad)\nif bad: path = rrt_connect(map)\n```\n\n6. **Report** which stage solved each case, with timing.\n\n```mermaid\nflowchart LR\n  M[Held-out map] --> C[Coarse model]\n  C --> F[Fine model]\n  F --> V{Collision free?}\n  V -->|yes| S[Accept]\n  V -->|no| R[Repair window]\n  R --> V\n  R -->|budget spent| O[OMPL fallback]\n```\n\n## Common pitfalls\n\n- **Testing on training maps:** Hold out maps or results look too good.\n- **Sparse collision checks:** Thin obstacles slip between samples.\n- **Hiding fallback use:** Report how often the classical planner saved the day.\n\n## When it's done\n\n- **A table** of success, collisions and time for diffusion, diffusion plus repair, and the full cascade.\n- **A video** of repaired and fallback cases with seeds.\n",
+      "resources": [
+        {
+          "title": "Diffusion Policy: LeRobot Research Presentation #2 by Cheng Chi",
+          "url": "https://www.youtube.com/watch?v=M03sZFfW-qU",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "The Diffusion Policy author explains how diffusion models generate robot actions."
+        },
+        {
+          "title": "Cascaded Diffusion Models for Neural Motion Planning",
+          "url": "https://arxiv.org/abs/2505.15157",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "ICRA 2025 paper behind the coarse-to-fine model with plan repair."
+        },
+        {
+          "title": "Diffusion Policy",
+          "url": "https://diffusion-policy.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Project page with videos showing diffusion models producing robot trajectories."
+        },
+        {
+          "title": "OMPL: Available Planners",
+          "url": "https://ompl.kavrakilab.org/planners.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Lists RRTConnect and the other classical planners for the fallback."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2505.15157",
+        "https://ompl.kavrakilab.org/planners.html",
+        "https://diffusion-policy.cs.columbia.edu/",
+        "https://www.youtube.com/watch?v=M03sZFfW-qU"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-stress-test-local-avoidance-under-sensor-latency-and-crossing-traffic",
+      "type": "project",
+      "name": "Planning lab: stress-test local avoidance under sensor latency and crossing traffic",
+      "summary": "Delay a simulated robot's sensor data on purpose, send crossing traffic across its path, and measure when its local planner and safety layer stop avoiding collisions.",
+      "lesson_md": "## In one sentence\n\nDelay a simulated robot's sensor data on purpose, send crossing traffic across its path, and measure when its local planner and safety layer stop avoiding collisions.\n\n![Nav2 Collision Monitor demo: a simulated robot among round pillars with obstacle points and safety boxes around it](/img/lessons/projects_planning_2-collision-monitor.webp)\n*A frame from the Nav2 Collision Monitor tutorial demo. Source: [Using Collision Monitor - Nav2 Docs](https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/), Apache-2.0.*\n\n## What you will learn\n\n- **Local planning & reactive obstacle avoidance:** A local controller such as DWB or MPPI picks velocity commands many times per second around nearby obstacles.\n- **Safety layer:** Nav2's Collision Monitor reads sensors directly, **bypassing the costmap and planners**, to prevent collisions at the emergency-stop level.\n- **Stop and slowdown zones:** In the tutorial, more than 3 points in the slowdown box cut speed to 30 percent, and an inner box stops the robot.\n- **Latency:** Old sensor data shows obstacles where they were, not where they are now.\n- **Software analogy:** It is a race condition: you act on a stale read while another thread moves the data.\n\n> **Key idea:** Latency effectively shrinks your safety margin, so measure the delay at which each layer starts to fail.\n\n## What you need\n\n- **ROS 2 with Nav2** and a simulated robot, or a simple Python 2D simulator.\n- **Background:** Local planning & reactive obstacle avoidance, and Planning lab: compare DWB and MPPI on identical simulated routes.\n- **Moving obstacles** that cross the robot's path at set speeds.\n\n## Steps\n\n1. **Baseline:** Run a straight route with crossing traffic and zero added delay; log commands, distances and collisions.\n2. **Add a delay buffer** between sensor and planner:\n\n```python\nbuffer.append(scan)\nif len(buffer) > delay_steps:\n    planner.update(buffer.pop(0))\n```\n\n3. **Sweep** delay steps, obstacle speed and crossing angle over many seeds.\n4. **Enable Collision Monitor** with stop and slowdown polygons and repeat the sweep.\n5. **Plot** minimum distance and collision rate against delay, with and without the safety layer.\n\n```mermaid\nflowchart LR\n  S[Sensor] --> D[Delay buffer]\n  D --> L[Local planner]\n  L --> M[Collision Monitor]\n  S --> M\n  M -->|safe| R[Robot moves]\n  M -->|zone hit| X[Slow or stop]\n```\n\n## Common pitfalls\n\n- **Delaying the safety layer too:** Feed it the fresh data or you test nothing.\n- **One crossing speed:** Fast traffic exposes latency first.\n- **Hiding stops:** Count emergency stops, not just collisions.\n\n## When it's done\n\n- **Plots** of collision rate and minimum distance against delay.\n- **Side-by-side videos** of a run with and without the Collision Monitor.\n",
+      "resources": [
+        {
+          "title": "Lecture 11 | Robot Collision Avoidance: Stopping Distance, Costmaps and Nav2",
+          "url": "https://www.youtube.com/watch?v=6-9nB5tMWC8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Lecture on stopping distance and collision avoidance in Nav2."
+        },
+        {
+          "title": "Multi-agent navigation with reciprocal collision avoidance based on velocity obstacle",
+          "url": "https://www.youtube.com/watch?v=zYZguAUcLz8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short clip of robots avoiding each other in crossing traffic."
+        },
+        {
+          "title": "Using Collision Monitor - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Step-by-step setup of stop and slowdown zones."
+        },
+        {
+          "title": "Collision Monitor - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/collision_monitor/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Full parameter reference for the safety layer."
+        },
+        {
+          "title": "Model Predictive Path Integral Control using Covariance Variable Importance Sampling",
+          "url": "https://arxiv.org/abs/1509.01149",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The sampling-based MPPI controller idea behind Nav2's MPPI."
+        },
+        {
+          "title": "ros-navigation/navigation2",
+          "url": "https://github.com/ros-navigation/navigation2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Source of Nav2, its controllers and the Collision Monitor."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/collision_monitor/",
+        "https://arxiv.org/abs/1509.01149",
+        "https://github.com/ros-navigation/navigation2",
+        "https://www.youtube.com/watch?v=6-9nB5tMWC8",
+        "https://www.youtube.com/watch?v=zYZguAUcLz8"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-train-a-tiny-maze-waypoint-predictor-on-generated-plans",
+      "type": "project",
+      "name": "Planning lab: train a tiny maze waypoint predictor on generated plans",
+      "summary": "Generate thousands of maze plans with a classical planner, train a tiny neural network to predict the next waypoint, and test it on unseen mazes against the planner.",
+      "lesson_md": "## In one sentence\n\nGenerate thousands of maze plans with a classical planner, train a tiny neural network to predict the next waypoint, and test it on unseen mazes against the planner.\n\n![A 2D navigation environment: a walled floor scattered with coloured box obstacles and a thin green path between them](/img/lessons/projects_planning_2-maze-env.webp)\n*The 2D navigation environment from a learned-planning paper, cropped from its environment figure. Source: [Cascaded Diffusion Models for Neural Motion Planning](https://arxiv.org/abs/2505.15157), CC BY 4.0, Sharma et al.*\n\n## What you will learn\n\n- **Learned & diffusion motion planners:** Networks can learn from planner outputs; **MPNet** generates collision-free paths from a point-cloud encoding of the workspace.\n- **Imitation from plans:** Your dataset is (maze, current cell, goal) mapped to the next waypoint from A* or OMPL.\n- **Generalization:** The real test is mazes the network never saw.\n- **Software analogy:** It is like training autocomplete on a compiler's outputs: fast guesses, but you still compile.\n\n> **Key idea:** The planner is your free, perfect teacher, so data is cheap; the hard part is checking that predictions stay valid on new maps.\n\n## What you need\n\n- **Python with PyTorch** and NumPy; a laptop CPU is enough for small grids.\n- **A classical planner:** A* from PythonRobotics or OMPL.\n- **Background:** Intro: ROS 2 and Nav2 with a simulated mobile robot, and Learned & diffusion motion planners.\n\n## Steps\n\n1. **Generate mazes** with fixed seeds and solve each with A*; split into train and held-out sets.\n2. **Build samples:** For each path step, store the local map patch, goal direction and next move.\n3. **Train** a small network to classify the next move:\n\n```python\nnet = nn.Sequential(nn.Flatten(), nn.Linear(9*9+2, 64),\n                    nn.ReLU(), nn.Linear(64, 4))\n```\n\n4. **Roll out** on held-out mazes, stepping until goal, wall hit or step limit.\n5. **Compare** success, path length and time with A*.\n\n```mermaid\nflowchart LR\n  G[Random mazes] --> A[A* plans]\n  A --> D[Training samples]\n  D --> T[Train tiny network]\n  T --> R[Rollout on new mazes]\n  R --> E[Compare with A*]\n```\n\n## Common pitfalls\n\n- **Leaking test mazes:** Keep held-out seeds out of training.\n- **Ignoring loops:** A learned policy can cycle forever; cap steps.\n- **Accuracy as the only metric:** Per-step accuracy can look high while full paths fail.\n\n## When it's done\n\n- **A table** of success, path length and time for the network and A* on held-out mazes.\n- **A video** of successful and failed rollouts, ready for Planning lab: compare a learned sampler with uniform RRT on held-out maps.\n",
+      "resources": [
+        {
+          "title": "MPC MPNet: Model Predictive Motion Planning Networks under Kinodynamic Constraints",
+          "url": "https://www.youtube.com/watch?v=fco-zMBECDg",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Lab video of a neural motion planner learned from planner demonstrations."
+        },
+        {
+          "title": "Motion Planning Networks",
+          "url": "https://arxiv.org/abs/1806.05767",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "MPNet, a neural network that generates collision-free paths."
+        },
+        {
+          "title": "Cascaded Diffusion Models for Neural Motion Planning",
+          "url": "https://arxiv.org/abs/2505.15157",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Recent learned planner evaluated on 2D navigation and arm tasks."
+        },
+        {
+          "title": "Grid based search - PythonRobotics",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Simple A* and Dijkstra code to generate training plans."
+        },
+        {
+          "title": "OMPL: Available Planners",
+          "url": "https://ompl.kavrakilab.org/planners.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Classical planners usable as teachers and baselines."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2505.15157",
+        "https://arxiv.org/abs/1806.05767",
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+        "https://ompl.kavrakilab.org/planners.html",
+        "https://www.youtube.com/watch?v=fco-zMBECDg"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-plan-drone-like-acceleration-limited-detours-with-forward-propagation",
+      "type": "project",
+      "name": "Planning lab: plan drone-like acceleration-limited detours with forward propagation",
+      "summary": "Plan detours for a simulated point drone whose acceleration is limited by growing a tree of forward-simulated motions, then compare it with a geometric path that ignores those limits.",
+      "lesson_md": "## In one sentence\n\nPlan detours for a simulated point drone whose acceleration is limited by growing a tree of forward-simulated motions, then compare it with a geometric path that ignores those limits.\n\n![iDb-RRT result: a dynamically feasible trajectory for a planar rotor in a double bugtrap after trajectory optimization](/img/lessons/projects_planning_2-idb-rrt.webp)\n*Panel (d) of the iDb-RRT overview figure: optimization turns the search result into a dynamically feasible trajectory. Source: [iDb-RRT paper on arXiv](https://arxiv.org/abs/2403.10745), CC BY 4.0, Ortiz-Haro et al.*\n\n## What you will learn\n\n- **Kinodynamic & nonholonomic planning:** A drone cannot stop or turn instantly; its state includes **velocity**, not just position.\n- **Forward propagation:** OMPL's control-based planners rely on state propagation rather than simple interpolation to generate motions.\n- **The ODE model:** OMPL's ODESolver solves equations of the form q-dot = f(q, u), state q and control u.\n- **Why it is hard:** The iDb-RRT paper notes that propagating random controls is uninformative, which motivates motion primitives and optimization.\n- **Software analogy:** It is like testing by running a simulation instead of drawing the expected output by hand.\n\n> **Key idea:** Every edge of the tree is a simulated, physically possible motion, so the final path respects the limits by construction.\n\n## What you need\n\n- **Python with NumPy** and Matplotlib, or OMPL's Python bindings with control planners.\n- **Background:** Kinodynamic & nonholonomic planning, and Planning lab: compare lattice and Hybrid A-star parking routes.\n- **A 2D world** with a wall that forces a detour.\n\n## Steps\n\n1. **Define the model:** State is position and velocity; control is acceleration with a norm limit.\n\n```python\ndef step(x, v, a, dt):\n    a = a * min(1, a_max / np.linalg.norm(a))\n    v = v + a * dt\n    return x + v * dt, v\n```\n\n2. **Grow a tree:** Pick a random node, apply a random bounded control for a few steps, keep the result if collision free.\n3. **Stop** when a node reaches the goal region at low speed.\n4. **Compare** with a geometric RRT path, checking its implied accelerations.\n5. **Run seeds** and log success, time, path duration and limit violations.\n\n```mermaid\nflowchart LR\n  T[Tree of states] --> S[Pick node]\n  S --> U[Random bounded control]\n  U --> P[Forward simulate]\n  P --> C{Collision free?}\n  C -->|yes| T\n  C -->|no| S\n  T --> G[Goal reached]\n```\n\n## Common pitfalls\n\n- **Ignoring velocity at the goal:** Arriving at full speed is a crash.\n- **A large time step:** The simulation can jump through thin walls.\n- **Reporting only success:** Also count how often the geometric path breaks the limit.\n\n## When it's done\n\n- **A plot** of both paths with velocity arrows and violated segments highlighted.\n- **A table** of success, time and violations per seed, plus a side-by-side video.\n",
+      "resources": [
+        {
+          "title": "iDb-RRT: Sampling-based Kinodynamic Motion Planning with Motion Primitives and Traj. Optimization",
+          "url": "https://www.youtube.com/watch?v=3ToQU-qLWg0",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "One-minute video of kinodynamic planning for robots like quadrotors."
+        },
+        {
+          "title": "iDb-RRT: Sampling-based Kinodynamic Motion Planning with Motion Primitives and Trajectory Optimization",
+          "url": "https://arxiv.org/abs/2403.10745",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains why random control propagation is slow and how to speed it up."
+        },
+        {
+          "title": "OMPL: Available Planners",
+          "url": "https://ompl.kavrakilab.org/planners.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Describes control-based planners that use state propagation."
+        },
+        {
+          "title": "Using the ODESolver for Planning with Controls",
+          "url": "https://ompl.kavrakilab.org/odeint.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How OMPL forward-simulates a dynamics model during planning."
+        },
+        {
+          "title": "Motion Planning course (Orthey and Hönig)",
+          "url": "https://imrclab.github.io/teaching/motion-planning",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Free lectures including kinodynamic RRT and SST."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2403.10745",
+        "https://ompl.kavrakilab.org/planners.html",
+        "https://ompl.kavrakilab.org/odeint.html",
+        "https://imrclab.github.io/teaching/motion-planning",
+        "https://www.youtube.com/watch?v=3ToQU-qLWg0"
+      ]
+    }
+  ]
+}
