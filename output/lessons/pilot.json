@@ -1,0 +1,767 @@
+{
+  "batch": "pilot",
+  "lessons": [
+    {
+      "node_id": "k:feedback-control-pid",
+      "type": "knowledge",
+      "name": "Feedback control & PID",
+      "summary": "PID control repeatedly adjusts a motor command using the gap between the target and the measured position.",
+      "lesson_md": "## In one sentence\n\nPID control repeatedly adjusts a motor command using the gap between the target and the measured position.\n\n![PID feedback-control diagram showing plant, controller, and measured output](/img/lessons/knowledge-pid.webp)\n*PID feedback-control diagram showing plant, controller, and measured output. Source: [Wikimedia Commons PID feedback diagram](https://commons.wikimedia.org/wiki/File:PID_en_updated_feedback.svg), CC BY-SA 3.0.*\n\n## Why it matters for us\n\n- **Commands are not results:** a 30° wrist target does not guarantee the joint reaches 30°.\n- **Encoders close the loop:** the controller compares measured position with the target and sends corrections.\n- **Simulation exposes trade-offs:** gain and delay change motion; small control errors can turn teleoperation, calibration, or a demonstration into a missed grasp.\n\n> **Key idea:** Tune by observing how the output responds to error, not by guessing gain values.\n\n## How it works\n\nThe error is target minus measured value. The proportional (P) term reacts to current error; the integral (I) term sums older error; the derivative (D) term reacts to change in error. A simple discrete loop is:\n\n```python\nintegral = previous = 0.0\nfor _ in range(100):\n    error = target - measured\n    integral += error * dt\n    derivative = (error - previous) / dt\n    output = kp*error + ki*integral + kd*derivative\n    measured += output * dt\n    previous = error\n```\n\nFor target 10, measurement 8, `kp=0.4`, and no I/D terms, the first output is 0.8. Real actuators saturate; clamp output and prevent integral windup before trying hardware.\n\n```mermaid\nflowchart LR\n  T[\"Target position\"] --> E[\"Compute error\"]\n  E --> P[\"PID controller\"]\n  P --> M[\"Motor command\"]\n  M --> S[\"Measured position\"]\n  S --> E\n```\n\n## Key terms\n\n- **Setpoint**: the requested value the system should reach.\n- **Feedback**: a sensor measurement returned to the controller.\n- **Gain**: a scale that determines how strongly a correction responds to error; tune P first, add I for persistent load error, and use D carefully because noisy measurements are amplified.\n- **Sample period**: elapsed time between updates; if it varies, the same gains can produce a different response.\n\n## Before / after\n\n- **Before:** A program says “move the motor for 0.2 seconds” and hopes the arm stops at the right angle.\n- **After:** The controller reads the encoder, measures target error, and corrects until within tolerance. Like polling an asynchronous service, it checks completion instead of trusting a fixed sleep.\n\n## Try it in an afternoon\n\n1. **Set a 10° target** for a simulated joint and plot target against measurement.\n2. **Change only `kp`** and repeat; record overshoot, settling time, and steady-state error.\n3. **Add a load disturbance** and a small integral term, then record the response.\n4. **Compare the observations** with the MathWorks video and read current ROS 2 Control PID docs before using a real controller.",
+      "resources": [
+        {
+          "title": "What Is PID Control? | Understanding PID Control, Part 1",
+          "url": "https://fr.mathworks.com/videos/understanding-pid-control-part-1-what-is-pid-control--1527089264373.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A focused MathWorks Tech Talk shows the proportional, integral, and derivative terms."
+        },
+        {
+          "title": "CTM: PID Tutorial",
+          "url": "https://www2.ensc.sfu.ca/people/faculty/saif/ctm/PID/PID.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "This tutorial works through P, I, and D on a 1 kg mass-spring-damper plant and compares rise time, overshoot, and steady-state error."
+        },
+        {
+          "title": "PID controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/pid_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Current ROS 2 Control docs explain PID parameters and controller interfaces."
+        },
+        {
+          "title": "PID Controller Types for Tuning",
+          "url": "https://www.mathworks.com/help/control/ug/pid-controller-types-for-tuning.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The focused reference compares PID forms used in practical tuning."
+        }
+      ],
+      "sources": [
+        "https://fr.mathworks.com/videos/understanding-pid-control-part-1-what-is-pid-control--1527089264373.html",
+        "https://control.ros.org/rolling/doc/ros2_controllers/pid_controller/doc/userdoc.html",
+        "https://www2.ensc.sfu.ca/people/faculty/saif/ctm/PID/PID.html"
+      ]
+    },
+    {
+      "node_id": "k:rigid-body-motion-coordinate-frames",
+      "type": "knowledge",
+      "name": "Rigid-body motion & coordinate frames",
+      "summary": "A coordinate frame names an origin and axes so robot positions can be compared consistently.",
+      "lesson_md": "## In one sentence\n\nA coordinate frame names an origin and axes so robot positions can be compared consistently.\n\n![Robot arm with coordinate axes attached to its base, joints, and tool](/img/lessons/knowledge-coordinate-frames.webp)\n*Robot arm with coordinate axes attached to its base, joints, and tool. Source: [MIT manipulation coordinate-frames example](https://manipulation.csail.mit.edu/pick.html), license unknown.*\n\n## Why it matters for us\n\n- **When the SO-101 camera** detects a cube, the pixel location belongs to the camera frame, while the arm controller expects a target in the robot base frame.\n- **The same physical point** therefore has different coordinates in each frame. If code confuses them, a geometrically plausible command can move the gripper in the wrong direction.\n- **Frames also let teams** combine camera, tool, joint, and world measurements without guessing.\n\n> **Key idea:** Every coordinate must travel with the frame and timestamp that define it.\n\n## How it works\n\n- **A rigid-body pose combines** translation and rotation. A homogeneous transform is a 4×4 matrix that represents both in one operation.\n- **Concrete example: frame B** is rotated 90° counter-clockwise from frame A, and B's origin is (2,0,0) in A.\n- **A point (1,0**,0) in B rotates to (0,1,0), then translates to (2,1,0) in A.\n- **Reversing the transform requires** the inverse; simply negating one column is not enough.\n\n```mermaid\nflowchart LR\n  B[\"Robot base frame\"] --> T[\"Transform\"]\n  T --> C[\"Camera or tool frame\"]\n  C --> P[\"Point coordinates\"]\n```\n\n## Key terms\n\n- **Frame**: a named coordinate system with an origin and axes.\n- **Transform**: a mapping from coordinates in one frame to another, combining rotation and translation; ROS 2 `tf2` timestamps transforms so measurements from different instants are not mixed.\n- **Rotation**: a change in orientation or axes.\n- **Translation**: a change in position or origin.\n- **Quaternion**: a four-value encoding of 3-D orientation that avoids the singularity common with Euler angles.\n\n## Before / after\n\n- **Before:** A program passes `[0.2, 0.1, 0.0]` without saying whether it means camera, world, or arm coordinates.\n- **After:** Name the point in `camera_color_optical_frame` at time t, then transform it into `base_link`. Explicit frames prevent valid-looking numbers from being misinterpreted.\n\n## Try it in an afternoon\n\n1. **Draw two coordinate axes** on paper. Put B's origin 2 units right of A and rotate B by 90°.\n2. **Transform the point (1**,0) from B to A by hand, then verify with a 4×4 matrix.\n3. **Use the Modern Robotics** chapter video and ROS `tf2` docs to distinguish a frame's pose from a point expressed in that frame.",
+      "resources": [
+        {
+          "title": "3.3.1. Homogeneous Transformation Matrices",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "This chapter video demonstrates 4×4 transforms, frame changes, and a numeric example."
+        },
+        {
+          "title": "Quaternions interactive",
+          "url": "https://eater.net/quaternions",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "An interactive visualization lets you rotate objects and inspect quaternion components."
+        },
+        {
+          "title": "tf2 concepts",
+          "url": "https://docs.ros.org/en/humble/Concepts/Intermediate/About-Tf2.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "ROS 2 documentation explains timestamped transforms between named frames."
+        },
+        {
+          "title": "Rotation",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "SciPy's Rotation class represents and composes 3-D rotations, including Euler angles, quaternions, and rotation matrices."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/",
+        "https://docs.ros.org/en/humble/Concepts/Intermediate/About-Tf2.html",
+        "https://eater.net/quaternions"
+      ]
+    },
+    {
+      "node_id": "k:kalman-filtering-multisensor-fusion",
+      "type": "knowledge",
+      "name": "Kalman filtering & multisensor fusion",
+      "summary": "A Kalman filter combines a motion prediction with noisy sensor measurements and keeps track of uncertainty.",
+      "lesson_md": "## In one sentence\n\nA Kalman filter combines a motion prediction with noisy sensor measurements and keeps track of uncertainty.\n\n![Kalman-filter diagram showing prediction and measurement update](/img/lessons/knowledge-kalman-filter.webp)\n*Kalman-filter diagram showing prediction and measurement update. Source: [Wikimedia Commons Kalman-filter diagram](https://commons.wikimedia.org/wiki/File:Kalman-filter_en.svg), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **A mobile robot's wheel** encoders drift as tiny errors accumulate, while GPS can be noisy or unavailable indoors. An IMU gives fast motion information but also has bias.\n- **A Kalman filter balances** such sources instead of treating any one reading as perfect.\n- **In the simplest position** example, a robot predicts 10 m with variance 4, while GPS reports 12 m with variance 1.\n- **The filter should move** toward 12 m but retain some prediction.\n\n> **Key idea:** Weight each sensor reading according to its uncertainty, not its recency.\n\n## How it works\n\n- **The scalar Kalman gain** is `P/(P+R)`, where P is predicted variance and R is measurement variance.\n- **Gain is 0.8:** `4/(4+1)=0.8`; corrected position `10+0.8*(12-10)=11.6 m`, variance `0.8`. Lower variance means more confidence.\n- **Robot state can include motion:** Position and velocity may require vectors and matrices for prediction and measurement, but the estimation principle remains the same.\n\n```mermaid\nflowchart LR\n  M[\"Motion model\"] --> P[\"Predict state\"]\n  P --> U[\"Update from sensor\"]\n  U --> E[\"Estimate and uncertainty\"]\n  E --> P\n```\n\n## Key terms\n\n- **State**: a compact description of the system, such as position and velocity.\n- **Prediction**: advancing the state using a motion model.\n- **Measurement update**: incorporating a new sensor reading into the prediction.\n- **Covariance**: a matrix recording uncertainty and correlations; the filter also assumes a motion model and noise description, so wrong timestamps or units can invalidate correct equations.\n\n## Before / after\n\n- **Before:** A navigation program trusts encoder distance alone and slowly drifts away from the map.\n- **After:** Predict wheel motion, correct with landmarks or GPS, and report uncertainty. ROS `robot_localization` applies related filters to stamped sensor messages.\n\n## Try it in an afternoon\n\n1. **Write a small notebook** with predicted position 10 m, predicted variance 4, measurement 12 m, and measurement variance 1.\n2. **Compute gain, corrected position**, and corrected variance by hand, then repeat with a noisy measurement variance of 9.\n3. **Use the MathWorks video** and Python filter book to plot how a series of updates behaves.",
+      "resources": [
+        {
+          "title": "Why Use Kalman Filters? | Understanding Kalman Filters, Part 1",
+          "url": "https://ch.mathworks.com/videos/understanding-kalman-filters-part-1-why-use-kalman-filters--1485813028675.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A position example shows why noisy IMU, odometer, and GPS readings are fused."
+        },
+        {
+          "title": "The Kalman Filter",
+          "url": "https://www.kalmanfilter.net/default.aspx",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "A stepwise derivation explains the predict and update equations in one dimension."
+        },
+        {
+          "title": "Kalman and Bayesian Filters in Python",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Notebook exercises make the scalar filter equations executable."
+        },
+        {
+          "title": "robot_localization",
+          "url": "https://github.com/cra-ros-pkg/robot_localization",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The ROS package applies sensor fusion to robot odometry and pose messages."
+        }
+      ],
+      "sources": [
+        "https://ch.mathworks.com/videos/understanding-kalman-filters-part-1-why-use-kalman-filters--1485813028675.html",
+        "https://www.kalmanfilter.net/default.aspx",
+        "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python"
+      ]
+    },
+    {
+      "node_id": "k:imitation-learning-behavior-cloning",
+      "type": "knowledge",
+      "name": "Imitation learning (behavior cloning)",
+      "summary": "Behavior cloning trains a robot policy to imitate actions recorded from a human or another controller.",
+      "lesson_md": "## In one sentence\n\nBehavior cloning trains a robot policy to imitate actions recorded from a human or another controller.\n\n![ALOHA action-sequence model diagram for learning from robot demonstrations](/img/lessons/knowledge-imitation-learning.webp)\n*ALOHA action-sequence model diagram for learning from robot demonstrations. Source: [ALOHA project page](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## Why it matters for us\n\n- **Teleoperation captures demonstrations:** A student guides a SO-101 to pick up a cube while recording camera images and joint positions.\n- **Training examples pair observations with actions:** The dataset records what the operator did for each image and joint state; a model learns that mapping.\n- **Demonstrations replace hand-written grasp rules:** Behavior cloning is easier to start, but it only learns cases shown in its examples.\n\n> **Key idea:** Demonstrations teach only the states and recovery cases they actually contain.\n\n## How it works\n\n- **Episodes hold time-ordered data:** Behavior cloning minimizes the difference between an expert action and the model action for each observation.\n- **ACT predicts action chunks:** Action Chunking with Transformers predicts a sequence of actions instead of one step.\n- **Reported action chunks contain 90 joint-position steps:** The paper also reports about 50 demonstrations per task.\n- **Chunking can smooth behavior:** Predicting a sequence makes recovery from errors an important design question.\n\n```mermaid\nflowchart LR\n  D[\"Human demonstrations\"] --> X[\"Observation-action data\"]\n  X --> T[\"Train policy\"]\n  T --> V[\"Test new starting poses\"]\n  V --> R[\"Robot behavior\"]\n```\n\n## Key terms\n\n- **Demonstration**: a recorded example of the desired behavior.\n- **Observation**: input such as camera frames and joint state.\n- **Action**: a commanded joint position or motor target.\n- **Policy**: a function that maps observations to actions.\n- **Generalization**: success on new object positions, lighting, or starting poses not seen during training.\n\n## Before / after\n\n- **Before:** A student hand-codes “if object is here, move the wrist there.”\n- **After:** Supply examples, train a policy, and evaluate on fresh episodes. Like a supervised API classifier, its outputs move a mechanism, so errors can miss or collide.\n\n## Try it in an afternoon\n\n1. **Record a small set** of consistent pick demonstrations, split out held-out trials, and compare success rate across both sets. Plot frames and actions together to catch unsynchronized cameras.\n2. **Start with low-payload objects** and a simulation rollout; then use LeRobot's documented recording and rollout tools.\n3. **Use 50 episodes only as a tutorial starting point**, not a universal guarantee.",
+      "resources": [
+        {
+          "title": "Teleoperation System",
+          "url": "https://tonyzhaozh.github.io/aloha/resources/teleop_all.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The ALOHA authors' video shows the two-arm teleoperation system used to collect human demonstrations."
+        },
+        {
+          "title": "huggingface/lerobot",
+          "url": "https://github.com/huggingface/lerobot",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The maintained source contains robot drivers, data tools, and learning policies."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Beginner",
+          "why": "The ACT paper reports chunked actions, demonstration counts, and ALOHA experiments."
+        },
+        {
+          "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
+          "url": "https://arxiv.org/abs/1011.0686",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The current official tutorial demonstrates real-world recording, training, and rollout."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha",
+        "https://arxiv.org/abs/2304.13705",
+        "https://huggingface.co/docs/lerobot/il_robots"
+      ]
+    },
+    {
+      "node_id": "k:fiducial-markers-apriltag-aruco",
+      "type": "knowledge",
+      "name": "Fiducial markers (AprilTag, ArUco)",
+      "summary": "A fiducial marker is a printed, machine-readable pattern that helps a camera identify a known object and estimate its pose.",
+      "lesson_md": "## In one sentence\n\nA fiducial marker is a printed, machine-readable pattern that helps a camera identify a known object and estimate its pose.\n\n![Examples of ArUco fiducial marker patterns from the OpenCV tutorial](/img/lessons/knowledge-fiducial-markers.webp)\n*Examples of ArUco fiducial marker patterns from the OpenCV tutorial. Source: [OpenCV ArUco detection tutorial](https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html), license unknown.*\n\n## Why it matters for us\n\n- **A printed tag supplies a reference:** Place it near a cube and use a webcam to report its ID and image corners.\n- **The pose starts in the camera frame:** Use the corners to estimate marker pose, then transform it into the arm base frame.\n- **A unique tag ID** is often easier to detect than an unmarked object, especially in a controlled demo or lab setup.\n\n> **Key idea:** A tag supplies a known geometric reference; calibration makes its pose metric.\n\n## How it works\n\n- **The detector decodes square markers:** It checks the black border and binary code, corrects for rotation, and returns an ID with four image corners.\n- **AprilTag and ArUco are distinct marker families:** OpenCV 4.13.0’s `ArucoDetector` supports predefined ArUco dictionaries and AprilTag families.\n- **Metric pose needs camera intrinsics and marker size:** Without the known side length, image size alone cannot provide distance in meters.\n\n```mermaid\nflowchart LR\n  P[\"Printed tag\"] --> C[\"Camera pixels\"]\n  C --> D[\"Detect ID and corners\"]\n  D --> E[\"Estimate camera-frame pose\"]\n  E --> R[\"Transform to robot frame\"]\n```\n\n## Key terms\n\n- **Dictionary**: the set of allowed marker codes a detector searches.\n- **Pose**: an object's position and orientation.\n- **Camera intrinsics**: focal lengths and optical center, which map camera rays to image pixels.\n- **Distortion coefficients**: values that model lens warping.\n- **Corner coordinates**: pixel locations, not robot-world coordinates; a printed border and contrast help detection, while glare, blur, occlusion, or a tiny image can cause misses.\n\n## Before / after\n\n- **Before:** A program searches for a generic object and struggles to separate it from background clutter.\n- **After:** A detected tag provides a known ID and geometric target. Like a unique record key, that ID is reliable only with the right dictionary and calibration.\n\n## Try it in an afternoon\n\n1. **Prepare a marker test:** Generate or print an AprilTag, calibrate a webcam, then draw the returned corners and ID on each frame.\n2. **Measure the printed side** length as 0.10 m, then estimate pose using the camera matrix.\n3. **Test at two distances** and turn the tag through 90°; verify that the ID remains stable and the pose changes sensibly.\n4. Use the current **OpenCV 4.x docs**, not the old 4.0.1 calibration page.",
+      "resources": [
+        {
+          "title": "[GSoC 15] Detection of ArUco markers using OpenCV aruco module",
+          "url": "https://www.youtube.com/watch?v=IsXWrcB_Hvs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "This exact video is embedded in the current OpenCV marker-detection tutorial."
+        },
+        {
+          "title": "AprilTag 3",
+          "url": "https://github.com/AprilRobotics/apriltag",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The official AprilRobotics detector returns marker IDs and corner locations."
+        },
+        {
+          "title": "OpenCV: Detection of ArUco Markers",
+          "url": "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "OpenCV 4.13.0 explains dictionaries, detection, pose estimation, and AprilTag families."
+        },
+        {
+          "title": "AprilTag: A robust and flexible visual fiducial system",
+          "url": "https://april.eecs.umich.edu/software/apriltag",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The project page links the original AprilTag paper and describes the marker system."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=IsXWrcB_Hvs",
+        "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+        "https://github.com/AprilRobotics/apriltag"
+      ]
+    },
+    {
+      "node_id": "r:so-101",
+      "type": "robot",
+      "name": "SO-101",
+      "summary": "The SO-101 is a low-cost six-joint robot arm designed for teleoperation and robot-learning experiments.",
+      "lesson_md": "## In one sentence\n\nThe SO-101 is a low-cost six-joint robot arm designed for teleoperation and robot-learning experiments.\n\n![Photo of the SO-101 follower robot arm](/img/lessons/so-101.webp)\n*Photo of the SO-101 follower robot arm. Source: [LeRobot SO-101 documentation](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## Why it matters for us\n\n- **A tabletop arm makes software visible:** students connect cameras, serial communication, joint calibration, and learned policies.\n- **The follower uses six FEETECH STS3215 servos:** a person moves the separate leader arm by hand, according to LeRobot's current setup guide.\n- **A cube task makes outcomes visible:** move an object and inspect the data without needing an industrial manipulator.\n\n> **Key idea:** The leader-follower pair is a data-capture system, so calibration and timing matter as much as hardware.\n\n## What it is made of / how it works\n\n- **Six joints shape the arm:** base, shoulder, elbow, wrist, and gripper parts form the mechanism.\n- **Each servo reports position and receives commands:** the motors use an ID-addressed serial bus.\n- **The follower gearing is 1/345:** leader ratios differ by joint.\n- **Leader base and elbow gearing is 1/191:** shoulder lift is 1/345; wrist flex, wrist roll, and gripper are 1/147.\n- **Calibration maps raw motor range to useful joint motion.**\n\n| Specification | Value |\n| --- | --- |\n| **Follower actuators** | 6 × FEETECH STS3215 |\n| **Follower gearing** | 1/345 |\n| **Leader base and elbow** | 1/191 |\n| **Leader shoulder lift** | 1/345 |\n| **Leader wrist and gripper** | 1/147 |\n\n## Key terms\n\n- **Follower**: the arm that reproduces received commands.\n- **Leader**: the human-moved input device used to guide the follower.\n- **Teleoperation**: remote control of a robot by a person.\n- **Calibration**: mapping raw sensor or motor readings to meaningful positions.\n- **Joint limit**: the safe mechanical range of a joint.\n\n## Getting started\n\n1. **Assemble the arm** with the official current guide and connect the motor bus.\n2. **Follow LeRobot's setup and calibration instructions** for the leader and follower.\n3. **Identify the serial device:** on Linux it may be `/dev/ttyACM0`, but its name depends on the machine.\n4. **Run `lerobot-teleoperate`** with follower and leader configurations; confirm your system's port and robot ID values.\n5. **Test slow movement** with the gripper clear of fingers and fragile objects.\n\n## Used in\n\n- **LeRobot's imitation-learning tutorial records episodes:** teams train policies and run rollouts on the SO-101.\n- **Pilot projects reuse the arm:** assembly/teleoperation and SmolVLA tasks use it; evaluate new object positions, not just one demonstration.",
+      "resources": [
+        {
+          "title": "【Assembly Tutorial】Waveshare SO-ARM100/101 Kit,Open-Source Ai Robot Arm #LeRobot #huggingface",
+          "url": "https://www.youtube.com/watch?v=rVP1XQ0PeM4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Waveshare's assembly video shows the SO-ARM100/101 parts and build sequence."
+        },
+        {
+          "title": "TheRobotStudio/SO-ARM100",
+          "url": "https://github.com/TheRobotStudio/SO-ARM100",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The open project provides the low-cost arm design and build files."
+        },
+        {
+          "title": "7.4V 19KG.CM magnetic encoding servo STS3215-深圳飞特模型有限公司",
+          "url": "https://www.feetech.cn/en/74v-19-kgcm-plastic-case-metal-tooth-magnetic-code-double-axis-ttl-series-steering-gear.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The manufacturer's product page gives the STS3215's operating voltage, torque, encoder, and bus protocol."
+        },
+        {
+          "title": "Assemble SO-101",
+          "url": "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "A LeRobot arm demonstration shows dataset recording in the real stack."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://github.com/TheRobotStudio/SO-ARM100"
+      ]
+    },
+    {
+      "node_id": "r:feetech-sts3215-servo",
+      "type": "robot",
+      "name": "Feetech STS3215 servo",
+      "summary": "The FEETECH STS3215 is a bus-controlled servo with a magnetic encoder and a gear train used in the SO-101 follower arm.",
+      "lesson_md": "## In one sentence\n\nThe FEETECH STS3215 is a bus-controlled servo with a magnetic encoder and a gear train used in the SO-101 follower arm.\n\n![Photo of the FEETECH STS3215 servo and its gear housing](/img/lessons/feetech-sts3215.webp)\n*Photo of the FEETECH STS3215 servo and its gear housing. Source: [FEETECH STS3215 product page](https://www.feetech.cn/en/74v-19-kgcm-plastic-case-metal-tooth-magnetic-code-double-axis-ttl-series-steering-gear.html), license unknown.*\n\n## Why it matters for us\n\n- **A servo limits joint behavior:** Its voltage, torque, speed, position, and communication constraints make the STS3215 a concrete example.\n- **FEETECH lists a 7.4 V nominal servo:** Its operating range is 6–7.4 V.\n- **Peak stall torque is 19.5 kg·cm at 6 V:** It is not a 7.4 V rating; compare torque at its test voltage.\n\n> **Key idea:** The servo's bus address and gear train matter as much as its rated torque.\n\n## What it is made of / how it works\n\n- **The servo contains four components:** A DC motor, gears, a control board, and a 12-bit magnetic encoder. The encoder provides 2¹² = 4096 distinguishable counts per turn.\n- **TTL half-duplex serial:** The shared wire alternates between command and reply.\n- **Unique IDs allow shared-bus control:** The manufacturer lists IDs 0–253; servos can share a bus when IDs are unique, and the SO-101 follower uses six.\n\n| Specification | Value |\n| --- | --- |\n| **Operating voltage** | 6–7.4 V |\n| **Peak stall torque** | 19.5 kg·cm at 6 V |\n| **Position encoder** | 12-bit magnetic; 4096 counts per turn |\n| **Serial protocol** | TTL half-duplex asynchronous serial |\n| **Bus addressing** | IDs 0–253; unique ID per servo |\n| **SO-101 follower** | Uses six STS3215 servos |\n\n## Key terms\n\n- **Stall torque**: torque measured while the output is prevented from turning; it is not continuous operating torque.\n- **Half-duplex**: communication where data travels in both directions, but not simultaneously.\n- **Daisy chain**: devices connected along one bus, with each device listening for its own ID.\n- **Encoder resolution**: the count resolution, not a guarantee of equal absolute accuracy after calibration.\n\n## Getting started\n\n1. Read the **official FEETECH product data**, confirm supply range, connect the correct bus interface, assign unique IDs, and follow current LeRobot calibration docs.\n2. Read the **serial-speed range**: the manufacturer lists 38,400 bps to 1 Mbps and 360° operation over positions 0–4096.\n3. **Check stops before choosing rotation mode:** A continuous-rotation configuration may be unsafe for a joint with mechanical stops.\n\n## Used in\n\n- **SO-101 integration:** The STS3215 serves as a joint actuator; encoder feedback records joint state alongside camera data.\n- **FEETECH documents the motor specifications:** Its product page supplies the electrical and protocol figures.\n- **LeRobot documents robot integration:** Its setup guide shows the servo configured in a complete robot, not as a standalone motor.",
+      "resources": [
+        {
+          "title": "SO101 Arms: Calibration and Motor Configuration",
+          "url": "https://www.youtube.com/watch?v=Nhfda8h7e2I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The tutorial assigns IDs and baud rates to the SO-101's serial-bus servos before calibration."
+        },
+        {
+          "title": "7.4V 19KG.CM magnetic encoding servo STS3215-深圳飞特模型有限公司",
+          "url": "https://www.feetech.cn/en/74v-19-kgcm-plastic-case-metal-tooth-magnetic-code-double-axis-ttl-series-steering-gear.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The manufacturer page gives voltage, torque, encoder, serial protocol, and ID limits."
+        },
+        {
+          "title": "Assemble SO-101",
+          "url": "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The official assembly guide lists the follower's six STS3215s and the leader's gear ratios."
+        },
+        {
+          "title": "Feetech ST3215 C001 Servo 7.4V 1:345 Gear Ratio Servo",
+          "url": "https://www.seeedstudio.com/STS3215-19kg-cm-7-4V-Serial-Servo-p-6338.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "A distributor product page identifies the C001 motor and its 1:345 gear ratio."
+        }
+      ],
+      "sources": [
+        "https://www.feetech.cn/en/74v-19-kgcm-plastic-case-metal-tooth-magnetic-code-double-axis-ttl-series-steering-gear.html",
+        "https://www.seeedstudio.com/STS3215-19kg-cm-7-4V-Serial-Servo-p-6338.html",
+        "https://huggingface.co/docs/lerobot/so101"
+      ]
+    },
+    {
+      "node_id": "r:lerobot",
+      "type": "robot",
+      "name": "LeRobot",
+      "summary": "LeRobot is Hugging Face's open-source software toolkit for connecting robots to datasets, policies, training, and evaluation.",
+      "lesson_md": "## In one sentence\n\nLeRobot is Hugging Face's open-source software toolkit for connecting robots to datasets, policies, training, and evaluation.\n\n![LeRobotDataset v3 diagram linking tabular data, videos, and metadata](/img/lessons/robot-lerobot-pipeline.webp)\n*LeRobotDataset v3 diagram linking tabular data, videos, and metadata. Source: [Hugging Face LeRobot datasets v3 blog](https://huggingface.co/blog/lerobot-datasets-v3), license unknown.*\n\n## Why it matters for us\n\n- **LeRobot connects the workflow:** Software students can teleoperate an SO-101, record camera and joint data, train a policy, and replay it.\n- **LeRobot supplies reusable components:** It avoids writing every camera driver, dataset writer, and training script from scratch.\n- **A common interface spans supported arms:** Experiments can focus on data quality and task design instead of inventing a new file format.\n\n> **Key idea:** The toolkit's value is the repeatable pipeline connecting data, hardware, and evaluation.\n\n## What it is made of / how it works\n\n- **Workflow commands:** `lerobot-teleoperate` streams human input; `lerobot-record` saves episodes; `lerobot-train` fits a policy; `lerobot-rollout` evaluates it.\n- **A dataset repository ID** names a versioned collection of episodes. Each episode can include image observations, joint state, action targets, and a task description.\n- **Hardware configuration still matters:** Port names, robot IDs, camera names, and calibration must match the actual setup.\n\n| Workflow command | Role |\n| --- | --- |\n| **Teleoperate** | `lerobot-teleoperate` streams human input |\n| **Record** | `lerobot-record` saves episodes |\n| **Train** | `lerobot-train` fits a policy |\n| **Evaluate** | `lerobot-rollout` tests a policy |\n\n## Key terms\n\n- **Dataset episode**: one time-ordered run of a task.\n- **Policy**: a function that maps observations to actions.\n- **Rollout**: running a policy in an environment.\n- **Calibration**: aligning sensor values with physical positions.\n- **Library**: reusable code that other programs can call.\n- **Driver**: software that communicates with a specific device.\n\n## Getting started\n\n1. **Install the current package** using the official docs, follow the SO-101 setup, calibrate leader and follower, and run `lerobot-teleoperate`. Record only after you can move the follower smoothly.\n2. **Start with a small** local dataset and a few clearly labeled episodes; check that camera frames and joint state arrive at the same rate.\n3. **Record the LeRobot version** because command options can change over time.\n\n## Used in\n\n- **Pilot projects share LeRobot:** The SO-101 assembly/teleoperation, demonstration-collection, ACT, and SmolVLA lessons use it to connect hardware and learning.\n- **The LeRobot repository maintains the software:** The real-world robot tutorial documents an end-to-end workflow.\n- **The software can support** an experiment, but it does not remove the need to inspect the robot, supervise motion, and evaluate on held-out trials.",
+      "resources": [
+        {
+          "title": "Recording a Robotics Dataset to train VLA (LeRobot Arm)",
+          "url": "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A LeRobot arm demonstration shows dataset recording in the real stack."
+        },
+        {
+          "title": "LeRobot",
+          "url": "https://huggingface.co/lerobot",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The official Hugging Face organization collects LeRobot's robot-learning datasets, models, and project releases."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The official LeRobot tutorial shows teleoperation, data recording, policy training, and evaluation, including SO-101 commands."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current LeRobot docs specify the SO-101 follower, motors, gear ratios, setup, and calibration."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://github.com/huggingface/lerobot"
+      ]
+    },
+    {
+      "node_id": "r:smolvla",
+      "type": "robot",
+      "name": "SmolVLA",
+      "summary": "SmolVLA is a compact vision-language-action model that turns camera observations, robot state, and a text instruction into robot action chunks.",
+      "lesson_md": "## In one sentence\n\nSmolVLA is a compact vision-language-action model that turns camera observations, robot state, and a text instruction into robot action chunks.\n\n![SmolVLA model diagram connecting camera and joint inputs to action outputs](/img/lessons/robot-smolvla-model.webp)\n*SmolVLA model diagram connecting camera and joint inputs to action outputs. Source: [Hugging Face SmolVLA blog](https://huggingface.co/blog/smolvla), license unknown.*\n\n## Why it matters for us\n\n- **A language command needs physical grounding:** “Pick up the red block” must become a sequence of joint targets.\n- **SmolVLA has 450 million parameters:** Hugging Face reports support for multi-camera RGB images, robot sensorimotor state, and natural-language instructions.\n- **SmolVLA outputs continuous action chunks**, not a paragraph explaining what to do.\n\n> **Key idea:** A compact VLA maps multimodal observations to a short action horizon; inference speed shapes the next move.\n\n## What it is made of / how it works\n\n- **Inputs include vision, language, and proprioception:** Proprioception means sensing the robot's own joint state.\n- **The policy predicts a short action horizon:** The runtime executes it before requesting another prediction.\n- **The published training mix** contains 487 curated SO-100 datasets, recorded at 30 frames per second, totaling about 10 million frames.\n- **Training-set size is not a guarantee:** The reported data does not ensure a new task works with only a handful of episodes.\n\n| Specification | Value |\n| --- | --- |\n| **Parameters** | 450 million |\n| **Inputs** | Camera images, robot state, language instruction |\n| **Outputs** | Continuous action chunks |\n| **Training datasets** | 487 curated SO-100 datasets |\n| **Reported data scale** | About 10 million frames at 30 FPS |\n\n## Key terms\n\n- **VLA**: a vision-language-action model that maps visual and language context to physical actions.\n- **Parameter**: a learned numeric weight in a model.\n- **Action chunk**: several future control steps predicted together.\n- **Proprioceptive state**: the robot's own measured configuration.\n- **Instruction**: a description of intent; calibration and task data determine what the model can execute.\n\n## Getting started\n\n1. **Use the current LeRobot** SmolVLA docs and pretrained `lerobot/smolvla_base` checkpoint.\n2. **Match the dataset’s camera names** to policy inputs; the docs show a rename map and a training command with 20,000 steps.\n3. **Begin with a known** tabletop task, inspect a few episodes visually, and test the pretrained model in simulation before enabling hardware.\n\n## Used in\n\n- **SmolVLA** is used in LeRobot’s language-commanded arm project.\n- **The model is open-source** and intended to run with accessible robot hardware, but inference cost depends on the machine, image resolution, and configuration.\n- **Compare the model's success** on held-out positions with a simpler behavior-cloning baseline, and record the exact checkpoint and dataset revision.",
+      "resources": [
+        {
+          "title": "SmolVLA: Affordable, Efficient Robotics with a 450M Parameter VLA Model",
+          "url": "https://www.youtube.com/watch?v=bIlEsJQiBIo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A robotics-focused creator introduces the model and its intended applications."
+        },
+        {
+          "title": "lerobot/smolvla_base",
+          "url": "https://huggingface.co/lerobot/smolvla_base",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The official pretrained checkpoint is available to inspect and load."
+        },
+        {
+          "title": "SmolVLA: Efficient Vision-Language-Action Model trained on LeRobot Community Data",
+          "url": "https://huggingface.co/blog/smolvla",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The authors report the 450M model, inputs, action chunks, and curated training data."
+        },
+        {
+          "title": "SmolVLA",
+          "url": "https://huggingface.co/docs/lerobot/smolvla",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current docs cover model setup, camera names, training, and rollout."
+        },
+        {
+          "title": "SmolVLA: Efficient Vision-Language-Action Model trained on LeRobot Community Data",
+          "url": "https://huggingface.co/papers/2506.01844",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The paper page records the model design and evaluations."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/smolvla",
+        "https://huggingface.co/blog/smolvla",
+        "https://huggingface.co/papers/2506.01844"
+      ]
+    },
+    {
+      "node_id": "r:nvidia-jetson-orin-nano-super-developer-kit",
+      "type": "robot",
+      "name": "NVIDIA Jetson Orin Nano Super Developer Kit",
+      "summary": "The Jetson Orin Nano Super Developer Kit is an NVIDIA edge-computing platform for running AI and robotics software near the robot.",
+      "lesson_md": "## In one sentence\n\nThe Jetson Orin Nano Super Developer Kit is an NVIDIA edge-computing platform for running AI and robotics software near the robot.\n\n![NVIDIA Jetson Orin Nano Super developer kit beside its retail box](/img/lessons/jetson-orin-nano-super.webp)\n*NVIDIA Jetson Orin Nano Super developer kit beside its retail box. Source: [NVIDIA Jetson Orin Nano Super product page](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/nano-super-developer-kit/), license unknown.*\n\n## Why it matters for us\n\n- **Edge inference keeps camera frames local:** A robot may process images without sending every frame to a remote server.\n- **Jetson Developer Kit:** A small Linux computer with an NVIDIA GPU and interfaces for cameras and peripherals.\n- **NVIDIA's December 2024 announcement reported 67 sparse TOPS:** It also cited 8 GB LPDDR5 memory and 102 GB/s memory bandwidth.\n- **The announced power modes were 7 W, 15 W, and 25 W:** The module offers those selectable options.\n\n> **Key idea:** Local inference is useful only within the board's power and thermal limits.\n\n## What it is made of / how it works\n\n- **The developer kit pairs a module with a carrier board:** It adds connectors and software; TOPS is peak AI throughput, not a guarantee every model runs that fast.\n- **Reported performance and price:** The announcement listed 33 dense TOPS and 17 FP16 TFLOPs under its metrics and cut the kit price to $249 then.\n- **Price and availability change:** Treat that figure as a dated announcement, not a current quote.\n\n| Specification | Value |\n| --- | --- |\n| **AI performance** | 67 sparse TOPS; 33 dense TOPS; 17 FP16 TFLOPs |\n| **Memory** | 8 GB 128-bit LPDDR5 |\n| **Memory bandwidth** | 102 GB/s |\n| **CPU** | 6-core Arm Cortex-A78AE at 1.7 GHz |\n| **Module power modes** | 7 W, 15 W, or 25 W |\n| **Announced kit price** | $249 on December 17, 2024 |\n\n## Key terms\n\n- **Edge computing**: running inference on or near the robot.\n- **RAM**: memory holding active programs and tensors.\n- **Bandwidth**: how quickly data moves between memory and processors.\n- **Power mode**: the module's power budget, which affects performance and heat; a model that fits in memory can still exceed latency or thermal limits.\n\n## Getting started\n\n1. Consult the **current NVIDIA Jetson Linux guide** for supported software and Jetson AI Lab tutorials for edge-AI workflows.\n2. Check **camera interfaces, storage, cooling, and power** before attaching the board to a robot.\n3. **Benchmark the complete pipeline** —camera capture, model inference, and actuator communication—rather than quoting TOPS alone.\n\n## Used in\n\n- **The kit hosts edge workloads:** It can run ROS 2 nodes, camera processing, and smaller learned policies on a mobile robot or arm.\n- **The Jetson kit is a compute option, not an actuator controller:** Motor power and safety remain separate.\n- **NVIDIA’s 2024 claims help compare compute options:** Use the stated performance and price to compare the announced revision with a laptop or cloud machine.\n- **Verify the exact module and software version** you buy before relying on those comparisons.",
+      "resources": [
+        {
+          "title": "NVIDIA Jetson Orin Nano SUPER Unboxing, Setup, and Creating a Chat Bot with OpenWebUI",
+          "url": "https://www.youtube.com/watch?v=uhRfC3cDVEs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "UWF Hydrobotics demonstrates setup on the Super kit, including a small local AI application."
+        },
+        {
+          "title": "NVIDIA Jetson Orin Nano Developer Kit Gets a “Super” Boost",
+          "url": "https://developer.nvidia.com/blog/nvidia-jetson-orin-nano-developer-kit-gets-a-super-boost/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The 2024 NVIDIA post gives TOPS, memory, power modes, and the announced price."
+        },
+        {
+          "title": "Jetson Linux Developer Guide",
+          "url": "https://docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide/index.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The archived R36.4 guide documents the software stack associated with the kit."
+        },
+        {
+          "title": "Jetson AI Lab tutorials",
+          "url": "https://jetson-ai-lab.com/tutorials/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Jetson AI Lab provides practical edge-AI deployments for Jetson hardware."
+        }
+      ],
+      "sources": [
+        "https://developer.nvidia.com/blog/nvidia-jetson-orin-nano-developer-kit-gets-a-super-boost/",
+        "https://docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide/index.html"
+      ]
+    },
+    {
+      "node_id": "p:assemble-teleoperate-an-so-101",
+      "type": "project",
+      "name": "Assemble & teleoperate an SO-101",
+      "summary": "Build an SO-101 arm, calibrate its joints, then teleoperate the follower with a hand-moved leader arm.",
+      "lesson_md": "## In one sentence\n\nBuild an SO-101 arm, calibrate its joints, then teleoperate the follower with a hand-moved leader arm.\n\n![SO-101 follower arm posed for calibration during assembly](/img/lessons/assemble-so-101.webp)\n*SO-101 follower arm posed for calibration during assembly. Source: [LeRobot SO-101 assembly guide](https://huggingface.co/docs/lerobot/main/en/assemble_so101), license unknown.*\n\n## What you will learn\n\n- **Assembly reveals the hardware/software boundary:** It establishes geometry, calibration maps servo counts to joint angles, and teleoperation streams leader positions to the follower.\n- **Assembly and calibration reveal the system:** Six motor IDs, two serial ports, and the gripper connect commands to visible motion.\n- The **official LeRobot docs** specify supported assembly and setup steps.\n\n> **Key idea:** The build is complete when calibrated joints reproduce the leader's motion repeatably.\n\n## What you need\n\n- **Required setup:** SO-101 follower and leader, correct power supplies and serial interface, current LeRobot on a computer, and assembly/calibration instructions.\n- Identify actual **serial ports** with the operating system; `/dev/ttyACM0` is only an example. Supervise the arm and clear loose cables from the workspace.\n\n## Steps\n\n1. **Assemble the frame** in the official order and check every joint moves freely by hand while unpowered.\n2. **Connect the bus** and identify follower and leader ports; record their IDs.\n3. **Calibrate the joints** with the documented procedure so raw encoder positions map to joint ranges.\n4. **Teleoperate the follower** using the documented command.\n\n```bash\nlerobot-teleoperate \\\n  --robot.type=so101_follower --robot.port=/dev/ttyACM0 \\\n  --robot.id=so101_follower \\\n  --teleop.type=so101_leader --teleop.port=/dev/ttyACM1 \\\n  --teleop.id=so101_leader\n```\n\n5. **Replace port and ID** values with those configured on your system; move slowly and verify each joint before recording data.\n\n```mermaid\nflowchart LR\n  A[\"Assemble arms\"] --> P[\"Find serial ports\"]\n  P --> C[\"Calibrate joints\"]\n  C --> T[\"Teleoperate follower\"]\n  T --> D[\"Record demonstrations\"]\n```\n\n## Common pitfalls\n\n- **Communication faults can mimic motor failure:** A wrong port or duplicate servo ID may stop motion; a startup jump can indicate incorrect calibration or an unexpected joint position.\n- If the **follower moves opposite to the leader**, stop and inspect the config and joint mapping rather than forcing the mechanism.\n- Never test a **powered arm** while hands are inside its reachable area.\n\n## When it's done\n\n- **A safe test confirms follower response:** The follower mirrors a small, slow leader movement, returns to its calibrated position, and reports no communication error.\n- Save the **robot configuration** and a short motion video so another student can reproduce the setup; then use the official `lerobot-record` tutorial to capture a labeled demonstration.",
+      "resources": [
+        {
+          "title": "【Assembly Tutorial】Waveshare SO-ARM100/101 Kit,Open-Source Ai Robot Arm #LeRobot #huggingface",
+          "url": "https://www.youtube.com/watch?v=rVP1XQ0PeM4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Waveshare's assembly video shows the SO-ARM100/101 parts and build sequence."
+        },
+        {
+          "title": "TheRobotStudio/SO-ARM100",
+          "url": "https://github.com/TheRobotStudio/SO-ARM100",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The open project provides the low-cost arm design and build files."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current LeRobot docs specify the SO-101 follower, motors, gear ratios, setup, and calibration."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The tutorial includes documented `lerobot-teleoperate`, `lerobot-record`, and rollout workflows."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://github.com/TheRobotStudio/SO-ARM100"
+      ]
+    },
+    {
+      "node_id": "p:pid-tuning-playground-in-simulation",
+      "type": "project",
+      "name": "PID tuning playground in simulation",
+      "summary": "Tune a simulated joint's PID gains and measure how quickly and smoothly it reaches a target.",
+      "lesson_md": "## In one sentence\n\nTune a simulated joint's PID gains and measure how quickly and smoothly it reaches a target.\n\n![Franka Panda model rendered in MuJoCo for simulated joint-control experiments](/img/lessons/project-pid-tuning.webp)\n*Franka Panda model rendered in MuJoCo for simulated joint-control experiments. Source: [MuJoCo model gallery](https://mujoco.readthedocs.io/en/stable/models.html), license unknown.*\n\n## What you will learn\n\n- **Feedback metrics** include rise time, overshoot, settling time, and steady-state error; simulation lets you change gains without stressing hardware.\n- **Study one degree of freedom:** Choose a target angle, vary the gain, and explain the response instead of seeking one universal “best” gain.\n\n> **Key idea:** Compare gains only under the same target, load, and simulation time step.\n\n## What you need\n\n- **A one-joint model makes feedback visible:** Use Python or another simulator with a time step and a plot of target versus measured position.\n- **The MathWorks PID video** and current ROS 2 Control docs explain the terms used here.\n- **Keep units consistent:** Use radians for angles and seconds for time throughout the loop.\n\n## Steps\n\n1. **Set a 1.0 rad target** and initialize the simulated joint at 0.\n2. **Run a proportional loop** and plot the error at each update.\n3. **Increase `kp` until motion responds;** record overshoot and settling time.\n4. **Add a small integral gain** to remove constant load error, then cap accumulated integral.\n5. **Add derivative only when needed:** use it to damp oscillation and filter noisy measurements.\n6. **Repeat with a disturbance** and document final gains and simulation time step.\n\nA six-line loop is enough to start.\n\n```python\nerror = target - position\nintegral += error * dt\nderivative = (error - previous) / dt\ncommand = kp*error + ki*integral + kd*derivative\nposition += command * dt\nprevious = error\n```\n\n```mermaid\nflowchart LR\n  S[\"Setpoint\"] --> C[\"PID controller\"]\n  C --> J[\"Simulated joint\"]\n  J --> M[\"Measure overshoot and settling\"]\n  M --> G[\"Adjust one gain\"]\n  G --> C\n```\n\n## Common pitfalls\n\n- **Change one PID term at a time:** Adjusting P, I, and D simultaneously hides cause and effect; a large integral term can wind up during output saturation.\n- **Changing the time step affects derivatives:** Update the derivative calculation when the time step changes; gains are not universal across units or joint models.\n\n## When it's done\n\n- **Compare at least three gain settings:** Explain their behavior from the error trace and save the plot, code, gains, disturbance, and time step.\n- Compare the simulated **response** with the PID lesson before moving to a real motor controller.",
+      "resources": [
+        {
+          "title": "What Is PID Control? | Understanding PID Control, Part 1",
+          "url": "https://fr.mathworks.com/videos/understanding-pid-control-part-1-what-is-pid-control--1527089264373.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A focused MathWorks Tech Talk shows the proportional, integral, and derivative terms."
+        },
+        {
+          "title": "CTM: PID Tutorial",
+          "url": "https://www2.ensc.sfu.ca/people/faculty/saif/ctm/PID/PID.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "This tutorial works through P, I, and D on a 1 kg mass-spring-damper plant and compares rise time, overshoot, and steady-state error."
+        },
+        {
+          "title": "PID controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/pid_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Current ROS 2 Control docs explain PID parameters and controller interfaces."
+        },
+        {
+          "title": "PID Controller Types for Tuning",
+          "url": "https://www.mathworks.com/help/control/ug/pid-controller-types-for-tuning.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The focused reference compares PID forms used in practical tuning."
+        }
+      ],
+      "sources": [
+        "https://fr.mathworks.com/videos/understanding-pid-control-part-1-what-is-pid-control--1527089264373.html",
+        "https://control.ros.org/rolling/doc/ros2_controllers/pid_controller/doc/userdoc.html",
+        "https://www2.ensc.sfu.ca/people/faculty/saif/ctm/PID/PID.html"
+      ]
+    },
+    {
+      "node_id": "p:intro-calibrate-a-webcam-and-track-apriltags",
+      "type": "project",
+      "name": "Intro: calibrate a webcam and track AprilTags",
+      "summary": "Calibrate a webcam, detect an AprilTag, and convert its image corners into a pose estimate.",
+      "lesson_md": "## In one sentence\n\nCalibrate a webcam, detect an AprilTag, and convert its image corners into a pose estimate.\n\n![Printed fiducial-marker target held in front of a camera](/img/lessons/project-webcam-apriltags.webp)\n*Printed fiducial-marker target held in front of a camera. Source: [OpenCV ArUco detection tutorial](https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html), license unknown.*\n\n## What you will learn\n\n- **Camera-to-robot geometry:** Connect calibration and marker pose to robot coordinates.\n- **Calibration, detection, and pose estimation:** Calibration models camera intrinsics and lens distortion; detection returns an ID and corners; pose estimation uses them, the camera model, and marker size.\n- **A marker pose is camera-relative:** It is not automatically a position in the robot base frame.\n\n> **Key idea:** A tag's 3-D pose is trustworthy only when camera calibration and tag size are known.\n\n![OpenCV detection result with marker corners and IDs overlaid on a camera image](/img/lessons/opencv-apriltag-detection.webp)\n*OpenCV detection result with marker corners and IDs overlaid on a camera image. Source: [OpenCV ArUco detection tutorial](https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html), license unknown.*\n\n## What you need\n\n- **Gather calibration essentials:** Use a webcam, printed checkerboard, known-size AprilTag, OpenCV 4.x, and diffuse lighting; measure the tag side and record it in meters.\n- **OpenCV 4.13.0 ArUco docs** cover current detector classes and AprilTag families; focus and glare can make detection unreliable.\n\n## Steps\n\n1. **Capture checkerboard images** at several distances and angles, then run the current OpenCV camera-calibration example.\n2. Save the camera **matrix and distortion coefficients** with the camera resolution.\n3. **Detect a tag** from each frame.\n\n```python\ndictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)\nparams = cv2.aruco.DetectorParameters()\ndetector = cv2.aruco.ArucoDetector(dictionary, params)\ncorners, ids, rejected = detector.detectMarkers(gray)\n```\n\n4. **Draw detections and estimate pose:** Mark the tag’s corners and ID; use the calibrated camera matrix and known tag size.\n5. **Transform an arm-mounted camera pose:** Use a measured camera-to-base transform to express its pose in `base_link`.\n\n```mermaid\nflowchart LR\n  B[\"Checkerboard images\"] --> K[\"Camera intrinsics\"]\n  K --> D[\"Detect AprilTag corners\"]\n  D --> P[\"Pose in camera frame\"]\n  P --> R[\"Transform to robot frame\"]\n```\n\n## Common pitfalls\n\n- **Match the marker family and dictionary:** Do not use an ArUco dictionary for a tag printed from another family; pixel corners are not 3-D world points.\n- **Metric scale needs marker size and matching resolution:** Without the physical side length, distance is unknown; a calibration from another resolution changes the camera model.\n- Use the current **OpenCV 4.x tutorial**; its API differs from 4.0.1.\n\n## When it's done\n\n- **Check repeatable detections:** The detector should keep the same ID across rotations, while a 10 cm tag reports plausible, repeatable distance as the camera moves.\n- Save the **calibration file**, OpenCV version, image resolution, tag family, and marker size so another student can reproduce the result.",
+      "resources": [
+        {
+          "title": "[GSoC 15] Detection of ArUco markers using OpenCV aruco module",
+          "url": "https://www.youtube.com/watch?v=IsXWrcB_Hvs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "This exact video is embedded in the current OpenCV marker-detection tutorial."
+        },
+        {
+          "title": "AprilTag 3",
+          "url": "https://github.com/AprilRobotics/apriltag",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The official AprilRobotics detector returns marker IDs and corner locations."
+        },
+        {
+          "title": "OpenCV: Detection of ArUco Markers",
+          "url": "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "OpenCV 4.13.0 explains dictionaries, detection, pose estimation, and AprilTag families."
+        },
+        {
+          "title": "AprilTag: A robust and flexible visual fiducial system",
+          "url": "https://april.eecs.umich.edu/software/apriltag",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The project page links the original AprilTag paper and describes the marker system."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=IsXWrcB_Hvs",
+        "https://docs.opencv.org/4.13.0/d5/dae/tutorial_aruco_detection.html",
+        "https://github.com/AprilRobotics/apriltag"
+      ]
+    },
+    {
+      "node_id": "p:autonomous-pick-and-place-with-act",
+      "type": "project",
+      "name": "Autonomous pick-and-place with ACT",
+      "summary": "Train and evaluate ACT to pick and place an object using action chunks learned from teleoperated demonstrations.",
+      "lesson_md": "## In one sentence\n\nTrain and evaluate ACT to pick and place an object using action chunks learned from teleoperated demonstrations.\n\n![ALOHA battery-slot task video frame showing a robot manipulating a battery](/img/lessons/project-act-pick-place.webp)\n*ALOHA battery-slot task video frame showing a robot manipulating a battery. Source: [ALOHA project page](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## What you will learn\n\n- **Action Chunking with Transformers** (ACT) predicts a short sequence of future joint positions from recent observations, rather than choosing only one action at a time.\n- **The ALOHA paper reports** a chunk size of 90, joint-position commands at 50 Hz, and roughly 50 demonstrations per task as a starting point in its experiments.\n- **A 90-step chunk therefore** covers 1.8 seconds at 50 Hz; a policy must still replan and recover when reality diverges.\n\n> **Key idea:** Action chunks reduce per-frame prediction, but generalization still depends on varied demonstrations.\n\n## What you need\n\n- **Use a supported SO-101** or ALOHA setup, synchronized camera and joint data, a task with a lightweight object, and the current LeRobot imitation-learning workflow.\n- **Begin with a fixed** table and object placement. The dataset should include successful demonstrations with consistent task labels; reserve new object positions for evaluation.\n\n## Steps\n\n1. **Teleoperate the arm** and record roughly 50 demonstrations; keep cameras, task language, and joint mapping consistent.\n2. **Inspect episodes** for missing frames, unsynchronized state, and failed grasps before training.\n3. **Train the ACT policy** with the current LeRobot workflow; record dataset revision, policy config, and checkpoint.\n4. **Run held-out rollouts** from several object positions; count completed picks, drops, and collisions.\n5. **Compare chunked and one-step actions** and inspect behavior after a missed grasp.\n\nA documented LeRobot recording command begins like this.\n\n```bash\nlerobot-record \\\n  --robot.type=so101_follower --robot.port=/dev/ttyACM0 \\\n  --teleop.type=so101_leader --teleop.port=/dev/ttyACM1 \\\n  --dataset.repo_id=YOUR_USER/so101_pick_place \\\n  --dataset.num_episodes=50 \\\n  --dataset.single_task=\"Pick up the cube\"\n```\n\n```mermaid\nflowchart LR\n  D[\"About 50 demos\"] --> C[\"90-step action chunks\"]\n  C --> A[\"ACT predicts actions\"]\n  A --> E[\"Evaluate held-out tasks\"]\n```\n\n## Common pitfalls\n\n- **Fifty demonstrations are not** a universal data requirement; task difficulty and variation matter. A long action chunk can continue after an unexpected slip, so use conservative settings and supervise hardware.\n- **Training loss does not** prove task success. Keep held-out trials separate from the episodes used to fit the policy.\n\n## When it's done\n\n- **Report success rate over** held-out episodes, not only the best run. Save the dataset ID, number of demonstrations, ACT chunk size, camera names, frame rate, and failure notes.\n- **The result is complete** when another student can reproduce training and explain a failure from the recorded observations.",
+      "resources": [
+        {
+          "title": "Slot Battery",
+          "url": "https://tonyzhaozh.github.io/aloha/resources/slot_battery.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The ALOHA authors' ACT rollout demonstrates the target pick-and-place skill by slotting a battery."
+        },
+        {
+          "title": "huggingface/lerobot",
+          "url": "https://github.com/huggingface/lerobot",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The maintained source contains robot drivers, data tools, and learning policies."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The tutorial includes documented `lerobot-teleoperate`, `lerobot-record`, and rollout workflows."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Beginner",
+          "why": "The ACT paper reports chunked actions, demonstration counts, and ALOHA experiments."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha",
+        "https://arxiv.org/abs/2304.13705",
+        "https://huggingface.co/docs/lerobot/il_robots"
+      ]
+    },
+    {
+      "node_id": "p:language-commanded-arm-with-smolvla",
+      "type": "project",
+      "name": "Language-commanded arm with SmolVLA",
+      "summary": "Fine-tune or run SmolVLA so a tabletop arm can respond to a natural-language task using camera and joint observations.",
+      "lesson_md": "## In one sentence\n\nFine-tune or run SmolVLA so a tabletop arm can respond to a natural-language task using camera and joint observations.\n\n![SmolVLA asynchronous policy diagram with server, client, and action queue](/img/lessons/project-smolvla-language-arm.webp)\n*SmolVLA asynchronous policy diagram with server, client, and action queue. Source: [Hugging Face SmolVLA blog](https://huggingface.co/blog/smolvla), license unknown.*\n\n## What you will learn\n\n- **SmolVLA turns language into actions:** A short instruction becomes physical behavior from multi-camera RGB images and sensorimotor state; it predicts continuous action chunks.\n- **Published model scale:** The model has 450M parameters and used 487 curated SO-100 datasets at 30 FPS, about 10 million frames.\n- **These are author-reported training facts:** They do not prove the model understands your lab's objects.\n\n> **Key idea:** Language states the goal; camera and joint data ground the policy's next action chunk.\n\n## What you need\n\n- **Hardware and model:** Use a LeRobot-compatible arm and cameras, an unambiguous task, and `lerobot/smolvla_base` or a task-specific dataset.\n- Match **camera names and robot state** to the docs; GPU memory and throughput depend on the model configuration and hardware.\n\n## Steps\n\n1. **Confirm the SO-101 and cameras work** independently; record a few episodes of one task.\n2. **Inspect camera order and names;** use the docs' `rename_map` if dataset names differ.\n3. **Train with documented `lerobot-train`;** save dataset revision, config, and model checkpoint.\n4. **Run a simulation or supervised rollout** with “move the cube to the tray.”\n5. **Test paraphrased instructions** and changed object positions separately.\n6. **Count task success and unsafe actions,** including confused behavior.\n\nA documented training command uses this shape; set your own dataset and output paths.\n\n```bash\nlerobot-train \\\n  --policy.type=smolvla \\\n  --dataset.repo_id=YOUR_USER/so101_demos \\\n  --output_dir=outputs/smolvla \\\n  --job_name=so101_smolvla \\\n  --steps=20000\n```\n\n```mermaid\nflowchart LR\n  I[\"Language instruction\"] --> M[\"SmolVLA policy\"]\n  C[\"Camera and joint state\"] --> M\n  M --> A[\"Action chunk\"]\n  A --> R[\"Arm moves\"]\n```\n\n## Common pitfalls\n\n- **A VLA does not guarantee language understanding:** Camera renaming can feed the wrong view, and one object position may not cover a new one.\n- Match **model, dataset, resolution, and policy device** to the current docs; supervise hardware instead of letting a new language command trigger high-speed motion.\n\n## When it's done\n\n- **Held-out evaluation records outcomes:** Test task completion from held-out starts and a few paraphrases, recording failures.\n- **Retain reproducibility details:** Compare with a simpler baseline and record the checkpoint, camera mapping, dataset, and instruction text.\n- **Report trial count and success rate:** Help another student distinguish repeatable behavior from a lucky demonstration.",
+      "resources": [
+        {
+          "title": "SmolVLA: Affordable, Efficient Robotics with a 450M Parameter VLA Model",
+          "url": "https://www.youtube.com/watch?v=bIlEsJQiBIo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A robotics-focused creator introduces the SmolVLA model used in this project."
+        },
+        {
+          "title": "SmolVLA: Efficient Vision-Language-Action Model trained on LeRobot Community Data",
+          "url": "https://huggingface.co/blog/smolvla",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The authors report the 450M model, inputs, action chunks, and curated training data."
+        },
+        {
+          "title": "SmolVLA",
+          "url": "https://huggingface.co/docs/lerobot/smolvla",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current docs cover model setup, camera names, training, and rollout."
+        },
+        {
+          "title": "SmolVLA: Efficient Vision-Language-Action Model trained on LeRobot Community Data",
+          "url": "https://huggingface.co/papers/2506.01844",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The paper page records the model design and evaluations."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/smolvla",
+        "https://huggingface.co/blog/smolvla",
+        "https://huggingface.co/papers/2506.01844"
+      ]
+    },
+    {
+      "node_id": "o:hugging-face-lerobot",
+      "type": "org",
+      "name": "Hugging Face (LeRobot)",
+      "summary": "Hugging Face's LeRobot team builds open-source tools, datasets, and policies for learning from real robot demonstrations.",
+      "lesson_md": "## In one sentence\n\nHugging Face's LeRobot team builds open-source tools, datasets, and policies for learning from real robot demonstrations.\n\n![Chart of LeRobot datasets uploaded over time, increasing through spring 2025](/img/lessons/org-huggingface-lerobot.webp)\n*Chart of LeRobot datasets uploaded over time, increasing through spring 2025. Source: [Hugging Face LeRobot datasets blog](https://huggingface.co/blog/lerobot-datasets), license unknown.*\n\n## What they do in robotics\n\n- **LeRobot links hardware and learning:** it supports robot control, dataset recording, model training, and policy evaluation.\n- **The docs cover SO-101 and learning workflows:** they include real-world imitation learning, SmolVLA, and commands such as `lerobot-record` and `lerobot-train`.\n- **Hugging Face hosts code, checkpoints, and datasets:** teams can inspect and share experiments instead of passing opaque files between laptops.\n\n> **Key idea:** Shared datasets and tools make robot experiments reproducible beyond a single lab.\n\n## Why they matter for 42AI\n\n- **The stack suits a software-focused student lab:** it offers a starting point for teams with limited mechanical background.\n- **A SO-101 workflow connects the stages:** teleoperate a task, label demonstrations, train a baseline, and compare held-out trials.\n- **The tools do not replace robotics basics:** understand motor calibration, camera synchronization, data licenses, and the difference between a pretrained model and validated behavior.\n\n## How to engage\n\n1. **Start with current LeRobot docs** and the repository issue tracker; reproduce a small supported workflow.\n2. **Make bug reports reproducible:** include robot type, package version, command, logs, dataset configuration, and a minimal reproduction.\n3. **Contribute a practical improvement:** improve a driver, add a dataset validation check, or document a clear setup failure.\n4. **Report benchmark context:** include the task, trial count, and failures, not only the best run.",
+      "resources": [
+        {
+          "title": "Recording a Robotics Dataset to train VLA (LeRobot Arm)",
+          "url": "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A LeRobot arm demonstration shows dataset recording in the real stack."
+        },
+        {
+          "title": "huggingface/lerobot",
+          "url": "https://github.com/huggingface/lerobot",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The maintained source contains robot drivers, data tools, and learning policies."
+        },
+        {
+          "title": "LeRobot",
+          "url": "https://huggingface.co/lerobot",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The current official tutorial demonstrates real-world recording, training, and rollout."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Current LeRobot docs specify the SO-101 follower, motors, gear ratios, setup, and calibration."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://github.com/huggingface/lerobot"
+      ]
+    },
+    {
+      "node_id": "o:pollen-robotics-hugging-face",
+      "type": "org",
+      "name": "Pollen Robotics (Hugging Face)",
+      "summary": "Pollen Robotics is a French robotics company known for open-source humanoid and expressive robots, now connected to Hugging Face's robotics work.",
+      "lesson_md": "## In one sentence\n\nPollen Robotics is a French robotics company known for open-source humanoid and expressive robots, now connected to Hugging Face's robotics work.\n\n![Reachy Mini on its hoverboard beside a dog](/img/lessons/reachy-mini.webp)\n*Reachy Mini on its hoverboard beside a dog. Source: [Pollen Robotics Reachy Mini page](https://pollen-robotics.com/reachy-mini/), license unknown.*\n\n## What they do in robotics\n\n- **Pollen platforms include Reachy and Reachy Mini:** Reachy is humanoid; Reachy Mini is a smaller expressive desktop robot.\n- **Accessible hardware and software** support developer experiments in interaction and embodied AI.\n- **Hugging Face announced Pollen’s acquisition:** It described plans to bring open-source robots to a broader machine-learning community.\n\n> **Key idea:** Open humanoid platforms let developers iterate on whole-body interaction.\n\n## Why they matter for 42AI\n\n- **Pollen connects research and product engineering:** Its open robot platform also offers developer tooling.\n- **Reachy Mini shows expressive interaction:** Head motion, gaze, and behavior shape the interface beyond navigation and grasping.\n- Compare **Reachy Mini** with SO-101, which targets low-cost arm manipulation and learning rather than expressive interaction.\n\n## How to engage\n\n1. **Read the current product** and developer documentation before proposing a project.\n2. **Identify whether an idea** needs a robot, simulation, or only a dataset; include a clear task, expected contribution, and available student time.\n3. **Follow official availability updates** from Pollen and Hugging Face, since software and hardware details can change after the acquisition.\n4. **Start with official repositories:** Check the open-source repository and model organization before sending a generic partnership request.",
+      "resources": [
+        {
+          "title": "Reachy Mini: An Open Journey Built Together with Hugging Face, Pollen Robotics, & Seeed Studio",
+          "url": "https://www.youtube.com/watch?v=Lus1HBWY2E8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Pollen Robotics and its partners describe Reachy Mini's development and open-robotics launch."
+        },
+        {
+          "title": "Hugging Face Pollen Robotics",
+          "url": "https://huggingface.co/pollen-robotics",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Pollen’s Hugging Face organization hosts robot models and project artifacts."
+        },
+        {
+          "title": "Reachy Mini",
+          "url": "https://www.pollen-robotics.com/reachy-mini/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The product page explains Reachy Mini’s expressive desktop-robot design."
+        },
+        {
+          "title": "Hugging Face to sell open-source robots thanks to Pollen Robotics acquisition",
+          "url": "https://huggingface.co/blog/hugging-face-pollen-robotics-acquisition",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "The announcement describes Pollen’s open-source robot work and the Hugging Face acquisition."
+        }
+      ],
+      "sources": [
+        "https://www.pollen-robotics.com/",
+        "https://www.pollen-robotics.com/reachy-mini/",
+        "https://huggingface.co/blog/hugging-face-pollen-robotics-acquisition"
+      ]
+    },
+    {
+      "node_id": "o:eth-zurich-robotic-systems-lab-rsl",
+      "type": "org",
+      "name": "ETH Zurich Robotic Systems Lab (RSL)",
+      "summary": "ETH Zurich's Robotic Systems Lab develops legged and mobile robots and studies how they operate in complex real-world environments.",
+      "lesson_md": "## In one sentence\n\nETH Zurich's Robotic Systems Lab develops legged and mobile robots and studies how they operate in complex real-world environments.\n\n![ANYmal quadruped photographed at ETH Zurich RSL ARGOS C1 site](/img/lessons/anymal-rsl.webp)\n*ANYmal quadruped photographed at ETH Zurich RSL ARGOS C1 site. Source: [ETH RSL ANYmal media page](https://rsl.ethz.ch/robots-media/anymal.html), license unknown.*\n\n## What they do in robotics\n\n- **RSL develops ANYmal and studies autonomy:** The quadruped traverses difficult terrain; the lab researches locomotion, perception, and autonomy.\n- **ETH RSL documents physical evaluation:** Its lab and robot pages show algorithms tested on machines, not only benchmark plots.\n- **RSL publishes open software**, including tools used for legged-robot learning.\n\n> **Key idea:** Field robots connect algorithms to environmental evidence, not just lab benchmarks.\n\n## Why they matter for 42AI\n\n- **RSL provides a comparison point:** Field robots must maintain balance and footholds outdoors, unlike a low-cost tabletop arm.\n- A **learned gait** must tolerate uneven ground, sensor noise, actuator limits, and repeated impacts.\n- **RSL papers, footage, and code** show a research path from model to hardware and let students identify lessons that generalize to smaller projects.\n\n## How to engage\n\n1. **Read a recent paper** and watch the associated robot demonstration before contacting a researcher. Ask one specific question about an open-source tool, experiment setup, student event, or reproducibility detail.\n2. **If reproducing a result**, state the robot and software version, simulator settings, dataset, and measured outcomes.\n3. **Treat RSL’s pages as research references:** Do not assume a robot or lab resource is available to outside teams.",
+      "resources": [
+        {
+          "title": "Learning Quadrupedal Locomotion over Challenging Terrain",
+          "url": "https://www.youtube.com/watch?v=9j2a1oAHDL8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The lab's video shows its ANYmal robot using a learned controller on irregular ground."
+        },
+        {
+          "title": "leggedrobotics/rsl_rl",
+          "url": "https://github.com/leggedrobotics/rsl_rl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "The open-source reinforcement-learning implementation comes from the legged robotics group."
+        },
+        {
+          "title": "Lab – Robotic Systems Lab | ETH Zurich",
+          "url": "https://rsl.ethz.ch/the-lab.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "The lab page describes ETH RSL’s robotics research and platforms."
+        },
+        {
+          "title": "Learning quadrupedal locomotion over challenging terrain",
+          "url": "https://arxiv.org/abs/2010.11251",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The paper describes learned quadruped locomotion and terrain robustness."
+        }
+      ],
+      "sources": [
+        "https://rsl.ethz.ch/robots-media/anymal.html",
+        "https://rsl.ethz.ch/the-lab.html",
+        "https://github.com/leggedrobotics/rsl_rl"
+      ]
+    }
+  ]
+}

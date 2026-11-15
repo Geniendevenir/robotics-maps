@@ -13,7 +13,19 @@ export interface MapNode {
   notion_url: string | null;
   geo?: Geo | null;
   fields: Record<string, unknown>;
+  lesson?: Lesson;
 }
+
+export interface Resource { title: string; url: string; format: string; level: string; why: string }
+
+export interface Lesson { summary: string; lesson_md: string; resources: Resource[] }
+
+export interface GuideChapter {
+  id: string; title: string; branch: string | null; body_md: string;
+  start_here: string[]; resources: Resource[];
+}
+
+export interface Guide { title: string; intro_md: string; chapters: GuideChapter[]; sources?: string[] }
 
 export type EdgeKind =
   | "prerequisite" | "project-knowledge" | "project-robot" | "project-org"
@@ -21,7 +33,7 @@ export type EdgeKind =
 
 export interface MapEdge { source: string; target: string; kind: EdgeKind }
 
-export interface GraphData { generated_at: string; nodes: MapNode[]; edges: MapEdge[] }
+export interface GraphData { generated_at: string; nodes: MapNode[]; edges: MapEdge[]; guide?: Guide }
 
 export interface Group {
   id: string; name: string; description: string; color: string;

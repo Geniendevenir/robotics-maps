@@ -48,8 +48,29 @@ def jitter(node_id):
     return math.cos(angle) * radius, math.sin(angle) * radius
 
 
+LESSONS_DIR = DATA_DIR.parents[1] / "output" / "lessons"
+
+
+def load_learning(lessons_dir=LESSONS_DIR):
+    lessons = {}
+    guide = None
+    for path in sorted(lessons_dir.glob("*.json")) if lessons_dir.exists() else []:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if path.name == "guide.json":
+            guide = payload
+            continue
+        for lesson in payload.get("lessons", []):
+            lessons[lesson["node_id"]] = {
+                "summary": lesson.get("summary", ""),
+                "lesson_md": lesson.get("lesson_md", ""),
+                "resources": lesson.get("resources", []),
+            }
+    return lessons, guide
+
+
 def build_graph():
     rows = rows_by_kind()
+    lessons, guide = load_learning()
     ids, _ = assign_node_ids(rows)
     notion_urls = read_json(DATA_DIR / "notion_urls.json")
     url_names, _ = url_indexes(notion_urls)
@@ -90,6 +111,8 @@ def build_graph():
                 "notion_url": notion_url,
                 "fields": fields,
             }
+            if node_id in lessons:
+                node["lesson"] = lessons[node_id]
             if kind == "ecosystem":
                 place = place_for_org(fields, row.get("country"))
                 coords = geocache.get(place)
@@ -148,11 +171,14 @@ def build_graph():
             for name in relation_targets(row, field):
                 add_edge(robot_id, target_kind, name, edge_kind)
 
-    return {
+    graph = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "nodes": nodes,
         "edges": edges,
-    }, dropped
+    }
+    if guide:
+        graph["guide"] = guide
+    return graph, dropped
 
 
 def main():

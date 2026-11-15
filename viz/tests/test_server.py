@@ -26,7 +26,7 @@ def test_api_data_counts(client):
     response = client.get("/api/data")
     assert response.status_code == 200
     graph = response.json()
-    assert set(graph) == {"generated_at", "nodes", "edges"}
+    assert {"generated_at", "nodes", "edges"} <= set(graph) <= {"generated_at", "nodes", "edges", "guide"}
     counts = Counter(node["type"] for node in graph["nodes"])
     expected = {"project": 624, "knowledge": 231, "robot": 542, "org": 615}
     assert counts == expected, (
@@ -218,3 +218,11 @@ def test_mcp_http_accepts_canonical_path():
         )
     assert response.status_code == 200
     assert "event: message" in response.text
+
+
+def test_index_html_is_not_cached(client):
+    if not (server_app.VIZ_ROOT / "web" / "dist" / "index.html").exists():
+        pytest.skip("frontend not built")
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
