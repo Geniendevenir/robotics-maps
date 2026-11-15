@@ -612,6 +612,111 @@
         "https://www.youtube.com/watch?v=kvxFvZt-Ryk",
         "https://www.youtube.com/watch?v=gqbn4ME_q20"
       ]
+    },
+    {
+      "node_id": "p:imu-mount-vibration-transmission-comparison",
+      "type": "project",
+      "name": "IMU mount vibration transmission comparison",
+      "summary": "Bolt the same IMU rigidly, then on a soft mount, next to a restrained low-energy vibration source, and compare vibration spectra and clipping counts.",
+      "lesson_md": "## In one sentence\n\nBolt the same IMU rigidly, then on a soft mount, next to a restrained low-energy vibration source, and compare vibration spectra and clipping counts.\n\n![ArduPilot example of an anti-vibration mount for a flight controller](/img/lessons/projects_sensing_1-imu-vibration.webp)\n*Anti-vibration mount example from the ArduPilot docs. Source: [ArduPilot Vibration Damping](https://ardupilot.org/copter/docs/common-vibration-damping.html), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **Vibration transmission:** How much shaking passes from a structure through the mount into the sensor.\n- **Clipping:** When acceleration exceeds the selected full-scale range, the reading saturates; ArduPilot counts these events as `Clip` values.\n- **Spectrum:** An FFT shows which frequencies carry vibration, like a profiler showing where time is spent.\n\n> **Key idea:** The mount is part of the sensor; a soft mount can change what the IMU measures.\n\n## What you need\n\n- **An ICM-42688-P breakout:** TDK lists accelerometer ranges of ±2, ±4, ±8 and ±16 g and 70 µg/√Hz noise.\n- A small motor with an offset weight, clamped down, foam or gel pads, a rigid plate and a microcontroller logger.\n\n## Steps\n\n1. **Fix the source settings:** same motor voltage and weight for every run, restrained on a bench.\n2. **Log a rigid mount** at a fixed sample rate, saving raw accelerometer values.\n3. **Log a compliant mount** with foam pads at the corners, ArduPilot's suggested 1–2 cm squares.\n4. **Repeat each setting** at least three times and compute FFT spectra and clip counts.\n5. **Run controls:** motor off for a no-signal baseline, and an unplugged sensor to check failure detection.\n\n```python\nimport numpy as np\nfs = 1000                                   # Hz sample rate\nspec = np.abs(np.fft.rfft(az - az.mean()))\nfreqs = np.fft.rfftfreq(len(az), 1 / fs)\nclipped = np.sum(np.abs(az) >= 0.99 * 16 * 9.81)   # ±16 g range\n```\n\n```mermaid\nflowchart LR\n  V[\"Restrained vibration source\"] --> M[\"Rigid or soft mount\"]\n  M --> I[\"ICM-42688-P\"]\n  I --> L[\"Raw log\"]\n  L --> F[\"FFT spectrum\"]\n  L --> C[\"Clip counter\"]\n```\n\n## Common pitfalls\n\n- **Pads too soft for a tiny board:** ArduPilot notes foam often isolates poorly because the autopilot's mass is so small.\n- **Changing range between runs:** a ±2 g setting clips far sooner than ±16 g.\n- This tests **mount effects only**, not inertial navigation accuracy or controller stability.\n\n## When it's done\n\n- **A video exists:** rigid and compliant mounts on the restrained source, with spectra and clipping flags, plus motor-off and unplugged trials.\n- Review **IMUs: accelerometers, gyroscopes & magnetometers** and compare with **Allan-deviation repeatability across stationary sessions**.",
+      "resources": [
+        {
+          "title": "Sensor Mounting Techniques - Effects on High Frequency Response",
+          "url": "https://www.youtube.com/watch?v=JMTEWiy5NwA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how mounting changes what an accelerometer measures."
+        },
+        {
+          "title": "Measuring Vibration — Copter  documentation",
+          "url": "https://ardupilot.org/copter/docs/common-measuring-vibration.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Practical vibration thresholds and clip counters from a real autopilot."
+        },
+        {
+          "title": "Vibration Damping — Copter  documentation",
+          "url": "https://ardupilot.org/copter/docs/common-vibration-damping.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Examples of foam and suspension mounts to compare."
+        },
+        {
+          "title": "Vibration Isolation | PX4 Guide (main)",
+          "url": "https://docs.px4.io/main/en/assembly/vibration_isolation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "PX4's guidance on isolating sensors and checking vibration in logs."
+        },
+        {
+          "title": "Enhancing IMU Accuracy in MRAVs: A Theoretical and Experimental Approach to Vibration Damping",
+          "url": "https://www.youtube.com/watch?v=ZKYEi5vq7YI",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "A research summary on modelling and testing IMU damping."
+        }
+      ],
+      "sources": [
+        "https://ardupilot.org/copter/docs/common-measuring-vibration.html",
+        "https://ardupilot.org/copter/docs/common-vibration-damping.html",
+        "https://docs.px4.io/main/en/assembly/vibration_isolation.html",
+        "https://www.invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+        "https://www.youtube.com/watch?v=JMTEWiy5NwA",
+        "https://www.youtube.com/watch?v=ZKYEi5vq7YI"
+      ]
+    },
+    {
+      "node_id": "p:imu-units-missing-orientation-and-axis-sign-replay",
+      "type": "project",
+      "name": "IMU units, missing orientation and axis-sign replay",
+      "summary": "Build an inspector that replays recorded and synthetic ROS IMU messages, rejects wrong units or flipped axes, and correctly shows unknown covariance and missing orientation.",
+      "lesson_md": "## In one sentence\n\nBuild an inspector that replays recorded and synthetic ROS IMU messages, rejects wrong units or flipped axes, and correctly shows unknown covariance and missing orientation.\n\n![Left-handed and right-handed 3D coordinate systems compared](/img/lessons/projects_sensing_1-imu-axes.webp)\n*Left-handed versus right-handed 3D axes. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:3D_Cartesian_Coodinate_Handedness.jpg), CC BY-SA 3.0, Primalshell.*\n\n## What you will learn\n\n- **SI units:** ROS `Imu.msg` requires acceleration in m/s² (not g) and angular velocity in rad/s.\n- **Sentinel values:** An all-zero covariance means **covariance unknown**; element 0 set to −1 means that estimate, such as orientation, is unavailable.\n- **Axis conventions:** REP 145 requires right-handed frames; at rest with z up, the accelerometer z axis should read +g.\n\n> **Key idea:** Treat each IMU message like an API response: validate units, flags and frames before anyone uses it.\n\n## What you need\n\n- **Software-first tooling:** ROS 2, Python, and a bag from an IMU such as the ICM-42688-P, or purely synthetic messages.\n- The `Imu.msg` definition and REP 145 open beside your code as the contract.\n\n## Steps\n\n1. **Write valid messages:** a stationary IMU, z up, about 9.81 m/s² on z and near-zero gyro.\n2. **Add broken cases:** acceleration in g, gyro in degrees per second, and a left-handed frame with y flipped.\n3. **Add sentinel cases:** all-zero covariance, and orientation covariance element 0 set to −1.\n4. **Replay and inspect:** your node labels each message *valid*, *unknown covariance*, *orientation unavailable* or *rejected*.\n5. **Test silence:** an empty topic and a message with no timestamp.\n\n```python\nG = 9.81\ndef check(msg):\n    az = msg.linear_acceleration.z\n    if 0.8 < abs(az) < 1.2:\n        return \"rejected: looks like g, expected m/s^2\"\n    if msg.orientation_covariance[0] == -1:\n        return \"orientation unavailable\"\n    if all(c == 0 for c in msg.linear_acceleration_covariance):\n        return \"covariance unknown\"\n    return \"valid\"\n```\n\n```mermaid\nflowchart LR\n  R[\"Recorded bag\"] --> P[\"Replay\"]\n  S[\"Synthetic cases\"] --> P\n  P --> I[\"IMU inspector\"]\n  I --> V[\"Valid\"]\n  I --> U[\"Unknown or unavailable\"]\n  I --> X[\"Rejected\"]\n```\n\n## Common pitfalls\n\n- **Reading −1 as data:** orientation covariance −1 means *ignore orientation*, not a negative variance.\n- **Zero covariance as perfect:** zeros mean unknown, not infinitely precise.\n- Building an **EKF or orientation filter** is out of scope; this project only inspects messages.\n\n## When it's done\n\n- **A screen recording exists:** the inspector rejecting wrong units and flipped axes, and showing unknown covariance and missing orientation correctly, plus an empty-topic trial.\n- Read **IMUs: accelerometers, gyroscopes & magnetometers**, then try **Allan-deviation repeatability across stationary sessions**.",
+      "resources": [
+        {
+          "title": "What is an Inertial Measurement Unit (IMU)?",
+          "url": "https://www.youtube.com/watch?v=qS9GwaekLW4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains what accelerometers and gyroscopes in an IMU measure."
+        },
+        {
+          "title": "How to identify a right-handed coordinate system",
+          "url": "https://www.youtube.com/watch?v=uX1w5JTr8IA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A quick way to check axis handedness by hand."
+        },
+        {
+          "title": "Imu.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The message contract: units, covariance and the −1 sentinel."
+        },
+        {
+          "title": "REP 103 -- Standard Units of Measure and Coordinate Conventions (ROS.org)",
+          "url": "https://www.ros.org/reps/rep-0103.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "ROS-wide SI units and axis conventions."
+        },
+        {
+          "title": "REP 145 -- Conventions for IMU Sensor Drivers (ROS.org)",
+          "url": "https://www.ros.org/reps/rep-0145.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Detailed IMU frame, sign and data-reporting rules for drivers."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+        "https://www.ros.org/reps/rep-0103.html",
+        "https://www.ros.org/reps/rep-0145.html",
+        "https://raw.githubusercontent.com/ros-infrastructure/rep/master/rep-0145.rst",
+        "https://commons.wikimedia.org/wiki/File:3D_Cartesian_Coodinate_Handedness.jpg",
+        "https://www.youtube.com/watch?v=qS9GwaekLW4",
+        "https://www.youtube.com/watch?v=uX1w5JTr8IA"
+      ]
     }
   ]
 }
