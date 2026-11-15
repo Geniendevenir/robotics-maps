@@ -451,6 +451,232 @@
         "https://github.com/rdesarz/biped-walking-controller",
         "https://underactuated.mit.edu/humanoids.html"
       ]
+    },
+    {
+      "node_id": "p:simulate-lipm-versus-slip",
+      "type": "project",
+      "name": "Simulate LIPM versus SLIP",
+      "summary": "Animate a constant-height walking model beside a spring-leg hopping model, and explain which motions each deliberately leaves out.",
+      "lesson_md": "## In one sentence\n\nAnimate a constant-height walking model beside a spring-leg hopping model, and explain which motions each deliberately leaves out.\n\n![Linear inverted pendulum diagram showing a point mass, ground reference and constant height](/img/lessons/projects_locomotion_2-lipm-slip-models.webp)\n*Published linear inverted pendulum diagram; compare its fixed height with the spring-leg model. Source: [Stéphane Caron](https://scaron.info/robotics/linear-inverted-pendulum-model.html), license unknown.*\n\n## What you will learn\n\n- **LIPM** means linear inverted pendulum model: body mass is concentrated at one point whose height stays fixed above level ground.\n- **SLIP** means spring-loaded inverted pendulum: a point mass on a massless spring leg alternates between ground support and flight.\n- **Reduced-order models** keep selected body motions while discarding joint detail; a convincing animation does not restore those missing dynamics.\n- **Think interface mocks:** both models simplify a robot, but each mock preserves different behavior and rejects different assumptions.\n\n> **Key idea:** Compare what the models represent, not which animation looks more like a complete robot.\n\n## What you need\n\n- **Map prerequisite:** Intro: train an RL policy in a GPU simulator; revisit Reduced-order locomotion models before implementing the equations.\n- **Starting software:** Python, plotting tools and MIT's SLIP notebook; Pinocchio is related on the map but unnecessary for these point-mass simulations.\n- **Planning estimate:** one week and €0 hardware, excluding the computer; this is a proposed learning exercise, not a hardware controller.\n\n## Steps\n\n1. **Write an assumptions table:** contrast fixed height and continuous support with a compressing spring and separate flight dynamics.\n2. **Implement LIPM acceleration:** translate the horizontal equation from Caron's derivation; name position, support location, gravity and height explicitly.\n3. **Run the SLIP reference:** MIT illustrates dimensionless stiffness 10.7, energy 1.61 and touchdown angle 30 degrees; retain its units and initialization.\n4. **Record phase events:** mark touchdown, takeoff and the highest flight point, called the apex; keep these separate from ordinary integration samples.\n5. **Test boundary cases:** include stationary LIPM, SLIP flight without touchdown, an empty launch list, nonpositive height or stiffness, and nonfinite states.\n6. **Demo side-by-side trajectories:** use labelled axes and phase colors; show assumptions, rejected inputs, completed runs, backward falls and timeouts.\n\n```mermaid\nflowchart LR\n A[\"Choose model\"] --> B[\"Set valid state\"]\n B --> C[\"Integrate dynamics\"]\n C --> D[\"Detect phase event\"]\n D --> C\n D --> E[\"Compare trajectories\"]\n```\n\n## Common pitfalls\n\n- **Equal coordinates are not equal experiments:** a SLIP launch also needs spring parameters and a contact phase; document those additional inputs.\n- **No flight in LIPM:** do not silently continue its supported-motion equation after removing the ground contact.\n- **Timestep sensitivity:** repeat a trajectory with a smaller integration step before interpreting differences as model behavior.\n\n## When it's done\n\n- **Publish replayable animations** and an assumptions table explaining why one trajectory stays level while the other can bounce.\n- **Continue with Map stable hopping parameters** once phase detection and failure reporting are reproducible.",
+      "resources": [
+        {
+          "title": "LegLab",
+          "url": "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the hopping machines that motivate spring-leg models."
+        },
+        {
+          "title": "underactuated/book/simple_legs/slip.ipynb at master · RussTedrake/underactuated · GitHub",
+          "url": "https://github.com/RussTedrake/underactuated/blob/master/book/simple_legs/slip.ipynb",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the reference spring-leg simulation and inspect contact events."
+        },
+        {
+          "title": "Linear inverted pendulum model",
+          "url": "https://scaron.info/robotics/linear-inverted-pendulum-model.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Translate constant-height assumptions into horizontal point-mass dynamics."
+        },
+        {
+          "title": "Ch. 4 - Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand SLIP stance, flight and the documented dimensionless example."
+        },
+        {
+          "title": "Ch. 5 - Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Understand the force and constant-height assumptions behind simplified walking models."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+        "https://github.com/RussTedrake/underactuated/blob/master/book/simple_legs/slip.ipynb",
+        "https://scaron.info/robotics/linear-inverted-pendulum-model.html",
+        "https://underactuated.mit.edu/simple_legs.html",
+        "https://underactuated.mit.edu/humanoids.html"
+      ]
+    },
+    {
+      "node_id": "p:simulate-rolling-contact-constraints",
+      "type": "project",
+      "name": "Simulate rolling-contact constraints",
+      "summary": "Animate a wheel attached to a moving leg and measure when its ground contact rolls without sliding.",
+      "lesson_md": "## In one sentence\n\nAnimate a wheel attached to a moving leg and measure when its ground contact rolls without sliding.\n\n![Published ANYmal wheel-leg diagram with wheel frames, rolling direction and terrain normal](/img/lessons/projects_locomotion_2-rolling-wheel-leg.webp)\n*The reference wheel model distinguishes wheel rotation from leg motion. Source: [arXiv](https://arxiv.org/html/1809.03557v2), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **Rolling contact** permits wheel rotation and forward travel while preventing relative sliding at the point touching the ground.\n- **A nonholonomic constraint** restricts velocity rather than fixing a position; a conventional wheel cannot simply translate sideways.\n- **Coordinate frames** attach directions to the terrain, leg or rotating wheel; mixing them changes the meaning of a velocity.\n- **Think runtime assertions:** a no-slip constraint checks the current motion, rather than merely checking the wheel's final location.\n\n> **Key idea:** A wheel on a moving leg needs contact velocity computed from both leg motion and wheel rotation.\n\n## What you need\n\n- **Map prerequisite:** Intro: train an RL policy in a GPU simulator; revisit Wheel-legged hybrid locomotion.\n- **Minimal setup:** build a planar wheel-on-leg simulation first; the published ANYmal model provides the geometry and contact-frame reasoning, not a ready-made beginner exercise.\n- **Related tool:** OCS2 appears on the map; integrating a full optimal controller is outside this first contact-constraint experiment.\n- **Planning estimate:** one week and €0 hardware, excluding the computer; use a reproducible simulation rather than physical motors.\n\n## Steps\n\n1. **Define the setup:** place a rotating wheel at the end of a moving leg above a level surface; label forward, sideways and upward directions.\n2. **Declare model assumptions:** keep the wheel upright for the first experiment; record radius, units, contact state and positive rotation direction.\n3. **Compute a rolling residual:** subtract radius times wheel angular speed from forward hub speed; plot this mismatch beside sideways contact velocity.\n4. **Exercise rolling and slipping:** compare compatible hub/wheel motion against deliberately mismatched commands; use frictional dynamics rather than enforcing no-slip in both cases.\n5. **Test missing support:** lift the wheel, apply no command, submit an empty trajectory, and reject invalid radius, timestep or nonfinite observations.\n6. **Demo the animation:** overlay the contact point and velocity arrows; publish residual traces and failure counts with each parameter file.\n\n```python\nrolling_error = hub_forward_speed - radius * wheel_angular_speed\nsideways_error = contact_sideways_speed\n```\n\n```mermaid\nflowchart LR\n A[\"Leg and wheel motion\"] --> B[\"Contact velocity\"]\n B --> C[\"Compare rolling condition\"]\n C --> D[\"Residual plot\"]\n C --> E[\"Animate contact\"]\n```\n\n## Common pitfalls\n\n- **A material point moves away:** the wheel point touching the ground changes as the wheel rotates; do not permanently pin one marked rim point.\n- **Airborne is not slipping:** separate no-contact samples from grounded residual statistics.\n- **Constraint versus outcome:** enforcing ideal rolling mathematically cannot demonstrate whether finite friction would actually sustain it.\n\n## When it's done\n\n- **Show labelled rolling and slipping replays**, including no-contact and rejected-input outcomes; distinguish prescribed kinematics from simulated contact dynamics.\n- **Continue with Switch between roll and step modes** after the contact-state and velocity conventions agree.",
+      "resources": [
+        {
+          "title": "Keep Rollin’ – Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://www.youtube.com/watch?v=nGLUsyx9Vvc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the real wheel-legged setup behind the simplified contact experiment."
+        },
+        {
+          "title": "13.3.1. Modeling of Nonholonomic Wheeled Mobile Robots – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Understand the conventional wheel's rolling and sideways-motion restrictions."
+        },
+        {
+          "title": "Keep Rollin’ – Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://arxiv.org/html/1809.03557v2",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Inspect the leg-fixed and wheel-fixed frames and nonholonomic rolling constraint."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Configure contact friction without confusing rolling resistance with a perfect no-slip constraint."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=nGLUsyx9Vvc",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+        "https://arxiv.org/html/1809.03557v2",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters"
+      ]
+    },
+    {
+      "node_id": "p:slip-aware-wheel-command-benchmark",
+      "type": "project",
+      "name": "Slip-aware wheel command benchmark",
+      "summary": "Compare wheel-speed predictions with independently simulated chassis motion to reveal when friction breaks ideal wheeled-robot kinematics.",
+      "lesson_md": "## In one sentence\n\nCompare wheel-speed predictions with independently simulated chassis motion to reveal when friction breaks ideal wheeled-robot kinematics.\n\n![TurtleBot 4 Standard reference mobile robot with its differential-drive base](/img/lessons/projects_locomotion_2-wheel-slip-benchmark.webp)\n*TurtleBot 4 is a reference platform, not a result from this proposed benchmark. Source: [TurtleBot 4 manual](https://turtlebot.github.io/turtlebot4-user-manual/overview/features.html), license unknown.*\n\n## What you will learn\n\n- **Kinematics** maps wheel speeds to chassis motion without solving the forces producing that motion.\n- **Differential drive** steers with independently rotating left and right wheels; its ideal model excludes sideways sliding.\n- **Odometry** estimates motion from wheel rotations; slipping, skidding and numerical integration can accumulate position error.\n- **Think integration tests:** ideal kinematics is the prediction service; the physics simulator supplies independent observations, not answers copied from that service.\n\n> **Key idea:** Wheel-derived odometry cannot independently validate the same wheel model that generated it.\n\n## What you need\n\n- **Prerequisite:** complete Calibrate wheel-radius mismatch in simulation; revisit Wheeled mobile robot kinematics.\n- **Simulation setup:** use a differential-drive asset with wheel-state logging, chassis ground truth and configurable contact friction; TurtleBot 4 illustrates the reference form factor.\n- **Planning estimate:** allow 1–2 months and €0 hardware, excluding the computer; no physical TurtleBot purchase is required.\n- **Scope:** this proposed benchmark measures disagreement; it does not establish a universal detector that distinguishes slip from every other modeling error.\n\n## Steps\n\n1. **Freeze the geometry:** retain calibrated wheel radii and spacing across experiments; record actuator limits, timestep and solver settings.\n2. **Create repeatable commands:** include straight travel, turns and stopping; integrate ideal chassis motion separately from the physics simulation.\n3. **Sweep surface friction:** inspect the effective contact parameters, not just one floor attribute; MuJoCo can combine parameters from both contacting shapes.\n4. **Measure position disagreement:** compute the distance between ideal and ground-truth endpoints; plot it alongside wheel rates, chassis speed and contact state.\n5. **Test boundaries:** include zero commands, no wheel contact, an empty command sequence, invalid observations and requests exceeding actuator limits.\n6. **Demo matched replays:** publish command files, friction settings, error curves, slip observations and success, rejection and timeout counts for every run.\n\n```python\nfrom math import hypot\nendpoint_error = hypot(\n    predicted_x - ground_truth_x,\n    predicted_y - ground_truth_y,\n)\n```\n\n```mermaid\nflowchart LR\n A[\"Wheel commands\"] --> B[\"Ideal prediction\"]\n A --> C[\"Frictional simulation\"]\n B --> D[\"Compare chassis motion\"]\n C --> D\n D --> E[\"Surface benchmark\"]\n```\n\n## Common pitfalls\n\n- **One error is not a diagnosis:** radius mismatch, saturation and timestep error can also produce disagreement; isolate them before attributing everything to slip.\n- **Zero-speed ratios fail:** use an absolute velocity residual near rest instead of dividing by vanishing wheel speed.\n- **Simulated surfaces are parameters:** do not label settings as measured asphalt or ice without real identification data.\n\n## When it's done\n\n- **Deliver reproducible comparisons** showing where wheel commands predict chassis motion and where they fail under the tested conditions.\n- **Keep conclusions local:** report the asset, surfaces and command envelope; simulation alone does not establish hardware transfer.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.1:  Wheeled Mobile Robots",
+          "url": "https://www.youtube.com/watch?v=NYO2X3eJ_Ro",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why wheel-speed kinematics assumes motion without skidding."
+        },
+        {
+          "title": "13.3.1. Modeling of Nonholonomic Wheeled Mobile Robots – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Build the ideal differential-drive prediction and respect its velocity constraints."
+        },
+        {
+          "title": "13.4. Odometry – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand wheel-integration errors and why chassis ground truth must be independent."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect effective contact friction and parameter-combination rules before sweeping surfaces."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=NYO2X3eJ_Ro",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters",
+        "https://turtlebot.github.io/turtlebot4-user-manual/overview/features.html"
+      ]
+    },
+    {
+      "node_id": "p:step-while-pushing-a-known-object",
+      "type": "project",
+      "name": "Step while pushing a known object",
+      "summary": "Adapt a simulated walking robot to push one known object while measuring object progress, foot slip and falls separately.",
+      "lesson_md": "## In one sentence\n\nAdapt a simulated walking robot to push one known object while measuring object progress, foot slip and falls separately.\n\n![OmniH2O humanoid holding a wheeled basket handle during a teleoperation demonstration](/img/lessons/projects_locomotion_2-stepping-push-object.webp)\n*Frame from the published wheeled-basket demonstration; this is inspiration, not a supplied contact-aware pushing benchmark. Source: [OmniH2O](https://omni.human2humanoid.com/), license unknown.*\n\n## What you will learn\n\n- **Loco-manipulation coordination** combines moving the robot's base and limbs with changing an object's motion.\n- **Contact forces** couple the object and robot; tracking a hand pose alone does not measure whether the object moved.\n- **Ground truth** is the simulator's direct state record, used here to separate object progress from foot and body motion.\n- **Think coupled services:** the walking controller and object interaction share state; testing either independently misses failures at their interface.\n\n> **Key idea:** Object motion counts only alongside maintained balance; a falling robot can still push something forward.\n\n## What you need\n\n- **Prerequisite:** finish Walk with a moving virtual payload; revisit Loco-manipulation coordination before introducing external object contact.\n- **Reference:** OmniH2O publishes whole-body teleoperation demonstrations, including a wheeled basket; it does not supply this proposed controlled pushing experiment.\n- **Integration gate:** first verify usable robot assets, motion data, checkpoints and object-contact support; Crocoddyl is a related map tool, not an interchangeable OmniH2O backend.\n- **Planning estimate:** three months or more and €0 hardware, excluding computer/GPU costs; keep this first project entirely simulated.\n\n## Steps\n\n1. **Reproduce walking first:** save the unmodified controller's stepping trace; verify that replay and state logging work before adding an object.\n2. **Define one known object:** record its shape, mass, friction and starting pose; fix the hand-contact region and desired direction of travel.\n3. **Add contact gradually:** test stationary contact before stepping with a scripted hand reference; stop on falls, invalid states or exceeded actuator limits.\n4. **Measure separate outcomes:** log object displacement along the requested direction, foot motion during support and whether the robot remains upright.\n5. **Compare matched trials:** replay walking without an object, contact without stepping, no commanded push, absent contact, empty references and invalid object parameters.\n6. **Demo synchronized evidence:** show robot and object motion beside contact, progress and fall traces; publish successes, slips, falls and timeouts, not just highlights.\n\n```python\nobject_progress = (\n    object_x_final - object_x_initial\n)\n```\n\n```mermaid\nflowchart LR\n A[\"Step and hand reference\"] --> B[\"Whole-body controller\"]\n B --> C[\"Robot-object contacts\"]\n C --> D[\"Robot and object state\"]\n D --> B\n D --> E[\"Progress and balance report\"]\n```\n\n## Common pitfalls\n\n- **A reference is not a force policy:** a free-space hand trajectory may fail when it encounters an object.\n- **Missing assets are an integration blocker:** document unavailable checkpoints or contact interfaces instead of claiming reproduction.\n- **Wheeled baskets are not every object:** keep friction and geometry fixed initially; do not generalize the result to arbitrary manipulation.\n\n## When it's done\n\n- **Publish a reproducible balance-preserving push** with object progress and explicit slip/fall criteria, plus all unsuccessful trial counts.\n- **State the limit:** this is one simulated object and setup, not general manipulation success or demonstrated hardware transfer.",
+      "resources": [
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch whole-body object interaction; focus on the wheeled-basket demonstration motivating this scoped adaptation."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://omni.human2humanoid.com/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the wheeled-basket clip and published failure cases before defining a simulated pushing task."
+        },
+        {
+          "title": "GitHub - LeCAR-Lab/human2humanoid: [IROS 2024] Learning Human-to-Humanoid Real-Time Whole-Body Teleoperation. [CoRL 2024] OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning · GitHub",
+          "url": "https://github.com/LeCAR-Lab/human2humanoid",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Check the actual environment, motion-data requirements and checkpoint placeholders before attempting adaptation."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://arxiv.org/abs/2406.08858",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the motion-tracking framework and distinguish published demonstrations from the proposed contact experiment."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+        "https://omni.human2humanoid.com/",
+        "https://github.com/LeCAR-Lab/human2humanoid",
+        "https://arxiv.org/abs/2406.08858",
+        "https://omni.human2humanoid.com/resources/teleoperation/OmniH2O-WheelBasket.mp4",
+        "https://raw.githubusercontent.com/LeCAR-Lab/human2humanoid/main/README.md"
+      ]
+    },
+    {
+      "node_id": "p:switch-between-roll-and-step-modes",
+      "type": "project",
+      "name": "Switch between roll and step modes",
+      "summary": "Cross a simulated curb with a wheel-legged robot, comparing rolling-to-stepping transitions through contact timing, tracking error and impact measurements.",
+      "lesson_md": "## In one sentence\n\nCross a simulated curb with a wheel-legged robot, comparing rolling-to-stepping transitions through contact timing, tracking error and impact measurements.\n\n![Published wheeled ANYmal photos showing plank traversal and rough-terrain locomotion](/img/lessons/projects_locomotion_2-roll-step-curb.webp)\n*The published robot combines rolling and stepping; these photographs are reference results, not the student's simulation. Source: [arXiv](https://arxiv.org/html/1909.07193v3), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **Hybrid locomotion** combines continuous robot motion with discrete contact changes, such as lifting a wheel and putting it down again.\n- **A contact schedule** specifies when each wheel supports the body and when it swings through the air.\n- **Tracking error** measures disagreement between a requested trajectory and actual robot motion; record both signals rather than just a smooth reference.\n- **Think state machines:** each mode has valid actions, and every transition needs a guard condition rather than an arbitrary timer alone.\n\n> **Key idea:** Changing a mode label is insufficient; wheel motion, leg motion and contact constraints must change consistently.\n\n## What you need\n\n- **Prerequisite:** finish Simulate rolling-contact constraints; revisit Wheel-legged hybrid locomotion and retain its contact-frame conventions.\n- **Simulation gate:** obtain a compatible wheel-legged asset and baseline controller before adding transitions; OCS2 is related on the map, not a supplied turnkey curb demo.\n- **Research reference:** Rolling in the Deep coordinates wheel and body trajectories, then tracks them through a whole-body controller.\n- **Planning estimate:** allow 2–4 weeks and €0 hardware, excluding the computer; this is a student adaptation, not reproduction of every published behavior.\n\n## Steps\n\n1. **Validate level driving:** record wheel speeds, body pose and contact states; confirm that your rolling residual stays interpretable before introducing a curb.\n2. **Define the obstacle:** choose a curb below the verified swing clearance and within the asset's joint limits; publish its geometry and initial state.\n3. **Implement guarded transitions:** separate supported rolling, wheel lift, airborne swing and touchdown; permit contact constraints only in the appropriate phases.\n4. **Replay alternative schedules:** hold geometry and commands fixed while changing transition timing; compare actual wheel/body trajectories against their references.\n5. **Measure transition effects:** log contact forces and integrate them over a declared event window; report the timestep and window alongside the resulting impulse.\n6. **Test and demo:** include level ground, curb traversal, zero command, absent touchdown, empty schedules and invalid limits; publish errors, falls, timeouts and replays.\n\n```python\ntransition_impulse = sum(\n    contact_force_samples\n) * sample_period\n```\n\n```mermaid\nflowchart LR\n A[\"Roll\"] --> B[\"Lift wheel\"]\n B --> C[\"Swing over curb\"]\n C --> D[\"Detect touchdown\"]\n D --> E[\"Resume rolling\"]\n E --> F[\"Compare transitions\"]\n```\n\n## Common pitfalls\n\n- **Airborne wheels cannot support weight:** keeping rolling constraints active during swing can make the commanded motion inconsistent.\n- **Peak force is not impulse:** impulse accumulates force over time; compare equal event windows and check timestep sensitivity.\n- **No touchdown is a failure:** do not silently advance the schedule and label the obstacle crossed.\n\n## When it's done\n\n- **Publish paired curb-crossing replays** with schedules, tracking errors, transition impulses and normal, empty and invalid-input outcomes.\n- **Continue with Compare hybrid and leg-only energy proxies** once the transition comparison is reproducible; do not infer hardware performance from simulation.",
+      "resources": [
+        {
+          "title": "Rolling in the Deep – Hybrid Locomotion for Wheeled-Legged Robots",
+          "url": "https://www.youtube.com/watch?v=ukY0vyM-yfY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See wheels lifted over obstacles while other contacts keep rolling."
+        },
+        {
+          "title": "Rolling in the Deep – Hybrid Locomotion for Wheeled-Legged Robots using Online Trajectory Optimization",
+          "url": "https://arxiv.org/html/1909.07193v3",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Inspect swing timing, wheel/body trajectories and the reference obstacle-crossing result."
+        },
+        {
+          "title": "Keep Rollin’ – Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://arxiv.org/html/1809.03557v2",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand how contact scheduling and rolling constraints enter the whole-body controller."
+        },
+        {
+          "title": "Research | Marko Bjelonic",
+          "url": "https://www.markobjelonic.com/research/",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Compare the authors' hybrid walking-driving and whole-body MPC formulations, rather than treating a mode flag as a controller."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ukY0vyM-yfY",
+        "https://arxiv.org/html/1909.07193v3",
+        "https://arxiv.org/html/1809.03557v2",
+        "https://www.markobjelonic.com/research/"
+      ]
     }
   ]
 }
