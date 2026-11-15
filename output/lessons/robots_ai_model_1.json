@@ -1,0 +1,268 @@
+{
+  "batch": "robots_ai_model_1",
+  "lessons": [
+    {
+      "node_id": "r:act-action-chunking-transformer",
+      "type": "robot",
+      "name": "ACT (Action Chunking Transformer)",
+      "summary": "ACT learns from demonstrations to turn camera images and robot joint positions into short sequences of future joint commands.",
+      "lesson_md": "## In one sentence\n\nACT learns from demonstrations to turn camera images and robot joint positions into short sequences of future joint commands.\n\n![ACT architecture with four camera inputs, joint positions, a style variable, and a transformer predicting an action sequence](/img/lessons/robots_ai_model_1-act.webp)\n*The ACT architecture: observations go in, a sequence of joint actions comes out. Source: [Official source](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## Why it matters for us\n\n- **Start with imitation:** Teach by recording successful robot movements rather than writing separate rules for every grasp and placement.\n- **Fine manipulation is the target:** The original demonstrations include opening a condiment cup and slotting a battery, not just moving through empty space.\n- **A practical baseline:** LeRobot recommends ACT for beginners; use it to test whether your demonstrations are useful before choosing a larger model.\n\n> **Key idea:** Predicting a coherent action sequence reduces the number of separate decisions needed to complete a task.\n\n## What it is made of / how it works\n\n- **Inputs are observations:** Camera images show the scene; joint positions describe how the robot is currently bent.\n- **A transformer combines inputs:** This neural network mixes information across camera features and joint measurements to predict future actions together.\n- **Think of a buffered API:** Instead of returning one command, the function returns a short command array; new observations can update that prediction.\n- **Training includes a style variable:** A training-only encoder compresses example action sequences into a variable representing their style; execution sets that variable to zero.\n\n| Original project setting | Reported value |\n| --- | --- |\n| Camera streams | 4 RGB cameras |\n| Image resolution | 480 × 640 pixels |\n| Joint-command frequency | 50 Hz |\n| Action chunk | 90 steps |\n| Demonstrations per shown task | 50 |\n\n- **Worked example:** At 50 commands per second, a 90-step chunk spans 1.8 seconds; it is not a whole 600–1000-step task.\n\n## Key terms\n\n- **Policy**: a function mapping observations to robot actions.\n- **Action chunk**: a predicted sequence of future commands.\n- **Imitation learning**: learning behavior from demonstrations of the desired task.\n\n## Getting started\n\n1. **Watch the LeRobot presentation** and identify which inputs come from cameras versus robot joints.\n2. **Try free simulation first:** The original repository includes Transfer Cube and Bimanual Insertion environments; compute is still required.\n3. **Follow current LeRobot ACT docs** for your own dataset, then evaluate complete rollouts rather than training loss alone.\n\n## Used in\n\n- **Autonomous pick-and-place with ACT** uses this policy as its learned controller.\n- **Chunk-horizon disturbance challenge** explores how sequence length affects response to disturbances.",
+      "resources": [
+        {
+          "title": "ALOHA and ACT: LeRobot Research Presentation #1 by Alexander Soare",
+          "url": "https://www.youtube.com/watch?v=ft73x0LfGpM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch Hugging Face explain the observations, action chunks, and training design."
+        },
+        {
+          "title": "ACT (Action Chunking with Transformers)",
+          "url": "https://huggingface.co/docs/lerobot/act",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the beginner training and evaluation workflow."
+        },
+        {
+          "title": "tonyzhaozh/act",
+          "url": "https://github.com/tonyzhaozh/act",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the supplied simulation tasks and inspect the policy implementation."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original ACT evaluation and demonstration setup."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ft73x0LfGpM",
+        "https://huggingface.co/docs/lerobot/act",
+        "https://github.com/tonyzhaozh/act",
+        "https://arxiv.org/abs/2304.13705",
+        "https://tonyzhaozh.github.io/aloha/"
+      ]
+    },
+    {
+      "node_id": "r:anygrasp",
+      "type": "robot",
+      "name": "AnyGrasp",
+      "summary": "AnyGrasp predicts candidate ways for a parallel-jaw robot gripper to pick up objects from a 3D point cloud.",
+      "lesson_md": "## In one sentence\n\nAnyGrasp predicts candidate ways for a parallel-jaw robot gripper to pick up objects from a 3D point cloud.\n\n![AnyGrasp visualization of many candidate gripper poses on a scene point cloud](/img/lessons/robots_ai_model_1-anygrasp.webp)\n*Candidate grasp poses from the AnyGrasp project demonstration. Source: [Official source](https://graspnet.net/anygrasp.html), license unknown.*\n\n## Why it matters for us\n\n- **Seeing is not grasping:** Knowing an object is present does not tell the robot where to place its fingers or which direction to approach.\n- **AnyGrasp supplies candidates:** It predicts gripper positions, orientations, and openings, rather than a complete arm movement or task plan.\n- **Unseen objects matter:** The authors report bin-clearing experiments with over 300 previously unseen objects, including a 93.3% grasp success rate under their conditions.\n\n> **Key idea:** A grasp detector proposes how to hold something; the rest of the robot system must still reach and execute that grasp.\n\n## What it is made of / how it works\n\n- **Input is a point cloud:** A list of measured 3D surface points represents the visible scene in the camera's coordinate system.\n- **Learning uses grasp labels:** Training combines real sensor observations with analytically generated labels and information about objects' centers of mass.\n- **Tracking connects observations:** Corresponding grasps across observations help maintain smoother predictions when objects move.\n- **Think of a ranked API response:** Each candidate contains geometry and a confidence score; downstream code chooses an executable option.\n\n| Published method or SDK setting | Value |\n| --- | --- |\n| Predicted grasp description | 7 degrees of freedom |\n| Input array shape | N × 3 coordinates |\n| Coordinate units | Meters |\n| SDK example maximum opening | 0.10 m |\n| SDK example finger height | 0.03 m |\n\n- **Worked example:** The SDK's 0.10 m opening means 10 cm; its 0.03 m finger height means 3 cm, not values in millimeters.\n\n## Key terms\n\n- **Parallel-jaw gripper**: two opposing fingers that open and close.\n- **Grasp pose**: the position and orientation of the gripper for a grasp.\n- **Point cloud**: 3D points sampled from visible surfaces.\n\n## Getting started\n\n1. **Watch the official demo** and distinguish candidate grasps from the arm's actual motion.\n2. **Read SDK access requirements:** The library requires a machine-specific license; public demo code does not make the core library open source.\n3. **Start with recorded points:** Follow the detection demo and inspect predicted geometry before connecting physical hardware; commercial pricing is unknown.\n\n## Used in\n\n- **Learning-based grasp detection** is the linked knowledge topic: compare candidate quality, coordinate frames, and failures rather than only successful picks.",
+      "resources": [
+        {
+          "title": "AnyGrasp Demo",
+          "url": "https://www.youtube.com/watch?v=vH1enCXeBnU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors demonstrate grasping, including difficult small fragments."
+        },
+        {
+          "title": "graspnet/anygrasp_sdk",
+          "url": "https://github.com/graspnet/anygrasp_sdk",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Check the license application and demo setup."
+        },
+        {
+          "title": "AnyGrasp Detector Usage",
+          "url": "https://raw.githubusercontent.com/graspnet/anygrasp_sdk/main/grasp_detection/USAGE.md",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect point-cloud units, gripper dimensions, and returned grasp geometry."
+        },
+        {
+          "title": "AnyGrasp: Robust and Efficient Grasp Perception in Spatial and Temporal Domains",
+          "url": "https://arxiv.org/abs/2212.08333",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how spatial predictions and temporal tracking are trained and evaluated."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=vH1enCXeBnU",
+        "https://github.com/graspnet/anygrasp_sdk",
+        "https://raw.githubusercontent.com/graspnet/anygrasp_sdk/main/grasp_detection/USAGE.md",
+        "https://arxiv.org/abs/2212.08333",
+        "https://graspnet.net/anygrasp.html"
+      ]
+    },
+    {
+      "node_id": "r:beyondmimic",
+      "type": "robot",
+      "name": "BeyondMimic",
+      "summary": "BeyondMimic turns human motion references into humanoid skills and combines learned skills using a diffusion model guided toward tasks.",
+      "lesson_md": "## In one sentence\n\nBeyondMimic turns human motion references into humanoid skills and combines learned skills using a diffusion model guided toward tasks.\n\n![A BeyondMimic humanoid performing a dynamic floor motion in a padded test area](/img/lessons/robots_ai_model_1-beyondmimic.webp)\n*Frame from the BeyondMimic project teaser showing dynamic humanoid motion. Source: [Official source](https://beyondmimic.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Human animation is not robot control:** A convincing pose sequence does not automatically balance a physical machine or respect its motors.\n- **Two problems are separated:** BeyondMimic first learns to track reference motions, then learns to combine selected skills for tasks.\n- **Visible tasks include navigation:** The project shows joystick control, waypoint following, and obstacle avoidance, alongside dynamic skills such as jumping spins and cartwheels.\n\n> **Key idea:** Tracking teaches physically usable movement; task guidance chooses how those movements should serve a goal.\n\n## What it is made of / how it works\n\n- **References are retargeted:** Human movements are adapted to the robot's body before a tracking controller learns to follow them through reinforcement learning.\n- **Reinforcement learning uses rewards:** Simulated practice favors movement that matches references while controlling the robot.\n- **A diffusion policy combines skills:** It repeatedly refines proposed movement; a task cost guides the result toward a desired outcome during execution.\n- **Think compiler and runtime:** Retargeting translates the source motion; tracking makes it executable; guidance supplies a runtime objective instead of rewriting every skill.\n\n| Project demonstration setting | Reported value |\n| --- | --- |\n| LAFAN1 reference sequences shown | 14 distinct sequences |\n| Approximate reference length | 3 minutes each |\n| Gallery clips from those policies | 24 |\n| Tracking setup across sequences | Same settings and hyperparameters |\n\n- **Worked example:** For waypoint following, motion supplies the walking behavior while the waypoint supplies the destination; motion capture helps locate waypoints and estimate state.\n\n## Key terms\n\n- **Retargeting**: adapting movement to a different body's geometry.\n- **Motion tracking**: controlling the robot to follow a reference movement over time.\n- **Test-time guidance**: steering a trained generator toward an objective without retraining it for that task.\n\n## Getting started\n\n1. **Watch the authors' video** and separate tracking demonstrations from task-guided examples.\n2. **Read the original tracking repository:** It covers tracking training, not a promise that every part of the diffusion stack is packaged there.\n3. **Use its maintained successor:** The retired repository points to mjlab's tracking task; inspect reference-motion playback in simulation before considering hardware.\n\n## Used in\n\n- **Retargeting-quality study on BeyondMimic** examines the effect of reference quality.\n- **Human-to-robot motion retargeting** explains the input adaptation; **Floating-base & centroidal dynamics (legged/humanoid)** explains why balance cannot be ignored.",
+      "resources": [
+        {
+          "title": "BeyondMimic: From Motion Tracking to Versatile Humanoid Control via Guided Diffusion",
+          "url": "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch Hybrid Robotics separate dynamic tracking from task-guided control."
+        },
+        {
+          "title": "BeyondMimic",
+          "url": "https://beyondmimic.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare reference-motion demonstrations and guided tasks, including motion-capture assumptions."
+        },
+        {
+          "title": "HybridRobotics/whole_body_tracking",
+          "url": "https://github.com/HybridRobotics/whole_body_tracking",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the original tracking workflow and the notice pointing to its maintained successor."
+        },
+        {
+          "title": "BeyondMimic: From Motion Tracking to Versatile Humanoid Control via Guided Diffusion",
+          "url": "https://arxiv.org/abs/2508.08241",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the relationship between tracking and guided diffusion."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+        "https://beyondmimic.github.io/",
+        "https://github.com/HybridRobotics/whole_body_tracking",
+        "https://arxiv.org/abs/2508.08241",
+        "https://github.com/mujocolab/mjlab/tree/main/src/mjlab/tasks/tracking"
+      ]
+    },
+    {
+      "node_id": "r:bleu-0-1",
+      "type": "robot",
+      "name": "Bleu_0.1",
+      "summary": "Bleu_0.1 is Bleu Robotics’ demonstration-learning policy for adapting robots to repetitive industrial manipulation tasks with few examples.",
+      "lesson_md": "## In one sentence\n\nBleu_0.1 is Bleu Robotics’ demonstration-learning policy for adapting robots to repetitive industrial manipulation tasks with few examples.\n\n![Simulated robot arm holding a red cube above a table with a green cube in Bleu Robotics StackCube demonstration](/img/lessons/robots_ai_model_1-bleu.webp)\n*Frame from the StackCube simulation embedded in the Bleu_0.1 announcement. Source: [Official source](https://www.bleu-robotics.com/blog/introducing-bleu-0-1), license unknown.*\n\n## Why it matters for us\n\n- **This is robot software:** Bleu_0.1 is not a humanoid body and is unrelated to the BLEU language-translation metric.\n- **The target is changing factory work:** The announcement describes machine loading and order picking, where object placement varies between repetitions.\n- **Treat performance as company-reported:** The March 2026 technical note provides demonstrations and benchmark claims, not an independently reproduced evaluation or downloadable model card.\n\n> **Key idea:** Better representations of a task can reduce how much behavior must be learned from demonstrations.\n\n## What it is made of / how it works\n\n- **Prior knowledge does work:** The described framework assumes object positions from depth cameras and tracking, plus knowledge of the robot's geometry.\n- **Abductive reasoning seeks an explanation:** Rather than only fitting raw observations, the algorithm seeks a representation in which demonstrated behavior becomes simpler.\n- **Think coordinate refactoring:** The same computation can become easier after changing an API's data representation; the announcement illustrates this with planetary motion.\n- **The learned policy serves a goal:** Demonstrations teach how to reach the intended end of a sequence, rather than merely replaying recorded movements.\n\n| March 2026 company report | Value or scope |\n| --- | --- |\n| Order-picking demonstrations | 5 |\n| Tested ManiSkill3 tasks | 98% success with fewer than 10 demonstrations |\n| Typical learning computation claimed | Under 2 minutes on a laptop |\n| Drilling-workstation platforms shown | Unitree G1 and Franka Research 3 |\n| Current material focus | Rigid objects, not textiles |\n\n- **Worked example:** The pictured StackCube task means putting one cube on another with randomized positions; memorizing one fixed gripper path would miss that variation.\n\n## Key terms\n\n- **Few-shot learning**: learning a task from a small number of examples.\n- **Policy**: a rule mapping observed conditions and a goal to actions.\n- **Rigid object**: an object whose shape is treated as unchanged during manipulation.\n\n## Getting started\n\n1. **Watch the announcement's simulation** and list which object positions change between attempts.\n2. **Read its limitations:** Textile handling is outside the stated focus, and unfamiliar situations are described as requiring help.\n3. **Request access through Bleu Robotics** if needed; pricing, implementation details, and public checkpoint access remain unknown, so plan a reading exercise rather than installation.\n\n## Used in\n\n- **Bleu Robotics** is the linked builder.\n- **Imitation learning (behavior cloning)** provides background; do not assume Bleu_0.1 is plain behavior cloning just because both use demonstrations.",
+      "resources": [
+        {
+          "title": "Introducing Bleu_0.1",
+          "url": "https://www.bleu-robotics.com/blog/introducing-bleu-0-1",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Start with the embedded StackCube demonstration, then read the company’s explanation."
+        },
+        {
+          "title": "Bleu Robotics — Teaching humanoid robots to work in factories",
+          "url": "https://www.bleu-robotics.com/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the industrial deployment problem that the policy targets."
+        },
+        {
+          "title": "Introducing Bleu_0.1",
+          "url": "https://cdn.sanity.io/files/l9x4wu2r/production/0040a847b326ecb879e6782d3a0ee060836794b6.pdf",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Keep the downloadable technical note for its detailed algorithm and benchmark discussion."
+        },
+        {
+          "title": "The scientific heritage of Bleu Robotics",
+          "url": "https://www.bleu-robotics.com/blog/the-scientific-heritage-of-bleu-robotics",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Read the data-efficient learning and humanoid-control foundations behind the announced policy."
+        }
+      ],
+      "sources": [
+        "https://www.bleu-robotics.com/blog/introducing-bleu-0-1",
+        "https://www.bleu-robotics.com/",
+        "https://cdn.sanity.io/files/l9x4wu2r/production/0040a847b326ecb879e6782d3a0ee060836794b6.pdf",
+        "https://www.bleu-robotics.com/blog/the-scientific-heritage-of-bleu-robotics"
+      ]
+    },
+    {
+      "node_id": "r:bytetrack",
+      "type": "robot",
+      "name": "ByteTrack",
+      "summary": "ByteTrack keeps object identities consistent across video frames by matching detections, including useful low-confidence boxes, to existing tracks.",
+      "lesson_md": "## In one sentence\n\nByteTrack keeps object identities consistent across video frames by matching detections, including useful low-confidence boxes, to existing tracks.\n\n![ByteTrack figure showing three video frames and how low-score detections preserve a partly hidden pedestrian track](/img/lessons/robots_ai_model_1-bytetrack.webp)\n*Low-score boxes can preserve a track that would otherwise break. Source: [Official source](https://github.com/ifzhang/ByteTrack), MIT License.*\n\n## Why it matters for us\n\n- **Counting needs continuity:** A detector says someone appears in this frame; a tracker helps distinguish the same person returning in the next frame.\n- **Partial hiding lowers confidence:** Throwing away every weak detection can break a person's trajectory even though the person is still visible.\n- **ByteTrack is an association method:** It links detections over time; it does not replace the detector that finds objects in individual images.\n\n> **Key idea:** A weak detection can still be strong evidence when it matches an already established track.\n\n## What it is made of / how it works\n\n- **First match confident detections:** Predicted track locations are associated with the detector's high-score boxes.\n- **Then reconsider weaker boxes:** Remaining tracks are matched against low-score detections to recover partly hidden objects while rejecting background detections.\n- **Think persistent database keys:** Detection boxes are temporary rows; a track ID connects observations believed to belong to the same object across frames.\n- **The reference system uses YOLOX:** That supplies detections; the paper also tests the association idea with other trackers.\n\n| Original paper / repository result | Value |\n| --- | --- |\n| MOT17 test MOTA | 80.3 |\n| MOT17 test IDF1 | 77.3 |\n| MOT17 test HOTA | 63.1 |\n| Reported throughput | About 30 frames/s on one V100 GPU |\n\n- **Worked example:** The published figure shows a person's detection score falling from 0.8 to 0.4; matching that weaker box keeps the same trajectory connected.\n- **Benchmark scope matters:** Those scores summarize the authors' test setup, not guaranteed speed or accuracy on a laptop webcam.\n\n## Key terms\n\n- **Bounding box**: a rectangle locating an object in an image.\n- **Association**: deciding which new detection belongs to which existing track.\n- **ID switch**: assigning an existing object's trajectory a different identity.\n- **IDF1**: a metric measuring how well predicted identities match reference identities.\n\n## Getting started\n\n1. **Watch the repository-linked tutorial** to see IDs drawn over moving players.\n2. **Use the free reference code:** Follow the README's demo and model-download instructions; compute and model downloads are still needed.\n3. **Inspect a short recorded clip:** Note disappearing boxes and identity swaps before using a tracker for counting.\n\n## Used in\n\n- **People counter and tracker for a lab entrance** needs persistent identities to avoid counting every video frame separately.\n- **Tracker benchmark on robot-workspace videos** compares failures; **Multi-object tracking** explains the underlying problem.",
+      "resources": [
+        {
+          "title": "Football Players Tracking | YOLOv5 + ByteTRACK | Google Colab | step-by-step Tutorial",
+          "url": "https://www.youtube.com/watch?v=QCG8QMhga9k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow Roboflow’s tutorial linked by the original repository."
+        },
+        {
+          "title": "ifzhang/ByteTrack",
+          "url": "https://github.com/ifzhang/ByteTrack",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Find installation, pretrained models, demo commands, and evaluation tables."
+        },
+        {
+          "title": "ByteTrack/tools/demo_track.py",
+          "url": "https://raw.githubusercontent.com/ifzhang/ByteTrack/main/tools/demo_track.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the reference video-demo script, its input arguments, and tracking integration."
+        },
+        {
+          "title": "ByteTrack: Multi-Object Tracking by Associating Every Detection Box",
+          "url": "https://arxiv.org/abs/2110.06864",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the two-stage association method and benchmark definitions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=QCG8QMhga9k",
+        "https://github.com/ifzhang/ByteTrack",
+        "https://raw.githubusercontent.com/ifzhang/ByteTrack/main/tools/demo_track.py",
+        "https://arxiv.org/abs/2110.06864"
+      ]
+    },
+    {
+      "node_id": "r:cascaded-diffusion-models-for-neural-motion-planning",
+      "type": "robot",
+      "name": "Cascaded Diffusion Models for Neural Motion Planning",
+      "summary": "Cascaded Diffusion Models for Neural Motion Planning generates coarse robot paths, refines them locally, and repairs segments that violate constraints.",
+      "lesson_md": "## In one sentence\n\nCascaded Diffusion Models for Neural Motion Planning generates coarse robot paths, refines them locally, and repairs segments that violate constraints.\n\n![Published cascaded diffusion diagram showing a coarse path around obstacles followed by locally refined waypoints](/img/lessons/robots_ai_model_1-cascaded.webp)\n*The higher-level model chooses the route; the lower-level model refines nearby details. Source: [Official source](https://arxiv.org/html/2505.15157v1), CC BY 4.0.*\n\n## Why it matters for us\n\n- **A goal is not a path:** Reaching a pose requires deciding how to move around obstacles without hitting them along the way.\n- **Global and local reasoning differ:** Choosing which side of a cabinet to pass is different from fitting an arm through a narrow opening.\n- **This is a research planner:** The paper evaluates simulated navigation and manipulation; it does not establish plug-and-play compatibility with our physical robots.\n\n> **Key idea:** A plausible generated path still needs explicit constraint checks and repair before it becomes a usable motion plan.\n\n## What it is made of / how it works\n\n- **Inputs describe scene and destination:** Images or point clouds describe obstacles; start and goal configurations describe the robot's joint positions or navigation state.\n- **The coarse model proposes structure:** It predicts subgoals and sparse reference points along a route.\n- **The fine model fills details:** It uses those reference points to generate a locally consistent, denser trajectory through repeated denoising.\n- **Think compiler passes:** One pass establishes program structure; later passes refine details and repair invalid fragments instead of regenerating everything.\n- **Training uses planned examples:** Classical planners supply demonstrations; lower-level training includes noisy references to tolerate imperfect coarse predictions.\n\n| Paper experiment setting | Reported value |\n| --- | --- |\n| Explanatory hierarchy | 2 levels |\n| Navigation training environments | 40,000 |\n| Held-out navigation environments | 1,000 |\n| Manipulation robot | 7-DOF Franka arm |\n| Repair passes in evaluation | 1 |\n\n- **Worked example:** If part of an arm trajectory intersects a shelf, isolate that invalid segment and rerun the lowest-level model between nearby valid states.\n- **Repair is not infallible:** The paper reports 85.13% success on the Franka Global benchmark, so collision-free output is not guaranteed for every scene.\n\n## Key terms\n\n- **Trajectory**: an ordered sequence of robot states along a motion.\n- **Diffusion model**: a generator that learns to turn noisy samples into structured outputs.\n- **Constraint**: a condition a plan must obey, such as avoiding self-collision.\n\n## Getting started\n\n1. **Watch the project animations** and compare paths with and without refinement.\n2. **Read the free paper's approach section:** Follow coarse prediction, local refinement, and patching separately; public implementation and checkpoint access are unknown.\n3. **Prototype the idea in a maze:** Mark invalid segments of an existing path before attempting learned generation; keep a classical fallback for failures.\n\n## Used in\n\n- **Learned & diffusion motion planners** is the linked knowledge topic.\n- **Planning lab: evaluate cascaded diffusion planning with repair and classical fallback** turns the paper's repair idea into a comparison exercise.",
+      "resources": [
+        {
+          "title": "cascaded-diffusion-for-planning",
+          "url": "https://sites.google.com/view/cascaded-diffusion-planning",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ embedded animated comparisons, especially the plan-refinement examples."
+        },
+        {
+          "title": "Cascaded Diffusion Models for Neural Motion Planning",
+          "url": "https://arxiv.org/html/2505.15157v1#S4",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Study the approach section and architecture figures in the accessible HTML text."
+        },
+        {
+          "title": "Cascaded Diffusion Models for Neural Motion Planning",
+          "url": "https://arxiv.org/html/2505.15157v1#S5",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Inspect experimental settings, repair ablations, and failure rates before reproducing the method."
+        },
+        {
+          "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+          "url": "https://arxiv.org/abs/2303.04137",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Optional background: understand diffusion-based robot action generation before contrasting it with global path planning."
+        }
+      ],
+      "sources": [
+        "https://sites.google.com/view/cascaded-diffusion-planning",
+        "https://arxiv.org/html/2505.15157v1#S4",
+        "https://arxiv.org/html/2505.15157v1#S5",
+        "https://arxiv.org/abs/2303.04137",
+        "https://arxiv.org/html/2505.15157v1",
+        "https://arxiv.org/abs/2505.15157"
+      ]
+    }
+  ]
+}
