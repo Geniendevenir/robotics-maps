@@ -307,6 +307,180 @@
         "https://learn.sparkfun.com/tutorials/pulse-width-modulation/all",
         "https://www.ti.com/product/DRV8833"
       ]
+    },
+    {
+      "node_id": "k:smart-servos-serial-actuator-buses",
+      "type": "knowledge",
+      "name": "Smart servos & serial actuator buses",
+      "summary": "A smart servo accepts digital commands, controls its own motor, and reports measurements over a shared serial connection.",
+      "lesson_md": "## In one sentence\n\nA smart servo accepts digital commands, controls its own motor, and reports measurements over a shared serial connection.\n\n![ROBOTIS XL430-W250 smart servo with output horn and housing mounting holes](/img/lessons/knowledge_embedded_electronics-smart-servos.webp)\n*An XL430-W250 packages motor control inside the actuator. Source: [ROBOTIS](https://emanual.robotis.com/docs/en/dxl/x/xl430-w250/), license unknown.*\n\n## Why it matters for us\n\n- **Less low-level wiring:** compatible actuators share a communication bus instead of needing a separate command wire from the computer for every joint.\n- **Read as well as write:** position, velocity, voltage, and temperature feedback help distinguish a requested movement from what actually happened.\n\n> **Key idea:** Sending a goal and reading the measured position are different operations; a successful write does not prove the joint arrived.\n\n## How it works\n\n- **Close the loop locally:** the XL430 combines a motor, gearing, a position sensor, and a controller that adjusts the motor toward its target.\n- **Software analogy:** its control table resembles an API object: write `Goal Position`, then read `Present Position`; each register has an address and data size.\n- **Address the actuator:** DYNAMIXEL Protocol 2.0 packets include a device ID; each servo on the bus needs a unique ID.\n- **Take turns:** half-duplex communication means the controller and servos cannot transmit on the shared line simultaneously.\n- **Worked position example:** the XL430 has 4096 counts per revolution, so 1024 counts span a quarter-turn: 360° × 1024 / 4096 = 90°.\n- **Keep units explicit:** that is an angular span, not a universal home position; configured offsets and position limits still matter.\n- **Batch commands:** Protocol 2.0 Sync Write sends one packet containing different values for multiple servos, provided the register address and data length match.\n- **Check compatibility:** LeRobot documents Feetech STS3215 for SO-101; do not assume its packets or wiring match a DYNAMIXEL example.\n\n```mermaid\nflowchart LR\n  H[\"Host goal\"] --> W[\"Addressed write\"]\n  W --> C[\"Servo controller\"]\n  C --> M[\"Motor and gears\"]\n  M --> E[\"Position sensor\"]\n  E --> C\n  E --> R[\"Read feedback\"]\n  R --> H\n```\n\n## Key terms\n\n- **Smart servo**: an actuator with built-in sensing, electronics, and a command interface.\n- **Control table**: named registers containing settings, commands, and measured state.\n- **Device ID**: address identifying one actuator on the shared bus.\n- **Half-duplex**: a link that carries traffic in only one direction at a time.\n- **Encoder**: a sensor that measures angular position.\n\n## Before / after\n\n- **Before:** Learn Communication buses (UART, I2C, SPI, CAN), including addressing and serial framing.\n- **After:** Continue to Assemble & teleoperate an SO-101, then ros2_control hardware interface for SO-101.\n\n## Try it in an afternoon\n\n1. **Open the XL430 control table:** find ID, Torque Enable, Goal Position, and Present Position; record each address and size.\n2. **Calculate three angular spans:** convert 512, 1024, and 2048 counts to degrees using the documented resolution.\n3. **Decode the Sync Write example:** identify the two servo IDs, shared address, data length, and individual position values.\n4. **Compare with SO-101:** identify its documented servo model before choosing software or a USB interface.\n\n> **Watch out:** Disconnect power before changing servo cables, and keep fingers away from powered joints.",
+      "resources": [
+        {
+          "title": "DYNAMIXEL Starter Set Quick Start- DYNAMIXEL Wizard 2.0 Software",
+          "url": "https://www.youtube.com/watch?v=oGmAhwnmaWc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a servo connected, discovered by ID, and configured in ROBOTIS software."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the Feetech actuators and setup workflow used by the lab's arm."
+        },
+        {
+          "title": "XL430-W250-T",
+          "url": "https://docs.robotis.com/docs/dxl/model_reference/x_series/xl_series/xl430-w250",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read an actual smart servo's resolution, electrical interface, registers, and feedback."
+        },
+        {
+          "title": "DYNAMIXEL Protocol 2.0",
+          "url": "https://docs.robotis.com/docs/dxl/protocol/protocol2",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect addressed packets, half-duplex timing, status replies, and Sync Write."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=oGmAhwnmaWc",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://docs.robotis.com/docs/dxl/model_reference/x_series/xl_series/xl430-w250",
+        "https://docs.robotis.com/docs/dxl/protocol/protocol2",
+        "https://emanual.robotis.com/docs/en/dxl/x/xl430-w250/"
+      ]
+    },
+    {
+      "node_id": "k:bldc-motor-control-field-oriented-control-foc",
+      "type": "knowledge",
+      "name": "BLDC motor control & field-oriented control (FOC)",
+      "summary": "Field-oriented control coordinates a brushless motor's magnetic field with its rotor so commanded current produces smooth, controllable torque.",
+      "lesson_md": "## In one sentence\n\nField-oriented control coordinates a brushless motor's magnetic field with its rotor so commanded current produces smooth, controllable torque.\n\n![SimpleFOC diagram comparing motor phase axes with stationary and rotor-aligned reference frames](/img/lessons/knowledge_embedded_electronics-foc.webp)\n*The same motor can be described using different coordinate frames. Source: [SimpleFOC](https://docs.simplefoc.com/foc_theory), MIT license.*\n\n## Why it matters for us\n\n- **Torque means twisting effort:** a robot joint needs controllable effort, not merely a motor that spins when powered.\n- **Build on existing controllers:** SimpleFOC exposes the control stages without requiring us to design a power circuit before understanding the algorithm.\n\n> **Key idea:** Rotating the coordinate system with the rotor turns changing phase currents into quantities that ordinary feedback controllers can regulate.\n\n## How it works\n\n- **Picture two magnetic fields:** the stationary windings, called the stator, create a field; permanent magnets on the rotating part, called the rotor, create another.\n- **Steer the field:** in standard permanent-magnet FOC, the torque-producing field stays perpendicular to the rotor field rather than switching through coarse steps.\n- **Measure before correcting:** sensored current-control FOC uses rotor angle and motor-phase current measurements.\n- **Software analogy:** like converting world coordinates into a player's camera coordinates, FOC changes representation without changing the physical vector.\n- **Transform the measurements:** Clarke and Park transforms convert three phase currents into two components in a frame rotating with the rotor.\n- **Regulate two components:** the d-axis follows the rotor field; the q-axis is perpendicular. Standard operation targets zero d-axis current and controls q-axis current for torque.\n- **Switch the hardware:** inverse transforms convert the correction back into phase voltages; pulse-width modulation drives the power switches.\n- **Worked configuration:** SimpleFOC's current-mode documentation sets `motor.target = 0.5` amperes and `motor.current_limit = 1.0`: the target is half that configured current limit.\n- **Do not confuse units:** this target is current, not 0.5 newton-metres; converting to torque requires the motor's torque constant.\n\n```mermaid\nflowchart LR\n  S[\"Angle and currents\"] --> T[\"Clarke and Park\"]\n  T --> C[\"Current controllers\"]\n  G[\"d-q targets\"] --> C\n  C --> I[\"Inverse transforms\"]\n  I --> P[\"PWM power stage\"]\n  P --> M[\"Motor\"]\n  M --> S\n```\n\n## Key terms\n\n- **BLDC**: brushless direct-current motor; electronic switching replaces mechanical brushes.\n- **Phase**: one winding group driven by the motor controller.\n- **Reference frame**: coordinate axes used to describe a physical quantity.\n- **Q-axis current**: rotor-perpendicular current component used to control torque.\n- **Torque constant**: proportionality between motor current and torque.\n- **Current sensing**: measuring winding current rather than inferring it from a voltage command.\n\n## Before / after\n\n- **Before:** Learn Motor drivers & power electronics and Feedback control & PID.\n- **After:** Try SimpleFOC gimbal motor: position, velocity, torque modes before Low-cost quasi-direct-drive actuator test bench.\n\n## Try it in an afternoon\n\n1. **Watch the field animation:** pause and identify rotor, stator, and the perpendicular field relationship.\n2. **Trace the current-mode diagram:** mark each measurement, transform, controller, and power-stage output.\n3. **Read the example configuration:** locate current limit, voltage limit, current sensing, and rotor-sensor setup.\n4. **Explain the units:** write why a 0.5 A target alone cannot specify joint torque.",
+      "resources": [
+        {
+          "title": "Understanding Field-Oriented Control | Motor Control, Part 4",
+          "url": "https://www.youtube.com/watch?v=YPD1_rcXBIE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "MathWorks animates rotor and stator fields before introducing the coordinate transforms."
+        },
+        {
+          "title": "Coordinate Transformations in FOC",
+          "url": "https://docs.simplefoc.com/foc_theory",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Connect the magnetic-field intuition to stationary and rotating coordinates."
+        },
+        {
+          "title": "FOC Current Mode",
+          "url": "https://docs.simplefoc.com/foc_current_torque_mode",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See measured-current feedback, current targets, and concrete configuration limits."
+        },
+        {
+          "title": "BLDC Motor configuration",
+          "url": "https://docs.simplefoc.com/bldcmotor",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Follow the motor, sensor, driver, and control-loop configuration sequence."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=YPD1_rcXBIE",
+        "https://docs.simplefoc.com/foc_theory",
+        "https://docs.simplefoc.com/foc_current_torque_mode",
+        "https://docs.simplefoc.com/bldcmotor"
+      ]
+    },
+    {
+      "node_id": "k:real-time-os-real-time-control-loops",
+      "type": "knowledge",
+      "name": "Real-time OS & real-time control loops",
+      "summary": "Real-time control is about finishing work before its deadline; an RTOS schedules competing tasks to help make that timing predictable.",
+      "lesson_md": "## In one sentence\n\nReal-time control is about finishing work before its deadline; an RTOS schedules competing tasks to help make that timing predictable.\n\n![Zephyr timing diagram showing higher-priority threads interrupting a lower-priority thread and later resuming it](/img/lessons/knowledge_embedded_electronics-real-time.webp)\n*Preemption lets urgent ready threads interrupt less urgent work. Source: [Zephyr Project](https://docs.zephyrproject.org/latest/kernel/services/scheduling/index.html), license unknown.*\n\n## Why it matters for us\n\n- **Timing changes behavior:** a controller needs sensor readings and motor updates on schedule, not just a good average execution speed.\n- **Separate responsibilities:** one task can handle control while another records logs; a scheduler decides which runnable task gets processor time.\n\n> **Key idea:** A periodic wake-up makes work eligible to run; it does not prove the work starts or finishes on time.\n\n## How it works\n\n- **Software analogy:** a priority job queue chooses urgent ready work first; it cannot make a blocked job run or make an overloaded processor infinitely fast.\n- **Use task states:** running tasks execute, ready tasks can execute, and blocked tasks wait for time or an event.\n- **Prioritize deliberately:** FreeRTOS gives higher-numbered priorities preference over lower-numbered ready tasks; equal-priority tasks can share time.\n- **Allow preemption:** a higher-priority ready task can interrupt lower-priority work, rather than waiting for the entire function to return.\n- **Avoid schedule drift:** delaying after computation adds computation time to each period; an absolute periodic wake-up instead advances a fixed time reference.\n- **Worked trace:** Espressif's relative-delay example prints ticks 2, 135, and 278; successive intervals are 133 and 143 ticks, despite requesting a 100-tick delay.\n- **Understand the extra time:** its example adds variable simulated work before that delay; sleeping for 100 ticks is not a 100-tick total loop.\n- **Measure under load:** timestamp intended release, actual start, and completion while logging and communications run; report late starts and missed deadlines separately.\n- **Keep waiting out of urgent work:** Zephyr distinguishes sleeping, which releases the processor, from busy-waiting, which does not.\n\n```mermaid\nflowchart LR\n  T[\"Periodic release\"] --> R[\"Task ready\"]\n  R --> S[\"Scheduler\"]\n  S --> A[\"Read sensor\"]\n  A --> C[\"Compute command\"]\n  C --> M[\"Update motor\"]\n  M --> W[\"Wait for next release\"]\n  W --> T\n```\n\n## Key terms\n\n- **RTOS**: real-time operating system; provides scheduling and coordination for time-sensitive tasks.\n- **Deadline**: latest acceptable completion time.\n- **Period**: intended interval between successive releases.\n- **Jitter**: variation in timing relative to the intended schedule.\n- **Preemption**: suspending one task so another can execute.\n- **Tick**: scheduler clock unit; its duration depends on configuration.\n\n## Before / after\n\n- **Before:** Learn Microcontrollers & bare-metal firmware, including interrupts and the main loop.\n- **After:** Continue to Jitter lab: FreeRTOS vs Zephyr vs PREEMPT_RT and Firmware CI with hardware-in-the-loop.\n\n## Try it in an afternoon\n\n1. **Read Espressif's two delay examples:** annotate when simulated work occurs and when the task blocks.\n2. **Subtract adjacent timestamps:** compare the relative-delay trace with its fixed-cycle `xTaskDelayUntil()` example.\n3. **Draw two task timelines:** give control higher priority than logging; mark when each task becomes ready.\n4. **Write a timing report template:** include intended period, worst observed execution time, start jitter, and missed deadlines.",
+      "resources": [
+        {
+          "title": "Introduction to RTOS Part 1 - What is a Real-Time Operating System (RTOS)? | Digi-Key Electronics",
+          "url": "https://www.youtube.com/watch?v=F321087yYy4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Separate predictable deadlines from simply running fast, with a microcontroller-focused introduction."
+        },
+        {
+          "title": "Task Control",
+          "url": "https://docs.espressif.com/projects/esp-techpedia/en/latest/esp-friends/get-started/code-development/common-freertos-api/task-control.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compare worked timestamp traces for relative delays and fixed-period task releases."
+        },
+        {
+          "title": "Tasks",
+          "url": "https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/01-Tasks-and-co-routines/03-Task-priorities",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read FreeRTOS's priority ordering and equal-priority time-slicing rules."
+        },
+        {
+          "title": "Scheduling",
+          "url": "https://docs.zephyrproject.org/latest/kernel/services/scheduling/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See preemption diagrams and the difference between sleeping and busy-waiting."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=F321087yYy4",
+        "https://docs.espressif.com/projects/esp-techpedia/en/latest/esp-friends/get-started/code-development/common-freertos-api/task-control.html",
+        "https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/01-Tasks-and-co-routines/03-Task-priorities",
+        "https://docs.zephyrproject.org/latest/kernel/services/scheduling/index.html"
+      ]
+    },
+    {
+      "node_id": "k:embedded-linux-companion-computers",
+      "type": "knowledge",
+      "name": "Embedded Linux & companion computers",
+      "summary": "A companion computer runs higher-level software on Linux while a controller handles time-sensitive sensing and actuation.",
+      "lesson_md": "## In one sentence\n\nA companion computer runs higher-level software on Linux while a controller handles time-sensitive sensing and actuation.\n\n![Arduino UNO Q board overlaid with Linux and Arduino symbols connected by bidirectional arrows](/img/lessons/knowledge_embedded_electronics-embedded-linux.webp)\n*One board can contain both sides of the Linux/controller split. Source: [Arduino](https://raw.githubusercontent.com/arduino/docs-content/main/content/hardware/uno/boards/uno-q/tutorials/first-steps/user-manual/content.md), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Use familiar tools:** Linux provides an environment for higher-level services, networking, and vision software; the controller concentrates on timely hardware interaction.\n- **Split by responsibility:** PX4 documents a Linux companion beside a flight controller that retains core flight and safety code.\n\n> **Key idea:** Moving intelligence onto Linux does not mean moving every timing-critical motor update into a Linux application.\n\n## How it works\n\n- **Choose a boundary:** a vision process can request a movement; the controller receives that request and performs the local hardware work.\n- **Connect the processors:** PX4 supports serial or Ethernet communication; the message format and physical link are separate design choices.\n- **Recognize integrated designs:** Arduino UNO Q combines a Qualcomm QRB2210 processor running Debian Linux with an STM32U585 microcontroller running Zephyr.\n- **Software analogy:** remote procedure calls resemble calling a function in another service: arguments cross a communication boundary, and a response may arrive later.\n- **Follow the actual path:** UNO Q's Bridge library routes calls through the Linux `arduino-router` service to functions exposed by the microcontroller.\n- **Worked example:** Arduino's manual calls `Bridge.call(\"set_led_state\", led_state)` after a one-second sleep, alternating a Boolean that selects the LED state.\n- **Calculate the cycle:** one second per toggle means approximately two seconds for a complete on/off cycle, not a precise real-time timing guarantee.\n- **Respect blocking:** `call()` waits for a result; `notify()` sends without waiting.\n- **Keep callbacks appropriate:** the manual offers `provide_safe()` to execute exposed hardware functions in the main loop rather than the background RPC thread.\n\n```mermaid\nflowchart LR\n  L[\"Linux application\"] --> B[\"Bridge request\"]\n  B --> R[\"Linux router\"]\n  R --> C[\"MCU function\"]\n  C --> H[\"Hardware\"]\n  H --> C\n  C --> R\n  R --> L\n```\n\n## Key terms\n\n- **Companion computer**: onboard computer supporting a separate hardware controller with higher-level computation.\n- **MPU**: microprocessor unit; on UNO Q, the processor running Linux.\n- **MCU**: microcontroller unit; processor integrated with memory and hardware peripherals.\n- **RPC**: remote procedure call; invoking a function across a communication boundary.\n- **Daemon**: background Linux service, such as the router.\n- **Transport**: mechanism carrying messages, such as a serial link.\n\n## Before / after\n\n- **Before:** Learn Linux processes and Microcontrollers & bare-metal firmware; distinguish an application from a hardware control loop.\n- **After:** Continue to Arduino UNO Q split-brain robot or On-board policy: run an ACT/diffusion policy on Jetson Orin Nano.\n\n## Try it in an afternoon\n\n1. **Trace the manual's LED example:** label the Python code, router, MCU function, and physical LED.\n2. **Explain the timing:** count toggles and full blink cycles over ten nominal one-second calls.\n3. **Design a robot interface:** list which processor owns camera processing, motor updates, logs, and command validation.\n4. **Specify a failure rule:** decide what the controller should do when Linux stops sending requests; include a test for that case.",
+      "resources": [
+        {
+          "title": "Arduino Uno Q - Unboxing | DigiKey",
+          "url": "https://www.youtube.com/watch?v=O1HspBwsvTQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See Linux and the microcontroller cooperating in a physical UNO Q demonstration."
+        },
+        {
+          "title": "UNO Q User Manual",
+          "url": "https://raw.githubusercontent.com/arduino/docs-content/main/content/hardware/uno/boards/uno-q/tutorials/first-steps/user-manual/content.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the official board architecture and Linux-to-MCU LED RPC example in Arduino's source documentation."
+        },
+        {
+          "title": "UNO Q",
+          "url": "https://docs.arduino.cc/hardware/uno-q/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Identify the Linux processor, real-time microcontroller, and built-in communication support."
+        },
+        {
+          "title": "Companion Computers",
+          "url": "https://docs.px4.io/main/en/companion_computer/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare the integrated board with a separate Linux companion and flight-controller architecture."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=O1HspBwsvTQ",
+        "https://raw.githubusercontent.com/arduino/docs-content/main/content/hardware/uno/boards/uno-q/tutorials/first-steps/user-manual/content.md",
+        "https://docs.arduino.cc/hardware/uno-q/",
+        "https://docs.px4.io/main/en/companion_computer/",
+        "https://raw.githubusercontent.com/arduino/docs-content/main/LICENSE.md"
+      ]
     }
   ]
 }
