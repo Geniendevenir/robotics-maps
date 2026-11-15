@@ -1,0 +1,1171 @@
+{
+  "batch": "projects_perception_1",
+  "lessons": [
+    {
+      "node_id": "p:3d-detection-on-kitti-with-openpcdet",
+      "type": "project",
+      "name": "3D detection on KITTI with OpenPCDet",
+      "summary": "Run a pretrained OpenPCDet detector on KITTI laser scans, draw its 3D boxes, and reproduce a documented validation evaluation.",
+      "lesson_md": "## In one sentence\n\nRun a pretrained OpenPCDet detector on KITTI laser scans, draw its 3D boxes, and reproduce a documented validation evaluation.\n\n![OpenPCDet demo showing predicted boxes around objects in a point cloud](/img/lessons/projects_perception_1-kitti.webp)\n*OpenPCDet demo showing predicted boxes around objects in a point cloud. Source: [Official project](https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/DEMO.md), license unknown.*\n\n## What you will learn\n\n- **LiDAR** measures the scene as a point cloud: a collection of spatial samples rather than a rectangular photograph.\n- **3D detection** predicts object categories and boxes with position, dimensions, and heading; the output is more than a pixel rectangle.\n- **Software analogy:** Treat the detector as a typed function: KITTI points enter, scored boxes leave; evaluation tests those outputs against labeled examples.\n\n> **Key idea:** A convincing rendering is a debugging tool, not evidence that benchmark accuracy was reproduced.\n\n## What you need\n\n- **Map preparation:** Complete Intro: calibrate a webcam and track AprilTags, then study LiDAR perception & 3D object detection for the map context.\n- **Offline setup:** KITTI scans, calibration files, labels, OpenPCDet, a compatible CUDA/PyTorch environment, and Open3D or Mayavi for visualization; no physical LiDAR required.\n- **Budget:** Software is open source; storage and compatible GPU access are separate costs, not a promised free compute service.\n\n## Steps\n\n1. **Freeze the experiment:** Record repository revision, environment, model configuration, checkpoint, and KITTI validation split before running anything.\n2. **Prepare KITTI** using the documented directory layout; generate dataset information files before the full evaluation.\n3. **Render one scan** with the matching pretrained model. The official PV-RCNN example, run from `tools`, is:\n\n```bash\npython demo.py --cfg_file cfgs/kitti_models/pv_rcnn.yaml \\\n  --ckpt pv_rcnn_8369.pth \\\n  --data_path ../data/kitti/training/velodyne/000008.bin\n```\n\n4. **Evaluate the checkpoint** with the documented testing workflow; save class scores, difficulty settings, and the exact metric rather than copying a leaderboard number.\n5. **Finish the demo:** Show predictions beside labels, include missed objects and false detections, and publish the configuration with your measured results.\n\n```mermaid\nflowchart LR\n  A[\"KITTI scans\"] --> B[\"Pretrained detector\"]\n  B --> C[\"3D boxes\"]\n  C --> D[\"Render\"]\n  C --> E[\"Compare with labels\"]\n```\n\n## Common pitfalls\n\n- **Coordinate mismatch:** OpenPCDet's demo expects forward x, left y, up z; KITTI points contain x, y, z, and intensity.\n- **Metric mismatch:** Do not compare different validation splits or recall sampling conventions as if they were the same experiment.\n- **Bad inputs:** Explicitly reject missing files and malformed scans; test an empty point array without silently reporting a successful detection run.\n\n## When it's done\n\n- **Deliverable:** A reproducible box-rendering demo plus your evaluation log, differences from the reference, and a small gallery explaining failures.",
+      "resources": [
+        {
+          "title": "Quick Demo",
+          "url": "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/DEMO.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run one scan and recognize the expected point-cloud visualization."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/GETTING_STARTED.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Prepare KITTI and run the documented test workflow."
+        },
+        {
+          "title": "PV-RCNN: Point-Voxel Feature Set Abstraction for 3D Object Detection",
+          "url": "https://www.youtube.com/watch?v=a0jR_xChKfA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See the PV-RCNN baseline architecture explained in its conference presentation."
+        },
+        {
+          "title": "OpenPCDet",
+          "url": "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/README.md",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find the model zoo and pair a checkpoint with its configuration."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/DEMO.md",
+        "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/GETTING_STARTED.md",
+        "https://www.youtube.com/watch?v=a0jR_xChKfA",
+        "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/README.md",
+        "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/docs/INSTALL.md",
+        "https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d"
+      ]
+    },
+    {
+      "node_id": "p:camera-imu-calibration-with-kalibr",
+      "type": "project",
+      "name": "Camera-IMU calibration with Kalibr",
+      "summary": "Use Kalibr to estimate the spatial relationship and time offset between a rigidly connected camera and inertial sensor.",
+      "lesson_md": "## In one sentence\n\nUse Kalibr to estimate the spatial relationship and time offset between a rigidly connected camera and inertial sensor.\n\n![Kalibr tutorial setup moving a camera and IMU in front of an Aprilgrid](/img/lessons/projects_perception_1-kalibr.webp)\n*Kalibr tutorial setup moving a camera and IMU in front of an Aprilgrid. Source: [Official project](https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration), license unknown.*\n\n## What you will learn\n\n- **IMU** means inertial measurement unit: accelerometers measure acceleration, while gyroscopes measure angular velocity, or turning rate.\n- **Extrinsic calibration** finds the rotation and translation between sensors; temporal calibration finds the offset between their measurement times.\n- **Software analogy:** Matching coordinate frames and clocks is like aligning units and timestamps before joining two event streams.\n\n> **Key idea:** Useful calibration needs informative motion and trustworthy timestamps, not merely a solver that finishes.\n\n## What you need\n\n- **Map preparation:** Complete Hand-eye calibration in sim and review Extrinsic & multi-sensor calibration before collecting real measurements.\n- **Replay first:** Use the sample bag linked by Kalibr before buying hardware; a ROS bag is a file of timestamped sensor messages.\n- **Physical extension:** A rigid camera/IMU mount, flat printed Aprilgrid, measured target dimensions, camera parameters, and an IMU noise configuration; hardware cost is unknown.\n\n## Steps\n\n1. **Reproduce the sample** and identify its camera, IMU, and target YAML files; YAML is the text configuration format used here.\n2. **Inspect timing:** Check timestamp intervals for bursts and gaps before asking the optimizer to explain sensor motion.\n3. **Capture varied motion:** Keep the target fixed and move the sensor rig through rotations and translations exciting all IMU axes, without shocks.\n4. **Run calibration** with your actual file paths. Temporal calibration is enabled by default:\n\n```bash\nkalibr_calibrate_imu_camera --bag filename.bag \\\n  --cam camchain.yaml --imu imu.yaml --target target.yaml\n```\n\n5. **Compare captures:** Try limited versus varied motion, inspect report residuals, and replay a separate recording with the estimated alignment for your final video.\n\n```mermaid\nflowchart LR\n  A[\"Images and IMU\"] --> B[\"Check clocks\"]\n  B --> C[\"Fit alignment\"]\n  C --> D[\"YAML and PDF report\"]\n  D --> E[\"Separate replay\"]\n```\n\n## Common pitfalls\n\n- **Residuals** are differences between measurements and the fitted prediction; small training residuals alone do not validate another recording.\n- **Noise settings:** Kalibr needs noise density and bias random walk; do not substitute unexplained constants from another sensor.\n- **Target failures:** Reject missing detections and empty recordings explicitly; repeat blurred or poorly lit captures instead of trusting an incomplete fit.\n- **Motion example:** Kalibr reports good results with camera images at 20 Hz and IMU measurements at 200 Hz; these are examples, not universal requirements.\n\n## When it's done\n\n- **Deliverable:** Save the PDF report, result YAML, capture conditions, and aligned-motion video; explain which weak-motion failures improved and which remain.",
+      "resources": [
+        {
+          "title": "DIY Indoor Autonomous Drone! - Part 2 (Kalibr & Calibration)",
+          "url": "https://www.youtube.com/watch?v=puNXsnrYWTY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the camera/IMU capture procedure linked by Kalibr itself."
+        },
+        {
+          "title": "Camera IMU calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow bag inputs, calibration options, and report outputs."
+        },
+        {
+          "title": "Calibration targets",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/calibration-targets",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure and measure an Aprilgrid without printer-scale mistakes."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand noise density and slowly changing bias."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=puNXsnrYWTY",
+        "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+        "https://github.com/ethz-asl/kalibr/wiki/calibration-targets",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model"
+      ]
+    },
+    {
+      "node_id": "p:camera-lidar-fusion-overlay",
+      "type": "project",
+      "name": "Camera-LiDAR fusion overlay",
+      "summary": "Project LiDAR points into a camera image, color the cloud, and associate image detections with measured 3D points.",
+      "lesson_md": "## In one sentence\n\nProject LiDAR points into a camera image, color the cloud, and associate image detections with measured 3D points.\n\n![HKU MARS calibrated colored point cloud compared with camera image details](/img/lessons/projects_perception_1-fusion.webp)\n*HKU MARS calibrated colored point cloud compared with camera image details. Source: [Official project](https://raw.githubusercontent.com/hku-mars/livox_camera_calib/master/README.md), license unknown.*\n\n## What you will learn\n\n- **Projection** maps a spatial point to an image pixel; calibration supplies the sensor relationship and lens parameters needed for that mapping.\n- **Extrinsics** rotate and translate LiDAR coordinates into camera coordinates; **intrinsics** describe how camera coordinates become pixels.\n- **Software analogy:** Sensor fusion is a join with geometry and time as keys; an incorrect join can look plausible while attaching the wrong color.\n\n> **Key idea:** A 2D detection identifies image space, not a unique 3D object or its full bounding box.\n\n## What you need\n\n- **Map preparation:** Start with Intro: calibrate a webcam and track AprilTags and Camera calibration (intrinsic, extrinsic & hand-eye).\n- **Replay route:** Paired scans and images with calibration, Python or C++, and an image detector; no robot motion is needed for the first prototype.\n- **Hardware extension:** A rigid camera/LiDAR setup; the map suggests Livox Mid-360 and OAK-D Pro, but the illustrated HKU setup is not that pairing.\n- **Cost:** Hardware and compute costs are unknown here; validate recorded data before purchasing sensors.\n\n## Steps\n\n1. **Start static:** Inspect a paired image and point cloud; document axes, length units, timestamps, and the direction of the supplied transform.\n2. **Project points:** Transform into camera coordinates, reject points behind the camera, account for lens distortion, and discard pixels outside the image.\n3. **Check the mechanism:** OpenCV's projection function accepts spatial points, rotation, translation, camera matrix, and distortion coefficients:\n\n```python\npixels, jacobian = cv2.projectPoints(\n    points, rvec, tvec, camera_matrix, distortion)\n```\n\n4. **Color and associate:** Sample image colors at valid pixels; for each YOLO image box, display its candidate LiDAR points and their depth spread.\n5. **Finish with video:** Overlay points and boxes over time; label candidate 3D positions, ambiguous associations, and detections lacking LiDAR support.\n\n```mermaid\nflowchart LR\n  A[\"Paired sensors\"] --> B[\"Transform cloud\"]\n  B --> C[\"Project valid points\"]\n  C --> D[\"Sample colors\"]\n  C --> E[\"Associate boxes\"]\n  E --> F[\"Inspect video\"]\n```\n\n## Common pitfalls\n\n- **Background leakage:** Points inside a rectangle may belong to the road or background; do not call their whole extent a reliable object box.\n- **Timing errors:** A static alignment can look good while moving objects reveal a sensor time offset.\n- **Negative tests:** Missing images, empty clouds, bad lighting, and boxes without points must produce explicit unavailable results, not stale coordinates.\n\n## When it's done\n\n- **Deliverable:** A colored-cloud video with documented calibration, candidate object positions, and failure counts; compare alignment before and after calibration on separate frames.",
+      "resources": [
+        {
+          "title": "Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environment",
+          "url": "https://www.youtube.com/watch?v=e6Vkkasc4JI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors compare camera features with calibrated LiDAR projections."
+        },
+        {
+          "title": "lidar_camera_calib",
+          "url": "https://raw.githubusercontent.com/hku-mars/livox_camera_calib/master/README.md",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect real colored-cloud results and the provided calibration workflow."
+        },
+        {
+          "title": "Camera Calibration and 3D Reconstruction",
+          "url": "https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use projectPoints and distinguish camera intrinsics from extrinsics."
+        },
+        {
+          "title": "Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments",
+          "url": "https://arxiv.org/abs/2103.01627",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand edge-based calibration and why scene geometry matters."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=e6Vkkasc4JI",
+        "https://raw.githubusercontent.com/hku-mars/livox_camera_calib/master/README.md",
+        "https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html",
+        "https://arxiv.org/abs/2103.01627"
+      ]
+    },
+    {
+      "node_id": "p:camera-to-arm-hand-eye-calibration-for-the-so-101",
+      "type": "project",
+      "name": "Camera-to-arm hand-eye calibration for the SO-101",
+      "summary": "Calibrate a fixed camera against an SO-101 arm, then measure how accurately its tip reaches visible printed targets.",
+      "lesson_md": "## In one sentence\n\nCalibrate a fixed camera against an SO-101 arm, then measure how accurately its tip reaches visible printed targets.\n\n![SO-101 follower arm used as the hardware platform for the proposed calibration project](/img/lessons/projects_perception_1-hand-eye.webp)\n*SO-101 follower arm used as the hardware platform for the proposed calibration project. Source: [Official project](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Eye-to-hand** means a stationary camera watches a target attached to the moving gripper; eye-in-hand instead mounts the camera on the arm.\n- **A pose** combines position and orientation. Hand-eye calibration relates robot poses to target poses measured in the camera image.\n- **Software analogy:** Treat each coordinate frame as a distinct type; a transform is an explicit adapter, not permission to mix incompatible vectors.\n\n> **Key idea:** Joint calibration, camera calibration, and camera-to-base calibration solve different problems; success in one does not guarantee accurate touching.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101 and review Kinematic & hand-eye calibration plus Fiducial markers (AprilTag, ArUco).\n- **Physical setup:** Calibrated SO-101, fixed webcam, rigid gripper-mounted target, printed validation grid, and a measured tip offset; existing hardware cost is unknown.\n- **Software bridge:** OpenCV plus forward kinematics, which computes gripper pose from joint angles and robot geometry; this is a student integration, not turnkey LeRobot calibration.\n\n## Steps\n\n1. **Calibrate the camera** and measure the printed target. Define camera, base, gripper, target, and tip frames before collecting samples.\n2. **Capture paired poses:** Keep camera and base fixed; record robot joint positions and target observations while varying gripper position and orientation.\n3. **Check pose diversity:** OpenCV requires at least three poses with nonparallel rotation axes; collect additional diverse poses rather than repeating one wrist rotation.\n4. **Solve eye-to-hand:** Invert gripper-to-base poses to base-to-gripper before supplying OpenCV's hand-eye solver; its usual eye-in-hand inputs are not interchangeable.\n5. **Validate before touching:** Project known targets, then cautiously test the measured tip offset; finish with before/after target errors in millimeters on held-out grid locations.\n\n```mermaid\nflowchart LR\n  A[\"Joint angles\"] --> B[\"Gripper poses\"]\n  C[\"Target images\"] --> D[\"Target poses\"]\n  B --> E[\"Solve camera to base\"]\n  D --> E\n  E --> F[\"Validate tip targets\"]\n```\n\nHere the arrays contain base-to-gripper and target-to-camera poses, following OpenCV's eye-to-hand derivation:\n\n```python\nR_camera_to_base, t_camera_to_base = cv2.calibrateHandEye(\n    R_base_to_gripper, t_base_to_gripper,\n    R_target_to_camera, t_target_to_camera)\n```\n\n## Common pitfalls\n\n- **Wrong direction:** Name transforms by source and destination; meters versus millimeters and inverted rotations can invalidate an otherwise successful numerical solve.\n- **Unobserved targets:** Reject missing tags, empty frames, blur, and bad lighting; never reuse an old pose as a fresh observation.\n\n> **Watch out:** Keep hands clear of the powered arm and stop motion before adjusting the target or tip.\n\n## When it's done\n\n- **Deliverable:** Save transforms, tip offset, trial counts, and measured errors; this prepares Webcam visual servoing on the SO-101 without promising a particular accuracy.",
+      "resources": [
+        {
+          "title": "3 -  MoveIt -  Easy Hand Eye Calibration with MoveIt",
+          "url": "https://www.youtube.com/watch?v=xQ79ysnrzUk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch PickNik demonstrate the calibration workflow; the robot and integration differ from SO-101."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Calibrate the actual arm joints before collecting camera-to-arm measurements."
+        },
+        {
+          "title": "Hand-Eye Calibration",
+          "url": "https://moveit.github.io/moveit_tutorials/doc/hand_eye_calibration/hand_eye_calibration_tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand paired pose collection and rotational diversity; this is a legacy MoveIt example."
+        },
+        {
+          "title": "Camera Calibration and 3D Reconstruction",
+          "url": "https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Check exact transform directions and the eye-to-hand derivation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=xQ79ysnrzUk",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://moveit.github.io/moveit_tutorials/doc/hand_eye_calibration/hand_eye_calibration_tutorial.html",
+        "https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html"
+      ]
+    },
+    {
+      "node_id": "p:click-to-mask-object-cutout-for-robot-datasets",
+      "type": "project",
+      "name": "Click-to-mask object cutout for robot datasets",
+      "summary": "Build a tool that turns clicks on a manipulated object into editable masks throughout a recorded robot episode using SAM 2.",
+      "lesson_md": "## In one sentence\n\nBuild a tool that turns clicks on a manipulated object into editable masks throughout a recorded robot episode using SAM 2.\n\n![Published SAM 2 dataset examples showing colored object masks across video frames](/img/lessons/projects_perception_1-mask.webp)\n*Published SAM 2 dataset examples showing colored object masks across video frames. Source: [Official project](https://raw.githubusercontent.com/facebookresearch/sam2/main/README.md), license unknown.*\n\n## What you will learn\n\n- **Segmentation** selects an object's pixels; a **mask** records which pixels belong to that object, rather than merely drawing a rectangle around it.\n- **Promptable** means the user supplies a hint, such as a point or box; SAM 2 can propagate that selection through video.\n- **Software analogy:** Think of propagation as stateful processing, not a pure image function; the predictor remembers interactions within a video.\n\n> **Key idea:** Propagated masks are editable predictions, not automatic ground-truth labels for robot learning.\n\n## What you need\n\n- **Map preparation:** Start with Intro: calibrate a webcam and track AprilTags, then Promptable image & video segmentation (SAM family).\n- **Inputs:** A recorded LeRobot episode, one selected camera stream, SAM 2 code and checkpoint, and a notebook or small annotation interface.\n- **Budget:** No robot purchase is needed for existing recordings; GPU or hosted notebook access may cost money, and available memory must be checked.\n\n## Steps\n\n1. **Decode the episode:** Preserve frame identity and camera name; LeRobot video files may contain multiple episodes, so use metadata rather than assuming one file per episode.\n2. **Initialize video state:** Load the SAM 2 predictor and select a frame where the manipulated object is clearly visible.\n3. **Add prompts:** Place a positive click inside the object; use negative clicks to exclude background when the first mask is wrong.\n4. **Propagate and refine:** Inspect later frames, add corrective prompts when identity drifts, and rerun propagation instead of silently accepting mistakes.\n5. **Export the demo:** Save masks and object IDs alongside original frame identifiers; show an overlay and object cutout while preserving the unmodified recording.\n\n```mermaid\nflowchart LR\n  A[\"Episode frames\"] --> B[\"User clicks\"]\n  B --> C[\"SAM 2 state\"]\n  C --> D[\"Propagate masks\"]\n  D --> E[\"Review\"]\n  E --> B\n  E --> F[\"Export sidecar masks\"]\n```\n\nAfter initialization and prompting, the official predictor yields frame indices, object IDs, and mask scores; threshold scores at zero for binary masks:\n\n```python\nfor frame_idx, object_ids, mask_logits in predictor.propagate_in_video(state):\n    binary_masks = mask_logits > 0.0\n```\n\n6. **Design a sidecar**, a separate annotation file associated with the original data; define its schema instead of claiming LeRobot automatically trains on these masks.\n\n## Common pitfalls\n\n- **Occlusion:** The gripper can hide the object; inspect disappearance and reappearance instead of assuming every predicted foreground region is correct.\n- **Empty scenes:** Include an object-absent segment and a missing-camera case; mark unavailable annotations rather than inventing a successful cutout.\n- **Dataset damage:** Never replace source frames with black-background cutouts before checking that actions, timestamps, and frame correspondence remain intact.\n\n## When it's done\n\n- **Deliverable:** An episode-length overlay, editable corrections, exported masks, and reviewed failure counts covering occlusion, missing objects, and bad lighting.",
+      "resources": [
+        {
+          "title": "How does Segment Anything 2 (SAM 2) work? Paper and Network Architecture Explained!",
+          "url": "https://www.youtube.com/watch?v=wMGb97EZkVU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand interactive video segmentation before building the annotation interface."
+        },
+        {
+          "title": "Video segmentation with SAM 2",
+          "url": "https://raw.githubusercontent.com/facebookresearch/sam2/main/notebooks/video_predictor_example.ipynb",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Follow the authors' positive/negative clicks, propagation, corrections, and object IDs."
+        },
+        {
+          "title": "SAM 2 Demo",
+          "url": "https://raw.githubusercontent.com/facebookresearch/sam2/main/demo/README.md",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect an official annotation frontend/backend and local deployment options."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Find episode offsets and video metadata so masks stay aligned with robot frames."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=wMGb97EZkVU",
+        "https://raw.githubusercontent.com/facebookresearch/sam2/main/notebooks/video_predictor_example.ipynb",
+        "https://raw.githubusercontent.com/facebookresearch/sam2/main/demo/README.md",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://raw.githubusercontent.com/facebookresearch/sam2/main/README.md"
+      ]
+    },
+    {
+      "node_id": "p:color-blob-tracker-in-opencv",
+      "type": "project",
+      "name": "Color-blob tracker in OpenCV",
+      "summary": "Track a colored ball in webcam video using OpenCV thresholds, then draw its center and recent path.",
+      "lesson_md": "## In one sentence\n\nTrack a colored ball in webcam video using OpenCV thresholds, then draw its center and recent path.\n\n![PyImageSearch ball-tracking demo with a colored trajectory behind the ball](/img/lessons/projects_perception_1-color-blob.webp)\n*PyImageSearch ball-tracking demo with a colored trajectory behind the ball. Source: [Official publication](https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/), license unknown.*\n\n## What you will learn\n\n- **Color segmentation** separates pixels matching a chosen color from everything else; no learned detector is needed for this controlled baseline.\n- **HSV** represents hue, saturation, and brightness separately, making a color range easier to tune than separate red, green, and blue thresholds.\n- **Software analogy:** A mask is a Boolean filter over pixels; connected regions become candidate records, and a short queue stores accepted centers.\n\n> **Key idea:** This tracker recognizes a color region, not the semantic concept of a ball.\n\n## What you need\n\n- **Setup:** A webcam, a distinctly colored ball, Python, OpenCV, and a contrasting background; reuse equipment rather than buying a robot.\n- **Preparation:** Intro: calibrate a webcam and track AprilTags is the map prerequisite; this exercise practices Classical image processing & feature matching.\n- **Budget:** Additional hardware cost is unknown if you lack a webcam; the exercise needs no training dataset or paid API.\n\n## Steps\n\n1. **Read frames:** Display the live camera image; explicitly stop or report an error if capture returns no frame.\n2. **Tune a mask:** Convert BGR camera pixels to HSV and adjust lower/upper bounds while displaying the black-and-white selection beside the video.\n3. **Clean the selection:** Use erosion and dilation, operations that shrink and expand selected regions, to remove small isolated patches.\n4. **Find the center:** Extract contours, the region boundaries; choose a plausible ball candidate and compute its center from image moments.\n5. **Draw the path:** Keep recent valid centers in a bounded queue; break the path when the ball disappears instead of connecting unrelated detections.\n6. **Record the demo:** Show the frame, mask, center, and trajectory together; repeat with the ball absent and under changed lighting.\n\n```mermaid\nflowchart LR\n A[Webcam] --> B[HSV range]\n B --> C[Clean mask]\n C --> D[Contours]\n D --> E[Center or absent]\n E --> F[Path overlay]\n```\n\n## Common pitfalls\n\n- **Zero area:** Before dividing image moments, require a nonzero area. The example below assumes a candidate contour already exists.\n\n```python\nM = cv2.moments(contour)\ncenter = None\nif M['m00'] != 0:\n    center = (int(M['m10'] / M['m00']),\n              int(M['m01'] / M['m00']))\n```\n\n- **Color distractors:** Add another similarly colored object; count wrong selections rather than treating the largest region as guaranteed identity.\n- **Lighting changes:** Save thresholds with the test conditions; a setting tuned at one desk is not universal object recognition.\n\n## When it's done\n\n- **Deliverable:** A replayable webcam clip and test table reporting successful tracks, misses, and false detections for normal, empty, and poorly lit scenes.",
+      "resources": [
+        {
+          "title": "Ball Tracking with OpenCV",
+          "url": "https://www.youtube.com/watch?v=dKpRsdYSCLQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the creator’s colored-ball tracker and trajectory overlay."
+        },
+        {
+          "title": "Ball Tracking with OpenCV",
+          "url": "https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Build the threshold, contour, and bounded-history baseline."
+        },
+        {
+          "title": "Thresholding Operations using inRange",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/tutorials/imgproc/threshold_inRange/threshold_inRange.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand HSV thresholding and interactive range controls."
+        },
+        {
+          "title": "Contour Features",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compute contour area and centroid from image moments."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=dKpRsdYSCLQ",
+        "https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/tutorials/imgproc/threshold_inRange/threshold_inRange.markdown",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.markdown"
+      ]
+    },
+    {
+      "node_id": "p:depth-camera-failure-atlas",
+      "type": "project",
+      "name": "Depth camera failure atlas",
+      "summary": "Build a measured gallery showing when a depth camera returns missing or misleading distances on difficult surfaces and lighting.",
+      "lesson_md": "## In one sentence\n\nBuild a measured gallery showing when a depth camera returns missing or misleading distances on difficult surfaces and lighting.\n\n![RealSense tuning guide example of an underexposed camera image](/img/lessons/projects_perception_1-depth-failures.webp)\n*RealSense tuning guide example of an underexposed camera image. Source: [Official publication](https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance), license unknown.*\n\n## What you will learn\n\n- **RGB-D** pairs a color image with a depth image, whose pixels encode distance; an attractive color picture does not prove valid depth.\n- **Invalid depth** means the camera could not provide a usable distance; distinguish that from a valid-looking but incorrect measurement.\n- **Software analogy:** Build a regression-test matrix for a sensor, changing one input condition at a time instead of collecting only successful screenshots.\n\n> **Key idea:** Measure missing pixels and distance error separately; filling a hole is not proof that the surface was measured correctly.\n\n## What you need\n\n- **Hardware:** Borrow one supported depth camera, such as RealSense D405 or OAK-D Pro, plus a ruler, matte target, glass, metal, and dark objects.\n- **Software:** Use the matching camera viewer and SDK; librealsense (RealSense SDK) includes a depth-quality tool for evaluating a selected image region.\n- **Preparation:** Start with Intro: calibrate a webcam and track AprilTags and Stereo & RGB-D depth sensing; exact purchase cost is unknown.\n- **Trial sheet:** Record camera model, firmware, exposure, illumination, target distance, and processing settings so another student can repeat each observation.\n\n## Steps\n\n1. **Establish a baseline:** Capture a flat matte target; compare the reported distance with a physical measurement before trying difficult materials.\n2. **Define the region:** Mark the same target area in each trial; save raw depth and color images before applying hole-filling filters.\n3. **Change one condition:** Test glass, shiny metal, dark material, and daylight separately, keeping geometry and camera settings documented.\n4. **Calculate metrics:** Count valid pixels and compare valid distances with the reference; never silently substitute zero for missing distance.\n5. **Test processing:** Compare raw and filtered output side by side; label whether an apparent improvement comes from new measurements or interpolation.\n6. **Publish the gallery:** Include empty scenes, missing targets, and poor lighting; report successes and failures without claiming every depth technology behaves identically.\n\n```mermaid\nflowchart LR\n A[Trial conditions] --> B[Raw capture]\n B --> C[Validity mask]\n B --> D[Reference comparison]\n C --> E[Metrics and gallery]\n D --> E\n```\n\n## Common pitfalls\n\n- **Worked metric:** Report fill rate as valid pixels divided by all pixels in the selected region; keep its region and validity rule beside the value.\n- **Exposure confound:** RealSense identifies poor exposure as a major depth-quality problem; inspect the stereo images before blaming the material alone.\n- **Transparent targets:** A plausible distance may describe the background, not the glass; compare against the intended surface rather than only counting nonempty pixels.\n\n## When it's done\n\n- **Deliverable:** A video atlas with synchronized color, depth, invalid-pixel masks, settings, and measured error tables that later grasping projects can consult.",
+      "resources": [
+        {
+          "title": "RealSense vs. OAK vs. ZED vs. Azure Kinect vs. Mech Mind 3D cameras comparison",
+          "url": "https://www.youtube.com/watch?v=JmZdSGtJHNw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a robotics practitioner compare depth output on glass, shiny, and dark targets."
+        },
+        {
+          "title": "Tuning depth cameras for best performance",
+          "url": "https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Control exposure, texture, range, and post-processing before interpreting failures."
+        },
+        {
+          "title": "Optical Filters for RealSense™ Depth Cameras",
+          "url": "https://www.realsenseai.com/stereo-depth/improving-depth-with-optical-filters/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand why reflections and illumination change depth quality."
+        },
+        {
+          "title": "Depth Quality Tool",
+          "url": "https://github.com/realsenseai/librealsense/tree/master/tools/depth-quality",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the official measurement tool rather than judging only colorized depth."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=JmZdSGtJHNw",
+        "https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance",
+        "https://www.realsenseai.com/stereo-depth/improving-depth-with-optical-filters/",
+        "https://github.com/realsenseai/librealsense/tree/master/tools/depth-quality"
+      ]
+    },
+    {
+      "node_id": "p:depth-from-a-single-photo",
+      "type": "project",
+      "name": "Depth from a single photo",
+      "summary": "Run Depth Anything V2 on images and webcam frames, then inspect a depth visualization and a clearly qualified point-cloud reconstruction.",
+      "lesson_md": "## In one sentence\n\nRun Depth Anything V2 on images and webcam frames, then inspect a depth visualization and a clearly qualified point-cloud reconstruction.\n\n![Depth Anything V2 published examples pairing photographs with predicted depth maps](/img/lessons/projects_perception_1-single-photo-depth.webp)\n*Depth Anything V2 published examples pairing photographs with predicted depth maps. Source: [Official publication](https://depth-anything-v2.github.io/), license unknown.*\n\n## What you will learn\n\n- **Monocular depth** estimates scene structure from one camera image; unlike stereo, it does not compare simultaneous views from two cameras.\n- **Relative depth** orders near and far surfaces without automatically providing meters; Depth Anything V2 also offers separately fine-tuned metric models.\n- **Software analogy:** Treat inference as an image-to-array API; a colorful frontend is not the numerical data contract needed by downstream geometry code.\n\n> **Key idea:** A convincing depth picture is not a calibrated distance sensor.\n\n## What you need\n\n- **Inputs:** A saved photograph, then a webcam or recorded video; begin with the Small checkpoint and the authors’ inference code.\n- **Tools:** Python, PyTorch, OpenCV, and Open3D for viewing a point cloud, a set of points in three-dimensional space.\n- **Budget:** Reuse a computer and images; GPU rental and a webcam may cost money. Additional cost is unknown, not a promised zero-cost hardware build.\n- **Map preparation:** Complete Intro: calibrate a webcam and track AprilTags, then connect the results to Monocular depth estimation.\n\n## Steps\n\n1. **Run a still image:** Download the matching checkpoint and configuration; save both the raw prediction array and the color visualization.\n2. **Inspect the contract:** Record image dimensions and numerical range. Keep visualization normalization separate from any geometry calculation.\n3. **Process a clip:** Display original frames beside colored depth; preserve timestamps and measure processing time instead of promising live performance.\n4. **Choose a geometry route:** For a metric point cloud, use a documented metric model and camera intrinsics, the parameters mapping pixels to viewing rays.\n5. **View the result:** Use Open3D to inspect reconstructed surfaces; label scale as arbitrary if you lack metric depth or verified camera calibration.\n6. **Demo the limitations:** Compare ordinary scenes, an empty table, missing targets, glass, and poor lighting; save obvious failures as well as attractive examples.\n\n```mermaid\nflowchart LR\n A[Photo or frame] --> B[Depth model]\n B --> C[Raw array]\n C --> D[Color display]\n C --> E[Check scale and intrinsics]\n E --> F[Point cloud]\n```\n\n**Worked API example:** After loading the model as documented, inference returns a height-by-width NumPy array, not automatically a meter-valued sensor stream.\n\n```python\nraw_depth = model.infer_image(raw_img)\nprint(raw_depth.shape)\n```\n\n## Common pitfalls\n\n- **False units:** Do not feed a relative-depth color image into a metric point-cloud routine and label the output meters.\n- **Video flicker:** Inspect stationary objects across adjacent frames; independent image predictions need not remain temporally stable.\n- **Missing input:** Reject unreadable images and camera failures explicitly rather than displaying the previous prediction as a new result.\n\n## When it's done\n\n- **Deliverable:** A side-by-side clip, saved numerical predictions, an inspectable point cloud with scale assumptions, and a table of successful and failed trials.",
+      "resources": [
+        {
+          "title": "Depth Anything v2: Generating 3D Point Clouds from a Single Image",
+          "url": "https://www.youtube.com/watch?v=3Upms4NunbE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow a concrete single-image depth-to-point-cloud demonstration."
+        },
+        {
+          "title": "Depth Anything V2",
+          "url": "https://depth-anything-v2.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the authors’ published qualitative depth examples."
+        },
+        {
+          "title": "Depth Anything V2",
+          "url": "https://github.com/DepthAnything/Depth-Anything-V2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Load checkpoints and run image or video inference."
+        },
+        {
+          "title": "open3d.geometry.PointCloud",
+          "url": "https://www.open3d.org/docs/release/python_api/open3d.geometry.PointCloud.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read depth-to-point-cloud assumptions, including intrinsics and depth scaling."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=3Upms4NunbE",
+        "https://depth-anything-v2.github.io/",
+        "https://github.com/DepthAnything/Depth-Anything-V2",
+        "https://www.open3d.org/docs/release/python_api/open3d.geometry.PointCloud.html"
+      ]
+    },
+    {
+      "node_id": "p:diy-stereo-camera-from-two-webcams",
+      "type": "project",
+      "name": "DIY stereo camera from two webcams",
+      "summary": "Mount two webcams rigidly, calibrate their geometry, and turn paired views into a live disparity map.",
+      "lesson_md": "## In one sentence\n\nMount two webcams rigidly, calibrate their geometry, and turn paired views into a live disparity map.\n\n![LearnOpenCV two-webcam stereo rig beside an OAK-D camera](/img/lessons/projects_perception_1-diy-stereo.webp)\n*LearnOpenCV two-webcam stereo rig beside an OAK-D camera. Source: [Official publication](https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/), license unknown.*\n\n## What you will learn\n\n- **Stereo vision** estimates geometry by finding the same scene feature in two camera views; closer features generally shift more between those views.\n- **Disparity** is that horizontal shift in pixels after **rectification**, the image transformation that aligns corresponding features onto matching rows.\n- **Software analogy:** Rectification creates a common schema before a join; stereo matching then searches for corresponding records along each row.\n\n> **Key idea:** Good stereo starts with a rigid, calibrated camera pair, not with a prettier depth colormap.\n\n## What you need\n\n- **Hardware:** Two USB webcams, preferably identical, a rigid base or printed mount, and a flat checkerboard with measured square size.\n- **Software:** OpenCV and paired image capture; keep both camera resolutions fixed and document how closely their exposures are synchronized.\n- **Budget:** Reuse webcams and print a mount if available; actual webcam and printing costs are unknown until you choose components.\n- **Map preparation:** Start with Intro: calibrate a webcam and track AprilTags, then Camera calibration (intrinsic, extrinsic & hand-eye) and Stereo & RGB-D depth sensing.\n\n## Steps\n\n1. **Build the rig:** Fix both cameras to the mount; record the baseline, the distance between their optical centers, and prevent movement after calibration.\n2. **Capture paired boards:** Move the checkerboard through different positions and tilts; accept a pair only when both cameras observe the same board pose.\n3. **Calibrate each camera:** Estimate intrinsics and lens distortion; preserve image size, board dimensions, and the unit used for square size.\n4. **Calibrate the pair:** Estimate their relative rotation and translation; rectify new images and overlay horizontal lines to inspect correspondence alignment.\n5. **Compute disparity:** Start with OpenCV’s StereoBM matcher on grayscale rectified images; display unmatched areas explicitly instead of inventing distances.\n6. **Demonstrate the rig:** Record a live disparity map, then compare static textured objects, an empty background, a missing target, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Paired frames] --> B[Calibration]\n B --> C[Rectification]\n C --> D[Row matching]\n D --> E[Disparity map]\n```\n\n**Worked relationship:** Depth equals baseline times focal length divided by disparity; use consistent physical units and focal length in pixels.\n\n`Z = B * f / disparity`\n\n## Common pitfalls\n\n- **Unsynchronized motion:** Two ordinary webcams can capture a moving object at different moments; begin with stationary scenes to separate timing errors from calibration errors.\n- **Textureless surfaces:** A plain wall offers ambiguous matches; distinguish invalid areas from genuine distant surfaces.\n- **Mount flex:** Recalibrate after moving either camera; an old calibration cannot describe a new camera arrangement.\n\n## When it's done\n\n- **Deliverable:** A documented rigid rig, saved calibration, rectified alignment example, live disparity video, and test counts identifying where matching succeeds or fails.",
+      "resources": [
+        {
+          "title": "3D Stereo Depth Vision with 2 Cameras - OpenCV Python Tutorial",
+          "url": "https://www.youtube.com/watch?v=k_QSqbj_bYo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a two-camera OpenCV stereo workflow before building your own rig."
+        },
+        {
+          "title": "Making A Low-Cost Stereo Camera Using OpenCV",
+          "url": "https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Build a rigid webcam pair and understand rectification."
+        },
+        {
+          "title": "Stereo Camera Calibration and Triangulation with OpenCV and Python",
+          "url": "https://temugeb.github.io/opencv/python/2021/02/02/stereo-camera-calibration-and-triangulation.html",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Follow paired checkerboard calibration and coordinate conventions."
+        },
+        {
+          "title": "Depth Map from Stereo Images",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_depthmap/py_depthmap.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Try StereoBM and understand the disparity-depth relationship."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=k_QSqbj_bYo",
+        "https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/",
+        "https://temugeb.github.io/opencv/python/2021/02/02/stereo-camera-calibration-and-triangulation.html",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_depthmap/py_depthmap.markdown"
+      ]
+    },
+    {
+      "node_id": "p:edge-open-vocabulary-detection-on-jetson",
+      "type": "project",
+      "name": "Edge open-vocabulary detection on Jetson",
+      "summary": "Run text-prompted object detection locally on a Jetson and measure how prompts, optimization, and scene conditions affect the result.",
+      "lesson_md": "## In one sentence\n\nRun text-prompted object detection locally on a Jetson and measure how prompts, optimization, and scene conditions affect the result.\n\n![NanoOWL published result detecting an owl and a glove from text prompts](/img/lessons/projects_perception_1-jetson-open-vocab.webp)\n*NanoOWL published result detecting an owl and a glove from text prompts. Source: [Official publication](https://github.com/NVIDIA-AI-IOT/nanoowl), license unknown.*\n\n## What you will learn\n\n- **Open-vocabulary detection** uses text descriptions to request object boxes rather than restricting the interface to a fixed list of class IDs.\n- **Edge inference** runs the model on the robot’s local computer; this project measures actual behavior instead of assuming desktop performance transfers unchanged.\n- **Software analogy:** A prompt is a query, not a new training label; changing the query changes what the detector searches for without retraining it.\n\n> **Key idea:** Text flexibility and useful detection quality are separate properties; benchmark both on the actual board.\n\n## What you need\n\n- **Hardware:** Borrow a supported Jetson Orin and USB camera; use the board’s appropriate power supply and cooling. Purchase and storage costs are unknown.\n- **Software:** Use NanoOWL’s TensorRT-optimized OWL-ViT route for the first deployment; TensorRT compiles model operations into an inference engine for NVIDIA hardware.\n- **Model distinction:** The map also links OWLv2; NanoOWL optimizes OWL-ViT, so do not rename its benchmark as an OWLv2 deployment.\n- **Preparation:** Begin with Intro: calibrate a webcam and track AprilTags and Open-vocabulary detection & grounding; log the board, software stack, resolution, and prompts.\n\n## Steps\n\n1. **Establish a reference:** Run the repository’s supplied owl-and-glove image; verify that boxes align with the requested objects before connecting live capture.\n2. **Build the engine:** Follow the supported Jetson setup and build the image encoder engine; retain its configuration with the benchmark results.\n3. **Connect the camera:** Start the live tree-prediction demo; check the camera device on the host before debugging container access.\n4. **Query ordinary objects:** Keep a fixed test collection; compare wording changes while preserving frames and score thresholds for a fair comparison.\n5. **Profile the pipeline:** Measure capture-to-display delay and processed frames per second separately; include prompt updates and rendering rather than only model execution.\n6. **Record the evaluation:** Demonstrate present objects, absent requested objects, an empty scene, and poor lighting; report false boxes and missed targets alongside speed.\n\n```mermaid\nflowchart LR\n A[Camera frame] --> C[OWL image encoder]\n B[Text query] --> D[Text features]\n C --> E[Compare and locate]\n D --> E\n E --> F[Boxes and timings]\n```\n\n**Worked prompt:** The repository’s basic example requests `[an owl, a glove]`; reproduce it before replacing those descriptions with your own tabletop objects.\n\n## Common pitfalls\n\n- **Threshold tuning:** Lowering the score cutoff may reveal more objects and more false positives; save the threshold with every result.\n- **Model substitutions:** A faster OWL-ViT build does not establish that a different OWLv2 checkpoint will export, fit, or run at the same speed.\n- **No camera:** Treat missing input as an explicit failure state, not an unchanged last frame masquerading as live detection.\n\n## When it's done\n\n- **Deliverable:** A live text-editable detector with a reproducible environment, per-prompt success/failure counts, and measured throughput and end-to-end delay.",
+      "resources": [
+        {
+          "title": "Jetbot Orin Object Tracking using NanoOWL",
+          "url": "https://www.youtube.com/watch?v=HNumaRcdKuE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a creator demonstrate NanoOWL object tracking on Jetson Orin."
+        },
+        {
+          "title": "Tutorial - NanoOWL | Jetson AI Lab",
+          "url": "https://www.jetson-ai-lab.com/tutorials/nanoowl/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Start the supported container and live camera demo."
+        },
+        {
+          "title": "NVIDIA-AI-IOT/nanoowl",
+          "url": "https://github.com/NVIDIA-AI-IOT/nanoowl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Build the TensorRT encoder and reproduce prompt-based detections."
+        },
+        {
+          "title": "OWLv2",
+          "url": "https://huggingface.co/docs/transformers/model_doc/owlv2",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the related map model without confusing it with NanoOWL’s OWL-ViT."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HNumaRcdKuE",
+        "https://www.jetson-ai-lab.com/tutorials/nanoowl/",
+        "https://github.com/NVIDIA-AI-IOT/nanoowl",
+        "https://huggingface.co/docs/transformers/model_doc/owlv2"
+      ]
+    },
+    {
+      "node_id": "p:edge-yolo-on-a-jetson-with-ros-2",
+      "type": "project",
+      "name": "Edge YOLO on a Jetson with ROS 2",
+      "summary": "Deploy a YOLO detector on a Jetson and publish timestamped detections through ROS 2 while measuring throughput and delay.",
+      "lesson_md": "## In one sentence\n\nDeploy a YOLO detector on a Jetson and publish timestamped detections through ROS 2 while measuring throughput and delay.\n\n![Ultralytics Jetson guide showing the embedded NVIDIA hardware ecosystem](/img/lessons/projects_perception_1-jetson-yolo.webp)\n*Ultralytics Jetson guide showing the embedded NVIDIA hardware ecosystem. Source: [Official publication](https://docs.ultralytics.com/guides/nvidia-jetson/), license unknown.*\n\n## What you will learn\n\n- **YOLO detection** turns an image into object classes, confidence scores, and bounding boxes, rectangles locating candidate objects in image coordinates.\n- **ROS 2 topics** carry messages between processes; a detector must preserve which camera frame produced each result, not just draw attractive boxes.\n- **Software analogy:** Exporting a model resembles compiling a program; ROS messages are its public API, and timestamps are essential request-tracing metadata.\n\n> **Key idea:** Fast inference is not the same as fresh robot information; measure the whole path from camera capture to published result.\n\n## What you need\n\n- **Hardware:** A Jetson, suitable power supply, cooling, storage, and camera; borrow the kit if possible. Exact hardware cost is unknown.\n- **Software:** A compatible JetPack environment, Ultralytics, TensorRT, ROS 2, and a working camera image topic before adding detection.\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; connect this project to Real-time 2D object detection and YOLO11.\n- **Scope:** Use a small pretrained detector first. Isaac ROS is a related integration stack, not proof that an arbitrary YOLO export is automatically supported.\n\n## Steps\n\n1. **Verify camera messages:** Inspect image encoding, dimensions, header timestamp, and frame identifier; keep a saved recording for repeatable tests.\n2. **Establish baseline inference:** Run the chosen YOLO11 checkpoint without export first; save example boxes and confidence scores for later comparison.\n3. **Export and compare:** Build a TensorRT engine using the official export workflow; test identical recorded frames and check for changed predictions.\n4. **Wrap the detector:** Subscribe to camera messages, convert images correctly, and publish a documented detection message containing boxes, labels, scores, and original frame identity.\n5. **Bound the backlog:** Prefer a deliberate frame-dropping policy over an ever-growing queue; record dropped frames and processing duration separately.\n6. **Demo and measure:** Show live boxes plus a second ROS subscriber receiving results; test ordinary objects, missing targets, empty scenes, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Camera topic] --> B[Image conversion]\n B --> C[YOLO engine]\n C --> D[Detection topic]\n D --> E[Subscriber and overlay]\n```\n\n**Worked export:** With the matching Ultralytics environment and checkpoint, the official export interface supports a TensorRT engine target.\n\n```python\nfrom ultralytics import YOLO\nmodel = YOLO('yolo11n.pt')\nmodel.export(format='engine')\n```\n\n## Common pitfalls\n\n- **Misleading speed:** Report both inference duration and capture-to-publication delay; compare clocks consistently rather than subtracting unrelated device timestamps.\n- **Stale detections:** Publish an empty result for a processed frame without objects; distinguish that from camera disconnection or inference failure.\n- **Unfair comparisons:** Keep checkpoint, image size, and thresholds fixed when comparing baseline and optimized runtime.\n\n## When it's done\n\n- **Deliverable:** A reproducible launch procedure, recorded input and output topics, measured latency/throughput, and success/failure counts, not merely an FPS counter.",
+      "resources": [
+        {
+          "title": "Object detection in Gazebo using Yolov5 and ROS2",
+          "url": "https://www.youtube.com/watch?v=594Gmkdo-_s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See YOLO detections integrated with ROS 2; the simulated example illustrates messaging rather than Jetson performance."
+        },
+        {
+          "title": "YOLO26 on NVIDIA Jetson Setup & Benchmarks | Ultralytics",
+          "url": "https://docs.ultralytics.com/guides/nvidia-jetson/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the current Jetson environment and deployment workflow; keep your selected YOLO11 checkpoint explicit."
+        },
+        {
+          "title": "Model Export with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/modes/export/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand engine export options and compare outputs after optimization."
+        },
+        {
+          "title": "Image",
+          "url": "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Image.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Preserve image encoding, acquisition timestamp, and camera frame identity."
+        },
+        {
+          "title": "Ultralytics YOLO11",
+          "url": "https://docs.ultralytics.com/models/yolo11/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose the map’s YOLO11 detection checkpoint and task."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=594Gmkdo-_s",
+        "https://docs.ultralytics.com/guides/nvidia-jetson/",
+        "https://docs.ultralytics.com/modes/export/",
+        "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Image.html",
+        "https://docs.ultralytics.com/models/yolo11/"
+      ]
+    },
+    {
+      "node_id": "p:event-frame-fusion-under-extreme-lighting",
+      "type": "project",
+      "name": "Event + frame fusion under extreme lighting",
+      "summary": "Combine conventional images with event-camera brightness changes, then test whether the fused view helps detection when lighting defeats the frame-only baseline.",
+      "lesson_md": "## In one sentence\n\nCombine conventional images with event-camera brightness changes, then test whether the fused view helps detection when lighting defeats the frame-only baseline.\n\n![Published event-and-frame complementary-filter figure from the reconstruction project](/img/lessons/projects_perception_1-event-frame-fusion.webp)\n*Published event-and-frame complementary-filter figure from the reconstruction project. Source: [Official publication](https://github.com/cedric-scheerlinck/dvs_image_reconstruction), license unknown.*\n\n## What you will learn\n\n- **Events** report pixel locations, times, and brightness-change polarity, meaning increase or decrease; they are not conventional pictures arriving faster.\n- **Fusion** combines complementary measurements: ordinary frames supply reference intensity while events describe rapid changes between frames.\n- **Software analogy:** Frames resemble database snapshots and events resemble a change log; replaying changes requires correct timestamps and an initial reference.\n\n> **Key idea:** Fusion must beat a synchronized frame-only baseline on the same trials; surviving extreme lighting is an experimental goal, not a promised result.\n\n## What you need\n\n- **Data first:** Start with recorded events and frames from the published reconstruction project; no event-camera purchase is necessary to test the processing idea.\n- **Software:** Use the authors’ notebook to explore event reconstruction, then a fixed detector for comparing frame-only and fused images.\n- **Hardware later:** A synchronized event/frame setup is needed for your own lighting trials; actual camera and integration costs are unknown.\n- **Preparation:** Begin with Intro: calibrate a webcam and track AprilTags and Event-based vision; Prophesee Metavision SDK is a related event-processing toolkit.\n\n## Steps\n\n1. **Replay a recording:** Display conventional frames beside event accumulations; retain original timestamps and document how pixels correspond across sensors.\n2. **Build the baseline:** Run one detector on ordinary frames; save boxes, thresholds, and reviewed target labels before trying fusion.\n3. **Reproduce fusion:** Use the published complementary filter, which combines slowly varying frame information with rapidly changing event information, as a transparent first baseline.\n4. **Compare detector inputs:** Feed reconstructed images into the same detector; keep thresholds fixed and count correct detections, misses, and false alarms.\n5. **Add controlled trials:** Record ordinary light, lights-off transitions, and flickering illumination; also include stationary targets, empty scenes, and missing targets.\n6. **Present the experiment:** Show synchronized frame-only, event, and fused results with detector overlays; report whether the proposed advantage actually appears.\n\n```mermaid\nflowchart LR\n A[Reference frames] --> C[Time-aligned fusion]\n B[Brightness events] --> C\n C --> D[Reconstructed image]\n D --> E[Fixed detector]\n A --> F[Frame-only detector]\n E --> G[Matched trial comparison]\n F --> G\n```\n\n**Worked event:** Interpret `(x, y, t, p)` as pixel column, row, timestamp, and change sign; never substitute event count for absolute scene brightness.\n\n## Common pitfalls\n\n- **Global flicker:** A light switch changes many pixels together; event activity alone does not prove an object moved or a detector remained correct.\n- **Legacy code:** The reference ROS package targets ROS Kinetic; use its notebook for exploration rather than presenting its installation as ROS 2 instructions.\n- **Domain mismatch:** A reconstructed image may differ from detector training images; sharper-looking output does not guarantee better detection.\n\n## When it's done\n\n- **Deliverable:** A reproducible synchronized comparison and per-condition success/failure counts; report a negative finding honestly if fusion does not improve the lighting challenge.",
+      "resources": [
+        {
+          "title": "Continuous-time Intensity Estimation Using Event Cameras",
+          "url": "https://www.youtube.com/watch?v=bZ0ZKido0Ag",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ event/frame reconstruction results before designing the lighting comparison."
+        },
+        {
+          "title": "cedric-scheerlinck/jupnote_event_demo",
+          "url": "https://github.com/cedric-scheerlinck/jupnote_event_demo",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Explore the published filtering idea without first porting a legacy ROS workspace."
+        },
+        {
+          "title": "Event-Based Concepts",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand event coordinates, polarity, timing, and frame construction."
+        },
+        {
+          "title": "cedric-scheerlinck/dvs_image_reconstruction",
+          "url": "https://github.com/cedric-scheerlinck/dvs_image_reconstruction",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Distinguish complementary event/frame fusion from pure-event reconstruction."
+        },
+        {
+          "title": "Continuous-time Intensity Estimation Using Event Cameras",
+          "url": "https://www.cedricscheerlinck.com/continuous-time-intensity-estimation",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Read the authors’ explanation of why the two sensor modalities complement each other."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=bZ0ZKido0Ag",
+        "https://github.com/cedric-scheerlinck/jupnote_event_demo",
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://github.com/cedric-scheerlinck/dvs_image_reconstruction",
+        "https://www.cedricscheerlinck.com/continuous-time-intensity-estimation"
+      ]
+    },
+    {
+      "node_id": "p:feature-matching-panorama-and-visual-odometry-toy",
+      "type": "project",
+      "name": "Feature-matching panorama and visual odometry toy",
+      "summary": "Match image features to stitch a panorama, then reuse correspondences to plot an explicitly unscaled toy camera trajectory.",
+      "lesson_md": "## In one sentence\n\nMatch image features to stitch a panorama, then reuse correspondences to plot an explicitly unscaled toy camera trajectory.\n\n![PyImageSearch panorama tutorial showing two views and their matched keypoints](/img/lessons/projects_perception_1-panorama-odometry.webp)\n*PyImageSearch panorama tutorial showing two views and their matched keypoints. Source: [Published source](https://pyimagesearch.com/2016/01/11/opencv-panorama-stitching/), license unknown.*\n\n## What you will learn\n\n- **Keypoints** are distinctive image locations; **descriptors** summarize their local appearance so the same scene detail can be matched across views.\n- **Homography** maps points between images of a plane, while an **essential matrix** constrains corresponding points for calibrated cameras observing a general scene.\n- **Software analogy:** Feature matching resembles a fuzzy join; geometric verification rejects records that look similar but cannot share one consistent transformation.\n\n> **Key idea:** A panorama warp and a camera-motion estimate solve different problems, even when both start from the same matched features.\n\n## What you need\n\n- **Inputs:** Overlapping photographs for stitching and a separate moving-camera sequence for odometry, meaning motion estimated from images.\n- **Tools:** Python, OpenCV, saved camera calibration, and a plotting library; reuse a phone or webcam rather than buying robot hardware.\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; connect this exercise to Classical image processing & feature matching and Camera models & image formation.\n- **Budget:** Existing recordings need no new camera; additional equipment or compute cost is unknown if you cannot reuse them.\n\n## Steps\n\n1. **Capture two views:** Photograph a textured scene with substantial overlap; keep the camera center approximately fixed while rotating for the panorama.\n2. **Match ORB features:** Extract binary descriptors and use Hamming distance, which counts differing bits, rather than the default floating-point distance.\n3. **Reject bad matches:** Fit a homography with RANSAC, a method that tests geometric explanations while tolerating incorrect matches; display its accepted correspondences.\n4. **Build the panorama:** Warp one image into the other’s coordinates and blend the overlap; save both the stitched result and visible failure cases.\n5. **Try camera motion:** On a calibrated translating-camera sequence, estimate an essential matrix and recover relative rotation and translation direction; accumulate a clearly labeled unscaled trajectory.\n6. **Record the comparison:** Show matches, panorama, and trajectory; repeat with textureless frames, missing overlap, moving objects, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Image pair] --> B[ORB matches]\n B --> C[Geometric verification]\n C --> D[Homography and panorama]\n C --> E[Essential matrix]\n E --> F[Unscaled camera path]\n```\n\n**Worked matcher:** With default ORB descriptors already extracted, OpenCV’s documented matching setup is:\n\n```python\nmatcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)\nmatches = matcher.match(descriptors_a, descriptors_b)\n```\n\n## Common pitfalls\n\n- **No descriptors:** Check for missing descriptors and insufficient accepted correspondences before estimating geometry; skip the update rather than inventing motion.\n- **Scale ambiguity:** Monocular translation lacks absolute scale; never label an accumulated path in meters without an independent scale source.\n- **Parallax:** Nearby and distant surfaces can resist one panorama warp when the camera translates; do not interpret every seam as a matcher bug.\n\n## When it's done\n\n- **Deliverable:** A reproducible keypoint video, stitched panorama, unscaled path plot, and success/failure counts separating stitching quality from odometry behavior.",
+      "resources": [
+        {
+          "title": "How to Create Panoramas with OpenCV feat. Satya Mallick, Bill Kromydas - Weekly Ep. 9 - 5/20/21",
+          "url": "https://www.youtube.com/watch?v=jKxQ_qr6m1E",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See OpenCV educators explain panorama creation and matching."
+        },
+        {
+          "title": "Feature Matching",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_feature2d/py_matcher/py_matcher.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Implement ORB matching with the correct Hamming distance."
+        },
+        {
+          "title": "Feature Matching + Homography to find Objects",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_feature2d/py_feature_homography/py_feature_homography.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand geometric inliers, RANSAC, and perspective transforms."
+        },
+        {
+          "title": "OpenCV panorama stitching",
+          "url": "https://pyimagesearch.com/2016/01/11/opencv-panorama-stitching/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Follow the matching-to-warp panorama pipeline; adapt its older detector examples to current OpenCV."
+        },
+        {
+          "title": "Monocular Visual Odometry using OpenCV",
+          "url": "https://avisingh599.github.io/vision/monocular-vo/",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Understand essential-matrix pose recovery and why monocular scale needs outside information."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=jKxQ_qr6m1E",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_feature2d/py_matcher/py_matcher.markdown",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_feature2d/py_feature_homography/py_feature_homography.markdown",
+        "https://pyimagesearch.com/2016/01/11/opencv-panorama-stitching/",
+        "https://avisingh599.github.io/vision/monocular-vo/"
+      ]
+    },
+    {
+      "node_id": "p:fetch-by-name-with-a-mobile-manipulator",
+      "type": "project",
+      "name": "Fetch-by-name with a mobile manipulator",
+      "summary": "Integrate language-based object search, navigation, and grasping so a mobile manipulator retrieves a named object to a designated drop location.",
+      "lesson_md": "## In one sentence\n\nIntegrate language-based object search, navigation, and grasping so a mobile manipulator retrieves a named object to a designated drop location.\n\n![OK-Robot published overview showing its mobile manipulation setup and task pipeline](/img/lessons/projects_perception_1-fetch-by-name.webp)\n*OK-Robot published overview showing its mobile manipulation setup and task pipeline. Source: [Published source](https://github.com/ok-robot/ok-robot), license unknown.*\n\n## What you will learn\n\n- **Mobile manipulation** combines driving a base with controlling an arm; a correct object prediction is useless if the robot cannot approach and reach it.\n- **Semantic memory** associates scene geometry with visual-language features, letting a phrase retrieve a likely object location instead of a fixed class number.\n- **Software analogy:** This is a distributed workflow: search, navigation, grasp, and placement need explicit inputs, outputs, timeouts, and failure states.\n\n> **Key idea:** End-to-end success depends on the interfaces between modules, not only on how impressive each pretrained model looks in isolation.\n\n## What you need\n\n- **Map preparation:** Open-vocabulary 3D map of a room and SO-101 on wheels: base + arm kinematics precede this integration project.\n- **Reference hardware:** OK-Robot uses Hello Robot Stretch with Dex Wrist, a LiDAR-equipped iPhone Pro for scanning, and a GPU workstation.\n- **Compatibility:** The map’s eventual mobile base and arm are undecided; adapting another platform requires new control and calibration work, not just changing a device name.\n- **Access and cost:** The reference requests an AnyGrasp license and checkpoint. Hardware, scanning-app, compute, and licensing costs must be checked; the total is unknown here.\n\n## Steps\n\n1. **Prove the primitives:** Test navigation to a marked location, stationary grasping, and controlled placement independently before accepting language commands.\n2. **Scan the workspace:** Follow the reference environment setup; keep its room geometry, robot starting pose, and coordinate conventions together.\n3. **Resolve the request:** Retrieve candidate locations for a phrase; show the selected target before allowing motion, and reject absent or ambiguous requests.\n4. **Approach and grasp:** Navigate to a reachable viewing position, refresh perception, and run the grasp module; distinguish arrival from successful object acquisition.\n5. **Transport and place:** Move to a designated drop location and release only after checking placement conditions; do not start with handovers to people.\n6. **Demonstrate retrieval:** Record the complete command-to-placement attempt, including recovery or refusal when search, reachability, or grasping fails.\n\n```mermaid\nflowchart LR\n A[Language request] --> B[Scene retrieval]\n B --> C[Navigate]\n C --> D[Refresh and grasp]\n D --> E[Transport]\n E --> F[Place and verify]\n```\n\n**Worked request:** For “bring the blue bottle,” log the selected scene location, approach result, grasp result, and final drop outcome as separate fields.\n\n## Common pitfalls\n\n- **Stale maps:** A moved object can invalidate a previously correct location; reevaluate before grasping rather than treating the scan as permanent truth.\n- **Partial success:** Finding the bottle is not fetching it; count failures at each stage and report full-task completion separately.\n- **Legacy integration:** The published reference includes ROS 1 launch commands; do not present it as a ready-made ROS 2 or SO-101 stack.\n- **Physical safety:** Keep people outside the base-and-arm workspace and maintain an independent stop control throughout powered tests.\n\n## When it's done\n\n- **Deliverable:** Repeated named-object retrievals plus documented empty-room, missing-target, and poor-lighting trials, with stage-specific and end-to-end success/failure counts.",
+      "resources": [
+        {
+          "title": "OK-Robot: Home 2",
+          "url": "https://www.youtube.com/watch?v=-A2vuqFizZQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ complete pick-and-drop trials in a real home."
+        },
+        {
+          "title": "OK-Robot: What Really Matters in Integrating Open-Knowledge Models for Robotics",
+          "url": "https://ok-robot.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See the architecture and published failure analysis before integrating modules."
+        },
+        {
+          "title": "ok-robot/ok-robot",
+          "url": "https://github.com/ok-robot/ok-robot",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Check actual hardware, license prerequisites, and separate robot/workstation processes."
+        },
+        {
+          "title": "Environment Setup",
+          "url": "https://github.com/ok-robot/ok-robot/blob/main/docs/environment-setup.md",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow the reference scan and physical environment preparation."
+        },
+        {
+          "title": "OK-Robot: What Really Matters in Integrating Open-Knowledge Models for Robotics",
+          "url": "https://arxiv.org/abs/2401.12202",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the full system design and evaluation rather than assuming the demo generalizes."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=-A2vuqFizZQ",
+        "https://ok-robot.github.io/",
+        "https://github.com/ok-robot/ok-robot",
+        "https://github.com/ok-robot/ok-robot/blob/main/docs/environment-setup.md",
+        "https://arxiv.org/abs/2401.12202"
+      ]
+    },
+    {
+      "node_id": "p:few-shot-object-re-identification-with-dinov2-features",
+      "type": "project",
+      "name": "Few-shot object re-identification with DINOv2 features",
+      "summary": "Use a few reference object photos and DINOv2 feature similarity to find the same object again among new candidate views.",
+      "lesson_md": "## In one sentence\n\nUse a few reference object photos and DINOv2 feature similarity to find the same object again among new candidate views.\n\n![DINOv2 authors’ published cross-image patch matching examples](/img/lessons/projects_perception_1-dinov2-reidentification.webp)\n*DINOv2 authors’ published cross-image patch matching examples. Source: [Published source](https://arxiv.org/html/2304.07193), license unknown.*\n\n## What you will learn\n\n- **Re-identification** asks whether a new view shows the same physical object, not merely another object of the same category.\n- **Embedding** means a numerical feature vector describing an image; DINOv2 provides reusable visual features without training a new backbone for this exercise.\n- **Software analogy:** Store reference embeddings as an index; a new crop becomes a nearest-neighbor query, followed by an explicit decision to accept or reject.\n\n> **Key idea:** The nearest reference always exists in a nonempty gallery, even when the correct object is absent; rejection is part of the task.\n\n## What you need\n\n- **Data:** Reference photos of selected lab objects, separate test views, look-alike distractors, and scenes without the target.\n- **Tools:** Python, a documented DINOv2 image processor and backbone, and a simple similarity calculation; begin with manually cropped objects.\n- **Scope:** Whole-image retrieval does not automatically locate a tiny object in clutter; candidate boxes or crops are a separate input to your matcher.\n- **Preparation:** Start with Intro: calibrate a webcam and track AprilTags and Self-supervised visual features (DINOv2-style backbones).\n- **Budget:** Reuse photographs and a computer; hosted GPU cost is unknown if local inference is unsuitable. No robot is needed for the first demo.\n\n## Steps\n\n1. **Define identities:** Give each physical object a stable ID; split reference, threshold-tuning, and final test photographs before examining matching results.\n2. **Extract references:** Apply the same image preprocessing and backbone to every crop; save model identity and preprocessing settings with the feature index.\n3. **Encode candidates:** Extract one global image embedding per test crop; do not mix it with the model’s grid of local patch features.\n4. **Rank similarities:** Compare each candidate with reference vectors using cosine similarity, which compares vector directions; retain both best match and score.\n5. **Allow rejection:** Choose a cutoff using separate examples containing distractors and absent targets; keep it fixed for final evaluation.\n6. **Demonstrate reacquisition:** Show reference, candidate, selected identity, and score; repeat after viewpoint changes, occlusion, poor lighting, and target removal.\n\n```mermaid\nflowchart LR\n A[Reference crops] --> B[DINOv2 vectors]\n C[New candidate crop] --> D[DINOv2 vector]\n B --> E[Similarity ranking]\n D --> E\n E --> F[Identity or unknown]\n```\n\n**Worked feature extraction:** After the documented processor and model call, the first token represents the whole image; other tokens describe image patches.\n\n```python\nwith torch.no_grad():\n    outputs = model(**inputs)\nimage_features = outputs.last_hidden_state[:, 0, :]\n```\n\n## Common pitfalls\n\n- **Category shortcuts:** Test two visually similar instances together; matching “a mug” does not prove that the original mug was recovered.\n- **Background leakage:** Repeat with changed backgrounds and consistent crops; otherwise the nearest neighbor may identify the desk instead of the object.\n- **Empty inputs:** Return unknown for no candidates, unreadable crops, or an empty gallery; do not reuse an earlier successful identity.\n\n## When it's done\n\n- **Deliverable:** A reference-to-new-view matching demo with correct matches, wrong identities, rejected distractors, and missed targets counted separately.",
+      "resources": [
+        {
+          "title": "DinoV2 AI Feature Detection and Feature Matching from Meta AI",
+          "url": "https://www.youtube.com/watch?v=MC6q48cNQPU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a robotics educator explore DINOv2 feature detection and matching."
+        },
+        {
+          "title": "DINOv2",
+          "url": "https://huggingface.co/docs/transformers/model_doc/dinov2",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Separate whole-image embeddings from patch tokens using the documented model outputs."
+        },
+        {
+          "title": "DINOv2: Learning Robust Visual Features without Supervision",
+          "url": "https://github.com/facebookresearch/dinov2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Load the official pretrained visual backbones and inspect their intended uses."
+        },
+        {
+          "title": "DINOv2: Learning Robust Visual Features without Supervision",
+          "url": "https://arxiv.org/html/2304.07193",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study retrieval and cross-image feature matching, without confusing them with guaranteed instance identity."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=MC6q48cNQPU",
+        "https://huggingface.co/docs/transformers/model_doc/dinov2",
+        "https://github.com/facebookresearch/dinov2",
+        "https://arxiv.org/html/2304.07193"
+      ]
+    },
+    {
+      "node_id": "p:first-yolo-detector-on-custom-objects",
+      "type": "project",
+      "name": "First YOLO detector on custom objects",
+      "summary": "Label photographs of lab objects, fine-tune a YOLO11 detector, and evaluate it on unseen scenes before showing live webcam detections.",
+      "lesson_md": "## In one sentence\n\nLabel photographs of lab objects, fine-tune a YOLO11 detector, and evaluate it on unseen scenes before showing live webcam detections.\n\n![Ultralytics example of an image annotated with object bounding boxes](/img/lessons/projects_perception_1-custom-yolo.webp)\n*Ultralytics example of an image annotated with object bounding boxes. Source: [Published source](https://docs.ultralytics.com/datasets/detect/), license unknown.*\n\n## What you will learn\n\n- **Object detection** predicts a class and bounding box for each candidate object; it differs from classifying a whole photograph with one label.\n- **Fine-tuning** updates pretrained weights using your examples, instead of learning all visual features from scratch.\n- **Software analogy:** Training examples resemble development fixtures; a genuinely unseen test set checks generalization rather than whether the program remembers those fixtures.\n\n> **Key idea:** Your detector is only convincing when it works on unseen scenes and can leave an empty scene empty.\n\n## What you need\n\n- **Project target:** Choose three lab-object classes and aim for roughly 200 self-labeled images, as proposed in the map; this is not a guaranteed sufficient dataset.\n- **Inputs:** Photograph varied viewpoints, backgrounds, distances, partial occlusions, and lighting; include scenes where none of your classes appears.\n- **Software:** An annotation tool exporting YOLO boxes, Ultralytics, a pretrained YOLO11 checkpoint, and a webcam for the final demonstration.\n- **Preparation and cost:** Start with Intro: calibrate a webcam and track AprilTags and Real-time 2D object detection; reuse hardware, and check any GPU rental cost.\n\n## Steps\n\n1. **Define classes:** Write labeling rules before annotation so every visible target receives a consistent box and class ID.\n2. **Separate captures:** Create training, validation, and test groups from different capture sessions; keep near-duplicate video frames within the same group.\n3. **Export and inspect:** Check image-label pairs and the dataset YAML, which lists image locations and class names; draw saved boxes before training.\n4. **Fine-tune the baseline:** Start from a small pretrained YOLO11 detector; record the checkpoint, training settings, dataset revision, and saved validation results.\n5. **Evaluate unseen scenes:** Report per-class precision, recall, and mAP, a summary of box-detection precision across classes and overlap criteria; inspect actual mistakes too.\n6. **Run the demo:** Display webcam boxes and scores with a fixed threshold; test empty scenes, missing classes, look-alikes, and poor lighting alongside ordinary examples.\n\n```mermaid\nflowchart LR\n A[Capture and label] --> B[Separate splits]\n B --> C[Fine-tune YOLO11]\n C --> D[Validation choices]\n D --> E[Unseen test]\n E --> F[Webcam demo]\n```\n\n**Worked annotation:** A YOLO label row contains `class x_center y_center width height`; class IDs start at zero and all four box values are normalized to image dimensions.\n\n## Common pitfalls\n\n- **Data leakage:** Adjacent frames in both training and test sets can make the detector look stronger than it is in a new room.\n- **Incomplete labels:** An unmarked target can teach the wrong lesson; audit missing boxes as well as badly positioned ones.\n- **Misleading confidence:** A high model score is not proof of a correct box; use reviewed held-out examples to choose thresholds.\n- **Camera errors:** Report disconnected input explicitly; distinguish “no objects detected” from “no image processed.”\n\n## When it's done\n\n- **Deliverable:** A reproducible labeled dataset, training configuration, per-class evaluation, and webcam video with success/failure counts for normal and adverse conditions.",
+      "resources": [
+        {
+          "title": "How to train Ultralytics YOLO11 on Custom Dataset using Ultralytics HUB | Ultralytics HUB Datasets 🚀",
+          "url": "https://www.youtube.com/watch?v=qE-dfbB5Sis",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow the official custom-YOLO11 dataset and training workflow; its hosted interface is optional."
+        },
+        {
+          "title": "Object Detection Datasets Overview",
+          "url": "https://docs.ultralytics.com/datasets/detect/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Export normalized boxes and define the dataset paths and class dictionary."
+        },
+        {
+          "title": "Model Training with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/modes/train/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure training and reproducibility while explicitly selecting your YOLO11 checkpoint."
+        },
+        {
+          "title": "Model Validation with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/modes/val/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read precision, recall, and mAP rather than judging only live overlays."
+        },
+        {
+          "title": "Ultralytics YOLO11",
+          "url": "https://docs.ultralytics.com/models/yolo11/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose the YOLO11 detection model referenced by this map."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=qE-dfbB5Sis",
+        "https://docs.ultralytics.com/datasets/detect/",
+        "https://docs.ultralytics.com/modes/train/",
+        "https://docs.ultralytics.com/modes/val/",
+        "https://docs.ultralytics.com/models/yolo11/"
+      ]
+    },
+    {
+      "node_id": "p:gaussian-splat-digital-twin-of-a-workbench",
+      "type": "project",
+      "name": "Gaussian-splat digital twin of a workbench",
+      "summary": "Photograph a workbench from overlapping viewpoints, train a Gaussian-splat scene, and render a fly-through while documenting missing geometry and visual artifacts.",
+      "lesson_md": "## In one sentence\n\nPhotograph a workbench from overlapping viewpoints, train a Gaussian-splat scene, and render a fly-through while documenting missing geometry and visual artifacts.\n\n![Published garden reconstruction from the original 3D Gaussian Splatting project](/img/lessons/projects_perception_1-workbench-splat.webp)\n*Published garden reconstruction from the original 3D Gaussian Splatting project. Source: [Published source](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), license unknown.*\n\n## What you will learn\n\n- **Gaussian splatting** represents a scene with many soft three-dimensional blobs whose colors and transparency combine into an image from a chosen viewpoint.\n- **Camera pose** describes where a photo was taken and its viewing direction; reconstruction needs these relationships, not just an unordered slideshow.\n- **Software analogy:** Training optimizes a scene representation against reference screenshots; looking correct from those cameras does not prove every hidden surface exists.\n\n> **Key idea:** This “digital twin” is a visual reconstruction, not automatically a collision model, measurement instrument, or physics simulator.\n\n## What you need\n\n- **Capture:** A phone or camera, a static workbench, steady lighting, and overlapping sharp images; avoid moving objects halfway through the scan.\n- **Software:** nerfstudio with Splatfacto, its Gaussian-splatting method; gsplat supplies the rendering backend, while COLMAP estimates cameras for ordinary photo collections.\n- **Compute:** Check the selected method’s GPU requirements before capturing; the Splatfacto guide lists approximate memory requirements, not a guarantee for your scene.\n- **Preparation and cost:** Start with Intro: calibrate a webcam and track AprilTags and Neural scene representations (NeRF & Gaussian splatting); reuse a phone and budget GPU access separately.\n\n## Steps\n\n1. **Plan viewpoints:** Walk around the bench and capture overlapping views at different heights; include object sides rather than repeatedly photographing only the front.\n2. **Process the photos:** Run nerfstudio’s custom-data pipeline and inspect recovered cameras and sparse points; investigate unregistered views before starting training.\n3. **Train Splatfacto:** Use the processed dataset; watch the viewer and save the experiment configuration with the original capture data.\n4. **Inspect unseen viewpoints:** Move between training cameras and around object edges; note floating blobs, holes, and stretched surfaces instead of hiding them in the fly-through.\n5. **Test capture limits:** Compare an ordinary bench with an empty-bench capture and poor-lighting or incomplete-view captures; document processing failures and missing objects.\n6. **Export the demo:** Save a rendered fly-through and the supported splat export, with capture notes and examples of views where reconstruction breaks down.\n\n```mermaid\nflowchart LR\n A[Overlapping photos] --> B[Camera reconstruction]\n B --> C[Splat initialization]\n C --> D[Optimize appearance]\n D --> E[Inspect novel views]\n E --> F[Fly-through and export]\n```\n\n**Worked commands:** After installing the documented dependencies, process a photo folder and train the splat on that processed output:\n\n```bash\nns-process-data images --data bench_photos --output-dir bench_data\nns-train splatfacto --data bench_data\n```\n\n## Common pitfalls\n\n- **Capture gaps:** A surface never seen by the camera cannot be validated by an attractive interpolation from familiar views.\n- **Moving clutter:** People, monitor content, or objects changing position violate the intended static-scene capture and can leave inconsistent reconstructions.\n- **Wrong export assumptions:** A splat PLY is not automatically a conventional mesh or collision-ready point cloud; consult the method’s supported export options.\n\n## When it's done\n\n- **Deliverable:** A repeatable workbench capture, recovered-camera inspection, fly-through video, exported splat, and documented successful and failed reconstruction trials.",
+      "resources": [
+        {
+          "title": "Splatfacto",
+          "url": "https://www.youtube.com/watch?v=0yueTFx-MdQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the nerfstudio team demonstrate Splatfacto’s rendered result."
+        },
+        {
+          "title": "Using custom data",
+          "url": "https://docs.nerf.studio/quickstart/custom_dataset.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Capture overlapping images and process them into camera poses and scene data."
+        },
+        {
+          "title": "Splatfacto",
+          "url": "https://docs.nerf.studio/nerfology/methods/splat.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Train, inspect, render, and export the Gaussian-splat method."
+        },
+        {
+          "title": "gsplat",
+          "url": "https://docs.gsplat.studio/main/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the Gaussian rendering library behind Splatfacto."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=0yueTFx-MdQ",
+        "https://docs.nerf.studio/quickstart/custom_dataset.html",
+        "https://docs.nerf.studio/nerfology/methods/splat.html",
+        "https://docs.gsplat.studio/main/",
+        "https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/"
+      ]
+    },
+    {
+      "node_id": "p:gemini-er-pointing-on-the-so-101",
+      "type": "project",
+      "name": "Gemini-ER pointing on the SO-101",
+      "summary": "Reproduce Google’s SO-101 pointing sample by converting a language-selected image point into a calibrated tabletop target and checked arm motion.",
+      "lesson_md": "## In one sentence\n\nReproduce Google’s SO-101 pointing sample by converting a language-selected image point into a calibrated tabletop target and checked arm motion.\n\n![LeRobot documentation photo of the SO-101 follower arm used by the pointing sample](/img/lessons/projects_perception_1-gemini-pointing.webp)\n*LeRobot documentation photo of the SO-101 follower arm used by the pointing sample. Source: [Published source](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Embodied reasoning** uses scene understanding to select a target; Gemini supplies an image location, not a complete safe motor-control solution.\n- **Homography** maps camera pixels onto a calibrated table plane; **inverse kinematics** finds joint angles that put the arm tip at a requested position.\n- **Software analogy:** Gemini is a high-level service returning proposed coordinates; a local adapter must validate that response before it reaches the actuator API.\n\n> **Key idea:** Language selects what to point at, but calibration and local motion checks decide where the physical arm may move.\n\n## What you need\n\n- **Preparation:** Complete Assemble & teleoperate an SO-101 and Intro: calibrate a webcam and track AprilTags before connecting language output to motion.\n- **Setup:** A calibrated SO-101, fixed USB camera, printed ChArUco board, and the official robotics-pointing-sample repository; measure board placement relative to the robot base.\n- **Service access:** The sample requires a Gemini API key; check model access and API pricing. Total cost is unknown here.\n- **Model choice:** The current sample defaults to Gemini 3 Flash; explicitly select the documented ER 1.5 option for this project rather than silently benchmarking another model.\n\n## Steps\n\n1. **Inspect the workspace:** Confirm robot port, calibration identity, camera index, and an unobstructed board image before starting the powered pointing loop.\n2. **Calibrate the plane:** Detect ChArUco corners and save the pixel-to-table transformation; provide measured board-origin coordinates instead of assuming the sample defaults fit your table.\n3. **Test perception alone:** Ask for visible objects and overlay returned points on saved frames; reject missing, malformed, or ambiguous answers before enabling motion.\n4. **Check coordinates locally:** Validate image bounds, table bounds, and reachability; start with unobstructed targets on the calibrated plane, not arbitrary three-dimensional objects.\n5. **Run checked pointing:** Follow the sample’s home, hover, and point sequence; its documented heights are 10 cm above the table, then 2 cm.\n6. **Record evaluation:** Compare named targets, absent objects, an empty table, and poor lighting; log localization errors, motion refusals, API failures, and successful points separately.\n\n```mermaid\nflowchart LR\n A[Image and request] --> B[Gemini point]\n B --> C[Validate response]\n C --> D[Table homography]\n D --> E[Reachability and IK]\n E --> F[Checked arm motion]\n```\n\n**Worked model selection:** The sample’s command-line argument is `--gemini-model gemini-robotics-er-1.5-preview`; retain the selected model name with every recorded trial.\n\n## Common pitfalls\n\n- **Changed geometry:** Recalibrate after moving camera, board, or robot; a saved matrix does not detect that the setup has shifted.\n- **False depth:** The tabletop mapping does not recover arbitrary object height; keep the first demo to pointing, not unverified grasping.\n- **Safety boundary:** Keep hands outside the powered arm’s reach and retain an independent stop; model confidence is not a safety interlock.\n\n## When it's done\n\n- **Deliverable:** A reproducible SO-101 pointing video, calibration record, selected model and settings, and counts of accurate points, rejected requests, and failures.",
+      "resources": [
+        {
+          "title": "Building the Next Generation of Physical Agents with Gemini Robotics-ER 1.5",
+          "url": "https://developers.googleblog.com/en/building-the-next-generation-of-physical-agents-with-gemini-robotics-er-15/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the embedded 2D-pointing video and compare its image coordinates with the SO-101 sample’s geometry."
+        },
+        {
+          "title": "Vision-Guided Manipulation with Gemini & Robot Arms",
+          "url": "https://github.com/google-gemini/robotics-pointing-sample",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Reproduce the actual ChArUco calibration and SO-101 pointing sequence."
+        },
+        {
+          "title": "workshop.py",
+          "url": "https://raw.githubusercontent.com/google-gemini/robotics-pointing-sample/main/workshop.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Verify the model-selection argument and inspect the perception-to-motion implementation."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Prepare the arm’s serial connection and calibration before running the pointing sample."
+        }
+      ],
+      "sources": [
+        "https://developers.googleblog.com/en/building-the-next-generation-of-physical-agents-with-gemini-robotics-er-15/",
+        "https://github.com/google-gemini/robotics-pointing-sample",
+        "https://raw.githubusercontent.com/google-gemini/robotics-pointing-sample/main/workshop.py",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://storage.googleapis.com/gweb-developer-goog-blog-assets/original_videos/desk_point_10_fps_hd.mp4"
+      ]
+    },
+    {
+      "node_id": "p:gesture-commanded-robot",
+      "type": "project",
+      "name": "Gesture-commanded robot",
+      "summary": "Recognize deliberate hand gestures and turn them into a small, checked set of scripted robot actions instead of continuous arm teleoperation.",
+      "lesson_md": "## In one sentence\n\nRecognize deliberate hand gestures and turn them into a small, checked set of scripted robot actions instead of continuous arm teleoperation.\n\n![MediaPipe published Gesture Recognizer preview showing hand landmarks and classified gestures](/img/lessons/projects_perception_1-gesture-robot.webp)\n*MediaPipe published Gesture Recognizer preview showing hand landmarks and classified gestures. Source: [Published source](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer), Creative Commons Attribution 4.0 License.*\n\n## What you will learn\n\n- **Hand landmarks** are anatomical keypoints; MediaPipe estimates 21 per hand and classifies gestures.\n- **Command recognition** is discrete: one accepted sign requests an action, unlike continuous teleoperation.\n- **Software analogy:** Treat gestures as UI events behind a debouncer and state machine; holding a button should not accidentally enqueue the same action forever.\n\n> **Key idea:** A recognized gesture is only a proposed command; the robot’s current state decides whether that command is allowed.\n\n## What you need\n\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags and Assemble & teleoperate an SO-101; connect this work to Human body & hand pose tracking.\n- **Tools:** A webcam, MediaPipe Gesture Recognizer, a command logger, and a calibrated arm with tested action scripts.\n- **Command design:** Map five meanings—stop, come, pick, drop, wave—to distinct supported static signs.\n- **Scope and cost:** Built-in labels are static signs, not dynamic beckoning. Reuse equipment; additional hardware or compute cost is unknown.\n\n## Steps\n\n1. **Start without motion:** Run recognition on the webcam and display the hand landmarks, predicted label, and score beside a command log.\n2. **Define the mapping:** For example, assign Open_Palm to stop; document all five mappings and distinguish unknown gestures from a hand that is not detected.\n3. **Require deliberate input:** Accept a sign only after a chosen stable interval; require release or a state transition before accepting the same action again.\n4. **Add action guards:** Allow pick only at the prepared pickup location and drop only at the designated drop location; reject commands incompatible with the current state.\n5. **Connect short scripts:** Run one checked action at a time; on lost hand tracking or camera failure, prevent new commands rather than replaying the last recognized sign.\n6. **Demonstrate the interface:** Show recognized signs, accepted or rejected commands, and arm response together; test no hand, wrong signs, partial occlusion, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Webcam] --> B[Landmarks and gesture]\n B --> C[Stability check]\n C --> D[Command mapping]\n D --> E[State and motion guards]\n E --> F[Scripted action]\n F --> E\n```\n\n**Worked mapping:** Built-in labels include `Open_Palm`, `Closed_Fist`, `Pointing_Up`, `Thumb_Up`, and `Victory`; “pick” is your application action, not a built-in robot behavior.\n\n## Common pitfalls\n\n- **Repeated triggers:** A held sign appears in many frames; count accepted commands separately from raw classifier outputs to reveal accidental repeats.\n- **False certainty:** Ambiguous input must not start movement; recognition scores are not safety guarantees.\n- **Physical stop:** Keep an independent stop control available and hands outside the arm’s reach; camera-based stop recognition is not an emergency-stop replacement.\n\n## When it's done\n\n- **Deliverable:** A five-command demonstration, documented gesture mapping and state rules, plus correct, rejected, repeated, and missed command counts across normal and adverse trials.",
+      "resources": [
+        {
+          "title": "Easy on-device Machine Learning with MediaPipe",
+          "url": "https://www.youtube.com/watch?v=yOP_FY2KTm8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See Google explain the hand-landmark and gesture-classification pipeline with a live gesture example."
+        },
+        {
+          "title": "Gesture Recognizer",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect supported static labels and the interactive recognition demo."
+        },
+        {
+          "title": "Gesture recognition guide for Python",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/python",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run image, video, or live-stream recognition and handle its outputs."
+        },
+        {
+          "title": "Hand Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the underlying hand keypoints rather than treating the classifier as a motor controller."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=yOP_FY2KTm8",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/python",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker"
+      ]
+    },
+    {
+      "node_id": "p:hand-tracking-teleoperation-of-the-so-101",
+      "type": "project",
+      "name": "Hand-tracking teleoperation of the SO-101",
+      "summary": "Turn tracked hand motion into checked SO-101 tool targets, then record the resulting robot actions and camera observations as demonstrations.",
+      "lesson_md": "## In one sentence\n\nTurn tracked hand motion into checked SO-101 tool targets, then record the resulting robot actions and camera observations as demonstrations.\n\n![robo_mimic published webcam-to-SO-101 simulation demonstration, not a physical-arm validation](/img/lessons/projects_perception_1-hand-teleoperation.webp)\n*robo_mimic published webcam-to-SO-101 simulation demonstration, not a physical-arm validation. Source: [Published source](https://github.com/physical-hardware-intelligence/robo_mimic), Apache-2.0.*\n\n## What you will learn\n\n- **Teleoperation** means a person continuously controls the robot; unlike Gesture-commanded robot, this project maps changing hand position to changing tool targets.\n- **Inverse kinematics**, or IK, converts a desired tool position into arm joint angles; unreachable targets need rejection or adjustment, not unchecked motor commands.\n- **Software analogy:** A held clutch key works like dragging with a mouse: engage, move relative to a starting point, release, and reposition your hand.\n\n> **Key idea:** Hand-relative landmarks are not calibrated camera-to-robot coordinates; define the mapping explicitly before allowing the arm to follow.\n\n## What you need\n\n- **Preparation:** Complete Assemble & teleoperate an SO-101 and Intro: calibrate a webcam and track AprilTags; review Human body & hand pose tracking.\n- **Equipment:** A webcam, calibrated follower arm, computer, and clear workspace; no leader arm is required for this proposed interface.\n- **Software:** MediaPipe Hand Landmarker, robot kinematics, and a LeRobot-compatible teleoperator adapter for demonstration recording.\n- **Reference boundary:** robo_mimic publishes a live webcam-to-simulated-arm demo; its physical-arm integration remains unfinished, so it is a design reference, not validated hardware software.\n- **Cost:** Reuse the arm and webcam; additional hardware or compute cost is unknown until your setup is chosen.\n\n## Steps\n\n1. **Inspect landmarks:** Display the detected hand and coordinates without connecting motors; test left/right identity, mirrored camera display, and disappearance.\n2. **Define relative control:** When a clutch key is held, store hand and tool reference positions; map subsequent hand displacement into a small bounded robot workspace.\n3. **Separate the gripper:** Map thumb–index separation to jaw opening; start with fixed tool orientation rather than requesting arbitrary hand rotations.\n4. **Solve and validate:** Smooth targets, solve IK, and check joint limits and command changes in simulation before enabling the physical follower.\n5. **Add recording:** Expose accepted joint actions through a LeRobot teleoperator adapter; record synchronized robot observations, actions, camera frames, and clutch state.\n6. **Demonstrate control:** Move between marked reachable targets and replay the recorded observations; test hand loss, empty scenes, occlusion, poor lighting, and camera disconnection.\n\n```mermaid\nflowchart LR\n A[Webcam] --> B[Hand landmarks]\n B --> C[Clutch and relative target]\n C --> D[IK and limits]\n D --> E[Robot action]\n E --> F[Recorded demonstration]\n```\n\n**Worked mapping:** Store `hand_start` and `tool_start` when engaging the clutch; a candidate target is `tool_start + gain * (hand_now - hand_start)`, before workspace and IK checks.\n\n## Common pitfalls\n\n- **Invented depth:** MediaPipe world landmarks are centered on the hand; they do not directly give the hand’s distance from the robot base.\n- **Tracking loss:** Stop issuing fresh motion and require deliberate re-engagement after reacquisition; do not jump to a newly detected hand’s absolute position.\n- **Physical safety:** Keep hands outside the powered arm’s reach and retain an independent stop; a webcam clutch is not a certified emergency stop.\n\n## When it's done\n\n- **Deliverable:** A continuous hand-to-arm demo without a leader arm, recorded demonstrations, and counts of reached targets, rejected targets, and tracking failures.",
+      "resources": [
+        {
+          "title": "robo_mimic",
+          "url": "https://github.com/physical-hardware-intelligence/robo_mimic",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the embedded live webcam-to-simulated-SO-101 demonstration; hardware support is explicitly unfinished."
+        },
+        {
+          "title": "Hand Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the 21 hand keypoints and their hand-relative coordinate systems."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check follower setup and calibration before connecting a new input device."
+        },
+        {
+          "title": "Bring Your Own Hardware",
+          "url": "https://huggingface.co/docs/lerobot/integrate_hardware",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement the teleoperator action interface and make it discoverable by LeRobot recording tools."
+        }
+      ],
+      "sources": [
+        "https://github.com/physical-hardware-intelligence/robo_mimic",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://huggingface.co/docs/lerobot/integrate_hardware",
+        "https://raw.githubusercontent.com/physical-hardware-intelligence/robo_mimic/main/docs/media/teleop.mp4"
+      ]
+    },
+    {
+      "node_id": "p:high-speed-ball-catching-cue-with-an-event-camera",
+      "type": "project",
+      "name": "High-speed ball catching cue with an event camera",
+      "summary": "Track a thrown ball from timestamped brightness changes and display a predicted interception cue while measuring latency against a frame-camera baseline.",
+      "lesson_md": "## In one sentence\n\nTrack a thrown ball from timestamped brightness changes and display a predicted interception cue while measuring latency against a frame-camera baseline.\n\n![Authors’ published event-ball tracking and fitted-trajectory visualization in RViz](/img/lessons/projects_perception_1-event-ball-cue.webp)\n*Authors’ published event-ball tracking and fitted-trajectory visualization in RViz. Source: [Published source](https://github.com/uzh-rpg/event-based_object_catching_anymal), GNU General Public License v3.0.*\n\n## What you will learn\n\n- **Events** report pixel brightness changes with coordinates, polarity, and timestamps; they do not arrive as a regular sequence of full photographs.\n- **Trajectory fitting** estimates a ball’s path from successive detections; a catching cue predicts a crossing location or time without commanding a catcher.\n- **Software analogy:** Think of an event stream as incremental updates rather than repeated database snapshots; batching them changes the latency your application experiences.\n\n> **Key idea:** Fine sensor timestamps do not guarantee fast reactions; measure buffering, detection, fitting, and display delay together.\n\n## What you need\n\n- **Preparation:** Start with Intro: calibrate a webcam and track AprilTags and Event-based vision; retain camera calibration with every recording.\n- **Inputs:** An event-camera recording or available sensor, a high-contrast ball, and a conventional camera baseline; hardware access and purchase cost are unknown.\n- **Reference:** The authors’ public tracker supplies a recorded ROS bag test, meaning a replayable log of sensor messages, so you can begin without a catching robot.\n- **Compatibility:** Their published implementation targets Ubuntu 20.04 and ROS Noetic, not ROS 2; isolate that legacy environment rather than mixing dependencies.\n\n## Steps\n\n1. **Replay first:** Run the reference detection-and-fitting example and inspect event activity, accepted ball detections, and the fitted path before collecting new data.\n2. **Control the scene:** Begin with a fixed camera and simple background; record both event data and the conventional-camera comparison with documented synchronization.\n3. **Detect the ball:** Group recent events into candidate regions and reject isolated noise; record how the time-window setting affects motion visibility and delay.\n4. **Fit a cue:** Estimate the trajectory from accepted observations; for physical depth or interception distance, use calibrated geometry and an explicit scale assumption.\n5. **Measure the pipeline:** Log sensor and processing timestamps; compare cue availability with the frame baseline, distinguishing sensor timing from end-to-end latency.\n6. **Demonstrate predictions:** Overlay detections, predicted crossing, and uncertainty; test empty scenes, missed throws, clutter, and poor lighting, reporting failures as well as successful tracks.\n\n```mermaid\nflowchart LR\n A[Timestamped events] --> B[Short time window]\n B --> C[Ball candidates]\n C --> D[Trajectory fit]\n D --> E[Crossing cue]\n E --> F[Latency and error report]\n```\n\n**Worked latency budget:** A chosen 30 fps baseline has `1000 / 30`, about 33 milliseconds, between frames; this arithmetic is not a measured event-camera advantage.\n\n## Common pitfalls\n\n- **No motion:** A stationary ball may produce little useful event activity; missing events do not prove the scene contains no ball.\n- **Overclaiming:** A two-dimensional pixel track alone cannot determine a metric three-dimensional interception point; keep the demo’s coordinate assumptions visible.\n- **Safe scope:** Keep this project to a visual cue and controlled soft-ball trials, with people outside the throwing path; do not attach an unvalidated catching actuator.\n\n## When it's done\n\n- **Deliverable:** A replayable ball-track and crossing-cue video, documented calibration, latency measurements, prediction errors, and success/failure counts against the frame baseline.",
+      "resources": [
+        {
+          "title": "Event-based Agile Object Catching with a Quadrupedal Robot (ICRA 2023)",
+          "url": "https://www.youtube.com/watch?v=FpsVB8EO54M",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the research system’s event-based catching pipeline; the student deliverable is only its perception cue."
+        },
+        {
+          "title": "Event-based Agile Object Catching with a Quadrupedal Robot",
+          "url": "https://github.com/uzh-rpg/event-based_object_catching_anymal",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Replay the supplied sensor log and inspect detection and parabola-fitting outputs."
+        },
+        {
+          "title": "Reading Events from a Camera or a File",
+          "url": "https://docs.prophesee.ai/stable/guides/events_streaming.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand event coordinates, polarity, timestamps, and buffering on a supported Prophesee setup."
+        },
+        {
+          "title": "Event-based Agile Object Catching with a Quadrupedal Robot",
+          "url": "https://arxiv.org/html/2303.17479v2",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Separate published robot-catching results from your own latency and cue measurements."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=FpsVB8EO54M",
+        "https://github.com/uzh-rpg/event-based_object_catching_anymal",
+        "https://docs.prophesee.ai/stable/guides/events_streaming.html",
+        "https://arxiv.org/html/2303.17479v2"
+      ]
+    },
+    {
+      "node_id": "p:language-pointing-arm-with-open-vocabulary-detection",
+      "type": "project",
+      "name": "Language-pointing arm with open-vocabulary detection",
+      "summary": "Use a locally run text-conditioned detector and calibrated tabletop mapping to make an SO-101 point at a named visible object among distractors.",
+      "lesson_md": "## In one sentence\n\nUse a locally run text-conditioned detector and calibrated tabletop mapping to make an SO-101 point at a named visible object among distractors.\n\n![Grounding DINO authors’ published examples of text-conditioned object detection](/img/lessons/projects_perception_1-open-vocab-pointing.webp)\n*Grounding DINO authors’ published examples of text-conditioned object detection. Source: [Published source](https://github.com/IDEA-Research/GroundingDINO), Apache License 2.0.*\n\n## What you will learn\n\n- **Open-vocabulary detection** proposes object boxes from text, beyond a fixed training-time class list.\n- **Grounding** links words to image regions, not directly to robot positions.\n- **Software analogy:** Replace perception behind a stable interface; calibration and motion validation remain separate modules.\n\n> **Key idea:** Open vocabulary broadens what you can ask for, not what the detector can reliably recognize or what the arm can safely reach.\n\n## What you need\n\n- **Preparation:** Complete Assemble & teleoperate an SO-101 and Intro: calibrate a webcam and track AprilTags; review Open-vocabulary detection & grounding.\n- **Hardware:** A calibrated follower arm, fixed camera, flat table, and ChArUco board combining checkerboard corners with coded markers.\n- **Software:** Grounding DINO and Google’s pointing-sample geometry components; replace its Gemini calls with local detection.\n- **Budget:** Reuse hardware; additional local-compute cost is unknown.\n\n## Steps\n\n1. **Test detection alone:** Prompt saved images containing the target and distractors; display boxes, text labels, and scores before connecting the arm.\n2. **Define the adapter:** Convert the chosen detector box into an image point; document resizing, padding, coordinate order, and how you handle multiple matching candidates.\n3. **Calibrate the table:** Use the pointing sample’s board workflow and measured board origin to map image pixels into robot tabletop coordinates.\n4. **Check the target:** Reject absent or ambiguous detections, points outside the calibrated table, and unreachable tool targets; do not silently choose the largest box.\n5. **Enable checked motion:** Use inverse kinematics, which finds arm joint angles for a tool target; start with a hover point above the table and unobstructed objects.\n6. **Demonstrate the request:** Type “the banana,” show the chosen detection, and record the arm’s pointing result; repeat with distractors, empty scenes, removed targets, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Image and text] --> B[Grounding DINO boxes]\n B --> C[Select or reject]\n C --> D[Pixel point]\n D --> E[Table mapping]\n E --> F[IK and motion checks]\n F --> G[Point]\n```\n\n**Worked adapter:** For a box already converted to pixel corners `(x1, y1, x2, y2)`, propose `((x1+x2)/2, (y1+y2)/2)`; inspect that center before treating it as a tabletop target.\n\n## Common pitfalls\n\n- **Format mismatch:** Normalized center-and-size boxes are not pixel corner boxes; follow the chosen model wrapper’s postprocessing rather than mixing conventions.\n- **False geometry:** A box center on a tall object is not necessarily its table contact point; restrict early trials and show resulting pointing offsets.\n- **Moved camera:** Recalibrate after moving any part of the camera–board–robot arrangement; saved transforms do not update themselves.\n- **Physical safety:** Keep people outside the powered arm’s reach and retain an independent stop; detector scores are not safety guarantees.\n\n## When it's done\n\n- **Deliverable:** A local, language-to-pointing demo with adapter code, calibration records, and counts of correct points, false targets, refusals, and motion failures.",
+      "resources": [
+        {
+          "title": "Detect Anything You Want with Grounding DINO | Zero Shot Object Detection SOTA",
+          "url": "https://www.youtube.com/watch?v=cMa77r3YrDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow a hands-on Grounding DINO walkthrough before adding robot motion."
+        },
+        {
+          "title": "Grounding DINO",
+          "url": "https://huggingface.co/docs/transformers/model_doc/grounding-dino",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect text-conditioned inference and conversion of model outputs into pixel boxes."
+        },
+        {
+          "title": "Grounding DINO: Marrying DINO with Grounded Pre-Training for Open-Set Object Detection",
+          "url": "https://github.com/IDEA-Research/GroundingDINO",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run the official local detector and inspect supported prompts and thresholds."
+        },
+        {
+          "title": "Vision-Guided Manipulation with Gemini & Robot Arms",
+          "url": "https://github.com/google-gemini/robotics-pointing-sample",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reuse only the SO-101 geometry and motion components, replacing its Gemini perception call."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=cMa77r3YrDk",
+        "https://huggingface.co/docs/transformers/model_doc/grounding-dino",
+        "https://github.com/IDEA-Research/GroundingDINO",
+        "https://github.com/google-gemini/robotics-pointing-sample"
+      ]
+    },
+    {
+      "node_id": "p:language-queryable-splat-of-the-lab",
+      "type": "project",
+      "name": "Language-queryable splat of the lab",
+      "summary": "Build a Gaussian-splat scene with language features so a typed query highlights the relevant lab object across reconstructed viewpoints.",
+      "lesson_md": "## In one sentence\n\nBuild a Gaussian-splat scene with language features so a typed query highlights the relevant lab object across reconstructed viewpoints.\n\n![LangSplat authors’ published visualization of learned features in reconstructed scenes](/img/lessons/projects_perception_1-language-splat.webp)\n*LangSplat authors’ published visualization of learned features in reconstructed scenes. Source: [Published source](https://langsplat.github.io/), Creative Commons Attribution-ShareAlike 4.0 International License.*\n\n## What you will learn\n\n- **Gaussian splats** are soft three-dimensional scene elements rendered into images; ordinary color splats do not automatically know object names.\n- **Language features** are numerical representations that let image regions and text be compared; LangSplat attaches learned semantic information to a reconstructed scene.\n- **Software analogy:** Add a searchable semantic index to a visual database; changing the query should not require rebuilding the scene from scratch.\n\n> **Key idea:** A language-queryable reconstruction requires consistent features across views, not merely a text detector overlay on one rendered screenshot.\n\n## What you need\n\n- **Preparation:** Review Neural scene representations (NeRF & Gaussian splatting) and Open-vocabulary detection & grounding; Gaussian-splat digital twin of a workbench is a useful capture exercise.\n- **Inputs:** Overlapping photographs of a static lab area, recovered camera poses, and visible examples of the objects you intend to query.\n- **Reference implementation:** LangSplat combines CLIP image-language features, SAM image-region masks, and a scene-specific feature compressor; it is not a ready-made nerfstudio or Grounding DINO plugin.\n- **Compute and cost:** The original repository lists 24 GB GPU memory for paper-quality training. Use its pretrained scenes first; new compute cost is unknown.\n\n## Steps\n\n1. **Run the published scene:** Download an author-provided model and reproduce a language-feature rendering before investing time in lab capture or environment adaptation.\n2. **Reconstruct the lab:** Capture sharp overlapping views, recover cameras, and train the required color scene; inspect geometry and missing objects before adding semantics.\n3. **Extract region features:** Follow LangSplat’s preprocessing to obtain SAM masks and CLIP features for the same images and cameras used by reconstruction.\n4. **Train language splats:** Fit the scene-specific compressor and language features using the documented pipeline; retain feature checkpoints separately from color-only exports.\n5. **Query and visualize:** Compare text features with rendered scene features and display a relevance heatmap or selected region; allow an unknown result for weak matches.\n6. **Demonstrate consistency:** Ask “where is the soldering iron?” from multiple viewpoints; test missing objects, an empty bench, similar tools, incomplete captures, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Photos and poses] --> B[Color reconstruction]\n A --> C[Masks and CLIP features]\n C --> D[Train language splats]\n B --> D\n E[Text query] --> F[Feature comparison]\n D --> F\n F --> G[Highlighted scene region]\n```\n\n**Worked first run:** After downloading a published checkpoint, the authors render language features with:\n\n```bash\npython render.py -m output/$CASENAME --include_feature\n```\n\n## Common pitfalls\n\n- **Wrong artifact:** A color-only splat export can lose the language features needed for querying; preserve the method’s full model and metadata.\n- **Forced answers:** Nearest similarity alone always ranks something; evaluate absent-target queries rather than always highlighting the most colorful response.\n- **Changed lab:** A reconstructed object stays in the old scene after someone moves it; this is a captured semantic model, not live inventory tracking.\n\n## When it's done\n\n- **Deliverable:** A query-to-highlight demo, saved scene and feature checkpoints, and per-query success/failure counts including absent targets and viewpoint consistency.",
+      "resources": [
+        {
+          "title": "LangSplat: 3D Language Gaussian Splatting (CVPR 2024 Highlight)",
+          "url": "https://www.youtube.com/watch?v=XMlyjsei-Es",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ open-vocabulary 3D querying examples."
+        },
+        {
+          "title": "LangSplat: 3D Language Gaussian Splatting",
+          "url": "https://langsplat.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See what a language field adds to a color reconstruction."
+        },
+        {
+          "title": "LangSplat: 3D Language Gaussian Splatting",
+          "url": "https://github.com/minghanqin/LangSplat",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reproduce pretrained rendering, custom-scene preprocessing, and language-feature training."
+        },
+        {
+          "title": "LangSplat: 3D Language Gaussian Splatting",
+          "url": "https://arxiv.org/abs/2312.16084",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand multi-view language supervision and why scene-specific feature compression is used."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=XMlyjsei-Es",
+        "https://langsplat.github.io/",
+        "https://github.com/minghanqin/LangSplat",
+        "https://arxiv.org/abs/2312.16084"
+      ]
+    },
+    {
+      "node_id": "p:learned-stereo-vs-on-board-stereo",
+      "type": "project",
+      "name": "Learned stereo vs. on-board stereo",
+      "summary": "Compare FoundationStereo and OAK-D onboard stereo on the same image pairs, measuring depth errors, invalid pixels, and processing latency rather than visual smoothness alone.",
+      "lesson_md": "## In one sentence\n\nCompare FoundationStereo and OAK-D onboard stereo on the same image pairs, measuring depth errors, invalid pixels, and processing latency rather than visual smoothness alone.\n\n![FoundationStereo authors’ published stereo-depth reconstruction examples](/img/lessons/projects_perception_1-stereo-comparison.webp)\n*FoundationStereo authors’ published stereo-depth reconstruction examples. Source: [Published source](https://nvlabs.github.io/FoundationStereo/), license unknown.*\n\n## What you will learn\n\n- **Stereo matching** finds the horizontal displacement of corresponding pixels in left and right views; this displacement is called **disparity**.\n- **Rectification** aligns the two views so corresponding points lie on matching image rows; **baseline** is the physical distance between cameras.\n- **Software analogy:** Benchmark two implementations with identical inputs and a shared test oracle; a plausible-looking output is not evidence that one algorithm is more accurate.\n\n> **Key idea:** FoundationStereo is a comparison method, not ground truth; both methods can fail on the same difficult surface.\n\n## What you need\n\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags and review Stereo & RGB-D depth sensing.\n- **Hardware:** An OAK-D stereo camera, a computer suitable for FoundationStereo inference, and independently measured target distances; the map references OAK-D Pro.\n- **Inputs:** Synchronized left/right images, calibration, onboard depth, and capture settings; use the rectified pair, not unrelated RGB and depth frames.\n- **Budget:** Reuse a camera and GPU if available; purchase and compute costs are unknown until the exact hardware and execution method are chosen.\n\n## Steps\n\n1. **Capture paired evidence:** Save the same rectified left/right pair used by onboard stereo, along with timestamps and depth output; document resolution and alignment settings.\n2. **Run FoundationStereo:** Begin with the official demo, then use your recorded pair and correct intrinsics and baseline; do not swap left and right.\n3. **Match coordinates:** Bring both depth outputs into the same image geometry and units; update intrinsics consistently if either pipeline resizes or crops images.\n4. **Define measured regions:** Mark stable surfaces at independently measured distances; evaluate transparent surfaces cautiously and state which physical surface each reference measurement represents.\n5. **Measure tradeoffs:** Report depth error, invalid-pixel fraction, and end-to-end processing time separately; distinguish GPU inference time from transfer and capture delay.\n6. **Demonstrate differences:** Show paired depth maps and an error table for ordinary, low-texture, transparent, empty-scene, missing-target, and poor-lighting trials.\n\n```mermaid\nflowchart LR\n A[One stereo capture] --> B[Onboard stereo]\n A --> C[FoundationStereo]\n B --> D[Common geometry and units]\n C --> D\n E[Measured distances] --> F[Errors and coverage]\n D --> F\n F --> G[Latency and demo]\n```\n\n**Worked conversion:** For rectified stereo, `depth = focal_pixels * baseline_meters / disparity_pixels`; zero or invalid disparity must remain invalid, not become a fabricated faraway measurement.\n\n## Common pitfalls\n\n- **Unfair inputs:** Comparing a neural result from one exposure with onboard depth from another confounds algorithm behavior with scene motion.\n- **Hidden holes:** Dropping invalid pixels can improve average error while reducing useful coverage; report both rather than filling holes silently.\n- **Transparent targets:** A measurement may correspond to a background seen through glass rather than the glass surface; label reference geometry explicitly.\n- **Missing frames:** Log absent stereo pairs and disconnected devices as acquisition failures, not successful empty-depth predictions.\n\n## When it's done\n\n- **Deliverable:** Reproducible paired captures, calibration and settings, side-by-side depth video, and a comparison table of error, coverage, latency, and failure counts.",
+      "resources": [
+        {
+          "title": "FoundationStereo: A Foundation Model for Zero-Shot Stereo Depth Estimation | NVIDIA Research",
+          "url": "https://www.youtube.com/watch?v=R7RgHxEXB3o",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors’ learned-stereo examples before designing your own controlled comparison."
+        },
+        {
+          "title": "StereoDepth",
+          "url": "https://docs.luxonis.com/software/depthai-components/nodes/stereo_depth/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read onboard disparity, depth, and rectified image outputs without mixing image geometry."
+        },
+        {
+          "title": "FoundationStereo: Zero-Shot Stereo Matching",
+          "url": "https://github.com/NVlabs/FoundationStereo",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run learned stereo on rectified inputs and supply correct intrinsics and baseline."
+        },
+        {
+          "title": "FoundationStereo: Zero-Shot Stereo Matching",
+          "url": "https://arxiv.org/abs/2501.09898",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the learned model and published evaluation without treating it as ground truth."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=R7RgHxEXB3o",
+        "https://docs.luxonis.com/software/depthai-components/nodes/stereo_depth/",
+        "https://github.com/NVlabs/FoundationStereo",
+        "https://arxiv.org/abs/2501.09898",
+        "https://nvlabs.github.io/FoundationStereo/"
+      ]
+    },
+    {
+      "node_id": "p:lens-distortion-lab-cheap-vs-good-cameras",
+      "type": "project",
+      "name": "Lens-distortion lab: cheap vs. good cameras",
+      "summary": "Repeat camera calibration across three cameras and compare distortion, reprojection error, and parameter stability without assuming the most expensive camera wins.",
+      "lesson_md": "## In one sentence\n\nRepeat camera calibration across three cameras and compare distortion, reprojection error, and parameter stability without assuming the most expensive camera wins.\n\n![OpenCV published checkerboard photograph illustrating curved edges from radial lens distortion](/img/lessons/projects_perception_1-lens-distortion.webp)\n*OpenCV published checkerboard photograph illustrating curved edges from radial lens distortion. Source: [Published source](https://github.com/opencv/opencv/blob/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown), license unknown.*\n\n## What you will learn\n\n- **Intrinsics** describe internal projection, including focal lengths and image center, not camera position in the room.\n- **Radial distortion** bends straight lines, especially near image edges; calibration estimates correction coefficients.\n- **Reprojection error** measures pixel differences between detected corners and their predicted locations under the fitted model.\n- **Software analogy:** Repeat benchmarks across devices; an excellent training score does not establish repeatability or generalization.\n\n> **Key idea:** Calibration quality depends on capture geometry and settings as well as the camera; price is a hypothesis to test, not the answer.\n\n## What you need\n\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; review Camera models & image formation and Camera calibration (intrinsic, extrinsic & hand-eye).\n- **Equipment:** Three available cameras spanning your intended comparison, a flat printed checkerboard with measured square size, and consistent lighting.\n- **Software:** OpenCV; save corners, resolution, parameters, errors, and undistorted previews.\n- **Budget:** Borrow cameras; record models and sourced prices, or mark prices unknown.\n\n## Steps\n\n1. **Freeze settings:** Choose a common resolution where possible, fix focus and capture settings, and record differences that cannot be controlled across cameras.\n2. **Capture varied views:** Collect at least ten valid board views per calibration, as the OpenCV tutorial recommends; cover different tilts and image regions.\n3. **Detect and refine corners:** Reject unreadable or incomplete patterns; verify the inner-corner count and square dimensions before fitting the camera model.\n4. **Repeat independently:** Capture fresh board poses and recalibrate each camera; compare fitted focal lengths, center, distortion, and error across repetitions.\n5. **Inspect generalization:** On additional board views, keep intrinsics fixed, estimate board pose, and inspect corner residuals and straight edges after undistortion.\n6. **Present the comparison:** Show before/after images, parameter variation, and errors; include board-absent, partially hidden, blurred, and poor-lighting captures with explicit rejection counts.\n\n```mermaid\nflowchart LR\n A[Three cameras] --> B[Controlled captures]\n B --> C[Corner detection]\n C --> D[Repeated calibration]\n D --> E[Independent inspection]\n E --> F[Images and comparison table]\n```\n\n**Worked board convention:** OpenCV’s tutorial uses a `(6, 7)` inner-corner grid: 42 detected corner points, not a board with six by seven squares.\n\n## Common pitfalls\n\n- **Autofocus changes:** A different focus setting can invalidate the intended fixed-camera comparison; save the setting with each calibration rather than pooling all frames.\n- **Overfitting:** A small fitting error does not prove strong results near image edges or on fresh captures; inspect where the residuals occur.\n- **Resolution mismatch:** Pixel errors from different resolutions are not directly comparable; report resolution and avoid treating raw pixel totals as a universal camera ranking.\n- **Empty inputs:** If no usable board views remain, report calibration failure instead of reusing a previous camera’s parameters.\n\n## When it's done\n\n- **Deliverable:** A three-camera comparison table, repeatability plots, undistortion examples, and accepted/rejected capture counts, with settings and limitations clearly recorded.",
+      "resources": [
+        {
+          "title": "OpenCV Basics - 14 - Camera Calibration Part 1",
+          "url": "https://www.youtube.com/watch?v=HNfPbw-1e_w",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn checkerboard-based calibration with a focused OpenCV walkthrough."
+        },
+        {
+          "title": "Camera Calibration using OpenCV",
+          "url": "https://learnopencv.com/camera-calibration-using-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Connect the camera parameters to an inspectable calibration workflow."
+        },
+        {
+          "title": "Camera Calibration Using OpenCV",
+          "url": "https://github.com/spmallick/learnopencv/tree/master/CameraCalibration",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Start from published Python or C++ calibration and undistortion examples."
+        },
+        {
+          "title": "Camera Calibration",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check inner-corner conventions, refinement, distortion, and reprojection error."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HNfPbw-1e_w",
+        "https://learnopencv.com/camera-calibration-using-opencv/",
+        "https://github.com/spmallick/learnopencv/tree/master/CameraCalibration",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://github.com/opencv/opencv/blob/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown"
+      ]
+    },
+    {
+      "node_id": "p:lidar-obstacle-detection-on-a-mobile-robot",
+      "type": "project",
+      "name": "LiDAR obstacle detection on a mobile robot",
+      "summary": "Publish a mounted LiDAR’s point cloud in ROS 2, visualize obstacle clusters, and make a mobile base stop when measurements enter a checked protection zone.",
+      "lesson_md": "## In one sentence\n\nPublish a mounted LiDAR’s point cloud in ROS 2, visualize obstacle clusters, and make a mobile base stop when measurements enter a checked protection zone.\n\n![Nav2 published simulation showing obstacle-aware slowing and stopping zones](/img/lessons/projects_perception_1-lidar-obstacle-stop.webp)\n*Nav2 published simulation showing obstacle-aware slowing and stopping zones. Source: [Published source](https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/), license unknown.*\n\n## What you will learn\n\n- **LiDAR** measures ranges with laser light; a **point cloud** stores three-dimensional samples in a named coordinate frame.\n- **Clustering** groups nearby samples; clusters are not automatically recognized objects or complete boundaries.\n- **Software analogy:** Place middleware between requested velocity and the motor driver to reject commands before execution.\n\n> **Key idea:** The base must consume the monitored velocity output; obstacle visualization alone does not make the robot stop.\n\n## What you need\n\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; review Point cloud processing and LiDAR perception & 3D object detection.\n- **Hardware:** A mobile base with controllable velocity, rigid LiDAR mounting, suitable power and network connection; the map suggests Livox Mid-360.\n- **Software:** ROS 2, the matching sensor driver, Open3D for point-cloud inspection, and Nav2 Collision Monitor for slowdown or stop zones.\n- **Budget:** Hardware costs depend on existing equipment and are unknown; begin with recordings or simulation.\n\n## Steps\n\n1. **Validate the sensor:** Publish the cloud using the ROS 2 driver; confirm timestamps, units, and message format, selecting standard PointCloud2 rather than a vendor-only message.\n2. **Place the cloud correctly:** Measure the sensor-to-base transform and inspect the result in RViz, ROS’s visualization tool; remove robot-body returns only after checking geometry.\n3. **Inspect obstacle clusters:** Downsample and cluster a separate visualization stream; publish cluster markers and track isolated noise, ground points, and small obstacles.\n4. **Configure protection zones:** Feed a validated cloud to Collision Monitor; choose height bounds and zone sizes from mounting, footprint, measured reaction time, and stopping distance.\n5. **Wire the velocity path:** Route every driving command through the monitor; test stale sensor data and transform failures before allowing floor motion.\n6. **Demonstrate stopping:** Start slowly in a clear test area; show measured obstacles, zone activation, requested velocity, and actual stopping behavior, including empty-space and missed-obstacle trials.\n\n```mermaid\nflowchart LR\n A[LiDAR cloud] --> B[Frame validation]\n B --> C[Clusters for display]\n B --> D[Collision Monitor]\n E[Requested velocity] --> D\n D --> F[Base driver]\n F --> G[Measured stop]\n```\n\n**Worked configuration:** Nav2’s inner polygon uses `action_type: stop` with `min_points: 4`; these demonstration settings do not certify stopping performance.\n\n## Common pitfalls\n\n- **Filtered-away hazards:** Small or low objects can disappear during ground removal or clustering; do not let a pretty cluster display replace checking the protection input.\n- **Timeout confusion:** No cloud is not evidence of clear space; configure source timeouts and verify the base’s behavior when sensor updates stop.\n- **Environmental limits:** Test darkness, reflective surfaces, absent obstacles, and low obstacles separately; lighting robustness does not guarantee material-independent detection.\n- **Physical safety:** Keep people outside the test area and retain an independent emergency stop; software collision monitoring is not safety-certified hardware.\n\n## When it's done\n\n- **Deliverable:** A reproducible ROS 2 cloud-and-cluster display, verified velocity routing, and a stopping video with stop distances, false stops, misses, and timeout outcomes.",
+      "resources": [
+        {
+          "title": "Collision Monitor – Software-Based Safety Module | Alexey Merzlyakov | ROS Developers Day 2023",
+          "url": "https://www.youtube.com/watch?v=bWliK0PC5Ms",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the Collision Monitor maintainer explain zones and practical velocity-path integration."
+        },
+        {
+          "title": "Using Collision Monitor",
+          "url": "https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure zones, sensor sources, and the final monitored velocity output."
+        },
+        {
+          "title": "Livox ROS Driver 2",
+          "url": "https://github.com/Livox-SDK/livox_ros_driver2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Select the ROS 2 driver and standard point-cloud message output for the intended LiDAR."
+        },
+        {
+          "title": "DBSCAN clustering",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#dbscan-clustering",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Group obstacle samples and inspect noise labels independently of the stop path."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=bWliK0PC5Ms",
+        "https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/",
+        "https://github.com/Livox-SDK/livox_ros_driver2",
+        "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#dbscan-clustering"
+      ]
+    }
+  ]
+}
