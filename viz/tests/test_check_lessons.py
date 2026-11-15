@@ -687,6 +687,16 @@ def test_visuals_allow_omitted_before_after(tmp_path, monkeypatch):
     assert not any("Before and After" in error for error in _visual_errors(body))
 
 
+def test_visuals_check_before_after_with_crlf(tmp_path, monkeypatch):
+    _prepare_image_dir(tmp_path, monkeypatch)
+    body = _visual_fixture().replace(
+        "- **After:** The robot adjusts its action from the measurement.\n", ""
+    ).replace("\n", "\r\n")
+
+    assert any("must contain exactly the Before and After bullets" in error
+               for error in _visual_errors(body))
+
+
 def test_visuals_reject_key_idea_repeating_summary(tmp_path, monkeypatch):
     _prepare_image_dir(tmp_path, monkeypatch)
     body = _visual_fixture().replace(
