@@ -1,0 +1,187 @@
+{
+  "batch": "knowledge_state_estimation_slam",
+  "lessons": [
+    {
+      "node_id": "k:wheel-inertial-dead-reckoning",
+      "type": "knowledge",
+      "name": "Wheel & inertial dead reckoning",
+      "summary": "Dead reckoning estimates a robot's changing position and orientation by accumulating wheel motion and inertial measurements from a known starting pose.",
+      "lesson_md": "## In one sentence\n\nDead reckoning estimates a robot's changing position and orientation by accumulating wheel motion and inertial measurements from a known starting pose.\n\n![Differential-drive robot with forward velocity, heading and world axes](/img/lessons/knowledge_state_estimation_slam-wheel.webp)\n*Forward velocity and heading of a differential-drive robot. Source: [Dellaert and Hutchinson](https://www.roboticsbook.org/S52_diffdrive_actions.html), license unknown.*\n\n## Why it matters for us\n\n- **Local motion tracking:** A wheeled base needs an estimate between external position fixes. Wheel sensors report rotation, not a guaranteed distance across the floor.\n- **A useful baseline:** Implementing dead reckoning makes drift visible before adding Kalman filtering & multisensor fusion.\n- **A concrete failure:** Wheels can spin without the chassis moving. A smooth plotted trajectory can therefore be wrong.\n\n> **Key idea:** Adding up motion also adds up motion errors; an IMU is not an absolute position reference.\n\n## How it works\n\n- **Wheel increments:** Convert wheel rotation into travel using wheel radius. Equal travel on both sides means straight motion; unequal travel changes heading.\n- **Heading integration:** A gyroscope measures angular velocity. Accumulate it over elapsed time to estimate orientation changes.\n- **Inertial measurements:** An inertial measurement unit, or IMU, also measures acceleration. Position integration needs gravity handling and is vulnerable to sensor offsets.\n- **Software analogy:** Treat each timestamped motion increment like an event in an event-sourced service. Replaying bad events reproducibly creates the wrong state.\n- **Worked toy example:** Assume no slipping, wheel radius 0.05 m, and both wheels rotating 2 radians. Each wheel travels 0.10 m, so the chassis advances 0.10 m.\n- **Coordinate conversion:** Forward travel follows the robot's heading, not necessarily the world's horizontal axis.\n\n```mermaid\nflowchart LR\n  W[\"Wheel increments\"] --> M[\"Motion increment\"]\n  I[\"IMU and elapsed time\"] --> M\n  M --> P[\"Integrate pose\"]\n  P --> N[\"Next estimate\"]\n  N --> P\n```\n\n## Key terms\n\n- **Pose**: position and orientation relative to a chosen coordinate frame.\n- **Encoder**: a sensor measuring wheel or shaft rotation.\n- **Bias**: a persistent offset in a sensor reading.\n- **Drift**: accumulated estimation error over time.\n\n## Before / after\n\n- **Before:** Practice Rigid-body motion & coordinate frames and integrating velocity over elapsed time.\n- **After:** Build Diff-drive odometry from scratch, then study Bayesian state estimation & uncertainty to describe confidence alongside motion.\n\n## Try it in an afternoon\n\n1. **Simulate two wheels:** Record equal wheel increments, timestamps, and a known starting pose in Python.\n2. **Replay a square:** Integrate straight sections and turns; plot the estimated path against your simulated truth.\n3. **Inject an offset:** Add a constant gyroscope error and compare final heading with the error-free replay.\n4. **Test missing data:** Reject nonpositive time intervals; plot wheel-slip and sensor-dropout cases separately instead of silently inventing measurements.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.4:  Odometry",
+          "url": "https://www.youtube.com/watch?v=eQ9E0Zvp9jw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how measured wheel motion becomes chassis motion and why errors accumulate."
+        },
+        {
+          "title": "13.4. Odometry",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read the companion transcript on integrating wheel motion and handling odometry drift."
+        },
+        {
+          "title": "5.2. Motion Model for the Differential Drive Robot",
+          "url": "https://www.roboticsbook.org/S52_diffdrive_actions.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Work through wheel radius, wheel speeds, heading, and world-frame velocity."
+        },
+        {
+          "title": "Preparing Your Data for Use with robot_localization",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check IMU axes, gravity conventions, odometry frames, and reported uncertainty."
+        }
+      ],
+      "sources": [
+        "https://www.roboticsbook.org/S52_diffdrive_actions.html",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+        "https://www.youtube.com/watch?v=eQ9E0Zvp9jw"
+      ]
+    },
+    {
+      "node_id": "k:bayesian-state-estimation-uncertainty",
+      "type": "knowledge",
+      "name": "Bayesian state estimation & uncertainty",
+      "summary": "Bayesian state estimation maintains probabilities over possible robot states, predicting motion and updating those probabilities when measurements arrive.",
+      "lesson_md": "## In one sentence\n\nBayesian state estimation maintains probabilities over possible robot states, predicting motion and updating those probabilities when measurements arrive.\n\n![Door-localization example showing prediction, likelihood and posterior probability bars](/img/lessons/knowledge_state_estimation_slam-bayes.webp)\n*Door observations reshape a predicted location distribution. Source: [Dellaert and Hutchinson](https://www.roboticsbook.org/S44_logistics_perception.html), license unknown.*\n\n## Why it matters for us\n\n- **Sensors disagree:** A robot needs to reason about imperfect measurements rather than replacing its position with whichever sensor spoke last.\n- **Ambiguous observations:** Seeing a doorway may fit several places. Keeping alternatives avoids pretending that one observation uniquely identifies the location.\n- **Useful confidence:** Uncertainty distinguishes a well-supported estimate from an equally smooth guess made without informative measurements.\n\n> **Key idea:** A measurement changes a belief according to how compatible it is with each possible state.\n\n## How it works\n\n- **Prediction:** Move the previous belief through a motion model. Include uncertainty about the movement rather than shifting one perfectly known point.\n- **Measurement update:** Multiply each predicted state's probability by the likelihood of obtaining the observed measurement there, then normalize the result.\n- **Software analogy:** Keep a weighted candidate list, like debugging several hypotheses. New evidence changes their weights rather than automatically deleting every alternative.\n- **Worked hallway example:** Labbe starts with ten equally likely locations. Each has probability 0.1; three locations contain doors.\n- **Perfect door detection:** If the sensor cannot make mistakes, observing a door leaves those three positions at probability 1/3 each and all others at zero.\n- **Realistic detection:** A sensor that can misfire should not eliminate every non-door location. Its likelihood model encodes those mistakes.\n\n```mermaid\nflowchart LR\n  B[\"Previous belief\"] --> P[\"Predict motion\"]\n  P --> U[\"Weight by likelihood\"]\n  Z[\"Observation\"] --> U\n  U --> N[\"Normalize\"]\n  N --> B\n```\n\n## Key terms\n\n- **State**: the hidden quantities being estimated, such as position and heading.\n- **Prior**: belief before incorporating the next measurement.\n- **Likelihood**: how probable a measurement is for a specified state.\n- **Posterior**: belief after incorporating the measurement.\n- **Covariance**: a matrix describing spread and how components vary together; it does not describe every possible distribution shape.\n\n## Before / after\n\n- **Before:** Know basic probability and distinguish the true state from a sensor observation.\n- **After:** Study Kalman filtering & multisensor fusion or Particle filtering & global localization; they implement different representations of a changing belief.\n\n## Try it in an afternoon\n\n1. **Open the hallway notebook:** Reproduce the ten-location example and plot its initial probability bars.\n2. **Apply a door observation:** Multiply by a likelihood array and divide by the sum; verify that the posterior sums to one.\n3. **Add uncertain movement:** Spread probability across nearby cells, then alternate movement and sensor updates.\n4. **Handle impossible evidence:** Detect a zero normalization sum explicitly. Test a missing observation by retaining the prediction rather than fabricating evidence.",
+      "resources": [
+        {
+          "title": "Bayes Filter  (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=0lKHFJpaZvE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the prediction/update loop and the distinction between belief and sensor likelihood."
+        },
+        {
+          "title": "Discrete Bayes Filter",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Run the ten-position hallway example and inspect normalized probability arrays."
+        },
+        {
+          "title": "4.4. Localization",
+          "url": "https://www.roboticsbook.org/S44_logistics_perception.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Compare grid beliefs, Bayes filtering, and measurement likelihoods in a warehouse."
+        },
+        {
+          "title": "Probabilities, Gaussians, and Bayes' Theorem",
+          "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/03-Gaussians.ipynb",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Connect probability distributions to mean, variance, and Gaussian uncertainty."
+        },
+        {
+          "title": "Configuring robot_localization",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See why reusing encoder-derived position and velocity as independent evidence is a mistake."
+        }
+      ],
+      "sources": [
+        "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+        "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/03-Gaussians.ipynb",
+        "https://www.roboticsbook.org/S44_logistics_perception.html",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+        "https://www.youtube.com/watch?v=0lKHFJpaZvE"
+      ]
+    },
+    {
+      "node_id": "k:particle-filtering-global-localization",
+      "type": "knowledge",
+      "name": "Particle filtering & global localization",
+      "summary": "Particle filtering tracks many weighted guesses of a robot's pose, allowing localization to retain several plausible places until sensor evidence separates them.",
+      "lesson_md": "## In one sentence\n\nParticle filtering tracks many weighted guesses of a robot's pose, allowing localization to retain several plausible places until sensor evidence separates them.\n\n![PythonRobotics particle-filter simulation with landmark ranges and true, estimated and dead-reckoned trajectories](/img/lessons/knowledge_state_estimation_slam-particles.webp)\n*Particle-filter localization using landmark distances. Source: [PythonRobotics](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html), license unknown.*\n\n## Why it matters for us\n\n- **Repeated corridors:** Several poses can explain the same observation. A single bell-shaped uncertainty distribution cannot faithfully preserve separate competing locations.\n- **Unknown starting pose:** Global localization begins with hypotheses spread across a known map, rather than assuming the robot starts near its correct location.\n- **A practical distinction:** Tracking near a known start is easier than recovering after somebody moves the robot unexpectedly.\n\n> **Key idea:** Particles represent competing explanations, not a collection of physical robots or guaranteed recovery routes.\n\n## How it works\n\n- **Prediction:** Move every pose guess using measured motion plus sampled motion noise. The cloud spreads where movement is uncertain.\n- **Weighting:** Compare predicted sensor readings at each pose with the actual reading. Better matches receive larger weights.\n- **Resampling:** Draw a new population according to those weights. Strong explanations tend to gain copies; weak explanations tend to disappear.\n- **Software analogy:** Imagine a randomized beam search whose candidates are robot poses, with sensor agreement determining which candidates get another iteration.\n- **Worked toy example:** Suppose two candidate regions have equal prior weight and measurement likelihoods 0.8 and 0.2. Normalized weights become 0.8 and 0.2.\n- **Recovery limitation:** If no particles remain near the true pose, ordinary resampling cannot recreate that missing explanation. Global recovery needs explicit testing and suitable hypothesis injection.\n\n```mermaid\nflowchart LR\n  P[\"Pose particles\"] --> M[\"Sample motion\"]\n  M --> W[\"Score observation\"]\n  W --> N[\"Normalize weights\"]\n  N --> R[\"Resample\"]\n  R --> P\n```\n\n## Key terms\n\n- **Particle**: one sampled pose hypothesis.\n- **Weight**: a hypothesis's relative importance in the estimated distribution.\n- **Multimodal belief**: a distribution with separate peaks representing distinct plausible states.\n- **Monte Carlo localization**: particle filtering applied to localization in a known map.\n- **Kidnapped robot**: a robot moved unexpectedly, making its previous pose estimate wrong.\n\n## Before / after\n\n- **Before:** Understand Bayesian state estimation & uncertainty and distinguish a map from the robot's pose inside it.\n- **After:** Build Animate particles in a repeated corridor, then Recover after a simulated robot kidnapping to test more than easy tracking.\n\n## Try it in an afternoon\n\n1. **Run the landmark demo:** Use PythonRobotics and identify true, dead-reckoned, and estimated trajectories.\n2. **Broaden initialization:** Spread pose guesses across a toy map instead of clustering around the correct start.\n3. **Create ambiguity:** Use repeated landmarks; plot the full particle cloud, not just its average position.\n4. **Test failures:** Remove observations, teleport the simulated truth, and detect zero total weight before normalization. Compare ordinary resampling with adding fresh global guesses.",
+      "resources": [
+        {
+          "title": "Particle Filter and Monte Carlo Localization (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=MsYlueVDLI0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand pose hypotheses, importance weights, resampling, and global localization."
+        },
+        {
+          "title": "Particle filter localization",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See a runnable range-to-landmark localization example and its trajectory colors."
+        },
+        {
+          "title": "particle_filter.py",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect motion sampling, likelihood calculation, weight normalization, and resampling."
+        },
+        {
+          "title": "4.4. Localization",
+          "url": "https://www.roboticsbook.org/S44_logistics_perception.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Read the Monte Carlo localization section and compare sampling with a dense probability grid."
+        }
+      ],
+      "sources": [
+        "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+        "https://www.roboticsbook.org/S44_logistics_perception.html",
+        "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+        "https://www.youtube.com/watch?v=MsYlueVDLI0"
+      ]
+    },
+    {
+      "node_id": "k:factor-graphs-smoothing-pose-graph-slam",
+      "type": "knowledge",
+      "name": "Factor graphs, smoothing & pose-graph SLAM",
+      "summary": "Factor graphs connect unknown robot poses to noisy constraints, letting a smoother adjust an entire trajectory when new evidence links old and new locations.",
+      "lesson_md": "## In one sentence\n\nFactor graphs connect unknown robot poses to noisy constraints, letting a smoother adjust an entire trajectory when new evidence links old and new locations.\n\n![Five-pose factor graph with odometry factors and a red loop-closure factor](/img/lessons/knowledge_state_estimation_slam-pose-graph.webp)\n*PoseSLAM factor graph; red marks a loop constraint. Source: [GTSAM tutorial](https://gtsam.org/tutorials/intro.html), license unknown.*\n\n## Why it matters for us\n\n- **Accumulated drift:** Wheel odometry can make a closed walk look open. Revisiting a known place supplies a constraint between distant trajectory points.\n- **Historical correction:** Smoothing estimates multiple past states together, unlike filtering that focuses on the current state.\n- **A useful implementation:** GTSAM separates the graph describing evidence from the values containing a particular trajectory estimate.\n\n> **Key idea:** A loop closure can change old poses, not merely snap the newest pose onto a map.\n\n## How it works\n\n- **Variables:** Store unknown poses as position and heading. Factors connect only the variables involved in a particular measurement.\n- **Motion factors:** Connect successive poses using measured relative motion and a noise model.\n- **Loop factors:** Connect revisited poses using a measured geometric relationship. A wrong relationship can distort the optimized trajectory.\n- **Software analogy:** Think of factors as weighted consistency tests over records. The optimizer changes records to reduce their combined disagreement, not to satisfy one test blindly.\n- **Residual minimization:** A residual is the difference between a measured relationship and the relationship predicted by current poses. Noise models determine how strongly errors count.\n- **Worked published example:** GTSAM initializes three x coordinates at 0.5, 2.3, and 4.1. A zero-position prior and two 2 m motions recover approximately 0, 2, and 4.\n- **Anchoring:** A prior ties the trajectory to a coordinate frame; relative motions alone do not determine its absolute placement.\n\n```mermaid\nflowchart LR\n  O[\"Odometry\"] --> G[\"Build factors\"]\n  L[\"Verified loop\"] --> G\n  G --> E[\"Evaluate residuals\"]\n  V[\"Initial poses\"] --> E\n  E --> S[\"Optimize trajectory\"]\n  S --> C[\"Corrected poses\"]\n```\n\n## Key terms\n\n- **Factor graph**: a graph connecting unknown variables to probabilistic constraints.\n- **Smoothing**: estimating a sequence of states using accumulated evidence.\n- **Pose graph**: a graph whose unknown variables are robot poses.\n- **Loop closure**: a constraint linking observations of a revisited place.\n- **SLAM**: simultaneous localization and mapping; pose-graph methods estimate a trajectory that aligns mapping observations.\n\n## Before / after\n\n- **Before:** Learn Bayesian state estimation & uncertainty, rigid transforms, and least squares: fitting values by minimizing squared residuals.\n- **After:** Build Close a tiny pose graph, then study Place recognition, loop closure & relocalization before trusting automatically proposed loops.\n\n## Try it in an afternoon\n\n1. **Open the GTSAM example:** Inspect its five poses, prior, odometry factors, and loop constraint.\n2. **Compare two graphs:** Optimize with and without the loop constraint using the same initial values.\n3. **Inspect uncertainty:** Plot corrected poses and their covariance ellipses, which visualize position uncertainty.\n4. **Break the evidence:** Deliberately insert an incorrect loop measurement. Remove the prior in a separate experiment and inspect the solver's failure or ambiguity.",
+      "resources": [
+        {
+          "title": "Graph-based SLAM using Pose Graphs (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=uHbRKvD8TWg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how relative-pose constraints become a trajectory optimization problem."
+        },
+        {
+          "title": "6.4. SLAM",
+          "url": "https://www.roboticsbook.org/S64_driving_perception.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Follow the five-pose loop example, initial values, optimizer, and covariance plots."
+        },
+        {
+          "title": "Factor Graphs and GTSAM",
+          "url": "https://gtsam.org/tutorials/intro.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish factor graphs from values and work through motion and PoseSLAM examples."
+        },
+        {
+          "title": "Pose2SLAMExample.cpp",
+          "url": "https://raw.githubusercontent.com/borglab/gtsam/develop/examples/Pose2SLAMExample.cpp",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the official five-pose implementation with prior, between factors, optimization, and marginal covariances."
+        }
+      ],
+      "sources": [
+        "https://gtsam.org/tutorials/intro.html",
+        "https://www.roboticsbook.org/S64_driving_perception.html",
+        "https://raw.githubusercontent.com/borglab/gtsam/develop/examples/Pose2SLAMExample.cpp",
+        "https://www.youtube.com/watch?v=uHbRKvD8TWg"
+      ]
+    }
+  ]
+}
