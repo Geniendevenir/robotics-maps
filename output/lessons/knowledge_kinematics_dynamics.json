@@ -1,0 +1,200 @@
+{
+  "batch": "knowledge_kinematics_dynamics",
+  "lessons": [
+    {
+      "node_id": "k:forward-kinematics-dh-product-of-exponentials",
+      "type": "knowledge",
+      "name": "Forward kinematics (DH & product of exponentials)",
+      "summary": "Forward kinematics calculates the robot tool's position and orientation from its joint positions and a geometric model.",
+      "lesson_md": "## In one sentence\n\nForward kinematics calculates the robot tool's position and orientation from its joint positions and a geometric model.\n\n![KUKA iiwa arm with red, green and blue coordinate axes attached to its links](/img/lessons/knowledge_kinematics_dynamics-forward-kinematics.webp)\n*Coordinate frames along an arm make the transform chain visible. Source: [MIT Robotic Manipulation](https://manipulation.csail.mit.edu/pick.html), license unknown.*\n\n## Why it matters for us\n\n- **Joint readings are not hand coordinates:** an arm reports its joint positions, while a picking task needs the gripper's location relative to the object.\n- **A shared geometry model** lets visualization and reaching code agree about where the tool is, before adding motor forces or feedback.\n- **One input gives one pose:** unlike inverse kinematics, this direction does not require searching among alternative arm postures.\n\n> **Key idea:** Compose the transforms in the model's order; the same joint numbers with different geometry describe a different robot.\n\n## How it works\n\n- **Start at the base:** each joint changes the position or orientation of the links after it. Chain their transforms to reach the tool.\n- **Think function composition:** each transform converts coordinates for the next stage, like passing a value through nested functions; changing the order changes the result.\n- **Denavit–Hartenberg (DH)** describes neighbouring frames using four parameters: link length, link twist, joint offset, and joint angle.\n- **Product of exponentials (PoE)** instead stores each joint's motion axis at the zero configuration and the tool's home pose.\n- **Matrix exponentials** turn an axis and joint displacement into a transform. PoE multiplies these transforms with the home pose.\n- **Worked example:** Modern Robotics places the home tool frame three units along the base x-axis, with matching orientation. Zero joint values must reproduce that pose.\n- **A sliding-joint extension** of 0.5 units in that example changes the transform too; joint positions are not always angles.\n\n```mermaid\nflowchart LR\n  Q[\"Joint positions\"] --> A[\"Joint transforms\"]\n  G[\"Robot geometry\"] --> A\n  A --> C[\"Compose in order\"]\n  C --> T[\"Tool pose\"]\n```\n\n## Key terms\n\n- **Pose**: position plus orientation, expressed relative to a named frame.\n- **Homogeneous transform**: a 4×4 matrix combining rotation and translation.\n- **Revolute joint**: a joint that rotates about an axis.\n- **Prismatic joint**: a joint that slides along an axis.\n\n## Before / after\n\n- **Before:** Learn Rigid-body motion & coordinate frames; matrix multiplication should represent a change of coordinates, not just an array operation.\n- **After:** Continue to Velocity kinematics, Jacobians & singularities, then Inverse kinematics (analytic & numerical); both build on this forward mapping.\n\n## Try it in an afternoon\n\n1. **Copy the home configuration** from the Modern Robotics PoE example and identify its base and tool frames.\n2. **Check zero input** returns the home pose before changing any joint value.\n3. **Reproduce the sliding-joint change** and track which translation changes.\n4. **Inspect a DH model** in Robotics Toolbox for Python; locate its geometry, base, and tool transforms.\n5. **Compare conventions:** distinguish standard from modified DH before copying a parameter table.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 4.1.1:  Product of Exponentials Formula in the Space Frame",
+          "url": "https://www.youtube.com/watch?v=hE_Duih_7JE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow a planar arm from its home pose through three joint motions."
+        },
+        {
+          "title": "Forward Kinematics Example",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/forward-kinematics-example/",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Watch PoE applied to an arm with rotating and sliding joints."
+        },
+        {
+          "title": "Ch. 3 - Basic Pick and Place",
+          "url": "https://manipulation.csail.mit.edu/pick.html#kinematics",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Read the forward-kinematics section to connect joint positions to a gripper frame."
+        },
+        {
+          "title": "Denavit-Hartenberg models",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/arm_dh.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect standard and modified DH models and the fkine method."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/4-1-1-product-of-exponentials-formula-in-the-space-frame/",
+        "https://petercorke.github.io/robotics-toolbox-python/arm_dh.html",
+        "https://manipulation.csail.mit.edu/pick.html",
+        "https://www.youtube.com/watch?v=hE_Duih_7JE",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/forward-kinematics-example/",
+        "https://manipulation.csail.mit.edu/pick.html#kinematics"
+      ]
+    },
+    {
+      "node_id": "k:velocity-kinematics-jacobians-singularities",
+      "type": "knowledge",
+      "name": "Velocity kinematics, Jacobians & singularities",
+      "summary": "A Jacobian maps joint speeds to tool velocity; a singularity is a posture where the robot loses an otherwise available motion direction.",
+      "lesson_md": "## In one sentence\n\nA Jacobian maps joint speeds to tool velocity; a singularity is a posture where the robot loses an otherwise available motion direction.\n\n![Diagram mapping a circle of two joint velocities through a Jacobian to two different tool-velocity ellipses](/img/lessons/knowledge_kinematics_dynamics-jacobians.webp)\n*Changing arm posture changes the available tool velocities. Source: [MIT Robotic Manipulation](https://manipulation.csail.mit.edu/pick.html), license unknown.*\n\n## Why it matters for us\n\n- **A straight hand motion** usually requires several joints moving together. Joint speeds cannot simply copy the desired x, y, and z speeds.\n- **Posture changes capability:** an arm may reach a point but struggle to move its tool in a particular direction from there.\n- **Teleoperation needs this distinction:** asking for an unavailable direction is not fixed by repeatedly sending the same velocity command.\n\n> **Key idea:** The Jacobian describes motion available here and now, not every motion the robot could achieve after changing posture.\n\n## How it works\n\n- **Imagine nudging one joint:** its Jacobian column describes the resulting tool velocity when that joint moves at unit speed and the others stay still.\n- **Add the contributions:** multiply each column by its joint speed, then sum. In software terms, this is a local sensitivity table for forward kinematics.\n- **The compact rule** is `v = J(q) qdot`: tool velocity equals the Jacobian at joint positions q times the joint-speed vector.\n- **For spatial motion,** velocity includes rotation and translation. Both the Jacobian and requested velocity must use compatible frame conventions.\n- **Worked example:** in Modern Robotics' fully stretched planar three-joint arm, all joints produce vertical tip velocity; no joint-speed combination produces horizontal tip velocity.\n- **Its planar Jacobian** drops from rank two to rank one. Bending the arm can restore the missing direction; this is not a broken motor.\n- **Manipulability ellipses** visualize the mapping of a circle of joint speeds. Near that straight-arm singularity, the ellipse becomes thin, then collapses to a line.\n\n```mermaid\nflowchart LR\n  Q[\"Current posture\"] --> J[\"Compute Jacobian\"]\n  S[\"Joint speeds\"] --> M[\"Multiply and sum\"]\n  J --> M\n  M --> V[\"Tool velocity\"]\n```\n\n## Key terms\n\n- **Jacobian**: a matrix describing how joint motion affects tool motion locally.\n- **Rank**: the number of independent motion directions represented by the matrix.\n- **Singularity**: a configuration with less rank than the robot can normally attain.\n- **Redundancy**: extra joint freedom allowing different joint velocities to produce the same tool velocity.\n\n## Before / after\n\n- **Before:** Study Forward kinematics (DH & product of exponentials), derivatives, and matrix rank.\n- **After:** Use these ideas in Differential IK & redundancy resolution (QP-based) or the map project Live manipulability ellipsoid.\n\n## Try it in an afternoon\n\n1. **Sketch the stretched arm** from the singularities video and mark each joint's instantaneous tip-velocity direction.\n2. **Bend an elbow** and repeat the sketch; identify the newly independent direction.\n3. **Inspect the ellipse figure** above and explain why its shape depends on posture.\n4. **Compare two postures** in a notebook using a model's Jacobian; record matrix rank, not just whether the arm looks bent.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.1.1:  Space Jacobian",
+          "url": "https://www.youtube.com/watch?v=KbI8HN3imtQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn how individual joint motions become Jacobian columns."
+        },
+        {
+          "title": "5.3. Singularities",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See planar arms lose motion directions when stretched straight."
+        },
+        {
+          "title": "5.4.  Manipulability",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Connect Jacobian rank to velocity ellipses and ellipsoids."
+        },
+        {
+          "title": "Ch. 3 - Basic Pick and Place",
+          "url": "https://manipulation.csail.mit.edu/pick.html#jacobian",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Read differential kinematics and the distinction between spatial velocity and orientation-coordinate derivatives."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-1-1-space-jacobian/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+        "https://manipulation.csail.mit.edu/pick.html",
+        "https://www.youtube.com/watch?v=KbI8HN3imtQ",
+        "https://manipulation.csail.mit.edu/pick.html#jacobian"
+      ]
+    },
+    {
+      "node_id": "k:inverse-kinematics-analytic-numerical",
+      "type": "knowledge",
+      "name": "Inverse kinematics (analytic & numerical)",
+      "summary": "Inverse kinematics finds joint positions that place a robot's tool at a requested position or pose.",
+      "lesson_md": "## In one sentence\n\nInverse kinematics finds joint positions that place a robot's tool at a requested position or pose.\n\n![Simulated robot arm reaching into a shelf to grasp a sphere](/img/lessons/knowledge_kinematics_dynamics-inverse-kinematics.webp)\n*An IK problem can include reaching and collision constraints, not just a tool target. Source: [MIT Robotic Manipulation](https://manipulation.csail.mit.edu/trajectories.html), license unknown.*\n\n## Why it matters for us\n\n- **A picking task specifies a destination:** “put the gripper here” is useful to application code; individual elbow and wrist angles are implementation details.\n- **The reverse mapping is ambiguous:** a target may have no solution, one solution, or multiple arm postures that reach it.\n- **A solver result needs checking:** reaching the target does not automatically establish joint-limit compliance or a collision-free route there.\n\n> **Key idea:** IK returns a candidate configuration, not a guarantee that the robot can safely travel to it.\n\n## How it works\n\n- **Analytic IK** derives direct formulas from a robot's geometry. Modern Robotics uses triangle geometry to solve a planar arm with two rotating joints.\n- **Worked example:** choose two 1-metre links for an exercise. A target 3 metres from the base is unreachable: their combined reach is only 2 metres.\n- **Multiple answers:** a typical target inside the planar arm's workspace has two elbow configurations, rather than a unique inverse.\n- **Numerical IK** starts from a guess, computes the tool pose, measures target error, and updates the joint values.\n- **Think root finding:** it is like repeatedly adjusting function inputs until the output matches a requested value, rather than reversing every instruction.\n- **The Jacobian guides corrections:** a pseudoinverse computes a local update even when the Jacobian is not square. This does not guarantee eventual convergence.\n- **The starting guess matters:** different guesses can find different solutions or fail. A previous nearby solution can seed the next request.\n\n```mermaid\nflowchart LR\n  G[\"Joint guess\"] --> F[\"Forward kinematics\"]\n  F --> E[\"Compare with target\"]\n  E --> D{\"Error small?\"}\n  D -->|Yes| R[\"Check result\"]\n  D -->|No| U[\"Jacobian update\"]\n  U --> G\n```\n\n## Key terms\n\n- **Seed**: the initial joint configuration supplied to a numerical solver.\n- **Residual**: the remaining error after a candidate solution is evaluated.\n- **Tolerance**: the threshold defining a sufficiently small error.\n- **Joint limits**: bounds on each joint's allowed positions.\n- **Constraint**: a condition the solution must satisfy, such as avoiding an obstacle.\n\n## Before / after\n\n- **Before:** Study Forward kinematics (DH & product of exponentials) and Velocity kinematics, Jacobians & singularities.\n- **After:** Build Analytic vs numerical IK shoot-out or Click-to-reach SO-101, keeping configuration solving separate from motion execution.\n\n## Try it in an afternoon\n\n1. **Use Robotics Toolbox for Python** to create a model and obtain a reachable target with its forward-kinematics method.\n2. **Run a numerical solver** from two different seeds, with joint-limit rejection enabled.\n3. **Check success and residual** before using returned joint values; run forward kinematics again to verify the pose.\n4. **Request an unreachable target** and record failure rather than treating the last iterate as a valid answer.\n5. **Set an iteration budget** so a failed solve cannot leave your application waiting indefinitely.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 6:  Inverse Kinematics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=nin2TbMuhR0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Start with geometric two-link IK and see why several solutions can exist."
+        },
+        {
+          "title": "6.2. Numerical Inverse Kinematics (Part 1 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics-part-1-of-2/",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Follow Newton–Raphson updates and understand the importance of the starting guess."
+        },
+        {
+          "title": "Inverse Kinematics",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/IK/ik.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare analytic and numerical APIs and read the IKSolution result fields."
+        },
+        {
+          "title": "Numerical inverse kinematics",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/IK/numerical.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn seed, iteration-limit, tolerance, and joint-limit options for a notebook experiment."
+        },
+        {
+          "title": "Ch. 6 - Motion Planning",
+          "url": "https://manipulation.csail.mit.edu/trajectories.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Read the inverse-kinematics section on joint limits, collision constraints, and local failure."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/inverse-kinematics-of-open-chains/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics-part-1-of-2/",
+        "https://petercorke.github.io/robotics-toolbox-python/IK/ik.html",
+        "https://petercorke.github.io/robotics-toolbox-python/IK/numerical.html",
+        "https://manipulation.csail.mit.edu/trajectories.html",
+        "https://www.youtube.com/watch?v=nin2TbMuhR0",
+        "https://manipulation.csail.mit.edu/trajectories.html"
+      ]
+    },
+    {
+      "node_id": "k:robot-description-formats-urdf-mjcf",
+      "type": "knowledge",
+      "name": "Robot description formats (URDF / MJCF)",
+      "summary": "URDF and MJCF are structured robot descriptions that tell software what bodies, joints, geometry, and physical properties a robot has.",
+      "lesson_md": "## In one sentence\n\nURDF and MJCF are structured robot descriptions that tell software what bodies, joints, geometry, and physical properties a robot has.\n\n![RViz displaying the coloured R2D2-style robot assembled from URDF links in the ROS tutorial](/img/lessons/knowledge_kinematics_dynamics-robot-formats.webp)\n*A published URDF tutorial model displayed in RViz. Source: [ROS 2 documentation](https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Building-a-Visual-Robot-Model-with-URDF-from-Scratch.html), license unknown.*\n\n## Why it matters for us\n\n- **A robot model is shared input:** visualization, kinematics, and simulation need a consistent account of the same machine, not separate guesses about its geometry.\n- **Looking right is insufficient:** a visible mesh describes appearance; collision geometry and mass properties serve different purposes.\n- **Simulation debugging starts here:** an incorrect joint axis or origin changes motion even when the XML parses successfully.\n\n> **Key idea:** Treat the description as executable geometry: review its meaning, not just its syntax.\n\n## How it works\n\n- **URDF**, the Unified Robot Description Format, connects named links through joints with parent and child links, forming a tree.\n- **Joint origins and axes** locate those connections and define how they move. Revolute joints rotate within limits; prismatic joints slide.\n- **MJCF**, MuJoCo's native XML format, nests child bodies inside parent bodies. A joint inside a body adds movement relative to its parent.\n- **No MJCF joint** means that body is welded to its parent. Bodies can contain multiple joints, unlike assuming one body always means one movable axis.\n- **Think compiler input:** MuJoCo compiles the description into its model. Valid structure is necessary, but it cannot know whether your geometry matches the real robot.\n- **Worked example:** ROS's first URDF is one cylinder, 0.6 metres long and 0.2 metres in radius. Its default visual origin is the cylinder's centre.\n- **That centre matters:** half the cylinder initially lies below the grid. Changing the visual offset is different from moving a joint's reference frame.\n\n```mermaid\nflowchart LR\n  X[\"Robot XML\"] --> P[\"Parse or compile\"]\n  P --> M[\"Bodies and joints\"]\n  Q[\"Joint positions\"] --> T[\"Compute transforms\"]\n  M --> T\n  T --> V[\"Inspect model\"]\n```\n\n## Key terms\n\n- **Link / body**: a rigid part represented in the model.\n- **Visual geometry**: the shape rendered on screen.\n- **Collision geometry**: the shape used to check contact or overlap.\n- **Inertia**: how mass distribution resists rotational acceleration.\n- **Local frame**: coordinates defined relative to a particular part.\n\n## Before / after\n\n- **Before:** Learn Rigid-body motion & coordinate frames and basic XML nesting.\n- **After:** Try Write an MJCF for the SO-101 from scratch or URDF/MJCF linter for student robots; validate geometry before tuning controllers.\n\n## Try it in an afternoon\n\n1. **Open the ROS cylinder example** and identify the robot, link, visual, and geometry elements.\n2. **Launch its supplied display example** in RViz and explain why the cylinder intersects the grid.\n3. **Follow the movable-model tutorial** and use sliders to inspect joint axes and limits.\n4. **Compare with MJCF nesting:** identify bodies, joints, and geometry in the modeling guide.\n5. **Write a review checklist:** origins, units, axes, limits, collision shapes, and inertia; do not equate a pretty render with physical correctness.",
+      "resources": [
+        {
+          "title": "Creating a rough 3D model of our robot with URDF",
+          "url": "https://www.youtube.com/watch?v=BcjHyhV0kIs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a mobile robot's shape and structure become a URDF model."
+        },
+        {
+          "title": "Building a visual robot model from scratch — tutorial",
+          "url": "https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Building-a-Visual-Robot-Model-with-URDF-from-Scratch.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build up links, fixed joints, visual origins, and colours from a single cylinder."
+        },
+        {
+          "title": "Building a movable robot model — tutorial",
+          "url": "https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Building-a-Movable-Robot-Model-with-URDF.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Add continuous, revolute, and prismatic joints and inspect their motion."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare MJCF's nested bodies and compiler with URDF's parent/child joint connections."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Look up precise MJCF body, joint, geometry, and compiler attributes."
+        }
+      ],
+      "sources": [
+        "https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Building-a-Visual-Robot-Model-with-URDF-from-Scratch.html",
+        "https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Building-a-Movable-Robot-Model-with-URDF.html",
+        "https://docs.ros.org/en/rolling/Capabilities/Simulation/URDF/Adding-Physical-and-Collision-Properties-to-a-URDF-Model.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://www.youtube.com/watch?v=BcjHyhV0kIs"
+      ]
+    }
+  ]
+}
