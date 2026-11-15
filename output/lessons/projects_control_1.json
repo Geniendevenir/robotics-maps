@@ -326,6 +326,105 @@
       ]
     },
     {
+      "node_id": "p:crocoddyl-jump-for-a-simulated-quadruped",
+      "type": "project",
+      "name": "Crocoddyl jump for a simulated quadruped",
+      "summary": "Use Crocoddyl's FDDP solver to plan a jump for a simulated ANYmal quadruped, then replay the planned motion in a physics engine.",
+      "lesson_md": "## In one sentence\n\nUse Crocoddyl's FDDP solver to plan a jump for a simulated ANYmal quadruped, then replay the planned motion in a physics engine.\n\n![ANYmal quadruped robot standing on a concrete floor](/img/lessons/projects_control_1-crocoddyl.webp)\n*ANYmal, the quadruped model used in Crocoddyl's gait examples. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:ANYmal_ARCHE_2019_1.jpg), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **Optimal control under contacts:** Planning a motion as an optimization where feet are in contact in some phases and in flight in others.\n- **Contact sequence:** The jump is split into ground knots and flying knots; the example uses 10 and 20 at a 0.01 s time step.\n- **DDP and FDDP:** Differential Dynamic Programming refines a trajectory backward and forward; FDDP also works from infeasible initial guesses.\n- **Plan versus execution:** A plan that works in the optimizer may still fail in another simulator.\n\n> **Key idea:** You describe the jump as costs and contact phases; the solver finds the joint torques that make it happen.\n\n## What you need\n\n- **Software:** Crocoddyl (`conda install crocoddyl -c conda-forge` or `pip install --user crocoddyl`), Pinocchio and example-robot-data.\n- **Physics engine:** MuJoCo or another simulator for the replay.\n- **Warm-up:** Pendulum swing-up with direct collocation.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Run the example:** Start `quadruped_gaits_fwddyn.py` and watch the walking, trotting, pacing, bounding and jumping plans.\n2. **Isolate the jump:** Keep only the `jumping` phase, with `jumpHeight` 0.15 m and `jumpLength` 0.3 m.\n3. **Inspect the solution:** Plot base height, joint torques and contact phases over time.\n4. **Change the goal:** Try a higher or longer jump and record when the solver stops converging.\n5. **Replay the plan:** Load ANYmal in a physics engine and apply the planned torques plus joint PD tracking.\n6. **Compare:** Measure landing position and whether the robot stays upright, over several jump settings.\n\n```mermaid\nflowchart LR\n  M[\"ANYmal model (Pinocchio)\"] --> P[\"Jump problem: ground + flying knots\"]\n  P --> F[\"FDDP solver\"]\n  F --> T[\"Planned states + torques\"]\n  T --> R[\"Replay in physics engine\"]\n  R --> C[\"Landing error\"]\n```\n\n## Common pitfalls\n\n- **Open-loop replay:** Torques alone drift in a different simulator; track the planned states with feedback.\n- **Model mismatch:** Masses, joint limits and foot geometry must match between Crocoddyl's model and the replay model.\n- **Too ambitious goals:** Large jumps can make the solver fail; increase the target in small increments.\n\n## When it's done\n\n- **Jump video:** The planned jump replayed in the physics engine, landing on its feet.\n- **Results table:** Solver convergence and landing success for each jump height and length you tried.\n- **Next step:** Use the same tools in a receding-horizon loop, as Model predictive control (MPC) does.",
+      "resources": [
+        {
+          "title": "Crocoddyl: An Efficient and Versatile Framework for Multi-Contact Optimal Control",
+          "url": "https://www.youtube.com/watch?v=wHy8YAHwj-M",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Ninety-second overview of what Crocoddyl plans."
+        },
+        {
+          "title": "Tutorial - Crocoddyl - Nicolas Mansard",
+          "url": "https://www.youtube.com/watch?v=4NQj3CyB1ec",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Hands-on tutorial by one of Crocoddyl's authors."
+        },
+        {
+          "title": "loco-3d/crocoddyl",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install instructions, solvers and the example gallery."
+        },
+        {
+          "title": "quadruped_gaits_fwddyn.py",
+          "url": "https://github.com/loco-3d/crocoddyl/blob/devel/examples/quadruped_gaits_fwddyn.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The exact ANYmal gait and jump example this project starts from."
+        },
+        {
+          "title": "Crocoddyl: An Efficient and Versatile Framework for Multi-Contact Optimal Control (ICRA'20)",
+          "url": "https://www.youtube.com/watch?v=nTeiHioEO4w",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Conference talk on the solver and its multi-contact formulation."
+        }
+      ],
+      "sources": [
+        "https://github.com/loco-3d/crocoddyl",
+        "https://github.com/loco-3d/crocoddyl/blob/devel/examples/quadruped_gaits_fwddyn.py",
+        "https://raw.githubusercontent.com/loco-3d/crocoddyl/devel/examples/quadruped_gaits_fwddyn.py"
+      ]
+    },
+    {
+      "node_id": "p:disturbance-rejecting-balancer-mpc-with-a-learned-residual-on-real-hardware",
+      "type": "project",
+      "name": "Disturbance-rejecting balancer: MPC with a learned residual on real hardware",
+      "summary": "Run MPC on your own reaction-wheel or ballbot balancer, add a dynamics correction learned from its logged data, and prove with push and payload tests that it recovers more often.",
+      "lesson_md": "## In one sentence\n\nRun MPC on your own reaction-wheel or ballbot balancer, add a dynamics correction learned from its logged data, and prove with push and payload tests that it recovers more often.\n\n![Rezero, an ETH Zurich ballbot balancing on a single ball](/img/lessons/projects_control_1-ballbot.webp)\n*Rezero, a ballbot: a robot that balances on one ball. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ballbot_Rezero_2010.jpg), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **MPC on hardware:** Model Predictive Control must solve its optimization within each control period on the robot's own computer.\n- **Learned residual dynamics:** A small model trained on logs predicts the gap between your physics model and reality, such as an unknown payload.\n- **Adaptive models:** AD-NODE infers environment changes from recent state-action history and feeds them to MPC.\n- **Fair evaluation:** Recovery-rate counts under identical pushes and weights, with and without the residual.\n\n> **Key idea:** Keep the physics model you trust and learn only the error, so MPC predicts the real robot better.\n\n## What you need\n\n- **Robot:** Your balancer from Build a reaction-wheel inverted pendulum, or a ballbot-style robot.\n- **Prerequisites:** Real-time MPC on a reaction-wheel or ballbot-style balancer and Neural-network dynamics + MPC for a toy car.\n- **Software:** A fast MPC solver such as acados, plus PyTorch or JAX for the residual.\n- **Budget:** Under €500 per the project card.\n\n## Steps\n\n1. **Baseline first:** Run plain MPC and log state, input and predicted next state at every step.\n2. **Collect disturbance data:** Record runs with pushes and with weights clamped to the robot.\n3. **Train the residual:** Fit a small network mapping state and input to prediction error.\n4. **Add it to MPC:** Use model plus residual for prediction and check the solve still fits the control period.\n5. **Run matched trials:** The same set of pushes and unknown weights for both controllers, counting recoveries and falls.\n\n```mermaid\nflowchart LR\n  L[\"Logged runs\"] --> T[\"Train residual\"]\n  P[\"Physics model\"] --> S[\"Model + residual\"]\n  T --> S\n  S --> M[\"MPC on-board\"]\n  M --> R[\"Real balancer\"]\n  R --> L\n```\n\n> **Watch out:** A falling balancer and a fast wheel can pinch fingers or break parts; use a tether or soft stops, limit motor current, and keep a kill switch within reach.\n\n## Common pitfalls\n\n- **Solver too slow:** A bigger model can blow the timing budget; measure solve time on the real board.\n- **Training on the test set:** Use different push sessions for training and evaluation.\n- **Residual overreach:** A residual trained without payloads may extrapolate badly; include those cases in the data.\n\n## When it's done\n\n- **Comparison video:** Pushes and unknown weights, plain MPC versus MPC plus residual.\n- **Recovery table:** Recovery and fall counts for both controllers over the same trial set.\n- **Timing log:** Solve times on-board, showing the controller met its deadline.",
+      "resources": [
+        {
+          "title": "Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=YwodGM2eoy4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Refresher on the receding-horizon loop you run on the robot."
+        },
+        {
+          "title": "acados — acados  documentation",
+          "url": "https://docs.acados.org/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "A fast embedded MPC solver suited to on-board control."
+        },
+        {
+          "title": "AD-NODE: Adaptive Dynamics Learning with Neural ODEs for Mobile Robots Control",
+          "url": "https://arxiv.org/abs/2510.05443",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Adaptive neural dynamics inferred from state-action history, used inside MPC."
+        },
+        {
+          "title": "Safe-Ballbot: Tilt-Consistent MPC with Control Barrier Functions for Ballbot Navigation",
+          "url": "https://arxiv.org/abs/2611.03307",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Recent MPC with barrier functions for a ballbot."
+        },
+        {
+          "title": "Information Theoretic Model Predictive Control: Theory and Applications to Autonomous Driving",
+          "url": "https://arxiv.org/abs/1707.02342",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Sampling-based MPC alternative if gradient-based solvers struggle."
+        }
+      ],
+      "sources": [
+        "https://docs.acados.org/",
+        "https://arxiv.org/abs/2510.05443",
+        "https://arxiv.org/abs/2611.03307",
+        "https://arxiv.org/abs/1707.02342"
+      ]
+    },
+    {
       "node_id": "p:energy-shaping-pendulum-swing-up",
       "type": "project",
       "name": "Energy-shaping pendulum swing-up",
@@ -447,6 +546,55 @@
       "sources": [
         "https://www.do-mpc.com/en/latest/getting_started.html",
         "https://web.casadi.org/"
+      ]
+    },
+    {
+      "node_id": "p:gpu-sampling-mpc-for-the-so-101-in-hydrax",
+      "type": "project",
+      "name": "GPU sampling MPC for the SO-101 in Hydrax",
+      "summary": "Make a simulated SO-101 arm push a cube to a goal using sampling-based MPC on a GPU with Hydrax, with no training at all.",
+      "lesson_md": "## In one sentence\n\nMake a simulated SO-101 arm push a cube to a goal using sampling-based MPC on a GPU with Hydrax, with no training at all.\n\n![Render of the SO-101 arm model from MuJoCo Menagerie](/img/lessons/projects_control_1-hydrax.webp)\n*The SO-101 MuJoCo model you will control. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101), Apache-2.0.*\n\n## What you will learn\n\n- **Sampling-based MPC:** Try many random control sequences in simulation, score them, and apply the best start; replan every step.\n- **MPPI (Model Predictive Path Integral):** Takes an exponentially weighted average of the sampled rollouts instead of only the best one.\n- **GPU parallelism:** Hydrax runs rollouts in parallel with JAX and MJX, MuJoCo's accelerated backend.\n- **Cost design:** The robot's behaviour comes from a running cost and a terminal cost you write.\n\n> **Key idea:** Instead of training a policy, you let the simulator imagine hundreds of futures every step and pick from them.\n\n## What you need\n\n- **Hardware:** An NVIDIA GPU; current Hydrax requires CUDA 13 and recommends the `uv` package manager.\n- **Software:** Hydrax and the `robotstudio_so101` model from MuJoCo Menagerie, which includes a `scene_box.xml`.\n- **Warm-up:** MuJoCo MPC tour: make a humanoid stand.\n- **Cost:** €0 beyond your computer.\n\n## Steps\n\n1. **Run a demo:** Try `examples/pendulum.py mppi`, then the cube or push-T examples, to see the loop working.\n2. **Write a task:** Subclass `hydrax.task_base.Task`, load the SO-101 box scene, and implement `running_cost` and `terminal_cost`.\n3. **Shape the cost:** Penalize cube-to-goal distance, gripper-to-cube distance and large controls.\n4. **Pick a controller:** Start with `hydrax.algs.MPPI`, then compare `PredictiveSampling` or `CEM`.\n5. **Measure success:** Run many seeds and count how often the cube ends within your goal tolerance.\n6. **Stress test:** Add domain randomization to the task and rerun the seeds.\n\n```mermaid\nflowchart LR\n  X[\"Current sim state\"] --> S[\"Sample control sequences\"]\n  S --> R[\"Parallel MJX rollouts on GPU\"]\n  R --> C[\"Score with your costs\"]\n  C --> U[\"Apply first control\"]\n  U --> X\n```\n\n## Common pitfalls\n\n- **Cost hacking:** The sampler exploits any loophole; watch the video, not only the number.\n- **Too few samples:** Small sample counts make the arm jitter; increase them and check real-time speed.\n- **GPU setup:** Hydrax now requires CUDA 13; confirm your driver works with the pendulum demo before debugging costs.\n\n## When it's done\n\n- **Push video:** The simulated SO-101 pushing the cube to the goal with no training.\n- **Success rate:** Successes over a fixed set of seeds, per algorithm.\n- **Next step:** Try the same cost on the real robot only after Close the sim-to-real gap of the SO-101 simulator.",
+      "resources": [
+        {
+          "title": "MIT Robotics - Yuval Tassa - Predictive Sampling: Real-time behavior synthesis with MuJoCo",
+          "url": "https://www.youtube.com/watch?v=2xVN-qY78P4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains predictive sampling, the simplest algorithm in Hydrax."
+        },
+        {
+          "title": "LTC21 Tutorial MPPI",
+          "url": "https://www.youtube.com/watch?v=19QLyMuQ_BE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Tutorial on how MPPI weighs sampled rollouts."
+        },
+        {
+          "title": "vincekurtz/hydrax",
+          "url": "https://github.com/vincekurtz/hydrax",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install steps, algorithms, examples and how to define a new task."
+        },
+        {
+          "title": "robotstudio_so101 (MuJoCo Menagerie)",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The SO-101 MuJoCo model and box scene."
+        },
+        {
+          "title": "Information Theoretic Model Predictive Control: Theory and Applications to Autonomous Driving",
+          "url": "https://arxiv.org/abs/1707.02342",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The MPPI paper behind hydrax.algs.MPPI."
+        }
+      ],
+      "sources": [
+        "https://github.com/vincekurtz/hydrax",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+        "https://arxiv.org/abs/1707.02342"
       ]
     },
     {
