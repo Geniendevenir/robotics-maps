@@ -368,6 +368,404 @@
         "https://docs.ultralytics.com/guides/object-counting/",
         "https://arxiv.org/abs/2110.06864"
       ]
+    },
+    {
+      "node_id": "p:point-cloud-grasp-targets-for-the-so-101",
+      "type": "project",
+      "name": "Point-cloud grasp targets for the SO-101",
+      "summary": "Convert a segmented object cloud into a checked grasp target, then have an SO-101 pick it using calibrated camera-to-arm geometry.",
+      "lesson_md": "## In one sentence\n\nConvert a segmented object cloud into a checked grasp target, then have an SO-101 pick it using calibrated camera-to-arm geometry.\n\n![SO-101 follower arm used as the manipulation platform](/img/lessons/projects_perception_2-cloud-grasp.webp)\n*SO-101 follower arm used as the manipulation platform. Source: [Publisher](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **A centroid** is the average position of a cluster’s points; it is a useful candidate location, not automatically a stable grasp.\n- **A principal axis** describes the strongest direction of point spread. An oriented bounding box summarizes orientation and dimensions around the observed object.\n- **Coordinate transforms** convert camera measurements into the arm’s base frame. Treat frames like incompatible API types: never pass camera coordinates directly to robot commands.\n\n> **Key idea:** A grasp candidate must survive geometry, reachability, and collision checks before it becomes a robot action.\n\n## What you need\n\n- **Prerequisites:** Complete Tabletop segmentation: find objects on a table in 3D and Assemble & teleoperate an SO-101; keep the existing arm configuration.\n- **Setup:** Use Open3D, a calibrated OAK-D Pro depth camera, and objects that fit the actual gripper; hardware cost depends on existing equipment.\n- **Geometry:** Study Camera calibration (intrinsic, extrinsic & hand-eye); joint calibration alone does not determine the camera-to-base transform.\n\n## Steps\n\n1. **Remove the table** and isolate object clusters; display their centroids, oriented boxes, and estimated dimensions before enabling arm motion.\n2. **Generate candidates** above each cluster using its center and dominant direction; reject dimensions incompatible with the measured gripper opening.\n3. **Check a transform example:** A camera-axis point at 0.20 metres plus a same-axis 0.10-metre translation becomes 0.30 metres when rotation is identity.\n4. **Validate arm targets** through a kinematics solver: the component that converts desired gripper poses into joint positions; reject unreachable or colliding configurations.\n5. **Execute a slow sequence:** Move above the object, descend, close, lift, and place; stop when perception or motion validation fails.\n6. **Demo held-out objects** with target overlays and outcome counts, including an empty table and a deliberately unreachable candidate.\n\n```mermaid\nflowchart LR\n  D[Depth cloud] --> C[Object cluster]\n  C --> G[Candidate grasp]\n  G --> T[Base-frame transform]\n  T --> V[Validate motion]\n  V --> P[Pick and inspect]\n```\n\n## Common pitfalls\n\n- **Partial surfaces:** A visible-point centroid may lie away from the physical center; a symmetric object may not have a stable principal direction.\n- **Frame mistakes:** Metres versus millimetres or an inverted transform can produce dangerous targets; check known landmarks without moving the arm first.\n- **Contact risk:** Keep hands clear and supervise slow motion with a reachable stop.\n\n## When it's done\n\n- **Deliverable:** Show repeated picks of previously unmodeled objects, saving clusters, candidate poses, rejected targets, and successful lifts separately.\n- **Evaluation:** Report picks attempted, lifts completed, drops, misses, and invalid-depth cases; save calibration and object dimensions so another student can reproduce failures.",
+      "resources": [
+        {
+          "title": "GraspSplats Introduction",
+          "url": "https://www.youtube.com/watch?v=LkTe2jjsLDA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See reconstructed geometry used for manipulation; this research system goes beyond the proposed centroid baseline."
+        },
+        {
+          "title": "Point cloud - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#bounding-volumes",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Extract clusters and oriented boxes from observed geometry."
+        },
+        {
+          "title": "colmap_handeye",
+          "url": "https://github.com/jimazeyu/colmap_handeye",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Study camera-to-base and wrist-camera calibration data and transforms."
+        },
+        {
+          "title": "SO-101 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the actual arm setup and joint calibration."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=LkTe2jjsLDA",
+        "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#bounding-volumes",
+        "https://github.com/jimazeyu/colmap_handeye"
+      ]
+    },
+    {
+      "node_id": "p:point-track-keypoints-as-policy-inputs",
+      "type": "project",
+      "name": "Point-track keypoints as policy inputs",
+      "summary": "Replace raw camera images with tracked landmark coordinates and test whether an imitation policy can still perform the same manipulation task.",
+      "lesson_md": "## In one sentence\n\nReplace raw camera images with tracked landmark coordinates and test whether an imitation policy can still perform the same manipulation task.\n\n![CoTracker examples showing persistent point tracks through video frames](/img/lessons/projects_perception_2-keypoint-policy.webp)\n*CoTracker examples showing persistent point tracks through video frames. Source: [Publisher](https://github.com/facebookresearch/co-tracker), license unknown.*\n\n## What you will learn\n\n- **A keypoint** is a selected image location, such as a gripper corner; a point tracker estimates where that same location moves over time.\n- **Visibility** indicates whether a point is currently observable. A coordinate prediction behind an obstruction is not a fresh visual measurement.\n- **A compact observation** replaces pixels with a structured vector. Think of converting a large JSON document into a small, stable interface for the policy.\n\n> **Key idea:** Tracked points help only if they preserve task information and can be produced with the same timing during training and deployment.\n\n## What you need\n\n- **Starting point:** Complete Turn human videos into motion tracks and Assemble & teleoperate an SO-101; begin with one already working imitation task.\n- **Software:** Use CoTracker3 or TAPIR, synchronized recordings, and a LeRobot policy input adapter; compute cost depends on tracker and training hardware.\n- **Inputs:** Define consistent landmarks on the target, gripper, and destination. Keep robot joint state available rather than silently changing multiple observation components.\n\n## Steps\n\n1. **Choose landmarks** consistently across demonstrations; draw point identities over recordings and state how deployment initializes the same semantic locations.\n2. **Extract tracks and visibility** using the tracker’s documented output; inspect occlusions, points leaving the frame, and identity drift.\n3. **Build an example vector:** Two landmarks with x, y, and visibility each contribute six values; append the same robot state used by the baseline.\n4. **Train matched policies** on the same demonstrations: an image baseline versus the tracked-point variant, with identical evaluation starts.\n5. **Test a deployment-compatible tracker** and measure observation delay; do not feed a live policy tracks computed using future frames.\n6. **Demo both policies** under clutter, missing targets, empty scenes, and changed lighting; overlay the points that actually reached the policy.\n\n```mermaid\nflowchart LR\n  F[Camera frames] --> T[Online point tracker]\n  T --> K[Coordinates and visibility]\n  K --> P[Imitation policy]\n  P --> A[Arm action]\n  A --> F\n```\n\n## Common pitfalls\n\n- **Offline leakage:** CoTracker offers offline and online variants; the offline result can use context unavailable when a robot must act now.\n- **Missing landmarks:** Define an explicit missing-point representation; zero coordinates alone can be mistaken for a real image corner.\n- **Hardware risk:** Supervise slow trials and stop on erratic motion or lost task landmarks.\n\n## When it's done\n\n- **Deliverable:** Save the input-vector definition, landmark initialization, tracker settings, dataset split, policy checkpoints, and paired rollout videos.\n- **Evaluation:** Report task success, track failures, and observation delay separately; data efficiency is a measured comparison, not a guaranteed benefit of fewer inputs.",
+      "resources": [
+        {
+          "title": "CoTracker3: Simpler and Better Point Tracking by Pseudo-Labelling Real Videos",
+          "url": "https://cotracker3.github.io/videos/teaser_ours_offline/teddy.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Inspect the authors’ tracked-point demonstration before building a policy input."
+        },
+        {
+          "title": "CoTracker3: Simpler and Better Point Tracking by Pseudo-Labelling Real Videos",
+          "url": "https://cotracker3.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare online and offline tracking capabilities and examples."
+        },
+        {
+          "title": "facebookresearch/co-tracker",
+          "url": "https://github.com/facebookresearch/co-tracker",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Use predicted coordinates, visibility, visualization, and the online interface."
+        },
+        {
+          "title": "CoTracker3: Simpler and Better Point Tracking by Pseudo-Labelling Real Videos",
+          "url": "https://arxiv.org/abs/2410.11831",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the tracker design and evaluate its limitations."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/co-tracker",
+        "https://cotracker3.github.io/videos/teaser_ours_offline/teddy.mp4",
+        "https://cotracker3.github.io/",
+        "https://arxiv.org/abs/2410.11831"
+      ]
+    },
+    {
+      "node_id": "p:replace-the-depth-camera-monocular-depth-for-grasping",
+      "type": "project",
+      "name": "Replace the depth camera: monocular depth for grasping",
+      "summary": "Compare single-image depth predictions with measured RGB-D depth while keeping the arm, grasp method, objects, and evaluation starts unchanged.",
+      "lesson_md": "## In one sentence\n\nCompare single-image depth predictions with measured RGB-D depth while keeping the arm, grasp method, objects, and evaluation starts unchanged.\n\n![Depth Anything 3 published depth and geometry demonstration](/img/lessons/projects_perception_2-mono-grasp.webp)\n*Depth Anything 3 published depth and geometry demonstration. Source: [Publisher](https://github.com/ByteDance-Seed/Depth-Anything-3), license unknown.*\n\n## What you will learn\n\n- **Monocular depth estimation** predicts distance from one color image; an RGB-D camera supplies both color and measured depth.\n- **Relative depth** describes ordering or shape without guaranteed physical scale; **metric depth** estimates distances in real-world units.\n- **A sensor adapter** lets the same grasp pipeline accept either depth source, like swapping database drivers while keeping application logic fixed.\n\n> **Key idea:** A visually convincing depth map is useful for grasping only when its scale, alignment, and local errors support the actual motion.\n\n## What you need\n\n- **Prerequisites:** Use Assemble & teleoperate an SO-101 and Intro: calibrate a webcam and track AprilTags; establish successful depth-camera picks before replacing depth.\n- **Models:** Depth Anything 3 distinguishes relative, metric, and nested model families; record the exact checkpoint instead of assuming every output is metric.\n- **Equipment:** Keep a depth camera temporarily for the comparison, plus the same arm and color view; model inference and existing hardware determine cost.\n\n## Steps\n\n1. **Capture paired observations** of fixed object starts, preserving color/depth alignment, camera calibration, and a separate held-out test set.\n2. **Run the chosen depth model** from a single color image only; passing multiple views would test a different hypothesis.\n3. **Check a scale example:** Predicting 0.40 metres for a reference surface at 0.50 metres underestimates distance by 0.10 metres; report that error.\n4. **Swap depth sources** in the calibrated Open3D point-cloud and grasp pipeline; preserve target selection, collision rules, and motion parameters.\n5. **Evaluate both variants** on identical objects, including reflective surfaces, empty scenes, missing targets, and poor lighting; reject invalid targets.\n6. **Demo paired grasp attempts** with depth maps and target overlays, including examples where apparent visual quality fails to produce a correct lift.\n\n```mermaid\nflowchart LR\n  R[Same RGB view] --> M[Monocular model]\n  R --> D[RGB-D reference]\n  M --> G[Shared grasp pipeline]\n  D --> G\n  G --> E[Compare outcomes]\n```\n\n## Common pitfalls\n\n- **Scale correction leakage:** If you fit a scale adjustment, use development data only and label the result as calibrated rather than unmodified monocular depth.\n- **Boundary errors:** A grasp may fail from local object-edge depth error even when average scene error looks small.\n- **Motion risk:** Validate predicted heights before contact and supervise conservative rollouts with a reachable stop.\n\n## When it's done\n\n- **Deliverable:** Publish paired success counts, depth errors, rejection counts, and timing, together with object starts and calibration.\n- **Interpretation:** FetchBot motivates predicted depth for manipulation, but its system does not establish that a single-image replacement will work on this SO-101 setup.",
+      "resources": [
+        {
+          "title": "Depth Anything 3: Recovering the Visual Space from Any Views",
+          "url": "https://depth-anything-3.github.io/assets/cmp/cmp_m_1.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Inspect the authors’ published monocular-depth comparison."
+        },
+        {
+          "title": "Depth Anything 3: Recovering the Visual Space from Any Views",
+          "url": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Choose a metric or relative checkpoint deliberately and inspect depth outputs."
+        },
+        {
+          "title": "RGBD images - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the measured-depth reference and conversion to geometry."
+        },
+        {
+          "title": "FetchBot: Learning Generalizable Object Fetching in Cluttered Scenes via Zero-Shot Sim2Real",
+          "url": "https://mlanthology.org/corl/2025/liu2025corl-fetchbot/",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study a manipulation system that uses depth predicted from RGB; distinguish its evidence from this proposed experiment."
+        }
+      ],
+      "sources": [
+        "https://github.com/ByteDance-Seed/Depth-Anything-3",
+        "https://depth-anything-3.github.io/assets/cmp/cmp_m_1.mp4",
+        "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+        "https://mlanthology.org/corl/2025/liu2025corl-fetchbot/"
+      ]
+    },
+    {
+      "node_id": "p:robot-mounted-camera-to-live-3d-workspace-model",
+      "type": "project",
+      "name": "Robot-mounted camera to live 3D workspace model",
+      "summary": "Sweep a wrist-mounted camera through a static workspace and assemble geometry that stays aligned with the robot’s base frame as new views arrive.",
+      "lesson_md": "## In one sentence\n\nSweep a wrist-mounted camera through a static workspace and assemble geometry that stays aligned with the robot’s base frame as new views arrive.\n\n![GraspSplats reference pipeline connecting robot-camera observations with three-dimensional scene updates](/img/lessons/projects_perception_2-wrist-model.webp)\n*GraspSplats reference pipeline connecting robot-camera observations with three-dimensional scene updates. Source: [Publisher](https://graspsplats.github.io/), license unknown.*\n\n## What you will learn\n\n- **A wrist camera** moves with the arm; interpreting its images requires knowing both arm configuration and camera mounting relative to the wrist.\n- **Hand-eye calibration** estimates that mounting transform. Combined with arm poses, it links each view to one common robot-base coordinate system.\n- **Incremental reconstruction** adds views over time. Think of streaming updates into one database, not creating an unrelated coordinate system for every request.\n\n> **Key idea:** Every camera frame needs the correct timestamped pose and scale before its geometry can join the robot’s workspace model.\n\n## What you need\n\n- **Preparation:** Complete Assemble & teleoperate an SO-101 and Intro: calibrate a webcam and track AprilTags; mount the camera rigidly with slack for cable movement.\n- **Software:** Depth Anything 3 supports geometry prediction with known camera poses; start from saved views and robot states before attempting live updates.\n- **Background and cost:** Study Camera calibration (intrinsic, extrinsic & hand-eye); reuse the lab arm and camera, with inference cost dependent on available compute.\n\n## Steps\n\n1. **Calibrate the camera** and wrist mounting, then verify stationary landmarks from several arm poses without executing autonomous grasps.\n2. **Record a slow sweep** with synchronized images and joint states; use forward kinematics to compute wrist poses from joint positions.\n3. **Compose transforms:** Base-to-wrist followed by wrist-to-camera gives the camera pose in the base frame; verify whether model inputs require its inverse.\n4. **Check metric scale:** In an illustrative test, two known camera positions 0.10 metres apart must not reconstruct as a one-metre baseline.\n5. **Add views incrementally** and compare reconstructed landmarks with measured workspace points; log processing time, acquisition time, and displayed model age.\n6. **Demo a live sweep** with the arm frame visible in the viewer; include missing frames, low-texture views, and recovery after a rejected observation.\n\n```mermaid\nflowchart LR\n  I[Image and joint timestamp] --> K[Wrist pose]\n  K --> C[Calibrated camera pose]\n  C --> R[Geometry prediction]\n  R --> M[Base-frame model]\n```\n\n## Common pitfalls\n\n- **Pose convention:** Depth Anything 3 documents world-to-camera extrinsics; confusing those with camera-to-world poses can invert an otherwise correct reconstruction.\n- **Moving objects:** A static-scene sweep cannot safely fuse objects that change position; pause updates or flag inconsistent regions.\n- **Cable and contact risk:** Keep the sweep slow and collision-free; stop before the camera mount or cable touches the workspace.\n\n## When it's done\n\n- **Deliverable:** Show a metric model accumulating during motion, with measured landmark errors and end-to-end update delay rather than an unsupported “real-time” claim.\n- **Reproducibility:** Save calibration transforms, pose conventions, timestamp alignment, checkpoints, and rejected frames; compare against a recorded-sweep reconstruction as a debugging baseline.",
+      "resources": [
+        {
+          "title": "Depth Anything 3: Recovering the Visual Space from Any Views",
+          "url": "https://depth-anything-3.github.io/assets/paoku_compressed.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors’ video-to-geometry reconstruction result."
+        },
+        {
+          "title": "Depth Anything 3: Recovering the Visual Space from Any Views",
+          "url": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect pose-conditioned inputs and documented world-to-camera extrinsics."
+        },
+        {
+          "title": "colmap_handeye",
+          "url": "https://github.com/jimazeyu/colmap_handeye",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Study wrist-camera calibration and validation in a robot-base frame."
+        },
+        {
+          "title": "Depth Anything 3: Recovering the Visual Space from Any Views",
+          "url": "https://arxiv.org/abs/2511.10647",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the geometry model underlying this proposed integration."
+        }
+      ],
+      "sources": [
+        "https://graspsplats.github.io/",
+        "https://depth-anything-3.github.io/assets/paoku_compressed.mp4",
+        "https://github.com/ByteDance-Seed/Depth-Anything-3",
+        "https://github.com/jimazeyu/colmap_handeye",
+        "https://arxiv.org/abs/2511.10647"
+      ]
+    },
+    {
+      "node_id": "p:scene-graph-change-detection-what-moved",
+      "type": "project",
+      "name": "Scene graph change detection: what moved?",
+      "summary": "Compare aligned room maps from two visits and highlight objects that moved, appeared, or disappeared without mistaking camera motion for scene change.",
+      "lesson_md": "## In one sentence\n\nCompare aligned room maps from two visits and highlight objects that moved, appeared, or disappeared without mistaking camera motion for scene change.\n\n![Objects Can Move published pipeline for detecting object-level changes between room scans](/img/lessons/projects_perception_2-scene-changes.webp)\n*Objects Can Move published pipeline for detecting object-level changes between room scans. Source: [Publisher](https://github.com/katadam/ObjectsCanMove), license unknown.*\n\n## What you will learn\n\n- **A scene graph** represents objects as nodes and relationships as edges; positions and visual features can help associate the same object across visits.\n- **Registration** aligns scans into one coordinate frame. Without it, every unchanged chair may appear to have moved when the camera changes position.\n- **Object association** establishes identity before comparison. Think of a semantic git diff: renamed or reordered records must be matched before reporting additions and deletions.\n\n> **Key idea:** “Not observed” is different from “removed”; change detection must account for viewpoint and visibility before making inventory claims.\n\n## What you need\n\n- **Starting point:** Build Open-vocabulary 3D map of a room first; ConceptGraphs supplies an object-level representation, not a ready-made change detector.\n- **Inputs:** Capture overlapping RGB-D room scans with poses and a written change list; study Open-vocabulary 3D scene graphs & semantic maps first.\n- **Evaluation:** Keep an unchanged rescan as a control, plus a scan with occluded objects and one with poor lighting.\n\n## Steps\n\n1. **Build both maps** using the same reconstruction and segmentation settings; inspect object regions and duplicate detections before comparison.\n2. **Align the scans** using unchanged geometry, then verify stable landmarks rather than relying only on an optimizer’s score.\n3. **Match object identities** using appearance, geometry, and plausible spatial displacement; preserve uncertain matches instead of forcing every object into a pair.\n4. **Work a movement example:** A matched center shifting from x=0.20 to x=0.35 metres moved 0.15 metres; compare that with measured alignment uncertainty.\n5. **Classify differences** as moved, added, removed, unchanged, or uncertain; check whether unmatched regions were actually visible in both scans.\n6. **Demo paired maps** with highlighted changes and source-image evidence; show both a deliberate move and an occlusion that should remain uncertain.\n\n```mermaid\nflowchart LR\n  A[First room map] --> R[Align maps]\n  B[Second room map] --> R\n  R --> M[Match identities]\n  M --> V[Check visibility]\n  V --> D[Change report]\n```\n\n## Common pitfalls\n\n- **Identical objects:** Similar chairs or mugs can swap matches; report ambiguous identity instead of claiming a precisely tracked move.\n- **Segmentation drift:** One object split into two regions can imitate an addition; inspect source images and region boundaries.\n- **Unsupported certainty:** A covered object is not confirmed absent; record visibility limits alongside every removal claim.\n\n## When it's done\n\n- **Deliverable:** Save two maps, their alignment, matched IDs, uncertainty labels, and a before/after change video.\n- **Evaluation:** Compare predicted changes with the written change list, counting false alarms and missed changes separately; the unchanged rescan should expose alignment-driven false positives.",
+      "resources": [
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning (with New Updates!)",
+          "url": "https://www.youtube.com/watch?v=ie9VdL7wieY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the object-map representation before extending it across visits."
+        },
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://concept-graphs.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect mapped objects, relations, and multi-view association."
+        },
+        {
+          "title": "concept-graphs/concept-graphs",
+          "url": "https://github.com/concept-graphs/concept-graphs",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Save and inspect object maps for the proposed comparison."
+        },
+        {
+          "title": "Objects can move: 3D Change Detection by Geometric Transformation Consistency",
+          "url": "https://github.com/katadam/ObjectsCanMove",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Study aligned rescans and object-change ground truth in a dedicated change-detection implementation."
+        }
+      ],
+      "sources": [
+        "https://github.com/katadam/ObjectsCanMove",
+        "https://www.youtube.com/watch?v=ie9VdL7wieY",
+        "https://concept-graphs.github.io/",
+        "https://github.com/concept-graphs/concept-graphs"
+      ]
+    },
+    {
+      "node_id": "p:sorting-robot-detect-and-bin-objects-by-class",
+      "type": "project",
+      "name": "Sorting robot: detect and bin objects by class",
+      "summary": "Combine object detection, calibrated table coordinates, and scripted arm motions so an SO-101 puts recognized objects into the correct bins.",
+      "lesson_md": "## In one sentence\n\nCombine object detection, calibrated table coordinates, and scripted arm motions so an SO-101 puts recognized objects into the correct bins.\n\n![IFRA Cranfield reference robot cell for camera-guided classification and cube placement](/img/lessons/projects_perception_2-sorting.webp)\n*IFRA Cranfield reference robot cell for camera-guided classification and cube placement. Source: [Publisher](https://github.com/IFRA-Cranfield/irb120_PoseEstimation), license unknown.*\n\n## What you will learn\n\n- **Detection** returns object classes and image boxes; a class identifies what something is, not where the arm should move in three-dimensional space.\n- **Pixel-to-table mapping** converts image points to locations on a known plane; it depends on a calibrated, fixed camera and table.\n- **A state machine** organizes observe, pick, place, and verify stages. Think of a job queue that acknowledges completion only after checking the physical result.\n\n> **Key idea:** Sorting succeeds only when recognition, localization, grasping, and destination choice all agree on the same object.\n\n## What you need\n\n- **Prerequisites:** Complete Intro: calibrate a webcam and track AprilTags and Assemble & teleoperate an SO-101; use Real-time 2D object detection as background.\n- **Setup:** Use a fixed camera, an SO-101, known-height lightweight objects, labeled bins, and YOLO11 trained for the actual classes.\n- **Budget and scope:** Reuse lab hardware first; costs are setup-dependent. The referenced Cranfield cell illustrates the architecture, not drop-in SO-101 drivers.\n\n## Steps\n\n1. **Validate detections offline** on mixed objects, confusing classes, empty scenes, missing targets, and dim lighting; choose thresholds using development images.\n2. **Calibrate table mapping** and verify known target locations with motors disabled; keep object height assumptions explicit.\n3. **Define a routing table:** As a proposed example, class “cube” selects the left bin and “cylinder” the right; unsupported classes select no motion.\n4. **Build validated pick/place motions** with an approach pose, contact pose, lift, transit, and release; reject unreachable targets and occupied destinations.\n5. **Reobserve after placement** to verify the object left the pickup area and reached the intended bin before accepting another job.\n6. **Demo mixed-object sorting** with detector overlays, the active state, bin labels, and a deliberate unknown-object rejection.\n\n```mermaid\nflowchart LR\n  O[Observe table] --> D[Detect and classify]\n  D --> M[Map to robot frame]\n  M --> P[Validated pick]\n  P --> B[Place in class bin]\n  B --> V[Verify result]\n  V --> O\n```\n\n## Common pitfalls\n\n- **Box center versus grasp:** A detection rectangle can include background or hide object orientation; start with simple shapes and inspect proposed grasp locations.\n- **Plane assumption:** A flat-table mapping is not general three-dimensional reconstruction; raised or stacked objects can produce wrong target coordinates.\n- **Motion risk:** Keep hands clear of the reachable area and supervise slow sorting trials with a reachable stop.\n\n## When it's done\n\n- **Deliverable:** Show the complete mixed-object demo, including refusal to move for missing or unsupported targets.\n- **Evaluation:** Report detection errors, localization failures, missed grasps, drops, and wrong-bin placements separately; save calibration, class-to-bin mapping, and trial counts.",
+      "resources": [
+        {
+          "title": "Object Detection and Robot Pose Estimation in ROS 2",
+          "url": "https://www.youtube.com/watch?v=1TVL727UhDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a university robot cell connect classification, pose estimation, and tray placement."
+        },
+        {
+          "title": "Object Detection and Pose Estimation within a Robot Cell",
+          "url": "https://github.com/IFRA-Cranfield/irb120_PoseEstimation",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect a complete perception-to-placement reference using ROS 2."
+        },
+        {
+          "title": "Object Detection with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/tasks/detect/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read class and bounding-box outputs for the perception stage."
+        },
+        {
+          "title": "SO-101 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the correct setup and calibration for the lab arm."
+        }
+      ],
+      "sources": [
+        "https://github.com/IFRA-Cranfield/irb120_PoseEstimation",
+        "https://www.youtube.com/watch?v=1TVL727UhDk",
+        "https://docs.ultralytics.com/tasks/detect/",
+        "https://huggingface.co/docs/lerobot/so101"
+      ]
+    },
+    {
+      "node_id": "p:splat-to-simulation-asset-pipeline",
+      "type": "project",
+      "name": "Splat-to-simulation asset pipeline",
+      "summary": "Capture a real object as Gaussian splats and synchronize its appearance with a separate collision model inside a simulated pick task.",
+      "lesson_md": "## In one sentence\n\nCapture a real object as Gaussian splats and synchronize its appearance with a separate collision model inside a simulated pick task.\n\n![Published Gaussian-splat reconstruction of the truck scene](/img/lessons/projects_perception_2-splat-sim.webp)\n*Published Gaussian-splat reconstruction of the truck scene. Source: [Publisher](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), license unknown.*\n\n## What you will learn\n\n- **Gaussian splats** are colored, soft three-dimensional elements rendered into images; together they can reproduce a captured object’s appearance from new viewpoints.\n- **A collision model** describes surfaces used by physics to detect contact. A good-looking splat is not automatically a solid body with meaningful mass.\n- **Two representations** can share one object pose: appearance for cameras, geometry for physics. Think of a web component’s visual styling versus its interaction bounds.\n\n> **Key idea:** Realistic rendering and correct physical contact are separate requirements that must stay synchronized.\n\n## What you need\n\n- **Capture:** Use a camera, a stationary object, overlapping viewpoints, and scale references; begin with one isolated object against a manageable background.\n- **Tools:** Use a documented splat reconstruction workflow and gsplat for rendering, plus MuJoCo for a simple pick scene and collision geometry.\n- **Background and budget:** Connect Neural scene representations (NeRF & Gaussian splatting) to this project; compute and capture costs depend on existing equipment.\n\n## Steps\n\n1. **Reconstruct one object** and inspect unseen camera views; remove unrelated background appearance before placing the asset in the simulator.\n2. **Set scale and axes:** As an illustrative check, a captured 100-millimetre object must span 0.10 metres in the simulation, not 100 metres.\n3. **Create collision geometry** and specify physical properties separately; use a simple proxy initially and document where its shape differs from the capture.\n4. **Synchronize rendering:** Feed the simulated object pose and camera parameters into the splat renderer; align the splat and collision geometry in one frame.\n5. **Test contact and visibility** independently: compare object outlines, check gripper contact, and verify the rendered object moves with the simulated body.\n6. **Demo a simulated pick** with both the realistic camera view and collision-model overlay, including a failure caused by a deliberately mismatched proxy.\n\n```mermaid\nflowchart LR\n  C[Object photos] --> S[Splat appearance]\n  P[Physics body] --> T[Shared object pose]\n  S --> R[Camera renderer]\n  T --> R\n  P --> K[Pick contacts]\n```\n\n## Common pitfalls\n\n- **No automatic import:** A splat file is not a MuJoCo collision asset; renderer integration is part of this project, not a file-extension rename.\n- **Background leakage:** A captured tabletop can appear attached to the object when it moves; inspect isolated views before claiming a reusable asset.\n- **Appearance mismatch:** Incorrect camera intrinsics, axis conventions, or scale can make the visual object diverge from physical contacts.\n\n## When it's done\n\n- **Deliverable:** Package the splat, collision proxy, alignment transform, simulator scene, renderer adapter, and pick video together.\n- **Evaluation:** Save silhouette alignment checks, contact failures, and rendering time; realistic images alone do not establish improved sim-to-real policy transfer.",
+      "resources": [
+        {
+          "title": "3D Gaussian Splatting for Real-Time Radiance Field Rendering",
+          "url": "https://www.youtube.com/watch?v=T_kXY43VZnk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the original authors’ splat rendering results and mechanism."
+        },
+        {
+          "title": "Splatfacto - nerfstudio",
+          "url": "https://docs.nerf.studio/nerfology/methods/splat.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow a maintained workflow for reconstructing splat appearance."
+        },
+        {
+          "title": "Rasterization",
+          "url": "https://docs.gsplat.studio/main/apis/rasterization.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the rendering interface for camera parameters and Gaussian geometry."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#asset-mesh",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand mesh assets and their physical-geometry role rather than treating splats as collisions."
+        }
+      ],
+      "sources": [
+        "https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/",
+        "https://www.youtube.com/watch?v=T_kXY43VZnk",
+        "https://docs.nerf.studio/nerfology/methods/splat.html",
+        "https://docs.gsplat.studio/main/apis/rasterization.html",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#asset-mesh"
+      ]
+    },
+    {
+      "node_id": "p:synthetic-data-for-detector-training",
+      "type": "project",
+      "name": "Synthetic data for detector training",
+      "summary": "Render labeled object images, train a detector without real training photos, and measure how well it detects the same objects through a real webcam.",
+      "lesson_md": "## In one sentence\n\nRender labeled object images, train a detector without real training photos, and measure how well it detects the same objects through a real webcam.\n\n![BlenderProc rendered scene with automatically produced object annotations](/img/lessons/projects_perception_2-synthetic.webp)\n*BlenderProc rendered scene with automatically produced object annotations. Source: [Publisher](https://dlr-rm.github.io/BlenderProc/examples/advanced/coco_annotations/README.html), license unknown.*\n\n## What you will learn\n\n- **Synthetic data** consists of rendered images whose object identities and positions are known from the scene; labels need not be drawn by hand.\n- **Domain randomization** varies factors such as lighting, materials, camera pose, and object placement to discourage reliance on one artificial scene.\n- **The sim-to-real gap** is the difference between rendered and real observations. Treat the renderer like a test-fixture factory, not a guarantee of realistic deployment data.\n\n> **Key idea:** A synthetic detector must be judged on held-out real images, not only on more images from the same renderer.\n\n## What you need\n\n- **Setup:** Use object models, BlenderProc, YOLO11, and a webcam for final evaluation; rendering and training compute costs are setup-dependent.\n- **Background:** Complete Intro: calibrate a webcam and track AprilTags and study Real-time 2D object detection; keep camera resolution and class names explicit.\n- **Scope:** Start with a few recognizable lab objects. Keep real test photographs separate from synthetic training and prompt-free annotation generation.\n\n## Steps\n\n1. **Render a labeled scene** using BlenderProc’s COCO annotation example; inspect images and labels together before producing a larger dataset.\n2. **Randomize controlled factors** and save seeds, object assets, light settings, camera poses, and train/validation scene splits.\n3. **Convert annotations carefully:** A box centered at pixel (320, 240) in a 640-by-480 image has normalized center (0.5, 0.5).\n4. **Train the detector** using rendered images only; verify class IDs, box widths, heights, and image resizing with a label overlay.\n5. **Evaluate real webcam images** with manual labels, including empty scenes, absent classes, clutter, and bad lighting; count misses and false detections.\n6. **Demo a live camera** beside synthetic training examples and a failure gallery; compare fixed rendering against randomized rendering without changing the real test set.\n\n```mermaid\nflowchart LR\n  A[Object assets] --> R[Randomized renderer]\n  R --> L[Images and labels]\n  L --> T[Train detector]\n  T --> E[Held-out real evaluation]\n```\n\n## Common pitfalls\n\n- **Label bugs scale:** An incorrect category mapping can contaminate every rendered frame; inspect small samples before launching long jobs.\n- **Split leakage:** Nearly identical camera views of one generated scene can inflate validation scores; split by scene or generation configuration.\n- **Test-set tuning:** Repeatedly adjusting randomization to final test photos makes that set development data; retain an untouched real evaluation set.\n\n## When it's done\n\n- **Deliverable:** Save the generator configuration, asset licenses, dataset manifest, trained checkpoint, annotated webcam demo, and real-image evaluation table.\n- **Evaluation:** Report per-class correct detections, misses, false positives, and latency; document whether randomization improves real performance rather than assuming it will.",
+      "resources": [
+        {
+          "title": "Blender pipeline to generate images for deep learning (BlenderProc) - Maximilian Denninger",
+          "url": "https://www.youtube.com/watch?v=1AvY_iS6xQA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear a BlenderProc creator explain procedural image generation for learning."
+        },
+        {
+          "title": "COCO annotations — BlenderProc 2.7.0 documentation",
+          "url": "https://dlr-rm.github.io/BlenderProc/examples/advanced/coco_annotations/README.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Generate and inspect automatic instance and class annotations."
+        },
+        {
+          "title": "Light sampling — BlenderProc 2.7.0 documentation",
+          "url": "https://dlr-rm.github.io/BlenderProc/examples/basics/light_sampling/README.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Vary scene illumination as one controlled randomization factor."
+        },
+        {
+          "title": "Object Detection Datasets Overview | Ultralytics",
+          "url": "https://docs.ultralytics.com/datasets/detect/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Write normalized detection labels and dataset configuration correctly."
+        },
+        {
+          "title": "Object Detection with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/tasks/detect/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Train and validate a detector using your generated dataset."
+        }
+      ],
+      "sources": [
+        "https://dlr-rm.github.io/BlenderProc/examples/advanced/coco_annotations/README.html",
+        "https://www.youtube.com/watch?v=1AvY_iS6xQA",
+        "https://dlr-rm.github.io/BlenderProc/examples/basics/light_sampling/README.html",
+        "https://docs.ultralytics.com/datasets/detect/",
+        "https://docs.ultralytics.com/tasks/detect/"
+      ]
+    },
+    {
+      "node_id": "p:tabletop-segmentation-find-objects-on-a-table-in-3d",
+      "type": "project",
+      "name": "Tabletop segmentation: find objects on a table in 3D",
+      "summary": "Remove a table’s surface from a depth-camera point cloud and display the remaining objects as separate colored groups with estimated sizes.",
+      "lesson_md": "## In one sentence\n\nRemove a table’s surface from a depth-camera point cloud and display the remaining objects as separate colored groups with estimated sizes.\n\n![PCL cluster-extraction result separating objects in a tabletop point cloud](/img/lessons/projects_perception_2-tabletop.webp)\n*PCL cluster-extraction result separating objects in a tabletop point cloud. Source: [Publisher](https://github.com/PointCloudLibrary/pcl/blob/master/doc/tutorials/content/images/cluster_extraction.jpg), license unknown.*\n\n## What you will learn\n\n- **Plane fitting** estimates the flat surface supporting objects; **RANSAC** repeatedly tests small random samples and keeps a plane supported by many points.\n- **Clustering** groups nearby remaining points. Open3D’s DBSCAN uses a neighborhood distance and a minimum point count; sparse points can be labeled noise.\n- **Geometry before semantics:** A cluster means connected surface evidence, not “mug” or “tool.” Think of grouping log records before assigning business meaning.\n\n> **Key idea:** Removing the support plane makes object grouping easier, but separate clusters are not guaranteed to equal separate physical objects.\n\n## What you need\n\n- **Tools:** Use Open3D and a recorded RGB-D frame first; then connect an OAK-D Pro depth camera for the live viewer. Recordings avoid a hardware purchase.\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; connect the camera model and depth units to Point cloud processing.\n- **Scene:** Begin with a flat table and separated objects; leave enough visible tabletop to estimate its surface reliably.\n\n## Steps\n\n1. **Build the point cloud** from aligned color and depth with camera calibration; crop to the tabletop workspace and remove invalid depth samples.\n2. **Fit the support plane** with RANSAC and display its supporting points separately; verify it is the table rather than a wall.\n3. **Try the documented parameters:** Open3D’s plane example uses distance_threshold=0.01, ransac_n=3, and num_iterations=1000; interpret distances in your cloud’s units.\n4. **Remove plane points** and cluster what remains; inspect how neighborhood distance merges nearby objects or breaks one object apart.\n5. **Draw colored clusters** and bounding boxes with dimensions; label noise separately and avoid confusing missing measurements with empty space.\n6. **Demo live segmentation** on separated objects, touching objects, an empty table, and poor lighting; keep a recorded input for repeatable debugging.\n\n```mermaid\nflowchart LR\n  D[RGB-D frame] --> P[Workspace cloud]\n  P --> T[Fit table plane]\n  T --> R[Remove plane]\n  R --> C[Cluster objects]\n  C --> V[Boxes and dimensions]\n```\n\n## Common pitfalls\n\n- **Largest plane assumption:** A wall or shelf can dominate the cloud; check plane orientation and workspace bounds instead of automatically deleting the largest surface.\n- **Touching objects:** Distance clustering can merge them into one group; report merged clusters rather than assigning unsupported object identities.\n- **Depth artifacts:** Reflective or transparent surfaces can leave holes; test empty and invalid clouds without crashing the viewer.\n\n## When it's done\n\n- **Deliverable:** Show the original cloud, removed table, colored clusters, dimensions, and noise points in a reproducible viewer.\n- **Next step:** Point-cloud grasp targets for the SO-101 consumes these regions later; first report cluster counts, merges, splits, plane failures, and per-frame processing time.",
+      "resources": [
+        {
+          "title": "3D SHAPE DETECTION with RANSAC + PYTHON on POINT CLOUDS",
+          "url": "https://www.youtube.com/watch?v=BHzQhaxmvEg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for extracting planar shapes from three-dimensional points."
+        },
+        {
+          "title": "Point cloud - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#plane-segmentation",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run the plane-fitting and DBSCAN examples, including their documented parameters."
+        },
+        {
+          "title": "Euclidean Cluster Extraction — Point Cloud Library 1.15.1-dev documentation",
+          "url": "https://pointclouds.org/documentation/tutorials/cluster_extraction.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the specific table-removal and object-clustering pipeline."
+        },
+        {
+          "title": "RGBD images - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Create calibrated point clouds from paired color and depth images."
+        }
+      ],
+      "sources": [
+        "https://github.com/PointCloudLibrary/pcl/blob/master/doc/tutorials/content/images/cluster_extraction.jpg",
+        "https://www.youtube.com/watch?v=BHzQhaxmvEg",
+        "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html#plane-segmentation",
+        "https://pointclouds.org/documentation/tutorials/cluster_extraction.html",
+        "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html"
+      ]
     }
   ]
 }
