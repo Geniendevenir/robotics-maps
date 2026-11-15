@@ -1,0 +1,357 @@
+{
+  "batch": "projects_planning_1",
+  "lessons": [
+    {
+      "node_id": "p:intro-ros-2-and-nav2-with-a-simulated-mobile-robot",
+      "type": "project",
+      "name": "Intro: ROS 2 and Nav2 with a simulated mobile robot",
+      "summary": "Drive a simulated robot with your own ROS 2 node, then send Nav2 goals while watching its navigation costmaps.",
+      "lesson_md": "## In one sentence\n\nDrive a simulated robot with your own ROS 2 node, then send Nav2 goals while watching its navigation costmaps.\n\n![RViz shows a mobile robot, localization particles and colored navigation costs](/img/lessons/projects_planning_1-intro.webp)\n*Nav2's published quickstart setup, not a student result. Source: [Quickstart](https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/), license unknown.*\n\n## What you will learn\n\n- **ROS 2 nodes** are communicating programs; a **topic** carries typed messages between publishers and subscribers, like an event stream between services.\n- **Nav2** turns a destination into navigation behavior; its planner chooses a route and its controller produces motion commands.\n- **A costmap** assigns traversal costs around obstacles; **localization** estimates where the robot is on the supplied map.\n\n> **Key idea:** A moving simulator is not enough: you must trace the messages, location estimate and costs behind each navigation decision.\n\n## What you need\n\n- **Simulation-only setup:** Use a computer, compatible ROS 2 and Nav2 installation, Gazebo simulation and RViz, the visualization application; no physical robot purchase is required.\n- **Start with supplied assets:** Keep the tutorial's robot, world and map together before changing launch files, which start configured groups of nodes.\n- **Learn the plumbing:** Practice publishing, subscribing and request/reply services; inspect TF, the coordinate-frame transforms relating the map, odometry and robot.\n\n## Steps\n\n1. **Launch the documented example** and inspect the robot in Gazebo and RViz before writing navigation code.\n2. **Write a small publisher node** for the simulator's velocity-command topic; inspect its required message type rather than copying an incompatible command.\n3. **Stop manual commands**, set the initial pose with RViz's 2D Pose Estimate tool, then send a navigation goal.\n4. **Display both costmaps** and the planned path; explain why the robot does not simply drive straight toward every destination.\n5. **Record and replay messages** with rosbag, ROS 2's recording tool; preserve the launch configuration and relevant topic names.\n6. **Film the complete handover** from your node to Nav2, including a successful goal, an empty task list and an unreachable destination.\n\n```mermaid\nflowchart LR\n  M[Map and observations] --> L[Localize]\n  L --> P[Plan route]\n  P --> C[Controller]\n  C --> R[Simulated robot]\n  R --> M\n```\n\n## Common pitfalls\n\n- **Initial pose is not the goal:** The quickstart needs an approximate starting location before navigation becomes ready.\n- **Two command publishers** make debugging ambiguous; ensure your manual node stops commanding before Nav2 takes over.\n- **Example launch command:** The quickstart uses `ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False`; follow installation instructions for your chosen distribution.\n\n## When it's done\n\n- **Reproducible recording:** Show commands, localization, route and costs together; record outcomes, timings, configuration and failures rather than only a successful clip.\n- **Next map connection:** Continue with Planning lab: animate obstacle inflation for a disc robot to explain the costmap geometry yourself.",
+      "resources": [
+        {
+          "title": "Mapping, localization, navigation and exploration in Gazebo Harmonic and ROS2 Jazzy",
+          "url": "https://www.youtube.com/watch?v=NkOX4zX9XbQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a simulated navigation workflow, especially localization, RViz and goal selection."
+        },
+        {
+          "title": "Quickstart",
+          "url": "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run the official supplied-map simulation and set its initial pose."
+        },
+        {
+          "title": "Writing a simple publisher and subscriber (Python)",
+          "url": "https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build the publisher/subscriber foundation for your own driving node."
+        },
+        {
+          "title": "Recording and playing back data",
+          "url": "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Record and replay the messages behind the demonstration."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+        "https://www.youtube.com/watch?v=NkOX4zX9XbQ",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-add-cancellation-and-bounded-recovery-to-a-navigation-tree",
+      "type": "project",
+      "name": "Planning lab: add cancellation and bounded recovery to a navigation tree",
+      "summary": "Extend a simulated navigation tree so cancellation stops active work and recovery attempts end with an explicit outcome.",
+      "lesson_md": "## In one sentence\n\nExtend a simulated navigation tree so cancellation stops active work and recovery attempts end with an explicit outcome.\n\n![Nav2 recovery subtree with costmap clearing, spin, wait and backup branches](/img/lessons/projects_planning_1-cancel.webp)\n*Nav2's recovery subtree is a baseline to adapt, not the proposed lab's result. Source: [Detailed Behavior Tree Walkthrough](https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/), license unknown.*\n\n## What you will learn\n\n- **A behavior tree** repeatedly evaluates conditions and actions; actions report RUNNING, SUCCESS or FAILURE rather than hiding unfinished work.\n- **Cancellation resembles cancelling an asynchronous request:** Leaving a branch must also stop its active operation, not merely remove its status from the display.\n- **Bounded recovery** means a declared retry limit; Nav2's RecoveryNode retries its first child only after its recovery child succeeds.\n\n> **Key idea:** A recovery tree needs a stopping contract, not just another way to try again.\n\n## What you need\n\n- **Prerequisite demo:** Complete Planning lab: animate a patrol tree with battery and blocked-door conditions before connecting cancellation to simulated navigation.\n- **Compatible baseline:** Use Nav2 and BehaviorTree.CPP with the documented example tree, action status logs and a reproducible simulated map.\n- **No robot purchase:** Keep this student proposal simulation-only; freeze software revisions and configuration before comparing the original and modified trees.\n\n- **Worked baseline:** The RecoveryNode documentation shows `number_of_retries=\"1\"`: one recovery opportunity, then another main-child attempt if recovery succeeds.\n- **Controller cancellation:** Nav2's CancelControl targets controller-server goals; cancelling the overall navigation task is a separate interface to test explicitly.\n\n## Steps\n\n1. **Capture the baseline** for a reachable goal and an unreachable goal; record each action's start, completion and failure.\n2. **Wrap the navigation branch** in a RecoveryNode with an explicit retry count; keep progress-based retry resets disabled for this bounded experiment.\n3. **Implement halt handling** for long-running actions; use BehaviorTree.CPP's asynchronous lifecycle rather than blocking inside a tick.\n4. **Exercise cancellation during motion** and during recovery; distinguish request time, acknowledgement and the last motion command.\n5. **Inject failure cases:** Test a failed recovery, missing goal, empty task queue and stale observation; report failure instead of silently restarting.\n6. **Record paired demonstrations** using the same map and injected events, showing retry counters and final action status alongside robot motion.\n\n\n```mermaid\nflowchart TD\n  G[Goal] --> N[Navigate]\n  N --> F[Failure]\n  F --> B[Check retry budget]\n  B --> R[Recover]\n  R --> N\n  G --> X[Cancel and halt]\n```\n\n## Common pitfalls\n\n- **Status is not motion:** A halted tree node does not prove its external action stopped; inspect both action feedback and velocity output.\n- **Retry resets can defeat bounds:** A per-attempt budget is not automatically a mission-wide deadline.\n\n## When it's done\n\n- **Outcome table:** Publish successes, cancellations, exhausted budgets, timings and constraint violations, with seeds, tree XML and injected-event schedules.\n- **Next map connection:** This prepares Planning lab: orchestrate simulated inspection with injected action failures; it does not establish hardware safety.",
+      "resources": [
+        {
+          "title": "Behavior Trees.CPP 4.0 - Davide Faconti (BTs in robotics, seminar #4)",
+          "url": "https://www.youtube.com/watch?v=MJckSyRTbYc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn asynchronous behavior-tree execution from BehaviorTree.CPP's creator."
+        },
+        {
+          "title": "Reactive and Asynchronous behaviors",
+          "url": "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_04_sequence/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Implement onStart, onRunning and onHalted without blocking the executive."
+        },
+        {
+          "title": "RecoveryNode",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/bt_plugins/controls/RecoveryNode/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the exact retry and failure propagation rules."
+        },
+        {
+          "title": "CancelControl",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/bt_plugins/actions/CancelControl/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Identify what CancelControl cancels and which action server it targets."
+        },
+        {
+          "title": "Detailed Behavior Tree Walkthrough",
+          "url": "https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Adapt the documented navigation and recovery subtrees."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/getting_started/nav2_behavior_trees/detailed_behavior_tree_walkthrough/detailed_behavior_tree_walkthrough/",
+        "https://www.youtube.com/watch?v=MJckSyRTbYc",
+        "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_04_sequence/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/bt_plugins/controls/RecoveryNode/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/bt_plugins/actions/CancelControl/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-a-learned-toy-dynamics-model-against-real-simulator-rollouts",
+      "type": "project",
+      "name": "Planning lab: animate a learned toy dynamics model against real simulator rollouts",
+      "summary": "Train a small next-state predictor and animate its imagined trajectory beside the simulator executing the same actions.",
+      "lesson_md": "## In one sentence\n\nTrain a small next-state predictor and animate its imagined trajectory beside the simulator executing the same actions.\n\n![DINO-WM figure illustrates offline dynamics training and planning through predicted features](/img/lessons/projects_planning_1-dynamics.webp)\n*Published DINO-WM method figure; its performance panel is not a target or result for this student proposal. Source: [DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning](https://dino-wm.github.io/), license unknown.*\n\n## What you will learn\n\n- **Dynamics** describes how a state changes under an action; a learned dynamics model approximates that transition from recorded examples.\n- **A rollout** repeatedly applies a transition model; feeding predictions back into the predictor differs from predicting once from a measured state.\n- **Software analogy:** Treat the simulator as the reference implementation and your learned transition function as an approximate replacement tested on identical inputs.\n\n> **Key idea:** A convincing imagined future must survive comparison with actions executed in the simulator, not just look smooth.\n\n## What you need\n\n- **Small offline scope:** Use a two-dimensional toy simulator, recorded state/action/next-state transitions, a small predictor and an animation viewer; no physical robot is required.\n- **Map context:** World-model predictive planning and DINO-WM explain the larger idea; this beginner exercise is not a reproduction of DINO-WM.\n- **Keep comparison honest:** DINO-WM predicts visual features from offline trajectories; begin your own teaching version with explicit state coordinates instead of a visual encoder.\n\n- **Worked comparison:** For your chosen action list, predict once from the measured state, then repeat using only predictions; the second test exposes accumulated drift.\n- **Published visual reference:** DINO-WM's PointMaze video places simulator rollouts above imagined rollouts, with goal states on the right.\n\n## Steps\n\n1. **Record simulator transitions** under varied actions; save the initial states, actions, time step and random seeds.\n2. **Split complete trajectories** into training and held-out sets before fitting a next-state predictor.\n3. **Measure one-step predictions** using recorded states; compare against a baseline that predicts no change.\n4. **Roll the predictor forward** from one initial state using the same action sequence as an independent simulator rollout.\n5. **Animate both trajectories** with a common clock; label prediction error, horizon and any wall crossings or invalid states.\n6. **Test boundary cases** including an empty action sequence, invalid starting state and actions outside the training range; publish failures beside ordinary trials.\n\n\n```mermaid\nflowchart LR\n  D[Recorded transitions] --> T[Fit predictor]\n  T --> P[Predicted rollout]\n  A[Same actions] --> P\n  A --> S[Simulator rollout]\n  P --> E[Compare]\n  S --> E\n```\n\n## Common pitfalls\n\n- **Ground truth here means simulator output**, not a physical-robot experiment; do not advertise the animation as real-world validation.\n- **Frame leakage hides errors:** Do not reset the imagined state from every measured frame while claiming a free-running rollout.\n\n## When it's done\n\n- **Reproducible evidence:** Publish paired videos, held-out errors versus horizon, timings, seeds, data split and constraint-violation counts.\n- **Next map connection:** Continue to Planning lab: compare CEM and random shooting under dynamics mismatch only after measuring the predictor's failures.",
+      "resources": [
+        {
+          "title": "PointMaze",
+          "url": "https://dino-wm.github.io/mfiles/env/media/exp1_all5envs/pointmaze_ours.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors' PointMaze simulator-versus-imagination comparison."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://dino-wm.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand offline dynamics and inspect published rollout successes and failures."
+        },
+        {
+          "title": "gaoyuezhou/dino_wm",
+          "url": "https://github.com/gaoyuezhou/dino_wm",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the authors' training, planning and saved-visualization workflow."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://arxiv.org/abs/2411.04983",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the research method; distinguish visual-feature world models from your coordinate-based toy."
+        }
+      ],
+      "sources": [
+        "https://dino-wm.github.io/",
+        "https://dino-wm.github.io/mfiles/env/media/exp1_all5envs/pointmaze_ours.mp4",
+        "https://github.com/gaoyuezhou/dino_wm",
+        "https://arxiv.org/abs/2411.04983"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-a-noisy-corridor-decision-with-belief-bars",
+      "type": "project",
+      "name": "Planning lab: animate a noisy corridor decision with belief bars",
+      "summary": "Build a corridor decision demo that displays uncertainty as probability bars before choosing whether to move or observe again.",
+      "lesson_md": "## In one sentence\n\nBuild a corridor decision demo that displays uncertainty as probability bars before choosing whether to move or observe again.\n\n![EscapeRoomba visualization shows a robot's uncertain location represented by a cloud of possibilities](/img/lessons/projects_planning_1-belief.webp)\n*POMDPs.jl's published EscapeRoomba example illustrates partial observation; your proposed corridor demo uses simpler probability bars. Source: [Gallery of POMDPs.jl Problems](https://juliapomdp.github.io/POMDPs.jl/stable/gallery/), license unknown.*\n\n## What you will learn\n\n- **A belief** is a probability distribution over possible hidden states, not a single guessed location.\n- **An observation** is the noisy evidence available to the agent; the simulator's true state must remain separate from the decision input.\n- **A policy** chooses an action from the belief; think of a function receiving a distribution rather than an enum with one certain value.\n\n> **Key idea:** Uncertainty belongs in the decision input, not just in a decorative error bar after the action.\n\n## What you need\n\n- **Tiny student proposal:** Implement a short corridor with ambiguous locations, move and observe actions, and a documented observation-probability table.\n- **Simulation-only tools:** Use your preferred language and animation library, or POMDPs.jl for model, updater and policy interfaces; no robot purchase is needed.\n- **Map foundation:** Start after Intro: ROS 2 and Nav2 with a simulated mobile robot; Planning under uncertainty & belief space provides the conceptual link.\n\n- **Worked reference:** POMDPs.jl's simulation example prints beliefs of 0.5294 and 0.4706 for its two-state baby problem after a noisy observation.\n- **Transfer the pattern:** Your corridor labels replace those hidden states; they do not inherit the baby problem's probabilities or reward values.\n\n## Steps\n\n1. **Define hidden states** and legal actions; write transition probabilities and observation probabilities before animating anything.\n2. **Maintain a belief vector** and update it after an action and observation; normalize the weights so the bars sum to one.\n3. **Keep truth hidden** from the policy but visible in a separate evaluation panel, alongside the observation received.\n4. **Compare two policies:** One acts on the most likely location; the other may observe again before committing.\n5. **Exercise edge cases:** Run an empty task list, uninformative observations and an impossible observation; reject invalid probability updates instead of dividing by zero.\n6. **Record paired runs** with the same seeds, logging actions, belief bars, elapsed steps and terminal outcomes.\n\n\n```mermaid\nflowchart LR\n  B[Belief bars] --> P[Choose action]\n  P --> S[Hidden simulator]\n  S --> O[Noisy observation]\n  O --> U[Update belief]\n  U --> B\n```\n\n## Common pitfalls\n\n- **Repeated evidence is not independent:** Do not repeatedly apply one cached sensor reading as though it were several new measurements.\n- **Pretty bars do not prove calibration:** Compare declared probabilities with simulated outcomes across saved trials.\n\n## When it's done\n\n- **Deliverable:** Publish the animation, probability tables, policy rules, seeds, timings, outcome counts and invalid-update logs.\n- **Next map connection:** This prepares Planning lab: compare shortest-path and information-gathering policies without claiming a general-purpose uncertainty planner.",
+      "resources": [
+        {
+          "title": "Lecture 15 Partially Observable MDPs (POMDPs) -- CS287-FA19 Advanced Robotics at UC Berkeley",
+          "url": "https://www.youtube.com/watch?v=2dNp7QyoF_k",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Watch the two-door example and why policies act on beliefs; the later mathematics is optional."
+        },
+        {
+          "title": "Gallery of POMDPs.jl Problems",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/gallery/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the EscapeRoomba example motivating decisions with incomplete sensing."
+        },
+        {
+          "title": "Concepts and Architecture",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Separate beliefs, updaters, models and policies."
+        },
+        {
+          "title": "Simulations Examples",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/example_simulations/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Log belief, true state, action and observation on each simulation step."
+        }
+      ],
+      "sources": [
+        "https://juliapomdp.github.io/POMDPs.jl/stable/gallery/",
+        "https://www.youtube.com/watch?v=2dNp7QyoF_k",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/example_simulations/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-a-patrol-tree-with-battery-and-blocked-door-conditions",
+      "type": "project",
+      "name": "Planning lab: animate a patrol tree with battery and blocked-door conditions",
+      "summary": "Animate a proposed patrol behavior tree whose running action responds visibly to low battery and a blocked door.",
+      "lesson_md": "## In one sentence\n\nAnimate a proposed patrol behavior tree whose running action responds visibly to low battery and a blocked door.\n\n![Groot2 displays Nav2 navigation and recovery branches in a graphical tree editor](/img/lessons/projects_planning_1-patrol.webp)\n*Published Nav2 tree in Groot2, the kind of executive visualization your patrol demo builds on. Source: [Groot2 - Interacting with Behavior Trees](https://docs.nav2.org/rolling/tutorials/general_tutorials/groot_tutorials/groot2/groot2/), license unknown.*\n\n## What you will learn\n\n- **A behavior tree** is a hierarchy of conditions and actions, evaluated by repeated calls called ticks.\n- **Action statuses** are RUNNING, SUCCESS and FAILURE; RUNNING means work is unfinished, not that the entire mission succeeded.\n- **Software analogy:** A reactive tree resembles an event-loop supervisor that checks its guards again while an asynchronous job is active.\n\n> **Key idea:** A battery check must run while movement is in progress, not just once before the patrol starts.\n\n## What you need\n\n- **Start small:** Use a two-dimensional patrol animation, simulated battery and door flags, and a log of each node's status; no hardware purchase is needed.\n- **Implementation choice:** BehaviorTree.CPP supplies action lifecycles and XML trees; a teaching implementation is acceptable if its control-node semantics are explicit.\n- **Map prerequisite:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot; connect this exercise to Behavior trees & task executives.\n\n- **Worked reference:** BehaviorTree.CPP's tutorial checks BatteryOK once with Sequence; ReactiveSequence checks it again while MoveBase is RUNNING.\n- **Extend that example:** Add your proposed door condition, log when it changes, and explain which action gets interrupted rather than inventing a published patrol result.\n\n## Steps\n\n1. **Define patrol actions** and conditions such as BatteryOK and DoorOpen; keep their simulator state separate from the tree's displayed status.\n2. **Run the successful route** with a clear door, showing the active branch and robot position at each tick.\n3. **Add a reactive guard** that rechecks battery while movement returns RUNNING; demonstrate the active action being halted when the guard fails.\n4. **Inject a blocked door** and show an explicit wait, alternate branch or failure outcome; make waiting finite and visible.\n5. **Test empty patrols** and invalid waypoints; specify whether an empty route means completed work or rejected input.\n6. **Film matching scenarios** with a plain Sequence and a reactive version, using the same event schedule and simulator settings.\n\n\n```mermaid\nflowchart TD\n  T[Tick] --> B[Check battery]\n  B --> D[Check door]\n  D --> M[Patrol action]\n  M --> T\n  B --> H[Halt or fail]\n  D --> H\n```\n\n## Common pitfalls\n\n- **Blocking actions freeze reactivity:** Return RUNNING promptly and implement halt handling; a color-changing tree cannot compensate for a blocked execution thread.\n- **Stale conditions hide changes:** Update battery and door observations before evaluating the guards.\n\n## When it's done\n\n- **Visible evidence:** Show normal patrol, battery interruption, blocked door and invalid input; publish seeds, timings, outcomes and constraint violations.\n- **Next map connection:** Continue with Planning lab: add cancellation and bounded recovery to a navigation tree to connect the executive to external actions.",
+      "resources": [
+        {
+          "title": "Patrolling example with Nav2 and Behavior Trees",
+          "url": "https://www.youtube.com/watch?v=lStwIxNIPBc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a published Nav2 patrol as a visual reference, not a complete battery/door implementation."
+        },
+        {
+          "title": "Your first Behavior Tree",
+          "url": "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build and tick a first tree with conditions and actions."
+        },
+        {
+          "title": "Reactive and Asynchronous behaviors",
+          "url": "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_04_sequence/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compare Sequence and ReactiveSequence using the battery-check example."
+        },
+        {
+          "title": "Groot2 - Interacting with Behavior Trees",
+          "url": "https://docs.nav2.org/rolling/tutorials/general_tutorials/groot_tutorials/groot2/groot2/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect and edit Nav2 trees visually with Groot2."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/tutorials/general_tutorials/groot_tutorials/groot2/groot2/",
+        "https://www.youtube.com/watch?v=lStwIxNIPBc",
+        "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree/",
+        "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_04_sequence/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-candidate-velocity-rollouts-around-a-moving-obstacle",
+      "type": "project",
+      "name": "Planning lab: animate candidate velocity rollouts around a moving obstacle",
+      "summary": "Animate short candidate motions, reject predicted collisions and show which velocity command a toy local planner selects around a moving obstacle.",
+      "lesson_md": "## In one sentence\n\nAnimate short candidate motions, reject predicted collisions and show which velocity command a toy local planner selects around a moving obstacle.\n\n![PythonRobotics dynamic-window example shows robot position, a predicted trajectory and obstacle points](/img/lessons/projects_planning_1-velocities.webp)\n*Published PythonRobotics DWA baseline with static obstacle points; moving-obstacle prediction is part of your proposed extension. Source: [Dynamic Window Approach](https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dynamic_window_approach/dynamic_window_approach.html), license unknown.*\n\n## What you will learn\n\n- **A local planner** chooses the next short movement rather than solving the entire journey at once.\n- **A velocity rollout** predicts positions after holding a candidate linear speed and turning speed; a **critic** scores one aspect of that trajectory.\n- **Software analogy:** Evaluate candidate commands like speculative branches, reject invalid branches, then commit only the next command before evaluating again.\n\n> **Key idea:** A trajectory is collision-free only relative to an obstacle model and the times at which you checked it.\n\n## What you need\n\n- **Simulation-only baseline:** Use PythonRobotics' Dynamic Window Approach example, a two-dimensional viewer, robot dimensions and explicit speed and acceleration limits.\n- **A scripted moving obstacle** needs a position at each simulated time; keep its motion schedule fixed when comparing candidate scores.\n- **Map foundation:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot; Local planning & reactive obstacle avoidance explains the larger role.\n\n- **Worked reference:** Nav2's DWB example configures `sim_time: 1.7`, meaning its sample trajectories use a 1.7-second simulation horizon.\n- **Limit the claim:** Those example settings are not a safety guarantee, and DWB costmap scoring alone does not establish your proposed moving-obstacle prediction.\n\n## Steps\n\n1. **Run the original example** and identify the state, goal, obstacle list and command returned by the controller.\n2. **Display candidate trajectories** with separate colors for rejected, accepted and chosen motions; include a legend and a time horizon.\n3. **Add the moving obstacle** and check robot and obstacle occupancy at matching future times, rather than only against its current position.\n4. **Show score components** for progress and obstacle clearance; preserve the same scales across comparisons.\n5. **Test failure inputs:** Include an empty obstacle list, invalid start, unreachable goal and no valid candidate; output a stop or explicit failure, not an unchecked command.\n6. **Record the demo** with obstacle motion, candidate trajectories, selected command and minimum separation visible together.\n\n\n```mermaid\nflowchart LR\n  S[Current state] --> V[Sample velocities]\n  V --> R[Roll out motions]\n  R --> C[Check and score]\n  C --> A[Apply next command]\n  A --> S\n```\n\n## Common pitfalls\n\n- **Time mismatch creates false clearance:** A robot and obstacle may visit the same location safely at different times, or collide between sparse checks.\n- **Best score is not always valid:** Filter collisions and command-limit violations before choosing among the remaining candidates.\n\n## When it's done\n\n- **Comparison package:** Publish seeds, horizons, limits, timings, outcome counts and collision counts, including runs where the planner stops.\n- **Next map connection:** Continue to Planning lab: compare DWB and MPPI on identical simulated routes after your candidate visualization is understandable.",
+      "resources": [
+        {
+          "title": "Dynamic Window Approach Planning for a differential drive robot with moving obstacles!",
+          "url": "https://www.youtube.com/watch?v=Mdg9ElewwA0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See dynamic-window planning with moving obstacles in Andrew Davison's demonstration."
+        },
+        {
+          "title": "Dynamic Window Approach",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dynamic_window_approach/dynamic_window_approach.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run a small readable two-dimensional DWA baseline."
+        },
+        {
+          "title": "dynamic_window_approach.py",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/DynamicWindowApproach/dynamic_window_approach.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect velocity sampling, prediction and scoring in the implementation."
+        },
+        {
+          "title": "DWB Controller",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/dwb_controller/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Connect trajectory generation and critics to Nav2's DWB controller."
+        }
+      ],
+      "sources": [
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dynamic_window_approach/dynamic_window_approach.html",
+        "https://www.youtube.com/watch?v=Mdg9ElewwA0",
+        "https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/DynamicWindowApproach/dynamic_window_approach.py",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/dwb_controller/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-dubins-style-turns-versus-impossible-sideways-moves",
+      "type": "project",
+      "name": "Planning lab: animate Dubins-style turns versus impossible sideways moves",
+      "summary": "Compare a car-like robot following bounded turns with a point animation that cheats by sliding sideways.",
+      "lesson_md": "## In one sentence\n\nCompare a car-like robot following bounded turns with a point animation that cheats by sliding sideways.\n\n![PythonRobotics Dubins example shows an LSL curve joining two directed poses](/img/lessons/projects_planning_1-dubins.webp)\n*Published Dubins route with start and goal headings; the sideways comparison remains your proposed teaching demo. Source: [Dubins path planning](https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dubins_path/dubins_path.html), license unknown.*\n\n## What you will learn\n\n- **A pose** includes position and heading; reaching the correct coordinates while facing the wrong way does not satisfy a pose goal.\n- **Nonholonomic motion** restricts instantaneous directions: ordinary wheels roll along their direction instead of sliding sideways.\n- **Dubins paths** model constant forward speed with bounded curvature, the amount a path bends; minimum turning radius limits how sharply it turns.\n- **Software analogy:** A route is like a program accepted by a type checker only if every motion obeys the robot's movement interface.\n\n> **Key idea:** A short line on a map can be impossible to execute under the robot's motion constraints.\n\n## What you need\n\n- **Small student proposal:** Use a two-dimensional animation, directed start and goal poses, a minimum turning radius and a Dubins implementation; no physical car is required.\n- **Map foundation:** Start after Intro: ROS 2 and Nav2 with a simulated mobile robot; connect the comparison to Kinodynamic & nonholonomic planning.\n- **Keep models distinct:** A differential-drive robot and a forward-only Dubins car do not have identical turning abilities.\n\n- **Worked example from PythonRobotics:** Start at (1, 1) with heading 45 degrees; target (-3, -3) with heading -45 degrees and curvature 1.0 per meter.\n- **Segment vocabulary:** The documented candidates are RSR, RSL, LSR, LSL, RLR and LRL; L, R and S mean left, right and straight.\n\n## Steps\n\n1. **Choose directed poses** and display an arrow at each endpoint so viewers can see the required headings.\n2. **Animate a cheating baseline** that interpolates coordinates without respecting wheel direction; label it as deliberately invalid.\n3. **Generate a Dubins route** and color its left-turn, straight and right-turn segments separately.\n4. **Replay the route** with the robot's heading tangent to its path; inspect turning-radius and sideways-motion violations.\n5. **Test boundary cases:** Include an empty obstacle map, coincident poses, an invalid radius and a goal blocked by obstacles; report unsupported or failed cases.\n6. **Film the comparison** on shared axes, saving endpoint errors, path lengths, timings and constraint-violation counts.\n\n\n```mermaid\nflowchart LR\n  P[Directed poses] --> B[Cheating baseline]\n  P --> D[Dubins candidates]\n  D --> V[Check constraints]\n  B --> V\n  V --> A[Animate comparison]\n```\n\n## Common pitfalls\n\n- **Dubins is not obstacle avoidance:** Its shortest free-space connection can intersect a wall; reject collisions rather than calling that route valid.\n- **Heading units matter:** The example converts degrees to radians before calling the planner.\n\n## When it's done\n\n- **Reproducible evidence:** Publish the animation, poses, turning radius, seeds and every rejected case, not just the shortest-looking route.\n- **Next map connection:** This prepares Planning lab: compare lattice and Hybrid A-star parking routes, where obstacles and maneuver choices become central.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.3.1:  Modeling of Nonholonomic Wheeled Mobile Robots",
+          "url": "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why conventional wheels cannot command an instantaneous sideways slide."
+        },
+        {
+          "title": "Dubins path planning",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dubins_path/dubins_path.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run the worked endpoint example and inspect Dubins segment types."
+        },
+        {
+          "title": "13.3.1. Modeling of Nonholonomic Wheeled Mobile Robots",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the video transcript contrasting car-like and differential-drive models."
+        },
+        {
+          "title": "15.3.1 Dubins Curves",
+          "url": "https://lavalle.pl/planning/node821.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Study the forward-only assumptions and the six shortest-path families."
+        }
+      ],
+      "sources": [
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/dubins_path/dubins_path.html",
+        "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+        "https://lavalle.pl/planning/node821.html"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-animate-obstacle-inflation-for-a-disc-robot",
+      "type": "project",
+      "name": "Planning lab: animate obstacle inflation for a disc robot",
+      "summary": "Animate how a disc-shaped robot becomes a point when obstacles are expanded to account for its radius.",
+      "lesson_md": "## In one sentence\n\nAnimate how a disc-shaped robot becomes a point when obstacles are expanded to account for its radius.\n\n![RViz displays sam_bot with a green circular footprint enclosing its body](/img/lessons/projects_planning_1-inflation.webp)\n*Nav2's published circular-footprint setup; use the robot's size when constructing your proposed inflated-map animation. Source: [Setting Up the Robot's Footprint](https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/), license unknown.*\n\n## What you will learn\n\n- **A footprint** is the robot's shape projected onto the floor; a disc's footprint is described by its center and radius.\n- **Configuration space** represents robot configurations as points; forbidden points correspond to configurations where the full robot intersects obstacles.\n- **Software analogy:** Precompute a validity mask, then query whether the robot center is allowed, rather than rechecking its entire shape for every visualization frame.\n\n> **Key idea:** Obstacles grow in the center-point representation because the robot has not physically shrunk.\n\n## What you need\n\n- **Simulation-only materials:** Use a two-dimensional obstacle map, a chosen disc radius, a distance calculation and an animation viewer; no hardware purchase is required.\n- **Map prerequisite:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot; Configuration space & collision checking explains the geometry.\n- **Choose conventions:** State grid resolution, distance units, map boundaries and whether touching an obstacle counts as collision before comparing the two views.\n\n- **Worked scale from Nav2:** Its footprint tutorial uses `robot_radius: 0.3` and `resolution: 0.05`; that radius spans six grid cells.\n- **Separate geometry from preference:** Nav2's inflation layer also adds exponentially decaying traversal costs around obstacles; not every colored cost cell means geometric collision.\n\n## Steps\n\n1. **Display the original workspace** with walls and a moving disc, keeping its center visibly marked.\n2. **Build the forbidden-center mask** by marking locations whose disc would touch or overlap an obstacle.\n3. **Animate matching views:** Show the full disc among original obstacles beside its center among expanded obstacles.\n4. **Sweep the disc radius** and explain when a corridor closes; keep the obstacle map and test route unchanged.\n5. **Check edge cases:** Use no obstacles, a start inside an obstacle, a narrow passage and an invalid negative radius; reject malformed geometry explicitly.\n6. **Record a paired demo** with collision labels, timings, radius, resolution and any disagreement between the two collision tests.\n\n\n```mermaid\nflowchart LR\n  O[Original obstacles] --> I[Account for disc radius]\n  I --> F[Forbidden centers]\n  F --> C[Check center path]\n  O --> D[Check full disc]\n  D --> V[Compare labels]\n  C --> V\n```\n\n## Common pitfalls\n\n- **Grid rounding can hide contact:** Test boundary positions against the original geometry, not only the rendered pixels.\n- **Circles are a special case:** Do not transfer a heading-independent disc mask unchanged to a rotating rectangular robot.\n\n## When it's done\n\n- **Evidence package:** Publish the animation, geometry, seeds, timings, outcome counts and collision-test disagreements; keep empty-map and invalid-input results.\n- **Next map connection:** Continue to Planning lab: compare discrete and swept collision tests on thin walls to investigate collisions between sampled positions.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 10.2:  C-Space Obstacles",
+          "url": "https://www.youtube.com/watch?v=s2qrMwqm4D0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for obstacles in configuration space before implementing the disc example."
+        },
+        {
+          "title": "Setting Up the Robot's Footprint",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See a real circular footprint and the tutorial's radius and grid resolution."
+        },
+        {
+          "title": "10.2.1. C-Space Obstacles",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-2-c-space-obstacles/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the collision-checking explanation and why planners can operate on configuration points."
+        },
+        {
+          "title": "Inflation Layer Parameters",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/costmap_plugins/inflation/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish geometric collision regions from Nav2's graded obstacle costs."
+        }
+      ],
+      "sources": [
+        "https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/footprint/setup_footprint/",
+        "https://www.youtube.com/watch?v=s2qrMwqm4D0",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/10-2-c-space-obstacles/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/costmap_plugins/inflation/"
+      ]
+    }
+  ]
+}
