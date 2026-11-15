@@ -563,6 +563,220 @@
         "https://underactuated.mit.edu/humanoids.html",
         "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot"
       ]
+    },
+    {
+      "node_id": "k:rl-locomotion-with-sim-to-real",
+      "type": "knowledge",
+      "name": "RL locomotion with sim-to-real",
+      "summary": "RL locomotion with sim-to-real trains a walking policy by trial and error in a physics simulator, then runs that same neural network on a real legged robot.",
+      "lesson_md": "## In one sentence\n\nRL locomotion with sim-to-real trains a walking policy by trial and error in a physics simulator, then runs that same neural network on a real legged robot.\n\n![Thousands of simulated ANYmal quadrupeds training in parallel on one flat terrain in Isaac Gym](/img/lessons/knowledge_locomotion-rl-sim-to-real.webp)\n*Thousands of simulated robots learning to walk at once on one GPU. Source: [Rudin et al., legged_gym project page](https://leggedrobotics.github.io/legged_gym/), license unknown.*\n\n## Why it matters for us\n\n- **Free to start:** the whole loop runs in simulation, so a GPU replaces an expensive robot during training.\n- **Fast iteration:** ETH's legged_gym trained ANYmal to walk on flat terrain in under four minutes and on uneven terrain in twenty minutes, on a single workstation GPU.\n- **Proven on hardware:** those policies transferred to a real ANYmal C.\n\n> **Key idea:** A simulator is a cheap but wrong copy of reality, so you train on many randomly wrong copies until the real world looks like one more variation.\n\n## How it works\n\n- **Policy:** a neural network that maps observations (joint angles, body velocity, command) to joint targets, called many times per second.\n- **Reward:** a score summed from terms; legged_gym rewards tracking the commanded velocity (weight 1.0) and feet air time (1.0), and penalises torques (-0.00001).\n- **Parallel training:** thousands of robot copies run in one simulator; a PPO learner (rsl_rl) updates the policy from all of them.\n- **Curriculum:** robots that cross their terrain move to harder slopes and stairs; robots that fail move back down.\n- **Domain randomization:** vary physics each episode so the policy cannot overfit one fake world.\n- **Software analogy:** like fuzz testing, random inputs make code survive cases you never tested.\n\n```mermaid\nflowchart LR\n  C[\"Command + sensors\"] --> P[\"Policy network\"]\n  P --> J[\"Joint targets\"]\n  J --> S[\"Randomized simulator\"]\n  S --> R[\"Reward\"]\n  R --> U[\"PPO update\"]\n  U --> P\n  P --> H[\"Real robot\"]\n```\n\nThe randomization block from legged_gym's base config:\n\n```python\nclass domain_rand:\n    randomize_friction = True\n    friction_range = [0.5, 1.25]\n    push_robots = True\n    push_interval_s = 15\n    max_push_vel_xy = 1.\n```\n\n> **Watch out:** success in simulation alone does not prove hardware transfer; test on a second simulator or a real robot before trusting it.\n\n## Key terms\n\n- **Sim-to-real gap**: the difference between simulated and real physics that makes a policy fail on hardware.\n- **Domain randomization**: sampling physics parameters such as friction or mass from ranges during training.\n- **Actuator network**: a learned model of the real motors, used inside the simulator.\n- **Decimation**: running the policy once every N physics steps; legged_gym uses 4 steps of 0.005 s, so the policy runs at 50 Hz.\n- **Curriculum**: automatically raising task difficulty as the policy improves.\n\n## Before / after\n\n- **Before:** **Reinforcement learning for robots**, **Gaits & gait cycles** and **Feedback control & PID**; know Python and basic neural networks.\n- **After:** **Perceptive rough-terrain locomotion**, **Agile & parkour locomotion**, **Fall recovery & get-up** and the project **Train randomized versus nominal walkers**.\n\n## Try it in an afternoon\n\n1. **Watch the ETH video** and list the curriculum terrains.\n2. **Install MuJoCo Playground** with uv, following its README.\n3. **Train its quadruped locomotion task** on a GPU and record the reward curve.\n4. **Change one randomization range**, retrain, and compare how the policy reacts to pushes.\n",
+      "resources": [
+        {
+          "title": "Learning to Walk in Minutes Using Massively Parallel Deep RL",
+          "url": "https://www.youtube.com/watch?v=8sO7VS3q8d0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See thousands of simulated robots learn, the terrain curriculum, and the real ANYmal run."
+        },
+        {
+          "title": "Learning To Walk in Minutes Using Massively Parallel Deep Reinforcement Learning",
+          "url": "https://leggedrobotics.github.io/legged_gym/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page explaining the game-inspired curriculum and sim-to-real deployment."
+        },
+        {
+          "title": "MuJoCo Playground",
+          "url": "https://github.com/google-deepmind/mujoco_playground",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Current GPU RL environments with system identification and sim-to-real deployment workflows."
+        },
+        {
+          "title": "legged_gym: Isaac Gym Environments for Legged Robots",
+          "url": "https://github.com/leggedrobotics/legged_gym",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the reward terms and randomization config of the reference baseline (now migrated to Isaac Lab)."
+        },
+        {
+          "title": "Learning agile and dynamic motor skills for legged robots",
+          "url": "https://arxiv.org/abs/1901.08652",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The ANYmal paper that introduced the actuator network and transferred RL policies to hardware."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2109.11978",
+        "https://leggedrobotics.github.io/legged_gym/",
+        "https://github.com/leggedrobotics/legged_gym",
+        "https://raw.githubusercontent.com/leggedrobotics/legged_gym/master/legged_gym/envs/base/legged_robot_config.py",
+        "https://arxiv.org/abs/1901.08652",
+        "https://github.com/google-deepmind/mujoco_playground",
+        "https://www.youtube.com/watch?v=8sO7VS3q8d0"
+      ]
+    },
+    {
+      "node_id": "k:static-dynamic-stability",
+      "type": "knowledge",
+      "name": "Static & dynamic stability",
+      "summary": "A robot is statically stable when its centre of mass sits above its support polygon; dynamic stability also depends on how momentum and contact forces change while moving.",
+      "lesson_md": "## In one sentence\n\nA robot is statically stable when its centre of mass sits above its support polygon; dynamic stability also depends on how momentum and contact forces change while moving.\n\n![Sketch of a robot body as a point mass m with inertia I above flat ground, with four upward contact forces F1 to F4](/img/lessons/knowledge_locomotion-stability.webp)\n*Contact forces from the ground are all a walking robot can push against. Source: [Russ Tedrake, Underactuated Robotics](https://underactuated.mit.edu/humanoids.html), license unknown.*\n\n## Why it matters for us\n\n- **First question for any gait:** humanoid and quadruped controllers all start from balance.\n- **Two regimes:** slow robots can stay balanced at every instant; fast trots, runs and humanoid steps cannot.\n- **Cheap to explore:** **Draw a moving support polygon** and **Push a simulated standing quadruped** need only a simulator.\n\n> **Key idea:** Standing still is a geometry problem; moving is a force problem, because the feet can only push, never pull.\n\n## How it works\n\n- **Centre of mass (CoM):** the average position of the robot's mass.\n- **Support polygon:** the convex hull of the feet touching the ground. Static stability means the CoM lies above it.\n- **Dynamic case:** an accelerating CoM may briefly leave the polygon, as in human walking.\n- **Centre of pressure (CoP):** the point where the total ground reaction force acts. On flat ground it equals the **zero moment point (ZMP)** and must stay inside the support polygon.\n- **The ZMP equation** (constant CoM height): horizontal acceleration equals gravity times the CoM's offset from the CoP, divided by CoM height.\n\n  ẍ = g · (x − x_cp) / (z − z_cp)\n\n- **Worked example:** CoM 1 m high and 0.1 m ahead of the CoP gives ẍ = 9.81 × 0.1 / 1 ≈ 0.98 m/s² forward.\n- **Friction limit:** at constant height, |ẍ| ≤ μ·g; with μ = 0.5 that is at most about 4.9 m/s².\n- **Software analogy:** static stability is an invariant checked every frame; dynamic stability is eventual consistency.\n\n```mermaid\nflowchart LR\n  F[\"Feet on ground\"] --> P[\"Support polygon\"]\n  C[\"CoM position\"] --> S{\"Static: CoM over polygon?\"}\n  P --> S\n  A[\"CoM acceleration\"] --> Z[\"ZMP / CoP\"]\n  Z --> D{\"Dynamic: ZMP inside polygon?\"}\n  P --> D\n```\n\n> **Watch out:** ZMP assumes flat, high-friction contact; on slopes or slipping feet it no longer guarantees balance.\n\n## Key terms\n\n- **Support polygon**: the region under the feet where the CoM must lie for static stability.\n- **Centre of pressure**: where the net ground reaction force is applied.\n- **Zero moment point**: the ground point where contact forces create no horizontal tipping moment.\n- **Friction cone**: the limit μ on sideways versus vertical foot force.\n\n## Before / after\n\n- **Before:** forces, torque and centre of mass; **Rigid-body dynamics (equations of motion)** helps.\n- **After:** **Bipedal walking control**, **Reduced-order locomotion models**, **Gaits & gait cycles** and the project **Compare balance margins during gait transitions**.\n\n## Try it in an afternoon\n\n1. **Watch the RoboCupUS clip** and compare the two walking styles.\n2. **Draw four foot points**, shade their convex hull, and mark CoM points inside and outside.\n3. **Code a 20-line Python script** that checks whether a CoM point is inside a polygon.\n4. **Add the ZMP equation** and plot the CoP for a CoM accelerating at 0.5, 1 and 2 m/s².\n",
+      "resources": [
+        {
+          "title": "RoboCupUS - Static vs dynamic walking",
+          "url": "https://www.youtube.com/watch?v=bpQ7fESYCY8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Side-by-side look at a robot walking statically versus dynamically."
+        },
+        {
+          "title": "Support polygon",
+          "url": "https://en.wikipedia.org/wiki/Support_polygon",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Short definition of the support polygon and its link to static stability."
+        },
+        {
+          "title": "Zero moment point",
+          "url": "https://en.wikipedia.org/wiki/Zero_moment_point",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "History and intuition of the ZMP criterion for biped dynamic balance."
+        },
+        {
+          "title": "Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Derives the CoP, ZMP equations and friction limits used in this lesson."
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://en.wikipedia.org/wiki/Zero_moment_point",
+        "https://en.wikipedia.org/wiki/Support_polygon",
+        "https://en.wikipedia.org/wiki/Center_of_pressure_(terrestrial_locomotion)",
+        "https://www.youtube.com/watch?v=bpQ7fESYCY8"
+      ]
+    },
+    {
+      "node_id": "k:wheel-legged-hybrid-locomotion",
+      "type": "knowledge",
+      "name": "Wheel-legged hybrid locomotion",
+      "summary": "Wheel-legged robots put driven wheels at the end of their legs, so they can roll fast on flat ground and step over obstacles when needed.",
+      "lesson_md": "## In one sentence\n\nWheel-legged robots put driven wheels at the end of their legs, so they can roll fast on flat ground and step over obstacles when needed.\n\n![ANYmal quadruped robot with wheels mounted at the end of its four legs, at the ARCHE 2019 event](/img/lessons/knowledge_locomotion-wheel-legged.webp)\n*A wheeled ANYmal at ARCHE 2019. Source: [Wikimedia Commons, Auledas](https://commons.wikimedia.org/wiki/File:Wheeled_ANYmal_ARCHE_2019.jpg), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Efficiency:** ETH's wheeled ANYmal reached a cost of transport 83% lower than trotting and 4 m/s, versus 1.5 m/s walking.\n- **Real products:** ETH spin-off Swiss-Mile (now RIVR) builds wheel-legged robots for last-mile delivery.\n- **Active research:** 2025-2026 platforms include OmniQuad, with mecanum wheels, and KYON, a wheel-legged quadruped with two arms.\n\n> **Key idea:** A wheel is a foot that is allowed to slide in one direction, so the controller must treat it as a moving contact.\n\n## How it works\n\n- **Two modes:** drive when the ground is smooth, lift a leg and step when there is a curb or stair.\n- **Rolling constraint:** a wheel can roll forward but should not slip sideways. This is a **nonholonomic constraint**, a limit on velocities rather than positions.\n- **Planner:** ETH's \"Keep Rollin'\" uses a ZMP-based motion optimizer that keeps updating body and wheel trajectories.\n- **Whole-body controller:** a prioritized optimization then computes accelerations, contact forces and torques that respect the rolling constraint.\n- **Single MPC alternative:** a later ETH paper optimizes wheel and torso motion in one MPC and finds gait sequences online.\n- **RL alternative:** Lee et al. (2024) trained an RL controller that switches smoothly between walking and driving, tested on kilometre-scale missions in Zurich and Seville.\n- **Software analogy:** like a hybrid sort that switches algorithm by input size, the robot switches gait by terrain.\n\n```mermaid\nflowchart LR\n  T[\"Terrain + velocity command\"] --> G[\"Gait / mode choice\"]\n  G --> M[\"Motion optimizer\"]\n  M --> W[\"Whole-body controller\"]\n  W --> R[\"Rolling constraint check\"]\n  R --> J[\"Joint + wheel torques\"]\n```\n\n## Key terms\n\n- **Nonholonomic constraint**: a rule on how a system may move, such as a wheel not sliding sideways.\n- **Cost of transport**: energy used per unit weight and distance; lower is more efficient.\n- **Mecanum wheel**: a wheel with angled rollers that lets the robot move sideways.\n- **Hybrid maneuver**: motion mixing rolling and stepping, for example driving while lifting one leg.\n- **Mode transition**: the switch between walking and driving.\n\n## Before / after\n\n- **Before:** **Wheeled mobile robot kinematics**, **Gaits & gait cycles**, and either **Model predictive control for legged robots** or **RL locomotion with sim-to-real**.\n- **After:** **Loco-manipulation coordination** and the projects **Simulate rolling-contact constraints** and **Switch between roll and step modes**.\n\n## Try it in an afternoon\n\n1. **Watch the Swiss-Mile reveal** and list when the robot rolls, steps and stands up.\n2. **Read Section II-A** of \"Keep Rollin'\" for the rolling constraint, skimming the maths.\n3. **Simulate one wheel on a leg** in MuJoCo and log its sideways contact velocity while rolling.\n4. **Compare energy** for rolling versus stepping across 2 m as the project **Compare hybrid and leg-only energy proxies** suggests.\n",
+      "resources": [
+        {
+          "title": "Swiss-Mile Robot Reveal",
+          "url": "https://www.youtube.com/watch?v=KmXulwvCsZA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a commercial wheel-legged robot roll, step and stand."
+        },
+        {
+          "title": "Marko Bjelonic: Motion Optimization and Control for a Wheeled Quadruped",
+          "url": "https://www.youtube.com/watch?v=USTBqTt_n9c",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk explaining how wheels are added to the planner and controller of ANYmal."
+        },
+        {
+          "title": "Keep Rollin' - Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://arxiv.org/abs/1809.03557",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Rolling constraint, ZMP planning and prioritized whole-body control for wheeled ANYmal."
+        },
+        {
+          "title": "Whole-Body MPC and Online Gait Sequence Generation for Wheeled-Legged Robots",
+          "url": "https://arxiv.org/abs/2010.06322",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "One MPC that optimizes wheels and torso together and discovers hybrid gaits."
+        },
+        {
+          "title": "Learning Robust Autonomous Navigation and Locomotion for Wheeled-Legged Robots",
+          "url": "https://arxiv.org/abs/2405.01792",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "RL controller with walk-drive transitions validated in city-scale missions."
+        }
+      ],
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Wheeled_ANYmal_ARCHE_2019.jpg",
+        "https://arxiv.org/abs/1809.03557",
+        "https://arxiv.org/html/1809.03557",
+        "https://arxiv.org/abs/2010.06322",
+        "https://arxiv.org/abs/2405.01792",
+        "https://arxiv.org/abs/2610.38502",
+        "https://arxiv.org/abs/2606.30243",
+        "https://www.youtube.com/watch?v=KmXulwvCsZA",
+        "https://www.youtube.com/watch?v=USTBqTt_n9c"
+      ]
+    },
+    {
+      "node_id": "k:whole-body-control-for-legged-robots",
+      "type": "knowledge",
+      "name": "Whole-body control for legged robots",
+      "summary": "Whole-body control computes all joint torques of a legged robot at once, so balance, body motion, leg swing and contact forces are solved together under physical limits.",
+      "lesson_md": "## In one sentence\n\nWhole-body control computes all joint torques of a legged robot at once, so balance, body motion, leg swing and contact forces are solved together under physical limits.\n\n![Simulated humanoid stepping between blocks, a pair of legs doing a flip, and a quadruped stepping over boxes](/img/lessons/knowledge_locomotion-whole-body-control.webp)\n*Multi-contact whole-body motions computed with Crocoddyl. Source: [Crocoddyl repository](https://github.com/loco-3d/crocoddyl), license unknown.*\n\n## Why it matters for us\n\n- **The layer under the planner:** MPC or a footstep planner says where the body should go; whole-body control turns that into torques every control cycle.\n- **Many goals, one body:** keep balance, move the torso, swing a leg and hold an arm still, all with the same joints.\n- **Open tools:** Pinocchio, Crocoddyl and the Stack of Tasks (LAAS-CNRS) and OCS2 (ETH) are open source.\n\n> **Key idea:** When goals conflict, rank them: physics and safety first, balance next, nice-to-have motions last.\n\n## How it works\n\n- **Tasks:** each goal is written as a target acceleration of some body part, through its **Jacobian** (how joint speeds move that part).\n- **Constraints:** the solution must obey the equations of motion, torque limits and the **friction cone**.\n- **Optimization:** a solver picks joint accelerations and contact forces that best satisfy the tasks; then **inverse dynamics** converts them to torques.\n- **Hierarchy:** in ETH's wheeled ANYmal controller the prioritized tasks include equations of motion, torque limits and friction cone, CoM tracking, swing-leg tracking and contact force minimization.\n- **Software analogy:** like CSS specificity or middleware order, a higher-priority rule wins whenever two rules disagree.\n\n```mermaid\nflowchart TD\n  P[\"Planner / MPC references\"] --> T[\"Ranked tasks\"]\n  S[\"State estimate\"] --> T\n  T --> Q[\"Optimization: accelerations + contact forces\"]\n  C[\"Limits: dynamics, torque, friction\"] --> Q\n  Q --> I[\"Inverse dynamics\"]\n  I --> M[\"Joint torques\"]\n```\n\nA first step with Pinocchio's Python bindings (`pip install pin`) is getting the quantities a task needs:\n\n```python\nimport pinocchio as pin\nmodel = pin.buildSampleModelHumanoid()\ndata = model.createData()\nq = pin.neutral(model)\ncom = pin.centerOfMass(model, data, q)\nJ_com = pin.jacobianCenterOfMass(model, data, q)\n```\n\n## Key terms\n\n- **Task**: a desired motion or force for one part of the robot, such as torso height.\n- **Jacobian**: the matrix that maps joint velocities to the velocity of a body point.\n- **Inverse dynamics**: computing the torques that produce a desired motion.\n- **Friction cone**: the limit on sideways contact force before a foot slips.\n- **Quadratic program (QP)**: an optimization with a quadratic cost and linear constraints, the usual WBC solver.\n\n## Before / after\n\n- **Before:** **Velocity kinematics, Jacobians & singularities**, **Rigid-body dynamics (equations of motion)** and **Floating-base & centroidal dynamics (legged/humanoid)**.\n- **After:** **Loco-manipulation coordination**, **Wheel-legged hybrid locomotion**, and the projects **Track a body pose with fixed feet** and **Combine stepping and torso tracking**.\n\n## Try it in an afternoon\n\n1. **Watch the ETH video** and note which motions come from the planner and which from the controller.\n2. **Install Pinocchio** and run the snippet above to print the CoM and its Jacobian.\n3. **Write a two-task QP** for a planar arm: hold the tip height, then minimise joint speed.\n4. **Give the tasks opposite priorities** and compare the results, as in **Visualize competing balance tasks**.\n",
+      "resources": [
+        {
+          "title": "Online Motion Optimization and Whole-Body Control for Quadrupedal Robots",
+          "url": "https://www.youtube.com/watch?v=Gvcvs80yZvU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "ETH demo of a planner plus whole-body controller running on ANYmal."
+        },
+        {
+          "title": "Perception-less Terrain Adaptation through Whole Body Control and Hierarchical Optimization",
+          "url": "https://www.youtube.com/watch?v=AjiLCbJUYKI",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Shows a hierarchical WBC adapting to terrain without cameras."
+        },
+        {
+          "title": "sot-doc: Whole body motion",
+          "url": "https://stack-of-tasks.github.io/sot-doc/doxygen/HEAD/tutorial_whole_body_motion.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Stack of Tasks tutorial for a whole-body motion on the TALOS humanoid in Gazebo."
+        },
+        {
+          "title": "Pinocchio",
+          "url": "https://github.com/stack-of-tasks/pinocchio",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Fast rigid-body dynamics library providing the Jacobians and inverse dynamics WBC needs."
+        },
+        {
+          "title": "Keep Rollin' - Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://arxiv.org/abs/1809.03557",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Section IV lists the prioritized tasks and torque generation of a real WBC."
+        },
+        {
+          "title": "Crocoddyl",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Multi-contact optimal control library for whole-body motions like jumps and flips."
+        }
+      ],
+      "sources": [
+        "https://github.com/stack-of-tasks/pinocchio",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://arxiv.org/abs/1909.04947",
+        "https://arxiv.org/html/1809.03557",
+        "https://stack-of-tasks.github.io/",
+        "https://stack-of-tasks.github.io/sot-doc/doxygen/HEAD/tutorial_whole_body_motion.html",
+        "https://leggedrobotics.github.io/ocs2/",
+        "https://www.youtube.com/watch?v=Gvcvs80yZvU",
+        "https://www.youtube.com/watch?v=AjiLCbJUYKI"
+      ]
     }
   ]
 }
