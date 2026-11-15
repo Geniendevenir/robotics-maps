@@ -766,6 +766,182 @@
         "https://pointclouds.org/documentation/tutorials/cluster_extraction.html",
         "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html"
       ]
+    },
+    {
+      "node_id": "p:tag-based-ground-truth-rig-for-evaluating-learned-perception",
+      "type": "project",
+      "name": "Tag-based ground truth rig for evaluating learned perception",
+      "summary": "Use a calibrated camera and printed tags to measure how a learned depth model’s predictions differ from a geometric reference.",
+      "lesson_md": "## In one sentence\n\nUse a calibrated camera and printed tags to measure how a learned depth model’s predictions differ from a geometric reference.\n\n![AprilTag detections overlaid on a scene containing tagged robots](/img/lessons/projects_perception_2-truth-rig.webp)\n*AprilTag detections overlaid on a scene containing tagged robots. Source: [Publisher](https://april.eecs.umich.edu/software/apriltag), license unknown.*\n\n## What you will learn\n\n- **Ground truth** means the reference used to score predictions; here it is a tag-derived measurement, not an infallible ruler.\n- **Pose** describes position and orientation. AprilTag estimates it from camera calibration and the printed tag’s measured size.\n- **Monocular depth estimation** predicts depth from one image. Treat the tag branch like an independent test oracle for a learned function.\n\n> **Key idea:** Compare the same surface in the same coordinate convention before interpreting a depth-error plot.\n\n## What you need\n\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; revisit Fiducial markers (AprilTag, ArUco) for tag detection and calibration.\n- **Setup:** Use a fixed webcam, rigid printed target, ruler, AprilTag 3 library, and Depth Anything V2 with its indoor metric-depth checkpoint.\n- **Budget:** Reuse the camera and computer; printing and mounting costs depend on local supplies. GPU access and total cost are unknown.\n\n## Steps\n\n1. **Measure the target** between the detected border corners, in meters; save that measurement with the camera calibration and tag family.\n2. **Record paired inputs** while moving the target through the workspace. Save each original image so both methods receive identical evidence.\n3. **Estimate tag pose** and log its camera-axis depth; the library defines camera z as pointing outward through the lens.\n4. **Run metric inference** and sample the tag-center surface. The documented `infer_image` output is a height-by-width depth array in meters.\n5. **Compute differences** between matched model and tag depths. Plot signed error against tag depth; retain failed detections separately rather than assigning zero.\n6. **Demo the evaluation** on a frozen image set, including empty scenes, missing targets, and poor lighting; publish the plot and failure counts.\n\n```python\ndepth = model.infer_image(raw_img)\n```\n\n```mermaid\nflowchart LR\n  A[Saved image] --> B[Tag pose]\n  A --> C[Metric depth]\n  B --> D[Match surface]\n  C --> D\n  D --> E[Error plot]\n```\n\n## Common pitfalls\n\n- **Wrong scale:** Relative-depth output is not automatically meters; use the metric checkpoint rather than comparing an arbitrary color visualization with tag distances.\n- **Wrong reference:** Camera-axis depth and straight-line distance are different measurements off-center. Document the convention and keep the target facing the camera initially.\n- **Circular validation:** Never tune a scale correction on the same images used for final scoring; retain the raw predictions alongside any corrected results.\n\n## When it's done\n\n- **Deliverable:** Another student can rerun saved images and regenerate the depth-error plot, calibration record, and successful-versus-failed measurement counts.\n- **Interpretation:** Show where the learned model disagrees with the tag reference, without presenting this student experiment as a published accuracy result.",
+      "resources": [
+        {
+          "title": "AprilTags 3D Poses using Python + JavaScript",
+          "url": "https://www.youtube.com/watch?v=Rs7grk7nivw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See camera-relative tag poses before implementing the measurement pipeline."
+        },
+        {
+          "title": "AprilRobotics/apriltag",
+          "url": "https://github.com/AprilRobotics/apriltag",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the pose-estimation inputs, tag-size definition, and camera coordinate conventions."
+        },
+        {
+          "title": "Depth-Anything-V2/metric_depth",
+          "url": "https://github.com/DepthAnything/Depth-Anything-V2/tree/main/metric_depth",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use the indoor metric checkpoint and obtain depth arrays in meters."
+        },
+        {
+          "title": "Depth Anything V2",
+          "url": "https://arxiv.org/abs/2406.09414",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the learned model and its metric-depth fine-tuning."
+        }
+      ],
+      "sources": [
+        "https://april.eecs.umich.edu/software/apriltag",
+        "https://www.youtube.com/watch?v=Rs7grk7nivw",
+        "https://github.com/AprilRobotics/apriltag",
+        "https://github.com/DepthAnything/Depth-Anything-V2/tree/main/metric_depth",
+        "https://arxiv.org/abs/2406.09414"
+      ]
+    },
+    {
+      "node_id": "p:tag-based-pick-targets-for-the-so-101",
+      "type": "project",
+      "name": "Tag-based pick targets for the SO-101",
+      "summary": "Make the SO-101 pick tagged objects by converting camera observations into checked, scripted grasp targets instead of using learned perception.",
+      "lesson_md": "## In one sentence\n\nMake the SO-101 pick tagged objects by converting camera observations into checked, scripted grasp targets instead of using learned perception.\n\n![SO-101 follower arm used as the project’s picking platform](/img/lessons/projects_perception_2-tag-picks.webp)\n*SO-101 follower arm used as the project’s picking platform. Source: [Publisher](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Fiducial markers (AprilTag, ArUco)** attach a recognizable identity and geometric reference to an object; they do not automatically specify a grasp.\n- **Coordinate frames** are local position-and-direction conventions. A camera-to-base transform translates observations into the robot’s reference, like converting between API data schemas.\n- **Grasp offsets** describe where the gripper should meet the object relative to its tag; a tag center may be a poor contact point.\n\n> **Key idea:** Detecting a tag is only perception; picking also needs frame conversion, a reachable grasp, and an explicit missing-target policy.\n\n## What you need\n\n- **Preparation:** Finish Camera-to-arm hand-eye calibration for the SO-101 and verify the saved camera-to-base transformation before commanding motion.\n- **Hardware:** Use an assembled, calibrated SO-101, fixed webcam, rigidly tagged lightweight objects, and a clear tabletop; reuse existing equipment where possible.\n- **Software:** Use LeRobot for the arm connection and AprilTag 3 library for poses; provide a tested motion routine rather than assuming detection controls joints.\n- **Budget:** Arm, camera, mounting, and printing costs depend on existing lab equipment; the complete purchase cost is unknown.\n\n## Steps\n\n1. **Define the contract** for detections: tag identity, camera-frame pose, image timestamp, and a valid-or-missing status. Reject missing targets before planning.\n2. **Check frame conversion** by displaying transformed targets against known tabletop locations with motion disabled; inspect camera-axis directions and length units.\n3. **Attach grasp offsets** to each tagged object. For example, resolve its detected tag to an object record, then combine its pose with that record’s grasp.\n4. **Validate reachability** using the existing arm-control pipeline; reject targets outside the tested workspace instead of forcing a joint solution.\n5. **Execute a scripted pick** through approach, grasp, lift, and placement poses; start with one stationary object before changing target order.\n6. **Demo moved targets** in a documented trial set, including empty scenes, hidden tags, and poor lighting; report pick successes, failures, and deliberate rejections.\n\n```text\nIf tag missing: reject pick\nOtherwise: transform tag pose into base frame\nThen: apply object grasp offset and validate reachability\n```\n\n```mermaid\nflowchart LR\n  A[Camera] --> B[Tag pose]\n  B --> C[Base frame]\n  C --> D[Grasp offset]\n  D --> E[Validate target]\n  E --> F[Scripted pick]\n```\n\n## Common pitfalls\n\n- **Frame confusion:** AprilTag’s camera frame has x right, y down, and z through the lens; do not interpret it directly as robot-base coordinates.\n- **Stale detections:** Recheck the observation before committing to a grasp; a moved object invalidates a previously correct target.\n- **Motion hazard:** Keep hands outside the powered arm’s reachable area and stop motion before adjusting tags or objects.\n\n## When it's done\n\n- **Deliverable:** The arm picks tagged objects after their positions and requested order change, while missing or unreachable targets produce a logged refusal.\n- **Evidence:** Save calibration, tag measurements, grasp offsets, trial definitions, and a video so another student can reproduce the baseline.",
+      "resources": [
+        {
+          "title": "AprilTags 3D Poses using Python + JavaScript",
+          "url": "https://www.youtube.com/watch?v=Rs7grk7nivw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See camera-relative tag poses before implementing the measurement pipeline."
+        },
+        {
+          "title": "AprilRobotics/apriltag",
+          "url": "https://github.com/AprilRobotics/apriltag",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the pose-estimation inputs, tag-size definition, and camera coordinate conventions."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Connect and calibrate the specific arm used for the picking baseline."
+        },
+        {
+          "title": "jimazeyu/colmap_handeye",
+          "url": "https://github.com/jimazeyu/colmap_handeye",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Study camera-to-base calibration outputs; adapt the concepts, not its Franka-specific collection code."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=Rs7grk7nivw",
+        "https://github.com/AprilRobotics/apriltag",
+        "https://github.com/jimazeyu/colmap_handeye"
+      ]
+    },
+    {
+      "node_id": "p:text-prompted-segmentation-of-every-instance-with-sam-3",
+      "type": "project",
+      "name": "Text-prompted segmentation of every instance with SAM 3",
+      "summary": "Build a video demo that turns a short text prompt into separate masks and tracked identities for matching objects, then measures its mistakes.",
+      "lesson_md": "## In one sentence\n\nBuild a video demo that turns a short text prompt into separate masks and tracked identities for matching objects, then measures its mistakes.\n\n![SAM 3 concept-segmentation examples with instance masks and text prompts](/img/lessons/projects_perception_2-sam3-concepts.webp)\n*SAM 3 concept-segmentation examples with instance masks and text prompts. Source: [Publisher](https://github.com/facebookresearch/sam3), license unknown.*\n\n## What you will learn\n\n- **Instance segmentation** assigns pixels to individual objects, not just one combined region for an entire category.\n- **Concept prompts** specify a category using short phrases or examples. SAM 3 combines detection with video tracking to return masks and object identities.\n- **Software analogy:** A text prompt resembles a database query over visible objects, but its results are uncertain predictions rather than exact matches.\n\n> **Key idea:** “All matching objects” is the requested behavior to test, not a guarantee that every match will be found.\n\n## What you need\n\n- **Map preparation:** Connect Promptable image & video segmentation (SAM family) with Open-vocabulary detection & grounding; Intro: calibrate a webcam and track AprilTags provides camera familiarity.\n- **Compute:** Follow SAM 3’s current installation requirements and request checkpoint access; the official local setup requires a CUDA-compatible GPU.\n- **Inputs:** Begin with a recorded tabletop video, text prompts, and manually checked object identities. Reuse recordings; GPU rental and total running cost are unknown.\n- **Version record:** Save the repository revision and checkpoint name; distinguish SAM 3 from the repository’s later SAM 3.1 release when comparing experiments.\n\n## Steps\n\n1. **Reproduce the notebook** using its supplied video before introducing your own scene; verify that masks and object identities are visible in the overlay.\n2. **Create a session** for a tabletop clip and submit a short prompt. For example, the official notebook submits `text=\"person\"` at `frame_index=0`.\n3. **Propagate through frames** and render each object with its own identity label; save frame-level masks rather than only the final edited video.\n4. **Try the project prompt** “all red blocks” and compare it with simpler wording; manually count matching blocks without assuming either phrase works reliably.\n5. **Test hard negatives** such as nonmatching objects, empty scenes, hidden targets, and poor lighting; record missed objects and unwanted masks separately.\n6. **Demo interactive refinement** with positive or negative clicks, then export the video and counts; keep corrected runs separate from the untouched text-only baseline.\n\n```mermaid\nflowchart LR\n  A[Video session] --> C[Text prompt]\n  C --> D[Detect instances]\n  D --> E[Track masks]\n  E --> F[Overlay identities]\n  F --> G[Audit mistakes]\n```\n\n## Common pitfalls\n\n- **Category versus identity:** Knowing that an object is a block does not establish that it kept the same identity after disappearing behind another object.\n- **Hidden assistance:** Corrective clicks change the experiment; log them instead of reporting the edited result as autonomous text-only performance.\n- **Timing confusion:** The notebook warns that initialization can slow the first call; distinguish startup time from later inference when measuring speed.\n\n## When it's done\n\n- **Deliverable:** Typing a concept produces an annotated video, per-instance masks, and a table of correct matches, misses, unwanted masks, and identity mistakes.\n- **Reproducibility:** Publish clip names, exact prompts, model revision, and correction history so another student can repeat both successful and unsuccessful cases.",
+      "resources": [
+        {
+          "title": "SAM 3: Building a unified model architecture for detection and tracking",
+          "url": "https://www.youtube.com/watch?v=iEJG27hG0Ik",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear Meta explain why detecting matching objects and tracking their identities need different components."
+        },
+        {
+          "title": "sam3/examples/sam3_video_predictor_example.ipynb at main",
+          "url": "https://github.com/facebookresearch/sam3/blob/main/examples/sam3_video_predictor_example.ipynb",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run text prompting, video propagation, object removal, and corrective clicks."
+        },
+        {
+          "title": "facebookresearch/sam3",
+          "url": "https://github.com/facebookresearch/sam3",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check installation requirements, checkpoint access, and image/video APIs."
+        },
+        {
+          "title": "SAM 3: Segment Anything with Concepts",
+          "url": "https://arxiv.org/abs/2511.16719",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the concept-segmentation task definition and evaluation approach."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/sam3",
+        "https://www.youtube.com/watch?v=iEJG27hG0Ik",
+        "https://github.com/facebookresearch/sam3/blob/main/examples/sam3_video_predictor_example.ipynb",
+        "https://arxiv.org/abs/2511.16719",
+        "https://raw.githubusercontent.com/facebookresearch/sam3/main/examples/sam3_video_predictor_example.ipynb"
+      ]
+    },
+    {
+      "node_id": "p:tracker-benchmark-on-robot-workspace-videos",
+      "type": "project",
+      "name": "Tracker benchmark on robot-workspace videos",
+      "summary": "Compare box-based and mask-based tracking on the same tabletop videos, measuring identity mistakes when objects cross, disappear, or return.",
+      "lesson_md": "## In one sentence\n\nCompare box-based and mask-based tracking on the same tabletop videos, measuring identity mistakes when objects cross, disappear, or return.\n\n![SAM 2 video dataset examples showing object masks across varied scenes](/img/lessons/projects_perception_2-tracker-bench.webp)\n*SAM 2 video dataset examples showing object masks across varied scenes. Source: [Publisher](https://github.com/facebookresearch/sam2), license unknown.*\n\n## What you will learn\n\n- **Multi-object tracking** links observations across frames so each physical object keeps a persistent identity; a detector alone only locates objects in individual images.\n- **Occlusion** means an object becomes partly or completely hidden. An **identity switch** happens when tracking associates an object with the wrong identity.\n- **Software analogy:** Treat each recorded clip as a regression-test fixture: freeze its inputs, reference labels, configuration, and scoring rules before comparing implementations.\n\n> **Key idea:** A fair comparison controls the inputs and human assistance, not just the colors drawn on the output video.\n\n## What you need\n\n- **Preparation:** Start from Intro: calibrate a webcam and track AprilTags for recorded-camera handling; connect this project to Multi-object tracking.\n- **Baselines:** Use ByteTrack through BoxMOT for box tracking and SAM 2 for prompted mask tracking; record exact model and repository revisions.\n- **Dataset:** Reuse tabletop recordings or record them with an existing webcam; annotate visible objects and persistent identities manually before viewing tracker predictions.\n- **Budget:** No robot motion or new robot hardware is required. Local GPU availability, annotation effort, and any rental cost determine the practical expense.\n\n## Steps\n\n1. **Freeze the clips** with crossings, occlusions, empty scenes, missing targets, and poor lighting; preserve original frame order and dimensions.\n2. **Write reference labels** with stable object identities. Document how fully hidden objects, departures, and returns are scored instead of deciding after seeing results.\n3. **Run the box baseline** using one saved detection set; save frame index, predicted identity, and box coordinates for every reported object.\n4. **Run the mask baseline** with documented initial prompts; propagate SAM 2 masks and record every corrective click, if corrections are allowed at all.\n5. **Normalize outputs** by converting each mask to its enclosing box for shared box-based scoring; retain masks for a separate boundary-quality inspection.\n6. **Score and demo** with TrackEval-compatible files and side-by-side videos; publish identity switches, missed detections, unwanted tracks, and the human input each method received.\n\n```mermaid\nflowchart LR\n  A[Frozen clips] --> B[Box tracker]\n  A --> C[Mask tracker]\n  B --> D[Common format]\n  C --> D\n  D --> E[Reference comparison]\n  E --> F[Table and replay]\n```\n\n## Common pitfalls\n\n- **Unequal assistance:** SAM 2’s initial clicks provide information that automatic box tracking may not receive; report this difference rather than claiming identical conditions.\n- **Annotation leakage:** Tune settings on separate practice clips; keep the benchmark clips untouched until the scoring rules are fixed.\n- **Misleading averages:** Inspect each occlusion replay; an attractive overall score can hide the specific identity failure that matters for following a grasp target.\n\n## When it's done\n\n- **Deliverable:** A table and replay compare trackers on identical clips, with saved predictions, reference annotations, failures, and an explicit prompting policy.\n- **Worked check:** SAM 2’s notebook assigns shirt identities `2` and `3`; follow each shirt through the clip and check whether its identity persists.",
+      "resources": [
+        {
+          "title": "How to Run Multi-Object Tracking with Ultralytics YOLO26 | BoT-SORT & ByteTrack | VisionAI 🚀",
+          "url": "https://www.youtube.com/watch?v=qQkzKISt5GE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch box-tracking identities and the distinction between BoT-SORT and ByteTrack configuration."
+        },
+        {
+          "title": "sam2/notebooks/video_predictor_example.ipynb at main",
+          "url": "https://github.com/facebookresearch/sam2/blob/main/notebooks/video_predictor_example.ipynb",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Initialize multiple objects and propagate mask predictions across video frames."
+        },
+        {
+          "title": "mikel-brostrom/boxmot",
+          "url": "https://github.com/mikel-brostrom/boxmot",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run interchangeable box trackers and preserve reusable detections for comparison."
+        },
+        {
+          "title": "JonathonLuiten/TrackEval",
+          "url": "https://github.com/JonathonLuiten/TrackEval",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Convert a custom benchmark to a supported format and compute tracking metrics."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/sam2",
+        "https://www.youtube.com/watch?v=qQkzKISt5GE",
+        "https://github.com/facebookresearch/sam2/blob/main/notebooks/video_predictor_example.ipynb",
+        "https://github.com/mikel-brostrom/boxmot",
+        "https://github.com/JonathonLuiten/TrackEval",
+        "https://raw.githubusercontent.com/facebookresearch/sam2/main/notebooks/video_predictor_example.ipynb"
+      ]
     }
   ]
 }
