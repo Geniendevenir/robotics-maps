@@ -677,6 +677,240 @@
         "https://arxiv.org/html/1809.03557v2",
         "https://www.markobjelonic.com/research/"
       ]
+    },
+    {
+      "node_id": "p:switch-safely-between-walking-and-recovery",
+      "type": "project",
+      "name": "Switch safely between walking and recovery",
+      "summary": "Build a simulated supervisor that detects a fall, runs recovery and resumes walking only after stable support, with timeout and repeated-failure lockout.",
+      "lesson_md": "## In one sentence\n\nBuild a simulated supervisor that detects a fall, runs recovery and resumes walking only after stable support, with timeout and repeated-failure lockout.\n\n![Sampled fallen ANYmal configurations used to train a recovery controller](/img/lessons/projects_locomotion_2-recovery-supervisor.webp)\n*Published recovery starting states motivate transition tests; the supervisor is a student addition. Source: [arXiv](https://arxiv.org/html/1901.08652v1), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **A supervisor** selects which controller owns the actuators; think of a service orchestrator that checks readiness before routing requests.\n- **A guard** is a condition permitting a transition; combine torso orientation, height and supporting contacts rather than trusting a timer alone.\n- **Hysteresis** uses different entry and exit thresholds to prevent rapid mode switching near a boundary.\n- **A dwell interval** requires the ready condition to remain true continuously before returning control to walking.\n\n> **Key idea:** A recovered pose is not enough; walking resumes only when support, observations and controller state are ready together.\n\n## What you need\n\n- **Prerequisite:** finish Train or replay a simulated get-up controller; this project integrates its result rather than training another recovery policy.\n- **Compatible controllers:** use MuJoCo Playground's Go1 walking and get-up environments as references; verify model, joint order, observation builders and control periods.\n- **A shared simulation:** retain body collision geometry needed by recovery; confirm both policies work with that same asset before building transitions.\n- **Planning estimate:** allow 1–2 months and €0 hardware, excluding computing; this simulation exercise develops Fall recovery & get-up, not hardware safety certification.\n\n## Steps\n\n1. **Define ownership:** implement walking, recovery, settling and locked states; log every transition, guard value, attempt counter and timestamp.\n2. **Unify interfaces:** give each policy its own observation builder; convert its output into joint targets before applying shared actuator bounds.\n3. **Add fall detection:** stop velocity commands when the fall guard fires; start recovery with its required history state, not walking's stale action history.\n4. **Gate resumption:** require upright, supported settling for the dwell interval; reset walking history and limit target changes during handover.\n5. **Add bounded retries:** time out unsuccessful attempts, retain the failure count until a declared successful episode, and lock out further attempts at the limit.\n6. **Demo adversarial cases:** include falls, zero commands, no contacts, invalid observations, impossible actuator limits and repeated failures; show resumption or lockout, never silent retries.\n\n```python\nif not observations_valid:\n    mode = \"locked\"\nelif attempt_timed_out:\n    failures += 1\n    mode = \"locked\" if failures >= max_failures else \"recovery\"\nelif mode == \"settling\" and ready_for_dwell:\n    mode = \"walking\"\n```\n\n```mermaid\nflowchart LR\n A[\"Walking\"] -->|Fall| B[\"Recovery\"]\n B -->|Upright| C[\"Settling\"]\n C -->|Stable support| A\n B -->|Retry limit| D[\"Locked\"]\n C -->|Fall| B\n```\n\n## Common pitfalls\n\n- **Action mismatch:** Go1 get-up targets offset current joint angles; joystick targets offset the nominal pose. Identical action dimensions do not mean interchangeable outputs.\n- **A timeout is not success:** distinguish recovery completion, transition failure, lockout and simulator termination in the report.\n- **Missing support:** an upright airborne body must not satisfy the walking-ready guard.\n\n## When it's done\n\n- **Publish a fall–get-up–resume replay** beside transition logs, success counts, timeout counts, target discontinuities and repeated-failure lockouts.\n- **Keep the scope explicit:** the guards and thresholds are your tested design choices, not a published safety guarantee.",
+      "resources": [
+        {
+          "title": "Learning Agile and Dynamic Motor Skills for Legged Robots",
+          "url": "https://www.youtube.com/watch?v=aTDkYFZFWug",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See learned locomotion and recovery behaviors that a supervisor must coordinate."
+        },
+        {
+          "title": "getup.py",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/getup.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check Go1 recovery observations, joint-target semantics and full-body collision setup."
+        },
+        {
+          "title": "joystick.py",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare walking observation history and nominal-pose action targets before handing over control."
+        },
+        {
+          "title": "__init__.py",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/__init__.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Locate Go1 walking and recovery registrations and their separate configurations."
+        },
+        {
+          "title": "Learning agile and dynamic motor skills for legged robots",
+          "url": "https://arxiv.org/html/1901.08652v1",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the learned locomotion and recovery reference; the proposed supervisor still needs its own tests."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=aTDkYFZFWug",
+        "https://arxiv.org/html/1901.08652v1",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/getup.py",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/__init__.py"
+      ]
+    },
+    {
+      "node_id": "p:test-one-policy-on-scaled-virtual-quadrupeds",
+      "type": "project",
+      "name": "Test one policy on scaled virtual quadrupeds",
+      "summary": "Freeze one locomotion policy, evaluate it on held-out scaled quadruped bodies and report tracking errors and falls without adapting its weights.",
+      "lesson_md": "## In one sentence\n\nFreeze one locomotion policy, evaluate it on held-out scaled quadruped bodies and report tracking errors and falls without adapting its weights.\n\n![Unitree A1 running in the published URMA multi-robot simulation](/img/lessons/projects_locomotion_2-scaled-quadrupeds.webp)\n*Frame from the authors' training simulation; the scaled-body benchmark is a student adaptation. Source: [URMA](https://nico-bohlinger.github.io/one_policy_to_run_them_all_website/), license unknown.*\n\n## What you will learn\n\n- **Morphology** means body structure: limb geometry, joints and physical properties, not merely the robot's rendered appearance.\n- **Cross-embodiment control** uses one policy across different bodies; URMA routes body-specific observations through a shared network.\n- **A held-out body** is excluded from training and tuning, just as a test fixture must remain outside a model's training dataset.\n- **Tracking error** compares measured velocity with the command; report it alongside falls so surviving slowly does not look like successful tracking.\n\n> **Key idea:** One policy means fixed learned weights, not permission to hide per-body retraining inside the evaluation adapter.\n\n## What you need\n\n- **Prerequisite:** complete Normalize gait observations across two virtual bodies; retain its documented joint ordering and observation units.\n- **A replay gate:** first run URMA's provided trained-model test workflow unchanged; check dependencies and asset access before attempting new bodies.\n- **A simulator:** the authors' MuJoCo implementation provides a concrete starting point; MuJoCo Playground and Isaac Sim / Isaac Lab are related map alternatives.\n- **Planning estimate:** allow 1–2 months and €0 hardware, excluding computing; this tests Cross-embodiment locomotion policies, not guaranteed transfer to arbitrary scales.\n\n## Steps\n\n1. **Freeze the baseline:** record the checkpoint hash, source revision, observation schema and original-body results before changing geometry.\n2. **Declare body splits:** choose training, tuning and held-out scales in advance; specify geometry, collision shapes, masses, inertias and actuator settings for each.\n3. **Validate compiled models:** update physical parameters consistently, inspect contacts and check joint limits; changing only mesh size is not a scaled dynamics test.\n4. **Route morphology correctly:** rebuild geometry-dependent observations and masks using the same documented adapter rules; never modify policy weights or tune against held-out results.\n5. **Replay paired trials:** use fixed commands, durations and seeds; state whether velocities use world units or body-normalized units, and keep that choice consistent.\n6. **Demo the comparison:** publish per-body tracking errors, falls and timeouts; include zero command, unsupported starts, invalid scales, empty body lists and malformed observations.\n\n```python\nrecords = []\nfor body in held_out_bodies:\n    trial = evaluate(frozen_policy, body, command_trace, seeds)\n    records.append((body.name, trial.velocity_error, trial.falls))\nif not records:\n    raise ValueError(\"No held-out bodies to evaluate\")\n```\n\n```mermaid\nflowchart LR\n A[\"Freeze policy\"] --> B[\"Validate bodies\"]\n B --> C[\"Build observations\"]\n C --> D[\"Replay commands\"]\n D --> E[\"Compare errors and falls\"]\n```\n\n## Common pitfalls\n\n- **Visual scaling is insufficient:** MuJoCo can infer inertia from geometry, but explicit inertial entries override that inference; inspect the compiled physical model.\n- **Adapter leakage:** selecting per-body gains after seeing test failures turns evaluation into tuning; declare fixed adapter rules before the held-out run.\n- **Cherry-picked survivors:** report failed episodes and unsupported body definitions rather than dropping them from averages.\n\n## When it's done\n\n- **Publish a body-by-body results table** with checkpoint identity, scale definitions, command units and replay evidence.\n- **Continue with Compare shared and per-body policy training** only after the frozen-policy baseline is reproducible.",
+      "resources": [
+        {
+          "title": "One Policy to Run Them All: an End-to-end Learning Approach to Multi-Embodiment Locomotion",
+          "url": "https://www.youtube.com/watch?v=BbbBAH-T7-Q",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the same published policy controlling multiple robot embodiments."
+        },
+        {
+          "title": "One Policy to Run Them All: an End-to-end Learning Approach to Multi-Embodiment Locomotion",
+          "url": "https://nico-bohlinger.github.io/one_policy_to_run_them_all_website/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Try the authors’ multi-robot simulation and inspect morphology-aware observation routing."
+        },
+        {
+          "title": "One Policy to Run Them All: an End-to-end Learning Approach to Multi-Embodiment Locomotion",
+          "url": "https://github.com/nico-bohlinger/one_policy_to_run_them_all",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use trained-model replay and the explicit checklist for adding robot bodies."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-inertial",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Check exactly when MuJoCo infers body inertia and when explicit physical parameters override it."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=BbbBAH-T7-Q",
+        "https://nico-bohlinger.github.io/one_policy_to_run_them_all_website/",
+        "https://github.com/nico-bohlinger/one_policy_to_run_them_all",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-inertial"
+      ]
+    },
+    {
+      "node_id": "p:test-reduced-model-predictions-on-a-full-robot",
+      "type": "project",
+      "name": "Test reduced-model predictions on a full robot",
+      "summary": "Compare a reduced model’s predicted center-of-mass motion with an articulated quadruped simulation, measuring where speed changes expose its missing dynamics.",
+      "lesson_md": "## In one sentence\n\nCompare a reduced model’s predicted center-of-mass motion with an articulated quadruped simulation, measuring where speed changes expose its missing dynamics.\n\n![Unitree Go1 articulated robot model in MuJoCo Menagerie](/img/lessons/projects_locomotion_2-full-robot-predictions.webp)\n*Menagerie's Go1 model is a candidate full-robot plant, not an included locomotion controller. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1), BSD 3-Clause License.*\n\n## What you will learn\n\n- **A reduced-order model** keeps selected motion variables and omits others; the spring-loaded inverted pendulum represents a body with a spring leg.\n- **An articulated model** represents moving links and joints; the full quadruped is the independent simulation against which predictions are tested.\n- **Center of mass**, or CoM, is the mass-weighted average position of the robot; it is not generally the torso-frame origin.\n- **Think integration testing:** a simplified mock predicts behavior, but the articulated plant produces the measurements; comparing the mock with itself proves nothing.\n\n> **Key idea:** Model usefulness is a measured prediction range, not a claim that every motion fits one simplified mechanism.\n\n## What you need\n\n- **Prerequisite:** finish Map stable hopping parameters and revisit Reduced-order locomotion models; retain the spring-leg model's event definitions and units.\n- **A full-robot gate:** obtain a quadruped asset and compatible gait controller that actually moves; Menagerie provides Go1 geometry and dynamics, not a walking policy.\n- **A state adapter:** log full-robot CoM, velocity and contacts in one world frame; Pinocchio provides whole-body CoM algorithms when supplied matching model states.\n- **Planning estimate:** allow 1–2 months and €0 hardware, excluding computing; start with short prediction windows.\n\n## Steps\n\n1. **Validate measurements:** replay the full robot at steady speed; check timestamps, CoM extraction and contact labels before comparing predictions.\n2. **Define the reduction:** map the quadruped's CoM and supporting feet to a planar point mass and virtual leg; explicitly declare multi-contact approximation rules.\n3. **Calibrate once:** fit effective spring parameters on separate steady-speed trials; freeze them and publish the calibration set before evaluating speed changes.\n4. **Predict independently:** initialize the reduced model from each declared window's starting state; advance without feeding later measured CoM positions back into it.\n5. **Compare speed changes:** align predicted and measured trajectories over equal horizons; plot position errors and label stance, flight, contact changes and falls.\n6. **Demo limitations:** show slow and faster trials, zero command, missing contacts, invalid states and empty logs; report prediction failures instead of silently shortening windows.\n\n```python\nif not aligned_positions:\n    raise ValueError(\"No prediction samples\")\nerrors = [\n    ((px - mx)**2 + (pz - mz)**2)**0.5\n    for (px, pz), (mx, mz) in aligned_positions\n]\nmean_position_error = sum(errors) / len(errors)\n```\n\n```mermaid\nflowchart LR\n A[\"Initial robot state\"] --> B[\"Reduced prediction\"]\n A --> C[\"Full robot rollout\"]\n B --> D[\"Align CoM samples\"]\n C --> D\n D --> E[\"Error by speed and contact\"]\n```\n\n## Common pitfalls\n\n- **Torso versus CoM:** comparing different physical points creates an error even when both computations are correct.\n- **Retuning test cases:** fitting stiffness separately at every evaluated speed measures fitting ability, not prediction quality.\n\n## When it's done\n\n- **Publish overlaid CoM traces** and errors by speed, horizon and contact phase, with calibration/test separation and all failed runs.\n- **Explain one mismatch** using the reduction's omitted body or contact behavior; do not infer physical-robot accuracy from simulation.",
+      "resources": [
+        {
+          "title": "LegLab",
+          "url": "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Connect spring-leg abstractions with the motion of articulated hopping and running robots."
+        },
+        {
+          "title": "Ch. 4 - Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Review spring-leg dynamics and the assumptions behind reduced walking and running models."
+        },
+        {
+          "title": "Unitree Go1 Description (MJCF)",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the articulated quadruped asset used as the candidate independent plant."
+        },
+        {
+          "title": "Template Function pinocchio::centerOfMass(const ModelTpl<Scalar, Options, JointCollectionTpl>&, DataTpl<Scalar, Options, JointCollectionTpl>&, const bool)",
+          "url": "https://docs.ros.org/en/rolling/p/pinocchio/generated/function_namespacepinocchio_1aaba9bd1f06348287e936f6b167dfcf82.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Read how whole-body CoM position, velocity and acceleration are obtained from model kinematics."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+        "https://underactuated.mit.edu/simple_legs.html",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1",
+        "https://docs.ros.org/en/rolling/p/pinocchio/generated/function_namespacepinocchio_1aaba9bd1f06348287e936f6b167dfcf82.html"
+      ]
+    },
+    {
+      "node_id": "p:track-a-body-pose-with-fixed-feet",
+      "type": "project",
+      "name": "Track a body pose with fixed feet",
+      "summary": "Move a simulated robot’s torso toward small position and orientation targets while keeping its feet planted, then measure tracking errors and constraint violations.",
+      "lesson_md": "## In one sentence\n\nMove a simulated robot’s torso toward small position and orientation targets while keeping its feet planted, then measure tracking errors and constraint violations.\n\n![TSID course screenshot showing a simulated humanoid and inverse-dynamics contact-force logs](/img/lessons/projects_locomotion_2-fixed-feet-body-pose.webp)\n*The course's humanoid simulation is a reference setup; this exercise retains both foot contacts instead of stepping. Source: [Andrea Del Prete](https://andreadelprete.github.io/courses/oclr/), CC BY NC ND 4.0.*\n\n## What you will learn\n\n- **Body pose** combines a frame's position and orientation; choose the torso frame explicitly rather than treating CoM position as a complete pose.\n- **Inverse dynamics** finds accelerations, actuator torques and contact forces consistent with requested motion and the robot's equations.\n- **A contact constraint** asks a planted foot to remain fixed; a tracking task asks the torso to approach a target.\n- **Think constrained optimization:** required contacts resemble database constraints, while tracking objectives resemble preferences that may need to remain partly unsatisfied.\n\n> **Key idea:** Torso tracking is successful only when the feet, force limits and actuator limits remain consistent with the motion.\n\n## What you need\n\n- **Prerequisite:** finish Visualize competing balance tasks; this project develops Whole-body control for legged robots with an explicit constraint audit.\n- **A starting implementation:** run TSID's biped exercise and its Romeo configuration unchanged; its wrapper builds two foot contacts, CoM tracking and posture tasks.\n- **A body-frame task:** TSID's TaskSE3Equality supports position/orientation references and tracking errors; Pinocchio supplies the model computations.\n- **Planning estimate:** allow 2–4 weeks and €0 hardware, excluding computing; Crocoddyl is related on the map, not required for this initial TSID adaptation.\n\n## Steps\n\n1. **Record the baseline:** save both feet's world poses, the torso pose, joint state and solver status before changing the standing reference.\n2. **Add torso tracking:** select a verified torso frame and small target offsets; lower conflicting CoM or posture priorities instead of imposing incompatible hard goals.\n3. **Preserve both contacts:** enforce the original foot references as highest-priority constraints throughout each trial; do not rewrite them after drift.\n4. **Enable bounds explicitly:** inspect configuration weights for torque and joint bounds; define friction and normal-force limits, and reject invalid settings before solving.\n5. **Audit each solve:** log torso translation/orientation errors separately, foot drift, force-bound residuals and actuator-limit violations; stop and report non-success solver status.\n6. **Demo target sweeps:** include unchanged pose, reachable offsets, unreachable requests, missing contacts, invalid bounds and empty target lists; show failures beside successful motion.\n\n```python\nif not target_poses:\n    raise ValueError(\"No torso targets\")\ntranslation_error = np.linalg.norm(actual_position - target_position)\nfoot_drift = max(\n    np.linalg.norm(current - initial)\n    for current, initial in paired_foot_positions\n)\n```\n\n```mermaid\nflowchart LR\n A[\"Torso target\"] --> B[\"Inverse dynamics\"]\n C[\"Fixed feet and limits\"] --> B\n B --> D[\"Integrate robot state\"]\n D --> E[\"Measure errors and residuals\"]\n E --> B\n```\n\n## Common pitfalls\n\n- **Bounds can be disabled:** the TSID wrapper adds certain bound tasks only when their configured weights are positive.\n- **Solver success is insufficient:** inspect integrated foot drift and physical-limit residuals, not only the optimization return code.\n\n## When it's done\n\n- **Publish a torso-motion replay** with position error, orientation error, fixed-foot drift and constraint violations for every target.\n- **Continue with Combine stepping and torso tracking** only after the fixed-contact case is reproducible.",
+      "resources": [
+        {
+          "title": "[memmows] QP-based task-space inverse dynamics: theory and implementation. Part 2",
+          "url": "https://www.youtube.com/watch?v=c9g3L3YMhds",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow the creator’s implementation lesson on contact-aware task-space inverse dynamics."
+        },
+        {
+          "title": "ex_1.py",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/ex_1.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Start from a biped inverse-dynamics loop with contact forces, CoM errors and solver-failure handling."
+        },
+        {
+          "title": "tsid_biped.py",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/tsid_biped.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect fixed foot contacts, task construction and conditionally enabled torque and joint bounds."
+        },
+        {
+          "title": "task-se3-equality.hpp",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/include/tsid/tasks/task-se3-equality.hpp",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect the frame-pose task reference and position/orientation error interface."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=c9g3L3YMhds",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/ex_1.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/exercizes/tsid_biped.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/tsid/master/include/tsid/tasks/task-se3-equality.hpp",
+        "https://andreadelprete.github.io/courses/tsid/",
+        "https://andreadelprete.github.io/courses/oclr/"
+      ]
+    },
+    {
+      "node_id": "p:train-or-replay-a-simulated-get-up-controller",
+      "type": "project",
+      "name": "Train or replay a simulated get-up controller",
+      "summary": "Train or replay a quadruped get-up policy in simulation, then measure recovery success on held-out fallen orientations and contact surfaces.",
+      "lesson_md": "## In one sentence\n\nTrain or replay a quadruped get-up policy in simulation, then measure recovery success on held-out fallen orientations and contact surfaces.\n\n![Six-frame sequence of the published ANYmal controller rolling from its back toward a standing pose](/img/lessons/projects_locomotion_2-get-up-controller.webp)\n*Published ANYmal recovery result; the proposed implementation uses Go1 simulation and must be evaluated separately. Source: [arXiv](https://arxiv.org/html/1901.08652v1), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **A recovery policy** maps observations of a fallen robot to actions intended to regain a stable standing pose.\n- **A reward** scores training behavior; MuJoCo Playground's Go1 task includes torso orientation, height, posture and motion/effort penalties.\n- **Held-out orientations** are starting rotations excluded from training and tuning; held-out surfaces similarly test contact conditions the policy was not tuned against.\n- **Think regression testing:** keep a fixed suite of fallen states and seeds, then compare every checkpoint on the same cases rather than saving one lucky replay.\n\n> **Key idea:** Recovery quality is a success rate over declared starting states and surfaces, not a single impressive rollover.\n\n## What you need\n\n- **Prerequisite:** finish Catalogue simulated fallen poses; reuse its pose labels and distinguish valid resting configurations from penetrating or unstable resets.\n- **A task implementation:** MuJoCo Playground registers Go1Getup; inspect its full-collision model, reset logic, observations and action conversion.\n- **A compatibility gate:** replay only a checkpoint matching the asset, observation builder and action scaling; otherwise train the recovery task using the framework workflow.\n- **Planning estimate:** allow 2–4 weeks and €0 hardware, excluding computing; the locomotion notebook requires a GPU runtime for its training examples.\n\n## Steps\n\n1. **Validate fallen resets:** settle the full-collision model on each surface; reject severe initial penetrations and record the resulting initial state.\n2. **Define success first:** require upright orientation, sufficient torso height, supporting contacts and low motion for a declared dwell interval; also set a timeout.\n3. **Separate evaluation cases:** split orientations and surface parameters before training; reserve held-out combinations and prohibit tuning against their outcomes.\n4. **Train or replay:** keep checkpoint identity, source revision, configuration and random seeds; verify observation/action shapes before stepping the environment.\n5. **Evaluate every case:** log success, elapsed recovery time, falls, termination reason and actuator-limit violations; report unsupported cases instead of skipping them silently.\n6. **Demo the suite:** show representative successes and failures, already-standing starts, absent contacts, invalid observations, bad limits and an empty evaluation set.\n\n```python\nif not outcomes:\n    raise ValueError(\"No evaluated recoveries\")\nsuccesses = sum(result.stable_stand for result in outcomes)\nsuccess_rate = successes / len(outcomes)\n```\n\n```mermaid\nflowchart LR\n A[\"Fallen pose and surface\"] --> B[\"Settle reset\"]\n B --> C[\"Observe\"]\n C --> D[\"Recovery policy\"]\n D --> E[\"Simulate actions\"]\n E --> C\n E --> F[\"Success or timeout\"]\n```\n\n## Common pitfalls\n\n- **Foot-only collision geometry:** a fallen torso needs appropriate collision shapes; a standing-only asset can invalidate recovery experiments.\n- **Reward is not the success label:** the environment's return and termination logic do not replace your held-out stable-standing test.\n\n## When it's done\n\n- **Publish success counts by orientation and surface** with recovery times, failures, seeds and replay clips; identify which conditions were held out.\n- **Continue with Switch safely between walking and recovery** once the standalone controller supports reproducible Fall recovery & get-up tests.",
+      "resources": [
+        {
+          "title": "Learning Agile and Dynamic Motor Skills for Legged Robots",
+          "url": "https://www.youtube.com/watch?v=aTDkYFZFWug",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the learned rollover-and-get-up behavior motivating the simulated recovery test."
+        },
+        {
+          "title": "Locomotion in The Playground!",
+          "url": "https://github.com/google-deepmind/mujoco_playground/blob/main/rss2025/learning/notebooks/locomotion.ipynb",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow locomotion training, rollout rendering and checkpoint workflows; adapt the task to registered Go1 recovery."
+        },
+        {
+          "title": "getup.py",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/getup.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the actual Go1 fall-recovery reset, observation, action and reward implementation."
+        },
+        {
+          "title": "MuJoCo Playground",
+          "url": "https://arxiv.org/abs/2502.08844",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the framework’s recovery experiments and simulation-to-real context without assuming student hardware transfer."
+        },
+        {
+          "title": "Learning agile and dynamic motor skills for legged robots",
+          "url": "https://arxiv.org/html/1901.08652v1",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the original learned recovery controller and its starting-state evaluation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=aTDkYFZFWug",
+        "https://arxiv.org/html/1901.08652v1",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/getup.py",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/__init__.py",
+        "https://github.com/google-deepmind/mujoco_playground/blob/main/rss2025/learning/notebooks/locomotion.ipynb",
+        "https://arxiv.org/abs/2502.08844"
+      ]
     }
   ]
 }
