@@ -593,6 +593,222 @@
         "https://leaphand.com/",
         "https://github.com/leap-hand/LEAP_Hand_API"
       ]
+    },
+    {
+      "node_id": "p:reproduce-a-cloth-unfolding-primitive",
+      "type": "project",
+      "name": "Reproduce a cloth unfolding primitive",
+      "summary": "Replay one published cloth manipulation primitive and compare its implementation with the recorded unfolding result.",
+      "lesson_md": "## In one sentence\n\nReplay one published cloth manipulation primitive and compare its implementation with the recorded unfolding result.\n\n![Cloth Funnels simulation demonstration of garment manipulation](/img/lessons/projects_manipulation_2-reproduce-a-cloth-unfolding-primitive.webp)\n*Cloth Funnels simulation demonstration of garment manipulation. Source: [Published media](https://github.com/real-stanford/cloth-funnels), MIT License.*\n\n## What you will learn\n\n- **Primitive** means a reusable action, such as a fling or pick-and-place, rather than an entire garment-handling system.\n- **Canonicalized alignment** means bringing clothing toward a predefined shape and placement; merely spreading fabric is not the whole objective.\n- **Software analogy:** test one function with a saved input before integrating the complete application.\n\n> **Key idea:** Reproducing one action requires matching its inputs and outputs, not claiming you reproduced the whole learned policy.\n\n## What you need\n\n- **Map preparation:** start with Track cloth corners and Deformable object manipulation; the reference implementation belongs to Cloth Funnels.\n- **Environment:** the supplied simulator uses GPU-accelerated PyFlex; follow its repository setup rather than assuming a fresh Python installation is sufficient.\n- **Cost:** use simulation or published recordings without buying an arm; computer and GPU costs are excluded.\n- **Fallback:** if the legacy simulator cannot run, label the deliverable a recording-based implementation comparison, not an executed reproduction.\n\n## Steps\n\n1. **Select one action:** identify a visible fling or pick-and-place segment in the authors' video; save its start and end frames.\n2. **Trace the implementation:** locate the corresponding primitive and record its grasp inputs, motion sequence and release condition.\n3. **Run one worked example:** use `longsleeve-single.hdf5`, `episode_length=10` and `num_processes=1` with the documented checkpoint; retain its video and configuration before changing parameters.\n4. **Compare one primitive:** align before-and-after frames with the reference; annotate where the garment spreads and where sleeves remain folded.\n5. **Test failures:** include failed contact, an absent garment and an invalid target; stop the action rather than fabricating a successful transition.\n6. **Present the demo:** show the reference, your replay and a short implementation comparison, clearly separating executed results from observations.\n\n```mermaid\nflowchart LR\n  S[Saved cloth state] --> G[Grasp inputs]\n  G --> P[One primitive]\n  P --> R[Release]\n  R --> C[Compare frames]\n```\n\n## Common pitfalls\n\n- **Coverage alone** misses alignment; a wider silhouette can still leave the garment unsuitable for a later folding action.\n- **Hidden changes** to the task or checkpoint make comparisons ambiguous; preserve the original run alongside your adaptation.\n\n## When it's done\n\n- **Deliverables:** publish the configuration, matched frames and success/failure counts for your fixed trial list; state the limits of recording-only evidence.",
+      "resources": [
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the published flings and pick-and-place actions before choosing one."
+        },
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://clothfunnels.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare unfolding with the stricter canonicalized-alignment objective."
+        },
+        {
+          "title": "cloth-funnels",
+          "url": "https://github.com/real-stanford/cloth-funnels",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the single-instance simulation demo and inspect primitive code."
+        },
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://arxiv.org/abs/2210.09347",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read why combining action primitives helps prepare garments."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+        "https://clothfunnels.cs.columbia.edu/",
+        "https://github.com/real-stanford/cloth-funnels",
+        "https://arxiv.org/abs/2210.09347"
+      ]
+    },
+    {
+      "node_id": "p:track-cloth-corners",
+      "type": "project",
+      "name": "Track cloth corners",
+      "summary": "Overlay persistent corner identities on recorded cloth video, marking hidden or lost corners instead of inventing their positions.",
+      "lesson_md": "## In one sentence\n\nOverlay persistent corner identities on recorded cloth video, marking hidden or lost corners instead of inventing their positions.\n\n![Cloth Funnels garment folding sequence used as a tracking input](/img/lessons/projects_manipulation_2-track-cloth-corners.webp)\n*Cloth Funnels garment folding sequence used as a tracking input. Source: [Published media](https://github.com/real-stanford/cloth-funnels), MIT License.*\n\n## What you will learn\n\n- **Keypoint** means a meaningful image location, such as a sleeve tip; it is not automatically the same as a detected texture corner.\n- **Optical flow** estimates apparent movement between frames; OpenCV's Lucas–Kanade tracker follows selected image points.\n- **Software analogy:** corner identities act like database primary keys; sorting coordinates again each frame does not preserve identity.\n\n> **Key idea:** A useful track preserves which cloth point you mean and explicitly admits when that point is no longer visible.\n\n## What you need\n\n- **Map preparation:** complete Intro: robot anatomy & coordinate frames in sim; connect this exercise to Deformable object manipulation and Cloth Funnels.\n- **Inputs:** use a published garment clip, OpenCV and a frame annotation file; no physical robot or depth camera is required.\n- **Cost:** no additional hardware purchase is planned; existing computer costs are excluded.\n- **Scope:** hand-select visible garment corners initially; this is a tracking baseline, not reproduction of the authors' learned keypoint detector.\n\n## Steps\n\n1. **Define identities:** label visible garment landmarks in the first frame and annotate selected later frames independently as references.\n2. **Track between frames:** pass grayscale images and previous point positions to `cv.calcOpticalFlowPyrLK`; retain returned status flags.\n3. **Handle lost points:** reject failed statuses and inconsistent forward/backward tracks; mark the identity LOST until a deliberate reinitialization.\n4. **Work one example:** if a labelled point moves from pixel (100, 80) to (104, 83), its displacement is (4, 3) pixels.\n5. **Evaluate difficult inputs:** include folds hiding a corner, an empty scene and a missing frame; never draw stale coordinates as fresh measurements.\n6. **Show the demo:** export video with identity labels, trails and LOST markers; save annotations and per-frame errors in pixels.\n\n```mermaid\nflowchart LR\n  F[Next frame] --> T[Track identities]\n  T --> V{Valid match}\n  V -->|Yes| O[Draw track]\n  V -->|No| L[Mark lost]\n  O --> F\n  L --> F\n```\n\n## Common pitfalls\n\n- **Texture corners** may lie on the table or a wrinkle; a generic corner detector does not understand garment anatomy.\n- **Occlusion** can produce plausible wrong matches; successful status alone does not prove semantic identity survived.\n\n## When it's done\n\n- **Deliverables:** provide the labelled replay, reference annotations and valid/lost/error counts; explain how this feeds Reproduce a cloth unfolding primitive.",
+      "resources": [
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Choose visible garment landmarks and observe when folds hide them."
+        },
+        {
+          "title": "Optical Flow",
+          "url": "https://docs.opencv.org/4.x/d4/dee/tutorial_optical_flow.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Implement sparse point tracking and inspect its failure caveats."
+        },
+        {
+          "title": "Shi-Tomasi Corner Detector & Good Features to Track",
+          "url": "https://docs.opencv.org/4.x/d4/d8c/tutorial_py_shi_tomasi.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distinguish image-feature corners from meaningful cloth corners."
+        },
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://clothfunnels.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "See how the published system uses garment keypoints after alignment."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+        "https://docs.opencv.org/4.x/d4/dee/tutorial_optical_flow.html",
+        "https://docs.opencv.org/4.x/d4/d8c/tutorial_py_shi_tomasi.html",
+        "https://clothfunnels.cs.columbia.edu/",
+        "https://github.com/real-stanford/cloth-funnels"
+      ]
+    },
+    {
+      "node_id": "p:script-a-cube-transfer",
+      "type": "project",
+      "name": "Script a cube transfer",
+      "summary": "Write a simulated pick-and-place sequence that moves a cube between marked areas and verifies placement after release.",
+      "lesson_md": "## In one sentence\n\nWrite a simulated pick-and-place sequence that moves a cube between marked areas and verifies placement after release.\n\n![ManiSkill PickCube scene with a Panda arm and red cube](/img/lessons/projects_manipulation_2-script-a-cube-transfer.webp)\n*ManiSkill PickCube scene with a Panda arm and red cube. Source: [Published media](https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html), license unknown.*\n\n## What you will learn\n\n- **Pick-and-place** separates approaching, grasping, carrying and releasing an object into observable stages.\n- **End-effector** means the tool at the arm's tip; a target pose specifies its position and orientation.\n- **Software analogy:** implement a state machine, where each stage advances only after its completion check passes.\n\n> **Key idea:** Reaching the destination with a closed gripper is different from leaving the cube stably in its destination area.\n\n## What you need\n\n- **Map preparation:** complete Intro: robot anatomy & coordinate frames in sim and review Pick-and-place pipeline.\n- **Simulator:** use ManiSkill with its Panda motion-planning example; SO-101 and MoveIt 2 are related map options, not required integrations here.\n- **Cost:** simulation needs no purchased arm; existing computer and any GPU costs are excluded.\n- **Starting scene:** use PickCube-v1, then define a table-supported destination region for your transfer adaptation rather than relying on an elevated goal.\n\n## Steps\n\n1. **Replay the baseline:** run the documented Panda example with `python -m mani_skill.examples.motionplanning.panda.run -e \"PickCube-v1\" --save-video` and keep the original recording.\n2. **Name the regions:** define source and destination coordinates in the simulation's world frame; display both so viewers can check the transfer.\n3. **Script the sequence:** approach above the cube, descend, close, lift, travel, lower and open; check progress between stages.\n4. **Verify placement:** after release, check cube position and motion; the baseline's default goal-distance threshold is 0.025 metres, or 2.5 centimetres.\n5. **Add failure exits:** test an absent cube, failed grasp and unreachable destination; record which stage failed instead of continuing the animation.\n6. **Demonstrate repeatability:** replay fixed starting scenes and show the final resting cube, not just the tool arriving above the destination.\n\n```mermaid\nflowchart LR\n  A[Approach] --> G[Grasp]\n  G --> L[Lift]\n  L --> C[Carry]\n  C --> R[Release]\n  R --> V[Verify placement]\n```\n\n## Common pitfalls\n\n- **Baseline success** checks goal proximity and a static robot; it does not substitute for your added released-placement check.\n- **Fixed sleeps** can hide failed grasps; use simulator state to check whether the intended transition actually occurred.\n\n## When it's done\n\n- **Deliverables:** save the script, configuration, demo and success/failure table; use this baseline before Build a clutter-clearing state machine.",
+      "resources": [
+        {
+          "title": "PickCube-v1",
+          "url": "https://raw.githubusercontent.com/mani-skill/ManiSkill/main/figures/environment_demos/PickCube-v1_rt.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the exact cube-reaching task before adapting it to released placement."
+        },
+        {
+          "title": "Motion Planning",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/data_collection/motionplanning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run and modify the supplied Panda scripted solution."
+        },
+        {
+          "title": "Table-Top 2 Finger Gripper Tasks",
+          "url": "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read PickCube randomization and success conditions."
+        },
+        {
+          "title": "Ch. 3 - Basic Pick and Place",
+          "url": "https://manipulation.csail.mit.edu/pick.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand grasp frames and staged pick-and-place motion."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/mani-skill/ManiSkill/main/figures/environment_demos/PickCube-v1_rt.mp4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/data_collection/motionplanning.html",
+        "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+        "https://manipulation.csail.mit.edu/pick.html"
+      ]
+    },
+    {
+      "node_id": "p:simulate-suction-versus-pinch",
+      "type": "project",
+      "name": "Simulate suction versus pinch",
+      "summary": "Compare a simplified suction model and a two-finger pinch on the same simulated object, reporting where each model fails.",
+      "lesson_md": "## In one sentence\n\nCompare a simplified suction model and a two-finger pinch on the same simulated object, reporting where each model fails.\n\n![MuJoCo Menagerie Robotiq two-finger gripper model](/img/lessons/projects_manipulation_2-simulate-suction-versus-pinch.webp)\n*MuJoCo Menagerie Robotiq two-finger gripper model. Source: [Published media](https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotiq_2f85), BSD-2-Clause License.*\n\n## What you will learn\n\n- **Pinch grasping** holds an object between fingers; contact geometry and friction influence whether it slips.\n- **Suction approximation** represents attachment with a simplified contact model, not a complete simulation of air pressure and seal leakage.\n- **Software analogy:** compare two implementations behind the same interface, keeping their shared test inputs unchanged.\n\n> **Key idea:** A fair comparison documents both models' assumptions; an artificially perfect attachment cannot establish that suction is physically better.\n\n## What you need\n\n- **Map preparation:** begin with Compare fingertip pads and Grippers & end-effectors; use MuJoCo for this simulation-only experiment.\n- **Pinch model:** the Menagerie Robotiq 2F-85 description provides a concrete two-finger starting point; do not assume it matches SO-101 hardware.\n- **Suction model:** use MuJoCo's active adhesion actuator as a declared approximation; it injects normal forces at contacts belonging to a specified body.\n- **Cost:** no gripper purchase is needed; existing computer costs are excluded, and real suction hardware is outside this exercise.\n\n## Steps\n\n1. **Freeze the scene:** save one object's mass, geometry, starting pose and lift trajectory; reuse those settings for both grasp strategies.\n2. **Build the pinch test:** close the fingers, lift and release; log contacts and object motion rather than treating a close command as success.\n3. **Build the suction proxy:** enable adhesion only when the designated pad contacts the object; document that this omits actual vacuum sealing.\n4. **Check force scaling:** adhesion force equals control times gain; for a proposed test, control 0.5 and gain 10 give 5 newtons total.\n5. **Exercise failures:** include no object, missed pad contact and insufficient holding force; show drops and refusal to attach rather than hiding them.\n6. **Present paired demos:** compare identical lift paths, successful holds and failures; vary one parameter at a time and retain every configuration.\n\n```mermaid\nflowchart LR\n  S[Saved object scene] --> P[Pinch test]\n  S --> A[Adhesion proxy]\n  P --> M[Measure hold and slip]\n  A --> M\n  M --> C[Compare assumptions]\n```\n\n## Common pitfalls\n\n- **Default adhesion** requires contact and does not apply forces at a distance; do not silently add attachment before the pad arrives.\n- **Unlimited attachment** removes the failure modes you wanted to study; a glued object is not evidence about a real vacuum gripper.\n\n## When it's done\n\n- **Deliverables:** share paired videos, settings and success/failure counts; list missing seal physics before moving toward Design a compliant fingertip.",
+      "resources": [
+        {
+          "title": "E Pick & Place Demo Automate 2019",
+          "url": "https://www.youtube.com/watch?v=PXCRYECDAfA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe a real suction pick-and-place setup before defining the simplified model."
+        },
+        {
+          "title": "Robotiq 2F-85 Description (MJCF)",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotiq_2f85",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Start with an inspectable simulated pinch gripper."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-adhesion",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the adhesion actuator contact requirements and force scaling."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Study contact and friction assumptions relevant to pinch holding."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=PXCRYECDAfA",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotiq_2f85",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-adhesion",
+        "https://manipulation.csail.mit.edu/clutter.html"
+      ]
+    },
+    {
+      "node_id": "p:visualize-grasp-candidates",
+      "type": "project",
+      "name": "Visualize grasp candidates",
+      "summary": "Overlay predicted gripper poses on a recorded depth scene, separating grasp suggestions from executable robot motions.",
+      "lesson_md": "## In one sentence\n\nOverlay predicted gripper poses on a recorded depth scene, separating grasp suggestions from executable robot motions.\n\n![Contact-GraspNet predicted gripper poses over a recorded scene](/img/lessons/projects_manipulation_2-visualize-grasp-candidates.webp)\n*Contact-GraspNet predicted gripper poses over a recorded scene. Source: [Published media](https://github.com/NVlabs/contact_graspnet), license unknown.*\n\n## What you will learn\n\n- **Grasp candidate** means a suggested tool position, orientation and opening width, not proof that an arm can reach it.\n- **Point cloud** means a collection of three-dimensional surface samples reconstructed from depth measurements.\n- **Software analogy:** treat candidates like search results; ranking a result highly does not mean an action using it will succeed.\n\n> **Key idea:** A convincing overlay checks geometry and units while leaving collision-free robot execution as a separate problem.\n\n## What you need\n\n- **Map preparation:** complete Intro: robot anatomy & coordinate frames in sim; connect Learning-based grasp detection with Contact-GraspNet and GraspNet-1Billion.\n- **Reference implementation:** use the repository's pretrained checkpoint and test scene first; preserve their camera matrix and depth units.\n- **Compute:** the README lists an NVIDIA GPU with at least 8 GB memory for inference, noting it might work with less.\n- **Cost:** recorded scenes avoid purchasing an arm or camera; computer and GPU costs remain excluded.\n\n## Steps\n\n1. **Inspect one input:** locate depth and camera matrix `K`; record the camera frame convention and confirm that depth values are in metres.\n2. **Run inference:** follow the supplied `.npy`/`.npz` example; use segmentation-based options only when the scene includes the required segmentation map.\n3. **Draw candidates:** display the point cloud and gripper poses together; show opening direction and width so an upside-down grasp is visible.\n4. **Audit one candidate:** inspect its transform and surface contact visually; for a proposed unit test, 500 millimetres must become 0.5 metres.\n5. **Exercise invalid inputs:** test an empty scene, missing depth and missing calibration; produce an explicit error or empty result, never stale candidate overlays.\n6. **Show the demo:** save the input, settings and annotated view; contrast candidate generation with Filter grasps by reachability and later MoveIt 2 planning.\n\n```mermaid\nflowchart LR\n  D[Depth and calibration] --> P[Point cloud]\n  P --> N[Predict grasps]\n  N --> O[Overlay grippers]\n  O --> I[Inspect geometry]\n```\n\n## Common pitfalls\n\n- **Frame confusion** can make plausible grippers float away from the object; keep camera-frame predictions distinct from robot-base targets.\n- **Confidence scores** are not execution guarantees; an attractive candidate may collide with clutter or exceed the arm's reach.\n- **Dataset confusion:** GraspNet-1Billion is a related benchmark, not a replacement checkpoint for this repository's supplied demo.\n\n## When it's done\n\n- **Deliverables:** provide a reproducible overlay, input validation results and candidate counts; report normal, empty and error cases separately without commanding hardware.",
+      "resources": [
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes (ICRA 2021)",
+          "url": "https://www.youtube.com/watch?v=qRLKYSLXElM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See predicted grasp poses and their distinction from robot trials."
+        },
+        {
+          "title": "Contact-GraspNet",
+          "url": "https://github.com/NVlabs/contact_graspnet",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Follow the recorded-scene inference and visualization workflow."
+        },
+        {
+          "title": "GraspNet通用物体抓取",
+          "url": "https://graspnet.net/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Explore the related grasp annotation and evaluation benchmark."
+        },
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes",
+          "url": "https://arxiv.org/abs/2103.14127",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand how point-cloud contacts anchor six-dimensional grasp poses."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=qRLKYSLXElM",
+        "https://github.com/NVlabs/contact_graspnet",
+        "https://graspnet.net/",
+        "https://arxiv.org/abs/2103.14127"
+      ]
     }
   ]
 }
