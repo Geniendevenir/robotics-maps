@@ -747,6 +747,186 @@
         "https://hungpham2511.github.io/toppra/",
         "https://arxiv.org/abs/1707.07239"
       ]
+    },
+    {
+      "node_id": "p:trajectory-optimized-motions-as-rl-references",
+      "type": "project",
+      "name": "Trajectory-optimized motions as RL references",
+      "summary": "Generate a humanoid jump with Crocoddyl trajectory optimization, train a simulated Unitree G1 to track it with reinforcement learning, and compare it with retargeted human jumps.",
+      "lesson_md": "## In one sentence\n\nGenerate a humanoid jump with Crocoddyl trajectory optimization, train a simulated Unitree G1 to track it with reinforcement learning, and compare it with retargeted human jumps.\n\n![Highly dynamic robot maneuvers produced with optimal control](/img/lessons/projects_kinematics_dynamics_2-trajopt.webp)\n*Optimal control can produce highly dynamic whole-body maneuvers. Source: [Crocoddyl on GitHub](https://github.com/loco-3d/crocoddyl), license unknown.*\n\n## What you will learn\n\n- **Trajectory optimization:** Solving for a whole motion that minimizes a cost while obeying the robot's dynamics.\n- **Crocoddyl:** An optimal control library for robots under a contact sequence; its DDP-based solvers return trajectories and feedback gains, using Pinocchio for dynamics.\n- **Reference motion:** A target motion that an RL tracking policy learns to follow, as in BeyondMimic-style tracking.\n- **Physical consistency:** An optimized jump respects the robot model; retargeted human motion can contain infeasible poses, as the GMR paper reports.\n- **Software analogy:** Like generating test fixtures from a schema instead of copying production data with odd values.\n\n> **Key idea:** Swap only the reference source and keep the tracking setup fixed to see which references are easier to learn.\n\n## What you need\n\n- **Map preparation:** Complete Humanoid jump with Crocoddyl; read Floating-base & centroidal dynamics (legged/humanoid) and Human-to-robot motion retargeting.\n- **Software:** Crocoddyl, a G1 model and MuJoCo Warp, which runs MuJoCo on NVIDIA GPUs for many parallel rollouts.\n- **Comparison data:** Human jump clips retargeted to the G1, for example with GMR.\n\n## Steps\n\n1. **Export the jump:** Save Crocoddyl's state trajectory at a fixed rate as base pose plus joint positions.\n2. **Match the models:** Check joint order, masses and limits between the Crocoddyl model and the simulated G1.\n3. **Prepare human references:** Retarget a few human jumps to the same format.\n4. **Train trackers:** Train one tracking policy per reference with identical rewards, settings and seeds.\n5. **Evaluate:** Over fixed rollouts, count falls, landing failures and joint-limit hits; measure tracking error.\n\n```mermaid\nflowchart LR\n  N0[\"Crocoddyl jump\"] --> N1\n  N1[\"Reference file\"] --> N2\n  N2[\"RL tracking\"] --> N3\n  N3[\"GPU rollouts\"] --> N4\n  N4[\"Compare with human jumps\"]\n```\n\n## Common pitfalls\n\n- **Model mismatch:** Different joint ordering or masses between the two models make the reference look infeasible.\n- **Single seed:** One RL run can mislead; repeat training and report the spread.\n\n> **Watch out:** An optimized jump can exploit modeling errors, so success in simulation is not proof for hardware.\n\n## When it's done\n\n- **Comparison video:** The G1 tracking the optimized jump and a human jump.\n- **Results table:** Falls, tracking error and limit hits for each reference source.\n",
+      "resources": [
+        {
+          "title": "Crocoddyl: An Efficient and Versatile Framework for Multi-Contact Optimal Control",
+          "url": "https://www.youtube.com/watch?v=SoCsDIUQR3E",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "See Crocoddyl generate multi-contact motions before you build a jump."
+        },
+        {
+          "title": "GitHub - loco-3d/crocoddyl",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Install Crocoddyl and start from its humanoid examples."
+        },
+        {
+          "title": "GitHub - google-deepmind/mujoco_warp",
+          "url": "https://github.com/google-deepmind/mujoco_warp",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run many simulated G1 rollouts on a GPU for RL training."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Reuse its method for comparing reference sources by tracking quality."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=SoCsDIUQR3E",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://github.com/google-deepmind/mujoco_warp",
+        "https://arxiv.org/abs/2510.02252"
+      ]
+    },
+    {
+      "node_id": "p:urdf-mjcf-linter-for-student-robots",
+      "type": "project",
+      "name": "URDF/MJCF linter for student robots",
+      "summary": "Build a tool that flags bad inertias, missing joint limits and inverted axes in URDF and MJCF robot files, and test it on MuJoCo Menagerie models.",
+      "lesson_md": "## In one sentence\n\nBuild a tool that flags bad inertias, missing joint limits and inverted axes in URDF and MJCF robot files, and test it on MuJoCo Menagerie models.\n\n![MuJoCo Menagerie banner showing many robot models](/img/lessons/projects_kinematics_dynamics_2-linter.webp)\n*MuJoCo Menagerie collects curated robot models, a good linter test set. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie), license unknown.*\n\n## What you will learn\n\n- **URDF:** An XML robot description used in ROS, made of links (rigid parts) and joints connecting them.\n- **MJCF:** MuJoCo's XML format for robots and scenes; **SDF** is the format Gazebo uses for worlds and models.\n- **Inertia check:** MuJoCo's docs state a valid diagonal inertia must satisfy A+B≥C for every ordering of its three values.\n- **Inferred inertia:** MuJoCo can compute a body's inertia from its geoms when none is given.\n- **Software analogy:** This is ESLint for robot files: fast rules that catch mistakes before the simulator runs.\n\n> **Key idea:** Every rule must point to a concrete physical or format problem, not a style preference.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Robot description formats (URDF / MJCF).\n- **Software:** Python's XML parser, MuJoCo for cross-checking, and optionally Gazebo for SDF files.\n- **Test set:** A local clone of MuJoCo Menagerie plus a few deliberately broken copies.\n\n## Steps\n\n1. **Parse files:** Load URDF and MJCF into one common list of bodies, joints, masses, inertias and mesh paths.\n2. **Write five rules:** Non-positive mass, failed inertia inequality, hinge without limits, zero-length axis, missing mesh file.\n3. **Add a unit warning:** Flag masses or link lengths far outside the range of the other models.\n4. **Run on Menagerie:** Count findings per model and review each one by hand.\n5. **Break and repair:** Inject known errors into copies, confirm the linter catches each, then show the fixed file.\n\n```mermaid\nflowchart LR\n  N0[\"Robot file\"] --> N1\n  N1[\"Parser\"] --> N2\n  N2[\"Rules\"] --> N3\n  N3[\"Findings report\"] --> N4\n  N4[\"Repaired file\"]\n```\n\n## Common pitfalls\n\n- **Format defaults:** MJCF and URDF fill missing values differently; read the spec before calling a value missing.\n- **False alarms:** Some unlimited joints, like wheels, are intentional; let users silence a rule per joint.\n\n## When it's done\n\n- **CLI tool:** One command prints findings with file, element and rule name.\n- **Test report:** Caught and missed counts for injected errors, plus findings on Menagerie models.\n",
+      "resources": [
+        {
+          "title": "How do we describe a robot? With URDF! | Getting Ready to build Robots with ROS #7",
+          "url": "https://www.youtube.com/watch?v=CwdbsvcpOHM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn links, joints and inertia tags before you lint them."
+        },
+        {
+          "title": "GitHub - ros/urdf_tutorial",
+          "url": "https://github.com/ros/urdf_tutorial",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Build example URDF files step by step to use as test inputs."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check MJCF defaults, joint limits and inertia rules."
+        },
+        {
+          "title": "SDF worlds",
+          "url": "https://gazebosim.org/docs/harmonic/sdf_worlds/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See how Gazebo describes worlds if you extend the linter to SDF."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=CwdbsvcpOHM",
+        "https://github.com/ros/urdf_tutorial",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://gazebosim.org/docs/harmonic/sdf_worlds/"
+      ]
+    },
+    {
+      "node_id": "p:whole-body-reach-on-a-simulated-humanoid",
+      "type": "project",
+      "name": "Whole-body reach on a simulated humanoid",
+      "summary": "Make a simulated Unitree G1 reach for an object with one hand while a mink center-of-mass task keeps its balance point over its feet.",
+      "lesson_md": "## In one sentence\n\nMake a simulated Unitree G1 reach for an object with one hand while a mink center-of-mass task keeps its balance point over its feet.\n\n![Rendered Unitree G1 humanoid model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-whole-body.webp)\n*The Unitree G1 model from MuJoCo Menagerie. Source: [MuJoCo Menagerie Unitree G1](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1), BSD-3-Clause.*\n\n## What you will learn\n\n- **Whole-body IK:** Solving for all humanoid joints at once so the hands, feet and torso meet several goals together.\n- **Center of mass (CoM):** The average position of the robot's mass; keeping it above the feet helps a standing robot stay balanced.\n- **Task costs:** mink's G1 example weighs a CoM task, foot and hand frame tasks, and a posture task with different costs.\n- **Redundancy:** A humanoid has more joints than one hand needs, so the solver can use spare joints for balance.\n- **Software analogy:** Like a CSS layout engine resolving many constraints, some weighted more than others.\n\n> **Key idea:** Reaching is easy; reaching while the feet stay put and the CoM stays over them is the real task.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Differential IK & redundancy resolution (QP-based) and Floating-base & centroidal dynamics (legged/humanoid).\n- **Software:** MuJoCo, mink and the G1 model from MuJoCo Menagerie.\n\n## Steps\n\n1. **Run the example:** Start mink's `humanoid_g1.py` and move its hand and foot targets in the viewer.\n2. **Pin the feet:** Keep both foot frame tasks fixed at their starting poses.\n3. **Place the CoM target:** Set the CoM target above the midpoint between the feet.\n4. **Script a reach:** Move one hand target toward an object in steps, from near to beyond arm's length.\n5. **Log and count:** Record hand error, CoM horizontal offset and joint-limit hits; count reached, failed and unreachable targets.\n\n```mermaid\nflowchart LR\n  N0[\"Hand target\"] --> N1\n  N1[\"Foot and CoM tasks\"] --> N2\n  N2[\"mink solve\"] --> N3\n  N3[\"G1 pose\"] --> N4\n  N4[\"Offset and error log\"]\n```\n\n## Common pitfalls\n\n- **Unbalanced costs:** A hand cost far above the CoM cost lets the robot lean out of balance.\n- **Drifting feet:** Without foot tasks the solver slides the feet to help the hand.\n\n> **Watch out:** This is kinematic balance only; it ignores forces, so a dynamic robot could still fall.\n\n## When it's done\n\n- **Demo video:** The G1 reaching while its CoM marker stays over the feet.\n- **Results table:** Reach success, CoM offset and limit hits over the fixed target list.\n",
+      "resources": [
+        {
+          "title": "Solving whole body humanoid motion with Pinocchio and pink",
+          "url": "https://www.youtube.com/watch?v=r6k0OMjiKvo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See whole-body humanoid IK with tasks, a close cousin of mink."
+        },
+        {
+          "title": "mink/examples/humanoid_g1.py",
+          "url": "https://github.com/kevinzakka/mink/blob/main/examples/humanoid_g1.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Start from the G1 example with CoM, foot, hand and posture tasks."
+        },
+        {
+          "title": "mujoco_menagerie/unitree_g1 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the G1 model, its joints and its standing keyframe."
+        },
+        {
+          "title": "mink",
+          "url": "https://kevinzakka.github.io/mink/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Look up the ComTask, FrameTask and PostureTask APIs."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=r6k0OMjiKvo",
+        "https://github.com/kevinzakka/mink/blob/main/examples/humanoid_g1.py",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+        "https://kevinzakka.github.io/mink/"
+      ]
+    },
+    {
+      "node_id": "p:write-an-mjcf-for-the-so-101-from-scratch",
+      "type": "project",
+      "name": "Write an MJCF for the SO-101 from scratch",
+      "summary": "Write an MJCF model of the SO-101 by hand, then compare its joint axes and limits side by side with the official MuJoCo Menagerie model.",
+      "lesson_md": "## In one sentence\n\nWrite an MJCF model of the SO-101 by hand, then compare its joint axes and limits side by side with the official MuJoCo Menagerie model.\n\n![Rendered SO-101 model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-mjcf.webp)\n*The official SO-101 MuJoCo model you will compare against. Source: [MuJoCo Menagerie SO-101](https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101), Apache-2.0.*\n\n## What you will learn\n\n- **MJCF:** MuJoCo's XML format; bodies nest inside bodies, like folders, to form the robot's kinematic tree.\n- **Joint elements:** A `hinge` joint rotates about an `axis`; its `range` sets the joint limits.\n- **Geoms and inertia:** Geoms give shape; MuJoCo can infer a body's inertia from its geoms when you omit it.\n- **Orientation:** Every frame orientation becomes a unit quaternion internally, whatever form you write.\n- **Software analogy:** Writing MJCF is like writing a nested HTML DOM where every child moves with its parent.\n\n> **Key idea:** Build one joint at a time and check it in the viewer before adding the next one.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Robot description formats (URDF / MJCF).\n- **Software:** MuJoCo with its viewer; the Menagerie SO-101 needs MuJoCo 3.1.3 or newer.\n- **Reference files:** The Menagerie model, which its README says was derived from a public `so101_new_calib.xml` MJCF.\n\n## Steps\n\n1. **Sketch the tree:** List base, each moving link and the gripper as nested bodies.\n2. **Add one joint:** Write the base and first hinge, load it and move the joint slider.\n3. **Grow the chain:** Add the remaining joints one by one with axis and range.\n4. **Add simple shapes:** Use capsules or boxes instead of meshes; let MuJoCo infer inertia.\n5. **Compare side by side:** Load both models, sweep each joint and compare axes, limits and gripper positions.\n\n```xml\n<!-- illustrative values, not SO-101 measurements; angles in degrees -->\n<body name=\"upper_arm\" pos=\"0 0 0.1\">\n  <joint name=\"shoulder_lift\" type=\"hinge\" axis=\"0 1 0\" range=\"-90 90\"/>\n  <geom type=\"capsule\" fromto=\"0 0 0 0 0 0.11\" size=\"0.02\"/>\n</body>\n```\n\n```mermaid\nflowchart LR\n  N0[\"Kinematic tree\"] --> N1\n  N1[\"One joint\"] --> N2\n  N2[\"Full chain\"] --> N3\n  N3[\"Simple shapes\"] --> N4\n  N4[\"Compare with official\"]\n```\n\n## Common pitfalls\n\n- **Angle units:** MJCF angles default to degrees unless `<compiler angle=\"radian\"/>` is set; URDF always uses radians.\n- **Flipped axes:** A sign error in `axis` makes a joint move backwards; compare directions joint by joint.\n\n## When it's done\n\n- **Side-by-side video:** Your model and the official one moving through the same joint sweep.\n- **Difference table:** Axis, limit and gripper-position mismatches for every joint.\n",
+      "resources": [
+        {
+          "title": "Reinforcement Learning for Robotics Part 1: Import a Robot CAD Model into MuJoCo | DigiKey",
+          "url": "https://www.youtube.com/watch?v=kGish1q_WC8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a robot model being built and loaded in MuJoCo."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Look up body, joint, geom and compiler attributes as you write."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the kinematic tree, frames and defaults in MJCF."
+        },
+        {
+          "title": "mujoco_menagerie/robotstudio_so101 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read the official SO-101 model you compare against."
+        },
+        {
+          "title": "GitHub - TheRobotStudio/SO-ARM100: Standard Open Arm 100",
+          "url": "https://github.com/TheRobotStudio/SO-ARM100",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Find the original SO-101 description and hardware files."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=kGish1q_WC8",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+        "https://github.com/TheRobotStudio/SO-ARM100"
+      ]
     }
   ]
 }
