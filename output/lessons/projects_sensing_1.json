@@ -1,0 +1,1277 @@
+{
+  "batch": "projects_sensing_1",
+  "lessons": [
+    {
+      "node_id": "p:3d-lidar-coverage-and-timestamped-scan-density-atlas",
+      "type": "project",
+      "name": "3D LiDAR coverage and timestamped scan-density atlas",
+      "summary": "Record one 3D LiDAR beside a static obstacle fixture, then map where points land, how dense they are and when each point was measured.",
+      "lesson_md": "## In one sentence\n\nRecord one 3D LiDAR beside a static obstacle fixture, then map where points land, how dense they are and when each point was measured.\n\n![Livox Mid-360 3D LiDAR next to a golf ball for scale](/img/lessons/projects_sensing_1-lidar-atlas.webp)\n*Livox Mid-360 3D LiDAR shown with a golf ball for scale. Source: [Livox Mid-360 product page](https://www.livoxtech.com/mid-360), license unknown.*\n\n## What you will learn\n\n- **Coverage is measured, not assumed:** A **field of view (FOV)**, the angular window a sensor sees, says where points may appear; your atlas shows where they actually appear.\n- **Per-point time stamps:** The `livox_ros_driver2` point format gives every point its own `timestamp`, so one \"frame\" is really a spread of measurement times.\n- **Blind zones:** Livox states a 0.1 m minimum detection range, with 0.1–0.2 m data \"for reference only\".\n\n> **Key idea:** A point cloud is a time series in disguise; colour it by time before trusting its shape.\n\n## What you need\n\n- **One 3D LiDAR revision:** For example a Livox Mid-360 (360° × 59° FOV) or an Ouster OS1; record the exact model.\n- A laptop with ROS 2, the vendor driver, `rosbag2` and RViz. A box or pole fixture at measured distances, plus a phone camera.\n\n## Steps\n\n1. **Record the fixture** at measured distances with the driver's per-point time format and save a `rosbag2` recording.\n2. **Split the cloud into cells**, for example 5° by 5° angle bins, and count points per cell over 1 s.\n3. **Colour by timestamp:** subtract the first point's time and plot each point's offset in milliseconds.\n4. **Test failures:** cover the window, unplug Ethernet, and log what the driver publishes.\n5. **Compare host and sensor time:** store message receive time beside the header stamp; report both.\n\n```python\nimport numpy as np\naz = np.degrees(np.arctan2(y, x)); el = np.degrees(np.arctan2(z, np.hypot(x, y)))\nH, _, _ = np.histogram2d(az, el, bins=[72, 12])   # 5 deg azimuth bins\ndt_ms = (t - t.min()) * 1e3                        # time offset per point\n```\n\n```mermaid\nflowchart LR\n  F[\"Static fixture\"] --> L[\"3D LiDAR\"]\n  L --> B[\"rosbag2 recording\"]\n  B --> D[\"Density per angle cell\"]\n  B --> T[\"Time offset per point\"]\n  D --> A[\"Coverage atlas\"]\n  T --> A\n```\n\n## Common pitfalls\n\n- **Effective range varies with direction:** Livox notes Mid-360 range is shorter near the top of its vertical FOV; do not quote one range for all angles.\n- **Datasheet ranges assume reflectivity:** Mid-360's 40 m figure is for 10% reflectivity targets, so dark fixtures may return fewer points.\n- Livox describes **angular resolution changing over time**; a short window can look sparser than a long one.\n\n## When it's done\n\n- **A side-by-side video exists:** the camera view of the fixture next to rotating clouds coloured by time and by density.\n- A table reports blind areas, points per cell, and both clocks, including the empty and failure trials; next read **2D & 3D LiDAR hardware** and **Time synchronization & timestamping**.",
+      "resources": [
+        {
+          "title": "Livox MID-360 LiDAR Point Cloud Visualization",
+          "url": "https://www.youtube.com/watch?v=UcaE_PMEbJ8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows what raw Mid-360 point clouds look like before you build any atlas."
+        },
+        {
+          "title": "Mid-360",
+          "url": "https://www.livoxtech.com/mid-360",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official FOV, minimum range, reflectivity footnotes and the time-varying angular resolution."
+        },
+        {
+          "title": "OS1 Lidar Sensor",
+          "url": "https://ouster.com/products/hardware/os1-lidar-sensor",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "A second, spinning 3D LiDAR family to compare range and vertical FOV specs."
+        },
+        {
+          "title": "Livox-SDK/livox_ros_driver2",
+          "url": "https://github.com/Livox-SDK/livox_ros_driver2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Driver options for point formats with per-point timestamps and publish frequency."
+        },
+        {
+          "title": "PointCloud2.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/PointCloud2.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines the ROS point-cloud message whose header stamp marks acquisition time."
+        }
+      ],
+      "sources": [
+        "https://www.livoxtech.com/mid-360",
+        "https://ouster.com/products/hardware/os1-lidar-sensor",
+        "https://github.com/Livox-SDK/livox_ros_driver2",
+        "https://raw.githubusercontent.com/Livox-SDK/livox_ros_driver2/master/README.md",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/PointCloud2.msg",
+        "https://www.youtube.com/watch?v=UcaE_PMEbJ8"
+      ]
+    },
+    {
+      "node_id": "p:acquisition-time-versus-arrival-time-timestamp-sandbox",
+      "type": "project",
+      "name": "Acquisition-time versus arrival-time timestamp sandbox",
+      "summary": "Publish synthetic camera frames with known capture times, delay them on purpose, and plot how far arrival time drifts from acquisition time.",
+      "lesson_md": "## In one sentence\n\nPublish synthetic camera frames with known capture times, delay them on purpose, and plot how far arrival time drifts from acquisition time.\n\n![rqt_bag timeline showing camera image topics and joint states recorded over time](/img/lessons/projects_sensing_1-timestamp-sandbox.webp)\n*rqt_bag timeline of recorded camera image and joint-state topics. Source: [ROS Wiki rqt_bag page](https://wiki.ros.org/rqt_bag), CC BY 3.0.*\n\n## What you will learn\n\n- **Two clocks per frame:** **Acquisition time** is when the image was captured; **arrival time** is when your program received it; `Image.msg` says the header stamp should be acquisition time.\n- **Latency as data:** The gap between both stamps is transport delay, which you can histogram like any request latency.\n- **Recorder time:** `rosbag2` documents separate publish-time and receive-time handling, so a bag can preserve both views.\n\n> **Key idea:** Never overwrite a capture stamp with \"now\"; delay belongs in a second field.\n\n## What you need\n\n- **Software-only setup:** A laptop with ROS 2, Python, `rosbag2` and a plotting library; no camera is needed.\n- A synthetic `sensor_msgs/Image` publisher and a subscriber you write yourself, plus a screen recorder for the deliverable.\n\n## Steps\n\n1. **Publish fake frames** at a fixed rate, setting `header.stamp` to the simulated capture time before any delay.\n2. **Inject delay** in a queue: random 5–50 ms waits, then occasional bursts, without touching the stamp.\n3. **Log both clocks** in the subscriber: `header.stamp` and the local receive time.\n4. **Record a bag** and replay it to confirm that the stamps survive.\n5. **Test edge cases:** no publisher (empty), a stamp of zero, and a frame stamped in the future.\n\n```python\ndef on_image(msg):\n    acq = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9\n    arr = node.get_clock().now().nanoseconds * 1e-9\n    latency_ms.append((arr - acq) * 1000)   # e.g. 12.4 ms\n```\n\n```mermaid\nflowchart LR\n  G[\"Synthetic capture time\"] --> P[\"Image publisher\"]\n  P --> Q[\"Delay queue\"]\n  Q --> S[\"Subscriber logs both\"]\n  S --> H[\"Latency histogram\"]\n  S --> B[\"rosbag2 recording\"]\n```\n\n## Common pitfalls\n\n- **Stamping on arrival:** Setting the stamp in the subscriber erases exactly the delay you are trying to measure.\n- **Mixed time sources:** `rosbag2` notes that with simulated time, recorded timestamps follow `/clock`, and nothing is written before the first `/clock` message.\n- A **negative latency** usually means two clocks disagree, not that frames arrived early.\n\n## When it's done\n\n- **A recording shows the histogram:** frames with known acquisition times, queued arrivals and a live latency histogram, plus empty and bad-stamp trials.\n- You can explain why acquisition time matters for **Time synchronization & timestamping**, then try the **Hardware-trigger exposure-skew measurement fixture**.",
+      "resources": [
+        {
+          "title": "ROS2 - Create and Replay a ROS2 Bag",
+          "url": "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Walks through recording and replaying a bag, the tool you use to keep both stamps."
+        },
+        {
+          "title": "Image.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "States that the image header stamp should be the acquisition time."
+        },
+        {
+          "title": "CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Companion camera metadata that must share the image's header."
+        },
+        {
+          "title": "rqt_bag",
+          "url": "https://wiki.ros.org/rqt_bag",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows a bag timeline, useful for spotting gaps and bursts visually."
+        },
+        {
+          "title": "ros2/rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Documents recording, simulated-time stamping and publish versus receive time modes."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://github.com/ros2/rosbag2",
+        "https://raw.githubusercontent.com/ros2/rosbag2/rolling/README.md",
+        "https://wiki.ros.org/rqt_bag",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+        "https://www.youtube.com/watch?v=a-O1qM9_S7k"
+      ]
+    },
+    {
+      "node_id": "p:allan-deviation-repeatability-across-stationary-sessions",
+      "type": "project",
+      "name": "Allan-deviation repeatability across stationary sessions",
+      "summary": "Record several long, motionless IMU sessions, compute an Allan-deviation plot for each, and check whether the fitted noise parameters agree.",
+      "lesson_md": "## In one sentence\n\nRecord several long, motionless IMU sessions, compute an Allan-deviation plot for each, and check whether the fitted noise parameters agree.\n\n![Allan deviation plot of a RealSense D435i gyroscope from the allan_variance_ros example](/img/lessons/projects_sensing_1-allan-repeat.webp)\n*Gyroscope Allan deviation from a 3-hour RealSense D435i log. Source: [ori-drs/allan_variance_ros](https://github.com/ori-drs/allan_variance_ros), BSD-3-Clause.*\n\n## What you will learn\n\n- **Allan deviation (AD):** A plot of how much averaged sensor output wanders versus averaging time τ, drawn on log-log axes.\n- **Reading the slopes:** Kalibr's wiki says white noise appears with slope −1/2 and random walk with slope +1/2.\n- **Repeatability:** One plot is an anecdote; several sessions show whether a parameter is stable or an artefact.\n\n> **Key idea:** Trust a noise parameter only after independent sessions reproduce it.\n\n## What you need\n\n- **A clamped IMU:** For example an ICM-42688-P breakout; TDK lists gyroscope noise of 2.8 mdps/√Hz.\n- A computer with `allan_variance_ros` (designed for Ubuntu 20.04 and catkin), plus a damped surface and a phone for the time-lapse.\n\n## Steps\n\n1. **Fix rate and mounting:** choose one output rate, clamp the board on a damped surface, and never move it between sessions.\n2. **Record at least 3 hours** per session, as the tool's README requires; longer sequences give more accurate results.\n3. **Prepare each bag** with `cookbag.py`, then run the Allan analysis to produce a CSV and plots.\n4. **Fit parameters** with `analysis.py`, which writes an `imu.yaml` in Kalibr's format.\n5. **Compare sessions** in one table, flagging short or disturbed recordings instead of hiding them.\n\nExample comparison with three hypothetical sessions:\n\n```python\nimport numpy as np\narw = np.array([0.20, 0.21, 0.24])     # gyro white noise per session\nspread = (arw.max() - arw.min()) / arw.mean()\nprint(f\"{spread:.0%}\")                 # 18 %: investigate session 3\n```\n\n```mermaid\nflowchart LR\n  M[\"Clamped IMU\"] --> R[\"3 h stationary bag\"]\n  R --> C[\"cookbag.py\"]\n  C --> A[\"Allan deviation CSV\"]\n  A --> Y[\"imu.yaml parameters\"]\n  Y --> T[\"Session comparison table\"]\n```\n\n## Common pitfalls\n\n- **Motion contamination:** A door slam or desk bump bends the curve; note the time and repeat the session.\n- **Too-short logs:** Under 3 hours, the long-τ end of the plot has too few averages to fit random walk well.\n- Do not call AD values **navigation drift**; they describe sensor noise in one mounting, not a robot's real trajectory error.\n\n## When it's done\n\n- **A comparison table exists:** time-lapse of the clamped IMU, one AD plot per session, and fitted parameters side by side, including failed or unplugged runs.\n- Next, study **IMUs: accelerometers, gyroscopes & magnetometers** and try the **IMU mount vibration transmission comparison**.",
+      "resources": [
+        {
+          "title": "Gyro Noise Analysis Using Allan Deviation Plots",
+          "url": "https://www.youtube.com/watch?v=6Bsd5kLgHtM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains how to read gyro Allan deviation plots step by step."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines white noise and random walk and how to read them from AD slopes."
+        },
+        {
+          "title": "ori-drs/allan_variance_ros",
+          "url": "https://github.com/ori-drs/allan_variance_ros",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The tool used here, with recording requirements and an example D435i result."
+        },
+        {
+          "title": "ICM-42688-P",
+          "url": "https://www.invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Datasheet-level noise figures to compare against your fitted values."
+        },
+        {
+          "title": "Visual-Inertial Sensor Calibration -- A Complete Tutorial and Discussion",
+          "url": "https://www.youtube.com/watch?v=BtzmsuJemgI",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Shows where IMU noise parameters feed into full visual-inertial calibration."
+        }
+      ],
+      "sources": [
+        "https://github.com/ori-drs/allan_variance_ros",
+        "https://raw.githubusercontent.com/ori-drs/allan_variance_ros/master/README.md",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://www.invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+        "https://www.youtube.com/watch?v=6Bsd5kLgHtM",
+        "https://www.youtube.com/watch?v=BtzmsuJemgI"
+      ]
+    },
+    {
+      "node_id": "p:analog-infrared-range-curve-and-blind-zone-calibration",
+      "type": "project",
+      "name": "Analog infrared range curve and blind-zone calibration",
+      "summary": "Slide a target along a ruler in front of a Sharp GP2Y0A21YK0F, log its analog voltage, and fit a distance curve that also marks invalid readings.",
+      "lesson_md": "## In one sentence\n\nSlide a target along a ruler in front of a Sharp GP2Y0A21YK0F, log its analog voltage, and fit a distance curve that also marks invalid readings.\n\n![Sharp GP2Y0A21YK0F analog infrared distance sensor](/img/lessons/projects_sensing_1-ir-range.webp)\n*Sharp GP2Y0A21YK0F analog distance sensor, 10–80 cm. Source: [Pololu product 136](https://www.pololu.com/product/136), license unknown.*\n\n## What you will learn\n\n- **Triangulation:** The datasheet says the sensor combines an infrared emitter and a **position-sensitive detector (PSD)**, which measures where reflected light lands.\n- **Non-linear output:** Pololu notes voltage is roughly linear with the *inverse* of distance, not distance itself.\n- **Valid ranges:** The documented measuring range is 10–80 cm; readings outside it need an explicit \"invalid\" label.\n\n> **Key idea:** A calibration curve is only half the job; the other half is knowing where it stops being true.\n\n## What you need\n\n- **The sensor and an ADC:** A GP2Y0A21YK0F (4.5–5.5 V supply) wired to an existing microcontroller analog input you already use safely.\n- Pololu suggests a capacitor near the sensor because it draws current in bursts; add a ruler, a matte target and a phone camera.\n\n## Steps\n\n1. **Fix the setup:** clamp the sensor, tape a ruler on the table, and use one matte target.\n2. **Sample each distance** every 5 cm from 10 to 80 cm, averaging several readings; the update period is 38 ± 10 ms.\n3. **Probe the edges:** also log 2–9 cm and beyond 80 cm, plus an empty scene with no target.\n4. **Fit the curve** using Pololu's starting form, distance ≈ 27 V·cm ÷ voltage, then refine scale and offset.\n5. **Mark invalid zones** where readings are ambiguous or noisy, and film the target moving along the ruler.\n\nExample, assuming a 10-bit ADC with a 5 V reference:\n\n```python\ncounts = 276\nvolts = counts * 5.0 / 1023        # 1.35 V\ndist_cm = 27.0 / volts             # about 20 cm\nvalid = 10 <= dist_cm <= 80\n```\n\n```mermaid\nflowchart LR\n  T[\"Target on ruler\"] --> S[\"Sharp IR sensor\"]\n  S --> A[\"ADC voltage\"]\n  A --> F[\"Fitted curve\"]\n  F --> V{\"Inside 10-80 cm?\"}\n  V --> D[\"Distance or invalid\"]\n```\n\n## Common pitfalls\n\n- **Ignoring the blind zone:** Very close targets fall outside the documented range, so treat their converted distance as untrusted.\n- **Single-target calibration:** The datasheet's typical output is measured with white paper; darker surfaces may shift your curve.\n- Unfiltered **current bursts** can disturb shared power rails; follow Pololu's capacitor advice.\n\n## When it's done\n\n- **A video shows both curves:** raw voltage beside calibrated distance, with the invalid region shaded, plus empty and unplugged-sensor trials.\n- Compare your notes with **Short-range ranging: ultrasonic, infrared & ToF**, then try **Measured short-range sensor response versus simulated rays**.",
+      "resources": [
+        {
+          "title": "How to use Sharp  IR Distance Sensor with Arduino  GP2Y0A21YK0F GP2Y0A41SK0F",
+          "url": "https://www.youtube.com/watch?v=GL8dkw1NbMc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Wires and reads this exact sensor on an Arduino."
+        },
+        {
+          "title": "Sharp/Socle GP2Y0A21YK0F Analog Distance Sensor 10-80cm",
+          "url": "https://www.pololu.com/product/136",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Specs, the capacitor tip and the 27 V·cm linearizing rule of thumb."
+        },
+        {
+          "title": "Arduino Calibration of Infrared Distance Sensors -SHARP 2Y0A21-Experimental Mechatronics Lecture 4",
+          "url": "https://www.youtube.com/watch?v=Vtj0w2V1bRo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A full calibration of the same sensor family, close to this project."
+        },
+        {
+          "title": "GP2Y0A21YK0F datasheet",
+          "url": "https://www.pololu.com/file/0J85/gp2y0a21yk0f.pdf",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Manufacturer curves, triangulation principle and test conditions."
+        }
+      ],
+      "sources": [
+        "https://www.pololu.com/product/136",
+        "https://www.pololu.com/file/0J85/gp2y0a21yk0f.pdf",
+        "https://www.youtube.com/watch?v=GL8dkw1NbMc",
+        "https://www.youtube.com/watch?v=Vtj0w2V1bRo"
+      ]
+    },
+    {
+      "node_id": "p:close-range-stereo-occlusion-and-minimum-distance-test-rig",
+      "type": "project",
+      "name": "Close-range stereo occlusion and minimum-distance test rig",
+      "summary": "Move a stepped target toward one or two stereo depth cameras and measure, region by region, how much valid depth survives near the minimum distance and behind occluding edges.",
+      "lesson_md": "## In one sentence\n\nMove a stepped target toward one or two stereo depth cameras and measure, region by region, how much valid depth survives near the minimum distance and behind occluding edges.\n\n![RealSense D405 short-range stereo depth camera beside a golf ball](/img/lessons/projects_sensing_1-stereo-minz.webp)\n*RealSense D405 short-range stereo camera with a golf ball for scale. Source: [RealSense D405 product page](https://www.realsenseai.com/depth-camera-d405/), license unknown.*\n\n## What you will learn\n\n- **Stereo depth:** Two cameras a fixed **baseline** apart see the same point shifted by a **disparity** in pixels; bigger disparity means closer.\n- **Minimum depth (MinZ):** Luxonis computes it as focal length × baseline ÷ maximum disparity; closer objects produce unreliable depth.\n- **Occlusion:** Near a step edge, one camera sees surface the other cannot, leaving holes.\n\n> **Key idea:** Report depth quality per region and per distance, never as one headline number.\n\n## What you need\n\n- **One or two borrowed cameras:** For example a RealSense D405 (ideal range 7–50 cm) and an OAK-D (baseline 7.5 cm, ideal range about 80 cm–12 m).\n- The vendor SDKs, a stepped wooden or cardboard target, a ruler, and a phone camera.\n\n## Steps\n\n1. **Record each spec separately:** list each model's documented MinZ and range from its own page; never mix them.\n2. **Build the stepped target** with three heights so it creates two clear occluding edges.\n3. **Sweep distance** in small steps from beyond the ideal range down past MinZ, saving depth frames.\n4. **Split each frame into regions:** flat steps, edges and background, then compute the valid-depth ratio.\n5. **Add failure trials:** cover one lens, point at an empty wall, and unplug the camera mid-stream.\n\nWorked example with the OAK-D numbers from the Luxonis docs:\n\n```python\nf_px, baseline_cm, max_disp = 882.5, 7.5, 95\nmin_z_cm = f_px * baseline_cm / max_disp   # about 69.7 cm\nvalid_ratio = (depth > 0).mean()          # per region mask\n```\n\n```mermaid\nflowchart LR\n  T[\"Stepped target\"] --> C[\"Stereo camera\"]\n  C --> D[\"Depth frame\"]\n  D --> R[\"Region masks\"]\n  R --> V[\"Valid-depth ratio\"]\n  V --> P[\"Ratio vs distance plot\"]\n```\n\n## Common pitfalls\n\n- **Below MinZ:** Luxonis warns that weird close-range results usually mean the object is under the minimum depth distance.\n- **Mode changes:** Lower resolution or extended disparity changes MinZ on the OAK-D, so log the exact settings.\n- Do not crown a **\"better\" camera**; the two models target different ranges by design.\n\n## When it's done\n\n- **A video plus plot exist:** the target moving through range and occlusion conditions, with valid-depth ratios per region, including covered-lens and unplugged trials.\n- Next, revisit **Depth cameras: stereo, structured light & ToF** and the **Depth camera failure atlas**.",
+      "resources": [
+        {
+          "title": "Depth Camera - Computerphile",
+          "url": "https://www.youtube.com/watch?v=bRkUGqsz6SI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains how stereo depth cameras turn two views into distance."
+        },
+        {
+          "title": "D405 - RealSense",
+          "url": "https://www.realsenseai.com/depth-camera-d405/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official close-range specs: 7 cm Min-Z at 480p and a 7–50 cm ideal range."
+        },
+        {
+          "title": "Review on Intel RealSense D405",
+          "url": "https://www.youtube.com/watch?v=CrSQPq756IM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Hands-on look at the D405's close-range behaviour."
+        },
+        {
+          "title": "OAK-D",
+          "url": "https://docs.luxonis.com/hardware/products/OAK-D",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Baseline, MinZ per mode and ideal range for the second camera."
+        },
+        {
+          "title": "Configuring Stereo Depth",
+          "url": "https://docs.luxonis.com/hardware/platform/depth/configuring-stereo-depth",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Derives MinZ from disparity and lists ways to lower it."
+        }
+      ],
+      "sources": [
+        "https://www.realsenseai.com/depth-camera-d405/",
+        "https://docs.luxonis.com/hardware/products/OAK-D",
+        "https://docs.luxonis.com/hardware/platform/depth/configuring-stereo-depth",
+        "https://www.youtube.com/watch?v=bRkUGqsz6SI",
+        "https://www.youtube.com/watch?v=CrSQPq756IM"
+      ]
+    },
+    {
+      "node_id": "p:encoder-rollover-and-index-reference-explorer",
+      "type": "project",
+      "name": "Encoder rollover and index-reference explorer",
+      "summary": "Turn a magnet over an AS5600, plot its angle crossing the 359°-to-0° wrap, and compare it with a simulated incremental encoder that resets on an index.",
+      "lesson_md": "## In one sentence\n\nTurn a magnet over an AS5600, plot its angle crossing the 359°-to-0° wrap, and compare it with a simulated incremental encoder that resets on an index.\n\n![Front view of the Adafruit AS5600 magnetic angle sensor breakout](/img/lessons/projects_sensing_1-encoder-rollover.webp)\n*Adafruit AS5600 magnetic angle sensor breakout, front view. Source: [Adafruit AS5600 guide](https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview), license unknown.*\n\n## What you will learn\n\n- **Absolute single-turn angle:** Adafruit says the AS5600 reports 0–359° with 0.1° precision, so after one turn it **wraps** back to 0.\n- **Incremental counting:** An incremental encoder emits A/B pulses; SimpleFOC counts every edge, so **CPR** (counts per revolution) is 4 × **PPR** (pulses per revolution).\n- **Index reference:** An index pin gives one pulse per rotation, a fixed mark to re-zero counts.\n\n> **Key idea:** Wrap is not an error; it is a modulo operation your software must undo.\n\n## What you need\n\n- **Real sensor plus simulation:** An Adafruit AS5600 breakout on I2C, a diametric rare-earth magnet within 3 mm of the chip, and a laptop.\n- A Python script that simulates A/B/index pulses; the AS5600 is magnetic and absolute, not an incremental optical encoder.\n\n## Steps\n\n1. **Read raw angles** from the AS5600 at a steady rate and log them with timestamps.\n2. **Spin slowly through 360°** several times, both directions, and plot raw angle versus time.\n3. **Unwrap the angle** by detecting jumps larger than 180° and adding or subtracting 360°.\n4. **Simulate an incremental encoder** with 600 PPR, i.e. 2400 CPR, plus one index pulse per turn.\n5. **Test failures:** remove the magnet, unplug I2C, and drop simulated pulses to see count drift.\n\n```python\ndef unwrap(prev_deg, raw_deg, turns):\n    d = raw_deg - prev_deg\n    if d < -180: turns += 1      # 359 -> 1 crosses forward\n    if d > 180:  turns -= 1      # 1 -> 359 crosses backward\n    return turns, raw_deg + 360 * turns\n```\n\n```mermaid\nflowchart LR\n  M[\"Magnet turned by hand\"] --> S[\"AS5600 0-359 deg\"]\n  S --> U[\"Unwrap across 360\"]\n  P[\"Simulated A/B pulses\"] --> C[\"Counter 2400 CPR\"]\n  I[\"Index pulse\"] --> C\n  U --> G[\"Side-by-side plot\"]\n  C --> G\n```\n\n## Common pitfalls\n\n- **Wrong magnet orientation:** Adafruit notes many round magnets have poles on the coin faces; you need poles on the edge.\n- **Sampling too slowly:** If the angle moves over 180° between samples, unwrapping guesses the wrong direction.\n- An incremental count **without an index** keeps any missed pulse forever.\n\n## When it's done\n\n- **A video and two traces exist:** the hand-turned magnet with the unwrapped plot, beside the simulated count and index trace, including no-magnet and unplugged trials.\n- Continue with **Joint encoders & proprioceptive sensing** and the **Magnet alignment and standoff repeatability jig**.",
+      "resources": [
+        {
+          "title": "What is the Difference between Absolute and Incremental Encoders?",
+          "url": "https://www.youtube.com/watch?v=-Qk--Sjgq78",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Contrasts the two encoder families this project compares."
+        },
+        {
+          "title": "Overview | Adafruit AS5600 Magnetic Angle Sensor | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The breakout's angle range, precision, magnet tips and I2C setup."
+        },
+        {
+          "title": "A great cheap encoder -- the AS5600",
+          "url": "https://www.youtube.com/watch?v=-5e403JcevY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the AS5600 working as a low-cost absolute encoder."
+        },
+        {
+          "title": "What is quadrature and how is it used? | Encoders 101",
+          "url": "https://www.youtube.com/watch?v=NfX0uOaXQ3c",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Explains the A/B pulse pattern you simulate."
+        },
+        {
+          "title": "Encoder | Arduino-FOC",
+          "url": "https://docs.simplefoc.com/encoder",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "PPR versus CPR and index-pin handling in real firmware."
+        }
+      ],
+      "sources": [
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+        "https://docs.simplefoc.com/encoder",
+        "https://www.youtube.com/watch?v=-Qk--Sjgq78",
+        "https://www.youtube.com/watch?v=-5e403JcevY",
+        "https://www.youtube.com/watch?v=NfX0uOaXQ3c"
+      ]
+    },
+    {
+      "node_id": "p:event-camera-illumination-flicker-throughput-envelope",
+      "type": "project",
+      "name": "Event-camera illumination-flicker throughput envelope",
+      "summary": "Expose one event camera to safe, controlled light flicker and measure how event rate, file throughput and data loss change as flicker and bias settings vary.",
+      "lesson_md": "## In one sentence\n\nExpose one event camera to safe, controlled light flicker and measure how event rate, file throughput and data loss change as flicker and bias settings vary.\n\n![Prophesee diagram of contrast-detector event generation from a changing light level](/img/lessons/projects_sensing_1-event-flicker.webp)\n*How a contrast detector turns light changes into ON and OFF events. Source: [Prophesee Event-Based Concepts](https://docs.prophesee.ai/stable/concepts.html), license unknown.*\n\n## What you will learn\n\n- **Event camera:** Each pixel emits an event only when its light level changes past a threshold; Prophesee encodes events as (x, y, polarity, time in µs).\n- **Flicker drives data volume:** A flickering lamp makes many pixels fire repeatedly, so throughput depends on the scene, not on a fixed frame rate.\n- **Biases:** Settings such as `bias_diff_on` and `bias_fo` tune contrast sensitivity and filter rapidly changing light.\n\n> **Key idea:** An event camera's bandwidth is set by the scene, so measure it under the worst lighting you expect.\n\n## What you need\n\n- **A supported event camera:** Borrowed or procured hardware listed in Prophesee's supported products, plus OpenEB or Metavision SDK.\n- A dimmable LED lamp with a safe controller, a laptop with fast storage, and a phone camera.\n\n## Steps\n\n1. **Record a static baseline** with steady light, then with the lamp off, logging events per second.\n2. **Sweep flicker frequency** in safe steps, recording a short file for each setting.\n3. **Change one bias at a time**, staying within documented ranges, and repeat the sweep.\n4. **Separate two numbers:** events the sensor generated versus events the recorder actually saved.\n5. **Force a failure:** write to a slow USB stick or unplug the camera, and note the warnings.\n\n```python\nimport numpy as np\nt_us = events[\"t\"]                    # microsecond timestamps\ncounts, _ = np.histogram(t_us, bins=np.arange(t_us.min(), t_us.max(), 10_000))\nrate_mev_s = counts / 0.01 / 1e6      # Mev/s per 10 ms bin\n```\n\n```mermaid\nflowchart LR\n  L[\"Flickering lamp\"] --> C[\"Event camera\"]\n  B[\"Bias settings\"] --> C\n  C --> E[\"Event stream x,y,p,t\"]\n  E --> R[\"Recorder file\"]\n  E --> M[\"Event-rate monitor\"]\n  R --> T[\"Throughput and loss table\"]\n  M --> T\n```\n\n## Common pitfalls\n\n- **Filtering changes latency:** Prophesee notes that raising the low-pass filter to remove flicker also increases sensor latency.\n- **Hidden on-chip filters:** Some sensors provide Anti-Flicker and Event Rate Control blocks; record whether they were on.\n- Do not claim a **latency advantage** unless you actually measured it.\n\n## When it's done\n\n- **A side-by-side video exists:** the lamp changes beside live event rate, file throughput and loss indicators, plus lamp-off and unplugged trials.\n- Read **Event cameras & asynchronous acquisition**, then try the **Recorded event-stream polarity and time microscope**.",
+      "resources": [
+        {
+          "title": "What is Event-Based Vision | Metavision by Prophesee",
+          "url": "https://www.youtube.com/watch?v=MjX3z-6n3iA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short visual introduction to how event cameras sense change."
+        },
+        {
+          "title": "Event-Based Concepts — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Defines contrast detection, polarity and microsecond timestamps."
+        },
+        {
+          "title": "Metavision® Intelligence Data Rate",
+          "url": "https://www.youtube.com/watch?v=RrftO5XU1G8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Prophesee's short clip on how event data rate behaves."
+        },
+        {
+          "title": "Biases",
+          "url": "https://docs.prophesee.ai/stable/hw/manuals/biases.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains contrast threshold and filter biases you will sweep."
+        },
+        {
+          "title": "Event Signal Processing",
+          "url": "https://docs.prophesee.ai/stable/hw/manuals/esp.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Describes Anti-Flicker and Event Rate Control on supported sensors."
+        },
+        {
+          "title": "prophesee-ai/openeb",
+          "url": "https://github.com/prophesee-ai/openeb",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Open-source modules to stream, record and read event data."
+        }
+      ],
+      "sources": [
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://docs.prophesee.ai/stable/hw/manuals/biases.html",
+        "https://docs.prophesee.ai/stable/hw/manuals/esp.html",
+        "https://github.com/prophesee-ai/openeb",
+        "https://raw.githubusercontent.com/prophesee-ai/openeb/main/README.md",
+        "https://www.youtube.com/watch?v=MjX3z-6n3iA",
+        "https://www.youtube.com/watch?v=RrftO5XU1G8"
+      ]
+    },
+    {
+      "node_id": "p:focus-and-resolution-changes-invalidate-camera-calibration",
+      "type": "project",
+      "name": "Focus and resolution changes invalidate camera calibration",
+      "summary": "Calibrate a webcam, then change only its focus or resolution and show with held-out images that the old calibration no longer fits.",
+      "lesson_md": "## In one sentence\n\nCalibrate a webcam, then change only its focus or resolution and show with held-out images that the old calibration no longer fits.\n\n![OpenCV chessboard calibration pattern with detected corners drawn](/img/lessons/projects_sensing_1-calib-invalid.webp)\n*Chessboard with detected corners from the OpenCV calibration tutorial. Source: [OpenCV calibration tutorial source](https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown), Apache-2.0.*\n\n## What you will learn\n\n- **Intrinsics:** OpenCV describes them as focal lengths (fx, fy) and optical centre (cx, cy), plus five **distortion coefficients** for lens bending.\n- **Calibration has a scope:** ROS `CameraInfo.msg` says these values are fixed during calibration and stores the calibrated width and height.\n- **Re-projection error:** The pixel gap between detected and predicted corners; OpenCV says closer to zero means more accurate parameters.\n\n> **Key idea:** A calibration file describes one camera in one configuration; change the configuration and you need new evidence.\n\n## What you need\n\n- **A webcam with manual controls:** Autofocus and auto-resolution you can lock, ideally with a manual focus setting.\n- A printed chessboard, OpenCV in Python, and a tripod or clamp so the target can stay unchanged.\n\n## Steps\n\n1. **Freeze settings:** disable autofocus, note focus value, resolution and camera ID.\n2. **Capture two sets** of at least 10 chessboard views, as OpenCV recommends: one to calibrate, one held out.\n3. **Calibrate and test** on the held-out set, recording the mean re-projection error.\n4. **Change one thing**, focus or resolution, then re-run the held-out test with the *old* calibration and with a fresh one.\n5. **Try failures:** a covered lens, a frame with no board, and a mismatched resolution file.\n\n```python\nimport cv2 as cv\nerr = []\nfor obj, img_pts in held_out:\n    ok, rvec, tvec = cv.solvePnP(obj, img_pts, K, dist)\n    proj, _ = cv.projectPoints(obj, rvec, tvec, K, dist)\n    err.append(cv.norm(img_pts, proj, cv.NORM_L2) / len(proj))\n```\n\n```mermaid\nflowchart LR\n  A[\"Locked settings\"] --> B[\"Calibrate with OpenCV\"]\n  B --> C[\"Held-out error\"]\n  C --> D[\"Change focus or resolution\"]\n  D --> E[\"Old vs new calibration error\"]\n```\n\n## Common pitfalls\n\n- **Silent autofocus:** If focus drifts during capture, you mixed two cameras in one dataset.\n- **Resizing is not free:** a driver may crop instead of scale, so recalibrate rather than rescaling numbers by hand.\n- Comparing errors on **training images only** hides overfitting; always keep a held-out set.\n\n## When it's done\n\n- **A side-by-side video exists:** the unchanged target before and after the change, with held-out residuals for old and new calibrations, plus covered-lens and no-board trials.\n- Revisit **RGB cameras & intrinsic calibration** and compare with the **Intro: calibrate a webcam and track AprilTags** project.",
+      "resources": [
+        {
+          "title": "Intrinsic Camera Calibration - 5 Minutes with Cyrill",
+          "url": "https://www.youtube.com/watch?v=26nV4oDLiqc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short, clear explanation of what intrinsic calibration estimates."
+        },
+        {
+          "title": "py_calibration.markdown",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The standard tutorial: chessboard capture, calibration and re-projection error."
+        },
+        {
+          "title": "OpenCV Python Camera Calibration (Intrinsic, Extrinsic, Distortion)",
+          "url": "https://www.youtube.com/watch?v=H5qbRTikxI4",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Walks through the OpenCV calibration code step by step."
+        },
+        {
+          "title": "CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows how ROS stores intrinsics with the calibrated resolution and binning."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://www.youtube.com/watch?v=26nV4oDLiqc",
+        "https://www.youtube.com/watch?v=H5qbRTikxI4"
+      ]
+    },
+    {
+      "node_id": "p:gazebo-noise-model-fingerprint-with-known-ground-truth",
+      "type": "project",
+      "name": "Gazebo noise-model fingerprint with known ground truth",
+      "summary": "Run the same Gazebo sensor with and without a noise model, subtract the exact simulated truth, and fit the residuals to recover the noise you configured.",
+      "lesson_md": "## In one sentence\n\nRun the same Gazebo sensor with and without a noise model, subtract the exact simulated truth, and fit the residuals to recover the noise you configured.\n\n![Gazebo tutorial world with a robot facing a wall for sensor testing](/img/lessons/projects_sensing_1-gazebo-noise.webp)\n*Gazebo sensor tutorial world: a vehicle facing a wall. Source: [Gazebo Harmonic Sensors tutorial](https://gazebosim.org/docs/harmonic/sensors/), license unknown.*\n\n## What you will learn\n\n- **Ground truth:** In simulation you know the exact value a sensor *should* read, so error = measured − truth is computable.\n- **Noise fingerprint:** The residual's mean is **bias** and its spread is **standard deviation**; Gazebo's `GaussianNoiseModel` exposes a bias accessor.\n- **Model limits:** Kalibr's IMU model separates white noise from slowly drifting bias, which simple Gaussian noise may not capture.\n\n> **Key idea:** Simulation is the one place where you can grade a sensor against perfect truth.\n\n## What you need\n\n- **Simulation-only setup:** No hardware. Gazebo Harmonic following its Sensors tutorial, which adds an IMU and a lidar to a vehicle.\n- Python with NumPy and Matplotlib, and the `gz topic -e -t /imu` command to inspect messages.\n\n## Steps\n\n1. **Build the tutorial world** with the IMU and lidar facing a wall at a known distance.\n2. **Record an ideal run** with noise disabled to confirm residuals are zero.\n3. **Enable Gaussian noise** with values you choose and record again at a fixed update rate.\n4. **Fit the residuals:** compute mean, standard deviation and a histogram per axis or per ray.\n5. **Run controls:** an empty world with no wall, and a deliberately invalid noise setting; log what Gazebo reports.\n\nExample lidar residual check with a wall at 5.0 m:\n\n```python\nimport numpy as np\nres = ranges - 5.0                  # truth is exact in sim\nprint(res.mean(), res.std())        # e.g. 0.002, 0.010 m\n```\n\n```mermaid\nflowchart LR\n  W[\"Known world\"] --> S[\"Gazebo sensor\"]\n  N[\"Noise settings\"] --> S\n  S --> M[\"Measured values\"]\n  W --> T[\"Exact truth\"]\n  M --> R[\"Residual histogram\"]\n  T --> R\n```\n\n## Common pitfalls\n\n- **Wrong truth frame:** comparing lidar ranges from the sensor frame against distances measured from the robot centre adds a false bias.\n- **Too few samples:** a few hundred readings give a shaky standard deviation; record longer.\n- Do not claim **Gaussian noise reproduces real hardware**; real sensors also drift, saturate and drop data.\n\n## When it's done\n\n- **A screen recording exists:** ideal and noisy sensors side by side with residual histograms and bias estimates beside the exact truth, plus empty-world and invalid-config trials.\n- Next, study **Sensor simulation & noise models** and **Sensor characteristics, uncertainty & noise**.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Sensors",
+          "url": "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Gazebo's own walkthrough of adding and reading sensors."
+        },
+        {
+          "title": "Sensors — Gazebo harmonic documentation",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Step-by-step IMU and lidar setup used as the test world."
+        },
+        {
+          "title": "Add and Simulate Lidar in Gazebo and ROS2 Jazzy - Tutorial on Lidars in ROS2 and Jazzy",
+          "url": "https://www.youtube.com/watch?v=gEAdcgM7cCk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Adds a lidar in Gazebo with ROS 2, the sensor you will fingerprint."
+        },
+        {
+          "title": "Gazebo Sensors: GaussianNoiseModel Class Reference",
+          "url": "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "API reference for the Gaussian noise model applied to sensor values."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Explains noise terms beyond simple Gaussian noise for IMUs."
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+        "https://www.youtube.com/watch?v=gEAdcgM7cCk"
+      ]
+    },
+    {
+      "node_id": "p:gnss-antenna-mounting-and-multipath-repeatability-survey",
+      "type": "project",
+      "name": "GNSS antenna mounting and multipath repeatability survey",
+      "summary": "Place a ZED-F9P antenna at several permitted outdoor spots, photograph the sky around each one, and compare solution status and position scatter.",
+      "lesson_md": "## In one sentence\n\nPlace a ZED-F9P antenna at several permitted outdoor spots, photograph the sky around each one, and compare solution status and position scatter.\n\n![SparkFun GPS-RTK2 board with the u-blox ZED-F9P receiver](/img/lessons/projects_sensing_1-gnss-multipath.webp)\n*SparkFun GPS-RTK2 board carrying a u-blox ZED-F9P receiver. Source: [SparkFun GPS-RTK2 Hookup Guide](https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all), license unknown.*\n\n## What you will learn\n\n- **GNSS:** Satellite positioning from GPS, GLONASS, BeiDou and Galileo; **RTK** adds a correction stream (RTCM) for about 1 cm accuracy, according to SparkFun.\n- **Multipath:** Signals bouncing off walls or roofs arrive late and bias the position.\n- **Solution status:** The board's RTK LED blinks in RTK float and goes low in RTK fixed mode.\n\n> **Key idea:** Antenna placement is part of the sensor; the same receiver behaves differently under a different sky.\n\n## What you need\n\n- **A ZED-F9P setup:** A GPS-RTK2 board, a multi-band antenna, and a 10 cm metal ground plane if you use a patch antenna.\n- A laptop logging receiver output, a phone for sky photos, a tripod, and permission for each outdoor site.\n\n## Steps\n\n1. **Choose three sites:** open field, next to a building wall, and under partial tree cover.\n2. **Photograph the sky** straight up from the antenna at each site before logging.\n3. **Log 20 minutes per site** with the antenna stationary, saving fix type, satellite count and position.\n4. **Repeat each site** on another day with the same mount height to test repeatability.\n5. **Add failures:** cover the antenna, unplug it, and cut the correction stream.\n\nExample scatter around the session mean, using local east/north offsets in metres:\n\n```python\nimport numpy as np\ne, n = east - east.mean(), north - north.mean()\nr = np.hypot(e, n)\nprint(np.percentile(r, 95))   # e.g. 0.03 m open sky vs 0.40 m by a wall\n```\n\n```mermaid\nflowchart LR\n  S[\"Site and sky photo\"] --> A[\"Antenna on tripod\"]\n  A --> R[\"ZED-F9P receiver\"]\n  C[\"RTCM corrections\"] --> R\n  R --> L[\"Fix type and positions\"]\n  L --> P[\"Scatter per site\"]\n```\n\n## Common pitfalls\n\n- **No independent reference:** scatter shows repeatability, not true position; do not claim absolute accuracy without a surveyed point.\n- **Changing two things:** moving the site and the mount height together hides which one mattered.\n- SparkFun stresses a **clear view of the sky**; indoor tests will not reach RTK fixed.\n\n## When it's done\n\n- **A side-by-side video exists:** sky photos, solution status and position scatter for each placement, including covered and unplugged trials.\n- Continue with **GNSS & RTK receiver hardware** and the **GNSS receiver position-time metadata ingestion contract**.",
+      "resources": [
+        {
+          "title": "How to install a GPS/GNSS RTK antenna for better performance",
+          "url": "https://www.youtube.com/watch?v=4c_hqaWiYx8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Practical antenna mounting advice for RTK receivers."
+        },
+        {
+          "title": "What is GPS RTK? - SparkFun Learn",
+          "url": "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Plain-language explanation of RTK and correction streams."
+        },
+        {
+          "title": "Base + Rover Setup for High-Precision GNSS in Multipath Areas",
+          "url": "https://www.youtube.com/watch?v=ROj00h9uaug",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Shows RTK behaviour in areas with strong multipath."
+        },
+        {
+          "title": "GPS-RTK2 Hookup Guide - SparkFun Learn",
+          "url": "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "ZED-F9P board setup, ground-plane advice and RTK status LEDs."
+        },
+        {
+          "title": "ZED-F9P Base and Rover Configuration",
+          "url": "https://www.youtube.com/watch?v=FpkUXmM7mrc",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Configures ZED-F9P receivers as base and rover for corrections."
+        }
+      ],
+      "sources": [
+        "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
+        "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+        "https://www.youtube.com/watch?v=4c_hqaWiYx8",
+        "https://www.youtube.com/watch?v=ROj00h9uaug",
+        "https://www.youtube.com/watch?v=FpkUXmM7mrc"
+      ]
+    },
+    {
+      "node_id": "p:gnss-receiver-position-time-metadata-ingestion-contract",
+      "type": "project",
+      "name": "GNSS receiver position-time metadata ingestion contract",
+      "summary": "Replay recorded ZED-F9P data through a small bridge that keeps fix quality, device time and antenna metadata, and rejects missing or malformed fixes.",
+      "lesson_md": "## In one sentence\n\nReplay recorded ZED-F9P data through a small bridge that keeps fix quality, device time and antenna metadata, and rejects missing or malformed fixes.\n\n![SparkFun GPS-RTK-SMA board with the u-blox ZED-F9P receiver](/img/lessons/projects_sensing_1-gnss-ingest.webp)\n*SparkFun GPS-RTK-SMA breakout with a ZED-F9P receiver. Source: [SparkFun GPS-RTK2 Hookup Guide](https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all), license unknown.*\n\n## What you will learn\n\n- **Ingestion contract:** Written rules for which fields a message must carry and what happens when they are missing, like an API schema.\n- **Fix status:** ROS `NavSatStatus` defines values from `STATUS_UNKNOWN` (−2) to `STATUS_GBAS_FIX` (2); a fix is valid when status ≥ `STATUS_FIX`.\n- **Two clocks:** `NavSatFix` stamps ROS time; satellite time goes in a separate `TimeReference` message.\n\n> **Key idea:** A position without its quality flag and time source is a number you cannot trust.\n\n## What you need\n\n- **Recorded receiver data:** A bag from the **RTK stationary receiver and correction-outage logbook** project, or any saved ZED-F9P log.\n- ROS 2 with `rosbag2`, Python, and the `NavSatFix`, `NavSatStatus` and `TimeReference` message definitions.\n\n## Steps\n\n1. **Write the contract** as a table: field, unit, allowed values, and action when invalid.\n2. **Replay the bag** with `ros2 bag play` and subscribe to the fix topic.\n3. **Validate each fix:** status, NaN altitude, covariance type, and the antenna `frame_id`.\n4. **Keep both times:** republish the ROS stamp and the receiver's time reference side by side.\n5. **Inject failures:** delete fields, set status to −1, and add a fix with no timestamp.\n\n```python\nSTATUS_FIX = 0\ndef accept(fix):\n    if fix.status.status < STATUS_FIX:\n        return False, \"no fix\"\n    if fix.header.frame_id == \"\":\n        return False, \"missing antenna frame\"\n    return True, \"ok\"\n```\n\n```mermaid\nflowchart LR\n  B[\"Recorded bag\"] --> P[\"ros2 bag play\"]\n  P --> V[\"Contract validator\"]\n  V -->|valid| O[\"Clean fix + time reference\"]\n  V -->|invalid| R[\"Rejection log\"]\n```\n\n## Common pitfalls\n\n- **Dropping quality flags:** Republishing latitude and longitude alone erases whether the fix was unaugmented or RTK.\n- **Unknown covariance:** `NavSatFix` has `COVARIANCE_TYPE_UNKNOWN`; do not invent a covariance downstream.\n- Claiming **PPS timing precision** you never wired or measured is out of scope.\n\n## When it's done\n\n- **A screen recording exists:** the replay bridge accepting good fixes, keeping quality flags and device time, and rejecting missing or malformed ones.\n- Continue with **ROS 2 sensor drivers, metadata & recording** and **GNSS & RTK receiver hardware**.",
+      "resources": [
+        {
+          "title": "EYE ON NPI - u-blox C099-F9P Application Board for ZED-F9P GNSS RTK Module",
+          "url": "https://www.youtube.com/watch?v=RXyBcWh85DM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A quick look at the ZED-F9P receiver and what it outputs."
+        },
+        {
+          "title": "What is GPS RTK? - SparkFun Learn",
+          "url": "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explains fix types and corrections your contract must preserve."
+        },
+        {
+          "title": "ROS2 - Create and Replay a ROS2 Bag",
+          "url": "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how to record and replay the bag your bridge consumes."
+        },
+        {
+          "title": "NavSatFix.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatFix.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The ROS fix message with time, frame and covariance rules."
+        },
+        {
+          "title": "NavSatStatus.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatStatus.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines fix status codes and GNSS service bits."
+        },
+        {
+          "title": "TimeReference.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/TimeReference.msg",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "How to carry an external time source beside system time."
+        }
+      ],
+      "sources": [
+        "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
+        "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatFix.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatStatus.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/TimeReference.msg",
+        "https://github.com/ros2/rosbag2",
+        "https://www.youtube.com/watch?v=RXyBcWh85DM",
+        "https://www.youtube.com/watch?v=a-O1qM9_S7k"
+      ]
+    },
+    {
+      "node_id": "p:hardware-trigger-exposure-skew-measurement-fixture",
+      "type": "project",
+      "name": "Hardware-trigger exposure-skew measurement fixture",
+      "summary": "Fire two trigger-capable cameras from one electrical pulse, film a fast LED pattern, and measure how far apart their exposures really start.",
+      "lesson_md": "## In one sentence\n\nFire two trigger-capable cameras from one electrical pulse, film a fast LED pattern, and measure how far apart their exposures really start.\n\n![Basler drawing of PTP offset from master settling over time](/img/lessons/projects_sensing_1-trigger-skew.webp)\n*Basler drawing of a camera clock's offset from the PTP master over time. Source: [Basler Precision Time Protocol](https://docs.baslerweb.com/precision-time-protocol), license unknown.*\n\n## What you will learn\n\n- **Hardware trigger:** An electrical edge on an input line tells the camera to start a frame; Basler's example uses `TriggerSource = Line1` with `RisingEdge`.\n- **Exposure skew:** The time difference between two cameras' exposure starts, the thing you actually care about.\n- **Three different delays:** **clock offset**, trigger latency and exposure start are separate; do not merge them into one number.\n\n> **Key idea:** \"Same trigger\" does not mean \"same instant\"; measure the skew instead of assuming zero.\n\n## What you need\n\n- **Two compatible cameras:** Documented trigger-capable cameras; check price and compatibility before buying.\n- A microcontroller producing safe low-voltage trigger pulses, an LED row or counter display, and a laptop.\n\n## Steps\n\n1. **Configure triggering** on both cameras: `TriggerSelector = FrameStart`, `TriggerMode = On`, `RisingEdge` on the same input line.\n2. **Build the LED reference:** step through LEDs at a known rate, then measure that rate rather than trusting it.\n3. **Capture short exposures** of the LEDs from both cameras on each trigger pulse.\n4. **Compute skew** from which LED each camera saw, frame by frame, and plot the distribution.\n5. **Test controls:** LEDs off, a disconnected trigger wire, and one camera in free-run mode.\n\nExample with LEDs stepping every 100 µs:\n\n```python\nstep_us = 100\nskew_us = (led_index_cam_b - led_index_cam_a) * step_us\nprint(skew_us)   # e.g. 2 LEDs apart -> 200 us skew\n```\n\n```mermaid\nflowchart LR\n  M[\"Microcontroller pulse\"] --> A[\"Camera A trigger\"]\n  M --> B[\"Camera B trigger\"]\n  L[\"LED timing pattern\"] --> A\n  L --> B\n  A --> S[\"Skew plot\"]\n  B --> S\n```\n\n## Common pitfalls\n\n- **Long exposures blur the reference:** if exposure exceeds one LED step, several LEDs light up and skew becomes ambiguous.\n- **Confusing timestamps with exposure:** Basler notes PTP precision depends on network hardware; clock sync alone is not trigger sync.\n- Treating the LED as a **perfect clock** without measuring it hides its own timing error.\n\n## When it's done\n\n- **A video exists:** both cameras viewing the LED pattern with a skew plot, plus LED-off and unplugged-trigger trials.\n- Read **Time synchronization & timestamping**, then look at **LinuxPTP** for network clock sync.",
+      "resources": [
+        {
+          "title": "Multiple Cameras with Accurate Synchronization",
+          "url": "https://www.youtube.com/watch?v=kvxFvZt-Ryk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short demo of why synchronized multi-camera capture matters."
+        },
+        {
+          "title": "Triggered Image Acquisition | Basler Product Documentation",
+          "url": "https://docs.baslerweb.com/triggered-image-acquisition",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Trigger types, sources and a worked hardware-trigger configuration."
+        },
+        {
+          "title": "Ask the Expert - Episode 3 : Precise Synchronization of Multiple Cameras",
+          "url": "https://www.youtube.com/watch?v=gqbn4ME_q20",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "An engineer explains how multi-camera sync is achieved in practice."
+        },
+        {
+          "title": "Precision Time Protocol | Basler Product Documentation",
+          "url": "https://docs.baslerweb.com/precision-time-protocol",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "How PTP aligns camera clocks and how to check offset from master."
+        }
+      ],
+      "sources": [
+        "https://docs.baslerweb.com/triggered-image-acquisition",
+        "https://docs.baslerweb.com/precision-time-protocol",
+        "https://www.youtube.com/watch?v=kvxFvZt-Ryk",
+        "https://www.youtube.com/watch?v=gqbn4ME_q20"
+      ]
+    },
+    {
+      "node_id": "p:imu-mount-vibration-transmission-comparison",
+      "type": "project",
+      "name": "IMU mount vibration transmission comparison",
+      "summary": "Bolt the same IMU rigidly, then on a soft mount, next to a restrained low-energy vibration source, and compare vibration spectra and clipping counts.",
+      "lesson_md": "## In one sentence\n\nBolt the same IMU rigidly, then on a soft mount, next to a restrained low-energy vibration source, and compare vibration spectra and clipping counts.\n\n![ArduPilot example of an anti-vibration mount for a flight controller](/img/lessons/projects_sensing_1-imu-vibration.webp)\n*Anti-vibration mount example from the ArduPilot docs. Source: [ArduPilot Vibration Damping](https://ardupilot.org/copter/docs/common-vibration-damping.html), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **Vibration transmission:** How much shaking passes from a structure through the mount into the sensor.\n- **Clipping:** When acceleration exceeds the selected full-scale range, the reading saturates; ArduPilot counts these events as `Clip` values.\n- **Spectrum:** An FFT shows which frequencies carry vibration, like a profiler showing where time is spent.\n\n> **Key idea:** The mount is part of the sensor; a soft mount can change what the IMU measures.\n\n## What you need\n\n- **An ICM-42688-P breakout:** TDK lists accelerometer ranges of ±2, ±4, ±8 and ±16 g and 70 µg/√Hz noise.\n- A small motor with an offset weight, clamped down, foam or gel pads, a rigid plate and a microcontroller logger.\n\n## Steps\n\n1. **Fix the source settings:** same motor voltage and weight for every run, restrained on a bench.\n2. **Log a rigid mount** at a fixed sample rate, saving raw accelerometer values.\n3. **Log a compliant mount** with foam pads at the corners, ArduPilot's suggested 1–2 cm squares.\n4. **Repeat each setting** at least three times and compute FFT spectra and clip counts.\n5. **Run controls:** motor off for a no-signal baseline, and an unplugged sensor to check failure detection.\n\n```python\nimport numpy as np\nfs = 1000                                   # Hz sample rate\nspec = np.abs(np.fft.rfft(az - az.mean()))\nfreqs = np.fft.rfftfreq(len(az), 1 / fs)\nclipped = np.sum(np.abs(az) >= 0.99 * 16 * 9.81)   # ±16 g range\n```\n\n```mermaid\nflowchart LR\n  V[\"Restrained vibration source\"] --> M[\"Rigid or soft mount\"]\n  M --> I[\"ICM-42688-P\"]\n  I --> L[\"Raw log\"]\n  L --> F[\"FFT spectrum\"]\n  L --> C[\"Clip counter\"]\n```\n\n## Common pitfalls\n\n- **Pads too soft for a tiny board:** ArduPilot notes foam often isolates poorly because the autopilot's mass is so small.\n- **Changing range between runs:** a ±2 g setting clips far sooner than ±16 g.\n- This tests **mount effects only**, not inertial navigation accuracy or controller stability.\n\n## When it's done\n\n- **A video exists:** rigid and compliant mounts on the restrained source, with spectra and clipping flags, plus motor-off and unplugged trials.\n- Review **IMUs: accelerometers, gyroscopes & magnetometers** and compare with **Allan-deviation repeatability across stationary sessions**.",
+      "resources": [
+        {
+          "title": "Sensor Mounting Techniques - Effects on High Frequency Response",
+          "url": "https://www.youtube.com/watch?v=JMTEWiy5NwA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how mounting changes what an accelerometer measures."
+        },
+        {
+          "title": "Measuring Vibration — Copter  documentation",
+          "url": "https://ardupilot.org/copter/docs/common-measuring-vibration.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Practical vibration thresholds and clip counters from a real autopilot."
+        },
+        {
+          "title": "Vibration Damping — Copter  documentation",
+          "url": "https://ardupilot.org/copter/docs/common-vibration-damping.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Examples of foam and suspension mounts to compare."
+        },
+        {
+          "title": "Vibration Isolation | PX4 Guide (main)",
+          "url": "https://docs.px4.io/main/en/assembly/vibration_isolation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "PX4's guidance on isolating sensors and checking vibration in logs."
+        },
+        {
+          "title": "Enhancing IMU Accuracy in MRAVs: A Theoretical and Experimental Approach to Vibration Damping",
+          "url": "https://www.youtube.com/watch?v=ZKYEi5vq7YI",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "A research summary on modelling and testing IMU damping."
+        }
+      ],
+      "sources": [
+        "https://ardupilot.org/copter/docs/common-measuring-vibration.html",
+        "https://ardupilot.org/copter/docs/common-vibration-damping.html",
+        "https://docs.px4.io/main/en/assembly/vibration_isolation.html",
+        "https://www.invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+        "https://www.youtube.com/watch?v=JMTEWiy5NwA",
+        "https://www.youtube.com/watch?v=ZKYEi5vq7YI"
+      ]
+    },
+    {
+      "node_id": "p:imu-units-missing-orientation-and-axis-sign-replay",
+      "type": "project",
+      "name": "IMU units, missing orientation and axis-sign replay",
+      "summary": "Build an inspector that replays recorded and synthetic ROS IMU messages, rejects wrong units or flipped axes, and correctly shows unknown covariance and missing orientation.",
+      "lesson_md": "## In one sentence\n\nBuild an inspector that replays recorded and synthetic ROS IMU messages, rejects wrong units or flipped axes, and correctly shows unknown covariance and missing orientation.\n\n![Left-handed and right-handed 3D coordinate systems compared](/img/lessons/projects_sensing_1-imu-axes.webp)\n*Left-handed versus right-handed 3D axes. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:3D_Cartesian_Coodinate_Handedness.jpg), CC BY-SA 3.0, Primalshell.*\n\n## What you will learn\n\n- **SI units:** ROS `Imu.msg` requires acceleration in m/s² (not g) and angular velocity in rad/s.\n- **Sentinel values:** An all-zero covariance means **covariance unknown**; element 0 set to −1 means that estimate, such as orientation, is unavailable.\n- **Axis conventions:** REP 145 requires right-handed frames; at rest with z up, the accelerometer z axis should read +g.\n\n> **Key idea:** Treat each IMU message like an API response: validate units, flags and frames before anyone uses it.\n\n## What you need\n\n- **Software-first tooling:** ROS 2, Python, and a bag from an IMU such as the ICM-42688-P, or purely synthetic messages.\n- The `Imu.msg` definition and REP 145 open beside your code as the contract.\n\n## Steps\n\n1. **Write valid messages:** a stationary IMU, z up, about 9.81 m/s² on z and near-zero gyro.\n2. **Add broken cases:** acceleration in g, gyro in degrees per second, and a left-handed frame with y flipped.\n3. **Add sentinel cases:** all-zero covariance, and orientation covariance element 0 set to −1.\n4. **Replay and inspect:** your node labels each message *valid*, *unknown covariance*, *orientation unavailable* or *rejected*.\n5. **Test silence:** an empty topic and a message with no timestamp.\n\n```python\nG = 9.81\ndef check(msg):\n    az = msg.linear_acceleration.z\n    if 0.8 < abs(az) < 1.2:\n        return \"rejected: looks like g, expected m/s^2\"\n    if msg.orientation_covariance[0] == -1:\n        return \"orientation unavailable\"\n    if all(c == 0 for c in msg.linear_acceleration_covariance):\n        return \"covariance unknown\"\n    return \"valid\"\n```\n\n```mermaid\nflowchart LR\n  R[\"Recorded bag\"] --> P[\"Replay\"]\n  S[\"Synthetic cases\"] --> P\n  P --> I[\"IMU inspector\"]\n  I --> V[\"Valid\"]\n  I --> U[\"Unknown or unavailable\"]\n  I --> X[\"Rejected\"]\n```\n\n## Common pitfalls\n\n- **Reading −1 as data:** orientation covariance −1 means *ignore orientation*, not a negative variance.\n- **Zero covariance as perfect:** zeros mean unknown, not infinitely precise.\n- Building an **EKF or orientation filter** is out of scope; this project only inspects messages.\n\n## When it's done\n\n- **A screen recording exists:** the inspector rejecting wrong units and flipped axes, and showing unknown covariance and missing orientation correctly, plus an empty-topic trial.\n- Read **IMUs: accelerometers, gyroscopes & magnetometers**, then try **Allan-deviation repeatability across stationary sessions**.",
+      "resources": [
+        {
+          "title": "What is an Inertial Measurement Unit (IMU)?",
+          "url": "https://www.youtube.com/watch?v=qS9GwaekLW4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains what accelerometers and gyroscopes in an IMU measure."
+        },
+        {
+          "title": "How to identify a right-handed coordinate system",
+          "url": "https://www.youtube.com/watch?v=uX1w5JTr8IA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A quick way to check axis handedness by hand."
+        },
+        {
+          "title": "Imu.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The message contract: units, covariance and the −1 sentinel."
+        },
+        {
+          "title": "REP 103 -- Standard Units of Measure and Coordinate Conventions (ROS.org)",
+          "url": "https://www.ros.org/reps/rep-0103.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "ROS-wide SI units and axis conventions."
+        },
+        {
+          "title": "REP 145 -- Conventions for IMU Sensor Drivers (ROS.org)",
+          "url": "https://www.ros.org/reps/rep-0145.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Detailed IMU frame, sign and data-reporting rules for drivers."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+        "https://www.ros.org/reps/rep-0103.html",
+        "https://www.ros.org/reps/rep-0145.html",
+        "https://raw.githubusercontent.com/ros-infrastructure/rep/master/rep-0145.rst",
+        "https://commons.wikimedia.org/wiki/File:3D_Cartesian_Coodinate_Handedness.jpg",
+        "https://www.youtube.com/watch?v=qS9GwaekLW4",
+        "https://www.youtube.com/watch?v=uX1w5JTr8IA"
+      ]
+    },
+    {
+      "node_id": "p:incremental-versus-magnetic-joint-angle-metrology-fixture",
+      "type": "project",
+      "name": "Incremental versus magnetic joint-angle metrology fixture",
+      "summary": "Mount an incremental encoder and an AS5600 magnetic sensor on one hand-turned shaft and compare both against a marked mechanical reference in forward and reverse sweeps.",
+      "lesson_md": "## In one sentence\n\nMount an incremental encoder and an AS5600 magnetic sensor on one hand-turned shaft and compare both against a marked mechanical reference in forward and reverse sweeps.\n\n![Adafruit AS5600 magnetic angle sensor breakout, angled view](/img/lessons/projects_sensing_1-joint-metrology.webp)\n*Adafruit AS5600 breakout, angled view. Source: [Adafruit AS5600 guide](https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview), license unknown.*\n\n## What you will learn\n\n- **Two sensing principles:** An incremental encoder counts pulses from a start point; the AS5600 reads an absolute magnetic angle from 0 to 359°.\n- **Resolution versus accuracy:** Adafruit quotes 0.1° precision but 0.4° accuracy; ETH lecture notes give typical encoder resolutions of 64–2048 increments per revolution.\n- **Hysteresis:** A different reading at the same position depending on direction of approach.\n\n> **Key idea:** Two sensors that disagree tell you more than one sensor that agrees with itself.\n\n## What you need\n\n- **One shared shaft:** A hand-driven shaft carrying an incremental encoder and a diametric magnet over an AS5600 breakout.\n- A printed angle dial or marked reference, a microcontroller with interrupt pins, and a laptop logger.\n\n## Steps\n\n1. **Wire the encoder** to hardware interrupt pins; SimpleFOC notes these are more reliable than software interrupts.\n2. **Mark references** every 30° on the dial and zero both sensors at one mark.\n3. **Sweep forward and reverse** slowly, stopping at each mark and logging both readings.\n4. **Repeat five sweeps** and compute per-mark mean, spread and forward-minus-reverse hysteresis.\n5. **Break things:** remove the magnet, disconnect encoder channel B, and spin fast to provoke missed transitions.\n\nExample: a 600 PPR encoder in quadrature gives 2400 counts per revolution:\n\n```python\nCPR = 600 * 4\nenc_deg = counts * 360 / CPR      # 200 counts -> 30.0 deg\nhyst = fwd_deg[mark] - rev_deg[mark]\n```\n\n```mermaid\nflowchart LR\n  H[\"Hand-turned shaft\"] --> E[\"Incremental encoder\"]\n  H --> A[\"AS5600 magnet sensor\"]\n  H --> D[\"Marked dial reference\"]\n  E --> L[\"Logger\"]\n  A --> L\n  D --> L\n  L --> C[\"Error and hysteresis table\"]\n```\n\n## Common pitfalls\n\n- **Confusing precision with accuracy:** 0.1° steps do not mean 0.1° error.\n- **Missing pull-ups:** SimpleFOC recommends 1–5 kΩ pull-ups on the encoder lines.\n- This characterizes **sensing only**, not a servo bus driver or FOC controller.\n\n## When it's done\n\n- **A side-by-side video exists:** both readouts and the marked reference through forward and reverse sweeps, plus no-magnet and unplugged-channel trials.\n- Build on **Encoder rollover and index-reference explorer** and read **Joint encoders & proprioceptive sensing**.",
+      "resources": [
+        {
+          "title": "Incremental Encoder (Shaft Encoder)- how it works",
+          "url": "https://www.youtube.com/watch?v=zzHcsJDV3_o",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Animated explanation of how incremental encoders produce pulses."
+        },
+        {
+          "title": "Overview | Adafruit AS5600 Magnetic Angle Sensor | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Range, precision and accuracy figures for the magnetic sensor."
+        },
+        {
+          "title": "AS5600 magnetic position encoder - best encoder for stepper motors",
+          "url": "https://www.youtube.com/watch?v=yvrpIYc9Ll8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Hands-on AS5600 setup and readout on a rotating shaft."
+        },
+        {
+          "title": "Encoder | Arduino-FOC",
+          "url": "https://docs.simplefoc.com/encoder",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Interrupt wiring, pull-ups and counting for incremental encoders."
+        },
+        {
+          "title": "Perception: Sensors",
+          "url": "https://ethz.ch/content/dam/ethz/special-interest/mavt/robotics-n-intelligent-systems/asl-dam/documents/lectures/autonomous_mobile_robots/spring-2015/04_-_Perception_I_-_Sensors.pdf",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "ETH lecture slides placing encoders among robot sensors."
+        }
+      ],
+      "sources": [
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+        "https://docs.simplefoc.com/encoder",
+        "https://ethz.ch/content/dam/ethz/special-interest/mavt/robotics-n-intelligent-systems/asl-dam/documents/lectures/autonomous_mobile_robots/spring-2015/04_-_Perception_I_-_Sensors.pdf",
+        "https://www.youtube.com/watch?v=zzHcsJDV3_o",
+        "https://www.youtube.com/watch?v=yvrpIYc9Ll8"
+      ]
+    },
+    {
+      "node_id": "p:lidar-reflectivity-and-incidence-angle-return-audit",
+      "type": "project",
+      "name": "LiDAR reflectivity and incidence-angle return audit",
+      "summary": "Point a LiDAR at swappable material panels tilted to measured angles and record how often it returns a point and how far each range is off.",
+      "lesson_md": "## In one sentence\n\nPoint a LiDAR at swappable material panels tilted to measured angles and record how often it returns a point and how far each range is off.\n\n![RPLIDAR A1 product banner from Slamtec](/img/lessons/projects_sensing_1-lidar-reflect.webp)\n*RPLIDAR A1 360° laser range scanner. Source: [SLAMTEC RPLIDAR A1](https://www.slamtec.com/en/Lidar/A1), license unknown.*\n\n## What you will learn\n\n- **Reflectivity:** How much light a surface sends back; Livox cites concrete at 15–30% and white plaster at 90–99%.\n- **Incidence angle:** The tilt between the beam and the surface; steeper tilts send less light back to the sensor.\n- **Return rate:** The share of beams that produced any point, like an HTTP success rate for each panel.\n\n> **Key idea:** A vendor's maximum range is measured on one kind of surface; your materials and angles set the real range.\n\n## What you need\n\n- **An RPLIDAR A1:** Slamtec lists it as a triangulation LiDAR taking over 8000 measurements per second while spinning 360°.\n- Panels of white card, black felt, wood and a mirror tile, a protractor, a tape measure and a laptop.\n- Optionally a borrowed **Livox Mid-360**, a different time-of-flight design.\n\n## Steps\n\n1. **Fix the geometry:** panel at a taped distance, centred in a narrow angular window of the scan.\n2. **Sweep angles** 0°, 30°, 45°, 60° and 75° for each material, logging 200 scans per setting.\n3. **Compute return rate** and range residual against the tape-measured distance.\n4. **Repeat the worst cases** at a shorter distance to separate range limits from angle effects.\n5. **Run controls:** no panel (empty window) and the sensor unplugged mid-run.\n\n```python\nimport numpy as np\ntrue_m = 1.50\nhits = window[np.isfinite(window) & (window > 0)]\nreturn_rate = hits.size / window.size\nresidual_mm = (np.median(hits) - true_m) * 1000\n```\n\n```mermaid\nflowchart LR\n  P[\"Material panel\"] --> A[\"Measured tilt angle\"]\n  A --> L[\"LiDAR scans\"]\n  L --> W[\"Angular window\"]\n  W --> R[\"Return rate\"]\n  W --> E[\"Range residual\"]\n  R --> T[\"Material x angle table\"]\n  E --> T\n```\n\n## Common pitfalls\n\n- **Mixing principles:** a triangulation A1 and a time-of-flight Mid-360 fail differently; analyse them separately.\n- **Edge effects:** beams hitting the panel border produce mixed returns; keep the window inside the panel.\n- Claiming the **vendor range** holds on every material is exactly what this audit tests.\n\n## When it's done\n\n- **A video exists:** panels swapped and tilted at measured angles with return rate and range residuals on screen, plus empty-window and unplugged trials.\n- Revisit **2D & 3D LiDAR hardware** and the **Planar LiDAR scan geometry and blind-zone bench**.",
+      "resources": [
+        {
+          "title": "Getting Started with LIDAR",
+          "url": "https://www.youtube.com/watch?v=VhbFbxyOI1k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A beginner tour of hobby LiDARs including the RPLIDAR."
+        },
+        {
+          "title": "RPLIDAR-A1 Cost-Effective 360° Lidar Sensor | SLAMTEC",
+          "url": "https://www.slamtec.com/en/Lidar/A1",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official overview of the sensor used in this audit."
+        },
+        {
+          "title": "#227 The ugly truth about LIDARs for obstacle avoidance (RPLIDAR A1, Arduino, ESP8266)",
+          "url": "https://www.youtube.com/watch?v=AERfie9wlWM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Real tests showing where a cheap LiDAR misses objects."
+        },
+        {
+          "title": "Mid-360",
+          "url": "https://www.livoxtech.com/mid-360",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Range figures tied to stated target reflectivity."
+        },
+        {
+          "title": "Effects of Incidence Angle on Measurements",
+          "url": "https://www.youtube.com/watch?v=K9Uh7YU8IM4",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Optics view of why tilted surfaces change measured light."
+        }
+      ],
+      "sources": [
+        "https://www.slamtec.com/en/Lidar/A1",
+        "https://www.livoxtech.com/mid-360",
+        "https://www.youtube.com/watch?v=VhbFbxyOI1k",
+        "https://www.youtube.com/watch?v=AERfie9wlWM",
+        "https://www.youtube.com/watch?v=K9Uh7YU8IM4"
+      ]
+    },
+    {
+      "node_id": "p:long-recording-microphone-sample-clock-drift-audit",
+      "type": "project",
+      "name": "Long-recording microphone sample-clock drift audit",
+      "summary": "Record hours of audio from a USB mic array while a shared light-and-sound cue repeats, and measure how far the sample count drifts from the host's clock.",
+      "lesson_md": "## In one sentence\n\nRecord hours of audio from a USB mic array while a shared light-and-sound cue repeats, and measure how far the sample count drifts from the host's clock.\n\n![ReSpeaker USB 4-Mic Array v2.0 board](/img/lessons/projects_sensing_1-mic-drift.webp)\n*ReSpeaker USB 4-Mic Array v2.0 product photo. Source: [Seeed Studio ReSpeaker wiki](https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/), license unknown.*\n\n## What you will learn\n\n- **Sample clock:** The array stamps nothing; it just delivers samples, and Seeed's example records at 16000 samples per second.\n- **Sample-count time:** Time inferred as samples ÷ nominal rate, which drifts if the device's real rate differs slightly.\n- **Arrival delay:** When USB buffers reach the host, a separate, jittery effect, like network latency versus a slow server clock.\n\n> **Key idea:** Counting samples is only as accurate as the device clock behind them, so measure it against a shared reference.\n\n## What you need\n\n- **A ReSpeaker USB 4-Mic Array v2.0:** Max sample rate 16 kHz; the 6-channel firmware exposes raw mic channels.\n- A microcontroller that flashes an LED and clicks a buzzer every 60 s, a webcam, and a laptop running Python with `pyaudio`.\n\n## Steps\n\n1. **Start one long recording** with `RESPEAKER_RATE = 16000` and six channels, also logging host time per chunk.\n2. **Fire the shared cue** every minute so both audio and webcam see it.\n3. **Detect each click** in the audio and convert its sample index to time.\n4. **Compare intervals:** audio-derived spacing versus host or video spacing, and fit a line through the differences.\n5. **Test failures:** cue off for an empty segment, and unplug USB mid-recording to see gaps.\n\nExample after 3600 cues spaced 60 s by the host:\n\n```python\nnominal = 16000\nsamples_between = 960_048            # measured, one interval\naudio_s = samples_between / nominal   # 60.003 s\ndrift_ppm = (audio_s - 60.0) / 60.0 * 1e6   # 50 ppm\n```\n\n```mermaid\nflowchart LR\n  C[\"Shared LED + click cue\"] --> M[\"Mic array samples\"]\n  C --> V[\"Webcam frames\"]\n  M --> S[\"Sample-count time\"]\n  H[\"Host clock\"] --> A[\"Chunk arrival time\"]\n  S --> P[\"Drift vs delay plots\"]\n  A --> P\n  V --> P\n```\n\n## Common pitfalls\n\n- **Trusting the reference blindly:** the microcontroller's own timing has error; estimate it too.\n- **One device is not all devices:** an internally synchronized array is not automatically aligned with another USB camera or mic.\n- Mixing in **audio localization** distracts from the clock question.\n\n## When it's done\n\n- **A time-lapse exists:** periodic cues with plots separating sample-count drift from host arrival delay, plus no-cue and unplugged segments.\n- Read **Microphone arrays & robot audio acquisition** and **Time synchronization & timestamping**, after the **Microphone channel ordering and geometry clap board**.",
+      "resources": [
+        {
+          "title": "What is Sample Rate? | iZotope Pro Audio Essentials",
+          "url": "https://www.youtube.com/watch?v=fZzMXdxbOes",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Clear explanation of what a sample rate is."
+        },
+        {
+          "title": "ReSpeaker Mic Array v2.0 Unboxing",
+          "url": "https://www.youtube.com/watch?v=1zJwrD5yURM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the hardware you will record from."
+        },
+        {
+          "title": "reSpeaker USB 4-Mic Array XVF3000 v2.0 | Seeed Studio Wiki",
+          "url": "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Specs, firmware channel layouts and the Python recording script."
+        },
+        {
+          "title": "EP.02 Sync Tab - Clock vs Sample Rate | From Zero to Show",
+          "url": "https://www.youtube.com/watch?v=yuJG0TCRfwA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Separates the ideas of clock source and sample rate."
+        },
+        {
+          "title": "Clocking Multiple Audio Interfaces with a Mastering Clock",
+          "url": "https://www.youtube.com/watch?v=N-j54LteSGg",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "How audio engineers keep several devices on one clock."
+        }
+      ],
+      "sources": [
+        "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+        "https://www.youtube.com/watch?v=fZzMXdxbOes",
+        "https://www.youtube.com/watch?v=1zJwrD5yURM",
+        "https://www.youtube.com/watch?v=yuJG0TCRfwA",
+        "https://www.youtube.com/watch?v=N-j54LteSGg"
+      ]
+    },
+    {
+      "node_id": "p:magnet-alignment-and-standoff-repeatability-jig",
+      "type": "project",
+      "name": "Magnet alignment and standoff repeatability jig",
+      "summary": "Print an adjustable magnet holder over an AS5600, change standoff or sideways offset one step at a time, and compare repeated angle traces against marked reference angles.",
+      "lesson_md": "## In one sentence\n\nPrint an adjustable magnet holder over an AS5600, change standoff or sideways offset one step at a time, and compare repeated angle traces against marked reference angles.\n\n![Adafruit AS5600 magnetic angle sensor breakout, back view](/img/lessons/projects_sensing_1-magnet-jig.webp)\n*Adafruit AS5600 breakout. Source: [Adafruit AS5600 guide](https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview), license unknown.*\n\n## What you will learn\n\n- **Standoff:** The gap between magnet and chip; Adafruit says the AS5600 senses a rotating field up to 3 mm away.\n- **Offset:** How far the magnet's axis sits from the chip centre; Adafruit advises placing it near the middle.\n- **Status flags:** The Arduino example reports **MH: magnet too strong** and **ML: magnet too weak** from the AGC status.\n\n> **Key idea:** A magnetic encoder's accuracy depends on mechanics, so treat the mount as a parameter you test.\n\n## What you need\n\n- **AS5600 setup:** An Adafruit AS5600 breakout, a diametric rare-earth magnet, and a microcontroller running the Adafruit Arduino example.\n- A 3D-printed holder with screw-adjustable height and sideways slots, a printed 30° dial, and calipers.\n\n## Steps\n\n1. **Baseline:** centre the magnet, set standoff to 1 mm, and log angle and status at each 30° mark.\n2. **Standoff sweep:** change only standoff, in 0.5 mm steps up to 3 mm, repeating each setting three times.\n3. **Offset sweep:** change only offset, at a fixed standoff, sliding the magnet 0.5 mm per step.\n4. **Overlay traces** per setting and count invalid readings and MH/ML flags.\n5. **Run controls:** magnet removed (no-signal) and I2C unplugged mid-sweep.\n\n```python\nimport numpy as np\nerr = (measured_deg - ref_deg + 180) % 360 - 180   # wrap-safe error\nspread = err.reshape(3, -1).std(axis=0)             # 3 repeats per mark\nprint(np.abs(err).max(), spread.max())\n```\n\n```mermaid\nflowchart LR\n  J[\"Printed holder\"] --> G[\"Standoff or offset step\"]\n  G --> S[\"AS5600 angle + flags\"]\n  D[\"Marked dial\"] --> E[\"Angle error\"]\n  S --> E\n  E --> O[\"Overlaid traces per setting\"]\n```\n\n## Common pitfalls\n\n- **Changing two variables:** moving height and offset together hides which one caused the error.\n- **Wrong magnet type:** coin magnets with poles on the faces will not work; poles must be on the edge.\n- A **printed scale** is not a laboratory reference; do not report sub-degree accuracy from it.\n\n## When it's done\n\n- **A video exists:** the adjustable holder with overlaid angle traces for each standoff and offset, plus no-magnet and unplugged trials.\n- Builds on **Encoder rollover and index-reference explorer**; next read **Joint encoders & proprioceptive sensing**.",
+      "resources": [
+        {
+          "title": "A great cheap encoder -- the AS5600",
+          "url": "https://www.youtube.com/watch?v=-5e403JcevY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Quick demo of the AS5600 sensing a rotating magnet."
+        },
+        {
+          "title": "Overview | Adafruit AS5600 Magnetic Angle Sensor | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Sensing distance, magnet choice and placement advice."
+        },
+        {
+          "title": "Arduino | Adafruit AS5600 Magnetic Angle Sensor | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/arduino",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Example code that reports magnet detection and MH/ML flags."
+        },
+        {
+          "title": "How to program the AS5600",
+          "url": "https://www.youtube.com/watch?v=Dwc4hFgNP5I",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "The chip maker explains configuring the AS5600."
+        },
+        {
+          "title": "Pinouts | Adafruit AS5600 Magnetic Angle Sensor | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/pinouts",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Direction jumper and analog/PWM outputs on the breakout."
+        }
+      ],
+      "sources": [
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/arduino",
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/pinouts",
+        "https://www.youtube.com/watch?v=-5e403JcevY",
+        "https://www.youtube.com/watch?v=Dwc4hFgNP5I"
+      ]
+    },
+    {
+      "node_id": "p:magnetic-skin-array-crosstalk-and-wiring-characterization",
+      "type": "project",
+      "name": "Magnetic skin array crosstalk and wiring characterization",
+      "summary": "Lay out a small grid of magnetic skin patches, press one site at a time, and map how much each neighbouring readout channel responds.",
+      "lesson_md": "## In one sentence\n\nLay out a small grid of magnetic skin patches, press one site at a time, and map how much each neighbouring readout channel responds.\n\n![AnySkin overview figure showing the replaceable magnetic skin](/img/lessons/projects_sensing_1-skin-crosstalk.webp)\n*AnySkin overview figure. Source: [AnySkin project page](https://any-skin.github.io/), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **Magnetic skin:** A soft elastomer with magnetic particles; pressing it moves the field, which magnetometers below detect.\n- **Readout channels:** AnySkin's electronics use five magnetometers, each measuring flux density in three axes, so 15 numbers per patch.\n- **Crosstalk:** Response on channels you did not touch, like one noisy test leaking state into another.\n\n> **Key idea:** Before learning anything from touch, prove that a press on one site shows up mainly on that site's channels.\n\n## What you need\n\n- **AnySkin startup kit parts:** Magnetometer boards, QWIIC cables, a microcontroller and skins, per the AnySkin repository.\n- Two to four patches on a flat board, a hand-driven indenter with a fixed depth stop, and a laptop.\n\n## Steps\n\n1. **Record a baseline** with nothing touching and the laptop's chargers and motors away from the grid.\n2. **Indent one site** at a fixed depth, five repeats, logging all channels of every patch.\n3. **Move to the next site** and repeat until each site has been pressed.\n4. **Change wiring or spacing:** longer cables, patches closer together, then repeat steps 2–3.\n5. **Add controls:** a magnet or steel tool waved nearby as interference, and one board unplugged.\n\n```python\nimport numpy as np\nresp = np.abs(press - base).mean(axis=1)  # [site, channel]\ncrosstalk = resp / resp.max(axis=1, keepdims=True)\nprint(crosstalk)  # off-diagonal near 0 = little coupling\n```\n\n```mermaid\nflowchart LR\n  I[\"Single-site indent\"] --> S[\"Skin patch grid\"]\n  E[\"Ambient interference\"] --> S\n  S --> M[\"5 magnetometers per patch\"]\n  M --> B[\"Baseline subtraction\"]\n  B --> H[\"Site x channel heatmap\"]\n```\n\n## Common pitfalls\n\n- **Drift mistaken for crosstalk:** The AnySkin repo notes readings drift with no load; re-zero the baseline (press B in `anyskin_viz`) between runs.\n- **Moving magnetic objects nearby** changes every channel at once.\n- Use only **manufacturer-safe low-voltage readout**, not custom high-current electronics.\n\n## When it's done\n\n- **A video exists:** single-site indentations with a live heatmap of neighbouring channels, plus no-touch, interference and unplugged trials.\n- Start with the **Magnetic skin patch replacement repeatability bench**; read **Robot skin & distributed tactile hardware**.",
+      "resources": [
+        {
+          "title": "ReSkin: versatile, replaceable, lasting tactile skins",
+          "url": "https://www.youtube.com/watch?v=SxT_G-Im_CA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short overview of the magnetic skin idea AnySkin builds on."
+        },
+        {
+          "title": "AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://any-skin.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with sensor design and raw-signal visualization."
+        },
+        {
+          "title": "ReSkin: versatile, replaceable, lasting tactile skins",
+          "url": "https://reskin.dev/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "The original replaceable magnetic skin project."
+        },
+        {
+          "title": "GitHub - raunaqbhirangi/anyskin: Interfacing Repository for the AnySkin tactile sensor · GitHub",
+          "url": "https://github.com/raunaqbhirangi/anyskin",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Setup, visualizer and zero-recalibration for the sensor."
+        },
+        {
+          "title": "SSG48 open source gripper + AnySkin skin sensor",
+          "url": "https://www.youtube.com/watch?v=sxk_7GBTKyU",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "AnySkin mounted on a real gripper."
+        }
+      ],
+      "sources": [
+        "https://any-skin.github.io/",
+        "https://reskin.dev/",
+        "https://github.com/raunaqbhirangi/anyskin",
+        "https://www.youtube.com/watch?v=SxT_G-Im_CA",
+        "https://www.youtube.com/watch?v=sxk_7GBTKyU"
+      ]
+    },
+    {
+      "node_id": "p:magnetic-skin-patch-replacement-repeatability-bench",
+      "type": "project",
+      "name": "Magnetic skin patch replacement repeatability bench",
+      "summary": "Fabricate several AnySkin patches, swap them on the same sensor board, and compare their response curves under one safe, repeatable indentation.",
+      "lesson_md": "## In one sentence\n\nFabricate several AnySkin patches, swap them on the same sensor board, and compare their response curves under one safe, repeatable indentation.\n\n![AnySkin fabrication pipeline from silicone and magnetic powder to magnetized skins](/img/lessons/projects_sensing_1-skin-replace.webp)\n*AnySkin fabrication: silicone plus magnetic powder, a mould, cured skins and a pulse magnetizer. Source: [AnySkin project page](https://any-skin.github.io/), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **Replaceability:** AnySkin decouples the sensing electronics from the skin, so a worn skin can be swapped.\n- **Baseline and sensitivity:** The resting reading and the change per millimetre of indentation; both can differ between patches.\n- **Cross-instance comparison:** Like running the same test suite against several builds of one library.\n\n> **Key idea:** A replaceable sensor is only useful if a new patch behaves like the old one, or you know how it differs.\n\n## What you need\n\n- **Skin materials:** Per the AnySkin figure, Smooth-On DragonSkin 10 Slow, Magnequench MQFP-15-7 powder, a printed mould and access to a pulse magnetizer.\n- The AnySkin magnetometer board, a microcontroller, and a non-powered, hand-driven indenter with depth marks.\n\n## Steps\n\n1. **Make three or more patches** following the AnySkin fabrication instructions, labelling each one.\n2. **Mount the first patch:** record a no-load baseline, then indent 0.5 to 2 mm in steps, three repeats.\n3. **Swap to patch B** without moving the board or indenter, and repeat the same sequence.\n4. **Plot response curves** per patch: signal magnitude versus depth, with baseline subtracted.\n5. **Run controls:** no patch fitted, and the board unplugged mid-run.\n\n```python\nimport numpy as np\nfor name, curve in curves.items():        # curve[depth_mm] = signal\n    d = np.array(sorted(curve))\n    s = np.array([curve[k] for k in d])\n    slope = np.polyfit(d, s, 1)[0]         # sensitivity per mm\n    print(name, round(slope, 2))\n```\n\n```mermaid\nflowchart LR\n  F[\"Fabricate patches\"] --> M[\"Mount patch\"]\n  M --> B[\"No-load baseline\"]\n  B --> I[\"Hand-driven indent sweep\"]\n  I --> C[\"Response curve\"]\n  C -->|next patch| M\n```\n\n## Common pitfalls\n\n- **Re-zeroing differently per patch:** the AnySkin repo notes drift without load; use one zero procedure for every patch.\n- **Moving the fixture during swaps** turns geometry change into fake patch variation.\n- This is **replaceability metrology**, not a slip detector or friction study.\n\n## When it's done\n\n- **A video exists:** a skin being replaced and response curves under the same indentation, plus no-patch and unplugged trials.\n- Next, try the **Magnetic skin array crosstalk and wiring characterization** and read **Robot skin & distributed tactile hardware**.",
+      "resources": [
+        {
+          "title": "ReSkin: versatile, replaceable, lasting tactile skins (Fabrication Overview)",
+          "url": "https://www.youtube.com/watch?v=UBCOBzOkMS0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how magnetic skins are cast and magnetized."
+        },
+        {
+          "title": "AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://any-skin.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Design goals, fabrication figure and cross-instance results."
+        },
+        {
+          "title": "ReSkin: versatile, replaceable, lasting tactile skins",
+          "url": "https://www.youtube.com/watch?v=SxT_G-Im_CA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Explains why replaceable skins matter for robots."
+        },
+        {
+          "title": "GitHub - raunaqbhirangi/anyskin: Interfacing Repository for the AnySkin tactile sensor · GitHub",
+          "url": "https://github.com/raunaqbhirangi/anyskin",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Software to stream and visualize patch readings."
+        },
+        {
+          "title": "[2409.08276] AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://arxiv.org/abs/2409.08276",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Full paper with replaceability experiments."
+        }
+      ],
+      "sources": [
+        "https://any-skin.github.io/",
+        "https://github.com/raunaqbhirangi/anyskin",
+        "https://arxiv.org/abs/2409.08276",
+        "https://api.crossref.org/works/10.1109/icra55743.2025.11128638",
+        "https://www.youtube.com/watch?v=UBCOBzOkMS0",
+        "https://www.youtube.com/watch?v=SxT_G-Im_CA"
+      ]
+    },
+    {
+      "node_id": "p:measured-short-range-sensor-response-versus-simulated-rays",
+      "type": "project",
+      "name": "Measured short-range sensor response versus simulated rays",
+      "summary": "Sweep a flat target along a ruler in front of a real VL53L1X, rebuild the same setup in Gazebo with ray sensors, and plot real-minus-simulated range residuals against distance.",
+      "lesson_md": "## In one sentence\n\nSweep a flat target along a ruler in front of a real VL53L1X, rebuild the same setup in Gazebo with ray sensors, and plot real-minus-simulated range residuals against distance.\n\n![Pololu VL53L1X time-of-flight distance sensor carrier](/img/lessons/projects_sensing_1-sim-rays.webp)\n*Pololu VL53L1X carrier board. Source: [Pololu product 3415](https://www.pololu.com/product/3415), license unknown.*\n\n## What you will learn\n\n- **Simulated rays:** Gazebo's lidar sensor casts rays with a set number of `samples`, angle limits and `<min>`/`<max>` range.\n- **Real ToF behaviour:** Pololu says long mode reaches 4 m but ambient light cuts range; short mode is limited to about 1.3 m.\n- **Residuals:** Real minus simulated range at each distance, like diffing a mock's output against the production service.\n\n> **Key idea:** A simulator matches reality only where you have measured it; residual plots show where it does not.\n\n## What you need\n\n- **A VL53L1X carrier:** Pololu 3415, read over I²C; its full field of view is 27° with all elements enabled.\n- A matte target on a sliding mount, a 2 m ruler, a microcontroller, and Gazebo Harmonic on a laptop.\n\n## Steps\n\n1. **Measure real data:** target at 10 cm steps, 100 readings each, logging invalid or missing readings.\n2. **Build the virtual fixture:** a box at the same distances and a ray sensor with matching `<min>`, `<max>` and angles.\n3. **Echo simulated ranges** with `gz topic -e -t /lidar` and log them per distance.\n4. **Plot residuals** and valid-return rate versus distance for both.\n5. **Document mismatches:** blind zone near the sensor, dark targets, and ambient light the sim does not model.\n\n```python\nimport numpy as np\nreal = np.array([0.11, 0.20, 0.31, 0.40])   # metres, medians\nsim  = np.array([0.10, 0.20, 0.30, 0.40])\nres_mm = (real - sim) * 1000                # [10, 0, 10, 0]\nprint(res_mm.round())\n```\n\n```mermaid\nflowchart LR\n  R[\"Ruler sweep\"] --> V[\"VL53L1X readings\"]\n  R --> G[\"Gazebo ray sensor\"]\n  V --> D[\"Real minus sim residual\"]\n  G --> D\n  D --> P[\"Residual vs distance plot\"]\n```\n\n## Common pitfalls\n\n- **Tuning on evaluation points:** keep some distances out of any noise-model tuning to test it honestly.\n- **Ignoring invalid returns:** count them; a sim that always returns a range hides blind zones.\n- This is **sensor-model validation**, not SO-101 policy sim-to-real.\n\n## When it's done\n\n- **A split-screen video exists:** real ruler sweep beside the virtual fixture, with residual plots, an empty-target run and a disconnected sensor.\n- Builds on the **Gazebo noise-model fingerprint with known ground truth**; read **Sensor simulation & noise models** and **Short-range ranging: ultrasonic, infrared & ToF**.",
+      "resources": [
+        {
+          "title": "Time of Flight Sensor",
+          "url": "https://www.youtube.com/watch?v=mxMhFZYyAjQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 50-second picture of how time-of-flight ranging works."
+        },
+        {
+          "title": "Pololu - VL53L1X Time-of-Flight Distance Sensor Carrier with Voltage Regulator, 400cm Max",
+          "url": "https://www.pololu.com/product/3415",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distance modes, field of view and ambient-light limits."
+        },
+        {
+          "title": "Arduino code for VL53L1X Time-of-Flight 400cm Laser distance sensor - RJT232",
+          "url": "https://www.youtube.com/watch?v=Sc_iVfeocvg",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Wiring and reading this exact sensor."
+        },
+        {
+          "title": "Sensors — Gazebo harmonic documentation",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How to add and echo a simulated ray sensor."
+        },
+        {
+          "title": "Gazebo Sensors: GaussianNoiseModel Class Reference",
+          "url": "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The noise model you may add to the simulated rays."
+        }
+      ],
+      "sources": [
+        "https://www.pololu.com/product/3415",
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+        "https://www.youtube.com/watch?v=mxMhFZYyAjQ",
+        "https://www.youtube.com/watch?v=Sc_iVfeocvg"
+      ]
+    },
+    {
+      "node_id": "p:measurement-truth-versus-resolution-a-sensor-error-notebook",
+      "type": "project",
+      "name": "Measurement truth versus resolution: a sensor-error notebook",
+      "summary": "Build a notebook that generates a known signal, then toggles bias, quantization and random noise one at a time so you can see each error separately.",
+      "lesson_md": "## In one sentence\n\nBuild a notebook that generates a known signal, then toggles bias, quantization and random noise one at a time so you can see each error separately.\n\n![Plot of a signal, its quantized version and the quantization error](/img/lessons/projects_sensing_1-truth-resolution.webp)\n*Quantization error example. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Quantization_error.png), Gregory Maxwell, CC BY 3.0.*\n\n## What you will learn\n\n- **Truth:** The value you generated, known exactly because you wrote the code.\n- **Resolution:** The smallest step a reading can change by; a fine step does not mean the reading is correct.\n- **Bias and noise:** Kalibr's model splits sensor error into fast **white noise** and a slowly varying **bias**.\n\n> **Key idea:** Resolution, bias and random error are different problems; a sensor can be precise and still wrong.\n\n## What you need\n\n- **A Python notebook:** NumPy and Matplotlib, nothing else.\n- Optionally an IMU log to compare against later with the Allan Variance ROS tool.\n\n## Steps\n\n1. **Generate truth:** a slow sine plus a flat segment and a gap of missing samples.\n2. **Add one error at a time:** constant bias, then rounding to a step, then Gaussian noise.\n3. **Plot error versus truth** for each toggle and compute mean and standard deviation.\n4. **Combine all three** and check you can still recover each from the statistics.\n5. **Handle failures:** flat input, all-NaN input and a stuck value should be reported, not averaged.\n\n```python\nimport numpy as np\nt = np.linspace(0, 10, 1000)\ntruth = np.sin(t)\nbias, step, sigma = 0.05, 0.1, 0.02\nmeas = np.round((truth + bias + np.random.normal(0, sigma, t.size)) / step) * step\nerr = meas - truth\nprint(err.mean(), err.std())   # mean ~ bias; std mixes step and sigma\n```\n\n```mermaid\nflowchart LR\n  T[\"Known truth\"] --> B[\"+ bias\"]\n  B --> N[\"+ white noise\"]\n  N --> Q[\"Quantize to step\"]\n  Q --> E[\"Error = meas - truth\"]\n  E --> P[\"Mean, std, plots\"]\n```\n\n## Common pitfalls\n\n- **Confusing resolution with accuracy:** a 0.01 step on a biased sensor is still biased.\n- **Scaling noise wrongly:** Kalibr notes the discrete noise scales as σ/√Δt with the sample interval.\n- This is an **error-model lesson**, not a robot-state estimator.\n\n## When it's done\n\n- **A screen recording exists:** each error toggled independently with error plots, including flat and missing-signal cases.\n- Then try **ToF range validity across target color and ambient light**, and read **Sensor characteristics, uncertainty & noise**.",
+      "resources": [
+        {
+          "title": "Accuracy and Precision | It's Easy!",
+          "url": "https://www.youtube.com/watch?v=KEeSQvMCPLg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Two-minute intro to accuracy versus precision."
+        },
+        {
+          "title": "5. Quantization - Digital Audio Fundamentals",
+          "url": "https://www.youtube.com/watch?v=1KBLguIXL30",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Visual explanation of rounding a signal to steps."
+        },
+        {
+          "title": "ADC : Offset Error and Gain Error Explained",
+          "url": "https://www.youtube.com/watch?v=G7jkCyGipc8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "How bias-like errors appear in real converters."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "White noise and bias random walk, with equations."
+        },
+        {
+          "title": "ori-drs/allan_variance_ros",
+          "url": "https://github.com/ori-drs/allan_variance_ros",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Tool that estimates these noise terms from real IMU logs."
+        }
+      ],
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Quantization_error.png",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://github.com/ori-drs/allan_variance_ros",
+        "https://www.youtube.com/watch?v=KEeSQvMCPLg",
+        "https://www.youtube.com/watch?v=1KBLguIXL30",
+        "https://www.youtube.com/watch?v=G7jkCyGipc8"
+      ]
+    },
+    {
+      "node_id": "p:microphone-channel-ordering-and-geometry-clap-board",
+      "type": "project",
+      "name": "Microphone channel ordering and geometry clap board",
+      "summary": "Label each microphone on a ReSpeaker array, clap next to one at a time, and use per-channel waveforms to prove which USB channel is which raw microphone.",
+      "lesson_md": "## In one sentence\n\nLabel each microphone on a ReSpeaker array, clap next to one at a time, and use per-channel waveforms to prove which USB channel is which raw microphone.\n\n![ReSpeaker Mic Array v2.0 hardware overview with labelled parts](/img/lessons/projects_sensing_1-mic-clap.webp)\n*ReSpeaker Mic Array v2.0 hardware overview. Source: [Seeed Studio ReSpeaker wiki](https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/), license unknown.*\n\n## What you will learn\n\n- **Firmware decides channels:** The 1-channel firmware outputs processed audio only; the 6-channel factory firmware adds raw mics.\n- **Channel map:** Seeed lists channel 0 as processed audio, channels 1–4 as raw mic1–mic4, channel 5 as merged playback.\n- **Interleaving:** Six channels arrive mixed in one stream, like fields packed in one byte buffer.\n\n> **Key idea:** Never assume a USB audio channel is a raw microphone until a physical test proves it.\n\n## What you need\n\n- **A ReSpeaker USB 4-Mic Array v2.0** with the 6-channel firmware, a laptop with Python and `pyaudio`.\n- A card with each mic position labelled from the wiki's hardware overview, and a quiet room.\n\n## Steps\n\n1. **Check the firmware** and record six channels at 16000 Hz with Seeed's `record.py` example.\n2. **Clap safely** about 10 cm from mic1, then each other mic, announcing the label on camera.\n3. **Split channels** with `[X::6]` slicing and plot all six waveforms aligned.\n4. **Confirm the loudest channel** matches the labelled mic for every clap.\n5. **Run controls:** a quiet recording, and a mic covered or the device unplugged.\n\n```python\nimport numpy as np\ndata = np.frombuffer(raw, dtype=np.int16)   # 2-byte samples\nch = [data[i::6] for i in range(6)]\npeaks = [np.abs(c).max() for c in ch]\nprint(np.argmax(peaks[1:5]) + 1)            # loudest raw mic channel\n```\n\n```mermaid\nflowchart LR\n  C[\"Clap near labelled mic\"] --> A[\"Mic array\"]\n  A --> U[\"6-channel USB stream\"]\n  U --> S[\"Split with X::6\"]\n  S --> W[\"Per-channel waveforms\"]\n  W --> M[\"Verified channel map\"]\n```\n\n## Common pitfalls\n\n- **Treating channel 0 as raw:** it is processed audio for speech recognition.\n- **Wrong firmware loaded:** the 1-channel firmware gives a single processed stream.\n- Adding **source localization** now mixes two questions; keep this to channel mapping.\n\n## When it's done\n\n- **A video exists:** labelled mic positions, safe claps, and per-channel waveforms confirming ordering, plus quiet and disconnected cases.\n- Next, the **Long-recording microphone sample-clock drift audit**; read **Microphone arrays & robot audio acquisition**.",
+      "resources": [
+        {
+          "title": "ReSpeaker Mic Array v2.0 Unboxing",
+          "url": "https://www.youtube.com/watch?v=1zJwrD5yURM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the board and its four microphones."
+        },
+        {
+          "title": "Seeed Studio ReSpeaker Mic Array 2.0 - First Hands-on And Tests!",
+          "url": "https://www.youtube.com/watch?v=1YH9pMCC4SE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hands-on setup and recording tests."
+        },
+        {
+          "title": "reSpeaker USB 4-Mic Array XVF3000 v2.0 | Seeed Studio Wiki",
+          "url": "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Firmware channel table and Python recording example."
+        },
+        {
+          "title": "What is Sample Rate? | iZotope Pro Audio Essentials",
+          "url": "https://www.youtube.com/watch?v=fZzMXdxbOes",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Background on what each channel's samples represent."
+        }
+      ],
+      "sources": [
+        "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+        "https://www.youtube.com/watch?v=1zJwrD5yURM",
+        "https://www.youtube.com/watch?v=1YH9pMCC4SE",
+        "https://www.youtube.com/watch?v=fZzMXdxbOes"
+      ]
+    },
+    {
+      "node_id": "p:motor-current-torque-estimate-versus-an-independent-load-reference",
+      "type": "project",
+      "name": "Motor-current torque estimate versus an independent load reference",
+      "summary": "Hold an ODrive-driven motor in a guarded static fixture, convert its current into an estimated torque, and compare that curve against an independent force/torque sensor.",
+      "lesson_md": "## In one sentence\n\nHold an ODrive-driven motor in a guarded static fixture, convert its current into an estimated torque, and compare that curve against an independent force/torque sensor.\n\n![ODrive diagram of the region of allowed current versus velocity in torque mode](/img/lessons/projects_sensing_1-motor-torque.webp)\n*ODrive torque-mode current and velocity limits. Source: [ODrive controller documentation](https://docs.odriverobotics.com/v/latest/manual/control.html), license unknown.*\n\n## What you will learn\n\n- **Torque constant:** ODrive converts between current and torque with `torque_constant`, approximately 8.27 / Kv, with Kv in rpm/V.\n- **Estimate versus reference:** Current-derived torque is a model; a separate sensor checks it, like comparing a cached value with the database.\n- **Hysteresis:** Loading up and unloading can give different readings at the same torque.\n\n> **Key idea:** Motor current tells you what the motor thinks it pushes; only an independent sensor tells you what reaches the load.\n\n## What you need\n\n- **ODrive setup:** An ODrive S1 / Pro with a supported motor, conservative current and velocity limits, and a supervisor's review.\n- **Load reference:** For example an ATI Mini45; ATI lists 5 Nm Tz range and 1/1504 Nm resolution for SI-145-5.\n- A rated, restrained lever-arm fixture with a guard.\n\n## Steps\n\n1. **Lock the fixture** so the shaft cannot spin, then set `ControlMode.TORQUE_CONTROL`.\n2. **Step `input_torque`** up in small increments, holding each, then step back down.\n3. **Log both** the current-derived torque and the reference sensor at every step.\n4. **Plot the two curves separately,** then their difference, rising versus falling.\n5. **Run controls:** zero command (no-signal) and a disconnected reference sensor.\n\n```python\nKv = 150                       # rpm/V, from the ODrive example\nkt = 8.27 / Kv                 # 0.0551 Nm/A\nest_nm = kt * 2.0              # 2 A -> 0.110 Nm at the motor\nref_nm = 0.098                 # reference sensor reading\nprint(est_nm - ref_nm)         # 0.012 Nm gap to explain\n```\n\n```mermaid\nflowchart LR\n  C[\"input_torque command\"] --> M[\"ODrive + motor\"]\n  M --> I[\"Measured current\"]\n  I --> K[\"x torque_constant\"]\n  M --> F[\"Restrained lever arm\"]\n  F --> R[\"Independent F/T sensor\"]\n  K --> P[\"Two separate curves\"]\n  R --> P\n```\n\n## Common pitfalls\n\n- **Forgetting the gearbox:** ODrive says to adjust the torque constant for gear ratios.\n- **Lever-arm mistakes:** the reference reads torque at its own axis; measure the arm length.\n- This is **static calibration**, not a safety function or contact detector; Feetech load feedback is not current.\n\n## When it's done\n\n- **A guarded video exists:** current-derived and reference torque curves shown separately, with zero-command and disconnected-sensor trials.\n- Builds on **Six-axis wrench units and lever-arm replay**; read **Force/torque sensing & current-based torque estimation**.",
+      "resources": [
+        {
+          "title": "Torque constant and back-EMF constant (Motors #4)",
+          "url": "https://www.youtube.com/watch?v=9eUxWdtOrik",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Why motor current is proportional to torque."
+        },
+        {
+          "title": "Controller — ODrive Documentation 0.6.12 documentation",
+          "url": "https://docs.odriverobotics.com/v/latest/manual/control.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Torque control mode and the torque_constant setting."
+        },
+        {
+          "title": "Brushless Motor Torque Test for Robots (ODrive Controller)",
+          "url": "https://www.youtube.com/watch?v=bKqYYjGzpCY",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A real bench test of ODrive motor torque."
+        },
+        {
+          "title": "ODrive S1 - Torque Control Mode - LA8308 motor",
+          "url": "https://www.youtube.com/watch?v=fmVHYnsHvM8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Short clip of torque mode on real hardware."
+        },
+        {
+          "title": "ATI Industrial Automation: F/T Sensor Mini45",
+          "url": "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Ranges and resolutions of a lab-grade reference sensor."
+        }
+      ],
+      "sources": [
+        "https://docs.odriverobotics.com/v/latest/manual/control.html",
+        "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+        "https://www.youtube.com/watch?v=9eUxWdtOrik",
+        "https://www.youtube.com/watch?v=bKqYYjGzpCY",
+        "https://www.youtube.com/watch?v=fmVHYnsHvM8"
+      ]
+    },
+    {
+      "node_id": "p:multi-camera-usb-topology-and-capture-bandwidth-atlas",
+      "type": "project",
+      "name": "Multi-camera USB topology and capture-bandwidth atlas",
+      "summary": "Plug two USB cameras into known host ports, step through resolutions, and build a dashboard of real capture rate and device identity per port.",
+      "lesson_md": "## In one sentence\n\nPlug two USB cameras into known host ports, step through resolutions, and build a dashboard of real capture rate and device identity per port.\n\n![LeRobot dataset folder layout with one video folder per camera key](/img/lessons/projects_sensing_1-usb-cameras.webp)\n*LeRobotDataset v2.1 versus v3.0 file layout, with videos stored per camera key. Source: [LeRobotDataset v3.0 docs](https://huggingface.co/docs/lerobot/lerobot-dataset-v3), license unknown.*\n\n## What you will learn\n\n- **Device identity:** LeRobot warns camera identifiers may change after rebooting or re-plugging, depending on your OS.\n- **Requested versus delivered:** `OpenCVCameraConfig` asks for width, height and fps; the camera may deliver less.\n- **Topology:** Which physical port and hub each camera uses, like mapping services to the network links they share.\n\n> **Key idea:** A camera config is a request; only measured frame rates per port tell you what your rig delivers.\n\n## What you need\n\n- **Two USB webcams** and a Linux laptop with LeRobot and `v4l2-ctl` installed.\n- Labels for every host port and hub, and a printed timer or clock in view.\n\n## Steps\n\n1. **Discover cameras** with `lerobot-find-cameras opencv` and `v4l2-ctl --list-devices`, noting each `/dev/videoX`.\n2. **Label topology:** which port, hub and camera; photograph it.\n3. **Sweep resolutions:** for each camera, request 640×480 at 30 fps, then larger modes, alone and together.\n4. **Measure delivered fps** with `async_read`, counting timeouts as dropped frames.\n5. **Replug and reboot,** then record whether identities moved; also test a camera covered and one unplugged.\n\n```python\nimport time\nn, t0 = 0, time.time()\nwhile time.time() - t0 < 10:\n    try:\n        cam.async_read(timeout_ms=200); n += 1\n    except TimeoutError:\n        print(\"frame timeout\")\nprint(n / 10, \"fps delivered\")\n```\n\n```mermaid\nflowchart LR\n  P[\"Labelled USB ports\"] --> C[\"Camera A + B\"]\n  C --> F[\"lerobot-find-cameras\"]\n  F --> R[\"Resolution sweep\"]\n  R --> M[\"Delivered fps\"]\n  F --> I[\"Identity after replug\"]\n  M --> D[\"Atlas dashboard\"]\n  I --> D\n```\n\n## Common pitfalls\n\n- **Trusting indices:** `index_or_path=0` may point to a different camera after a replug.\n- **Single-camera testing:** shared hubs can behave differently when both stream.\n- This characterizes the **acquisition rig**, not timestamp alignment or dataset training.\n\n## When it's done\n\n- **A video exists:** two cameras, their ports, and a dashboard of capture rate and identity across resolutions and replug tests.\n- Then try the **Quick-release wrist-camera remount calibration fixture**; read **Wrist cameras & multi-camera data-collection rigs** and the **LeRobot** docs.",
+      "resources": [
+        {
+          "title": "Using multiple USB webcams in Linux (3 Solutions!!)",
+          "url": "https://www.youtube.com/watch?v=q_omtqPABZI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short look at multi-webcam issues on Linux."
+        },
+        {
+          "title": "Cameras · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/cameras",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Finding cameras, configs and read modes in LeRobot."
+        },
+        {
+          "title": "SO 101 LeRobot AI Robot Learning Setup | Complete DIY Build, Cameras, Lighting and ACT",
+          "url": "https://www.youtube.com/watch?v=pbd-qDRHLnM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A real SO-101 rig with its camera setup."
+        },
+        {
+          "title": "LeRobotDataset v3.0 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How per-camera video ends up in a dataset."
+        },
+        {
+          "title": "How to Train an AI Robotic Arm With No Code (Hugging Face LeRobot + SO-101)",
+          "url": "https://www.youtube.com/watch?v=7tGT8hqRSAo",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Long end-to-end walkthrough including camera setup."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/cameras",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://www.youtube.com/watch?v=q_omtqPABZI",
+        "https://www.youtube.com/watch?v=pbd-qDRHLnM",
+        "https://www.youtube.com/watch?v=7tGT8hqRSAo"
+      ]
+    }
+  ]
+}
