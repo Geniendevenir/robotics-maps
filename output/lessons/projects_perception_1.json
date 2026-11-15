@@ -218,6 +218,323 @@
         "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
         "https://raw.githubusercontent.com/facebookresearch/sam2/main/README.md"
       ]
+    },
+    {
+      "node_id": "p:color-blob-tracker-in-opencv",
+      "type": "project",
+      "name": "Color-blob tracker in OpenCV",
+      "summary": "Track a colored ball in webcam video using OpenCV thresholds, then draw its center and recent path.",
+      "lesson_md": "## In one sentence\n\nTrack a colored ball in webcam video using OpenCV thresholds, then draw its center and recent path.\n\n![PyImageSearch ball-tracking demo with a colored trajectory behind the ball](/img/lessons/projects_perception_1-color-blob.webp)\n*PyImageSearch ball-tracking demo with a colored trajectory behind the ball. Source: [Official publication](https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/), license unknown.*\n\n## What you will learn\n\n- **Color segmentation** separates pixels matching a chosen color from everything else; no learned detector is needed for this controlled baseline.\n- **HSV** represents hue, saturation, and brightness separately, making a color range easier to tune than separate red, green, and blue thresholds.\n- **Software analogy:** A mask is a Boolean filter over pixels; connected regions become candidate records, and a short queue stores accepted centers.\n\n> **Key idea:** This tracker recognizes a color region, not the semantic concept of a ball.\n\n## What you need\n\n- **Setup:** A webcam, a distinctly colored ball, Python, OpenCV, and a contrasting background; reuse equipment rather than buying a robot.\n- **Preparation:** Intro: calibrate a webcam and track AprilTags is the map prerequisite; this exercise practices Classical image processing & feature matching.\n- **Budget:** Additional hardware cost is unknown if you lack a webcam; the exercise needs no training dataset or paid API.\n\n## Steps\n\n1. **Read frames:** Display the live camera image; explicitly stop or report an error if capture returns no frame.\n2. **Tune a mask:** Convert BGR camera pixels to HSV and adjust lower/upper bounds while displaying the black-and-white selection beside the video.\n3. **Clean the selection:** Use erosion and dilation, operations that shrink and expand selected regions, to remove small isolated patches.\n4. **Find the center:** Extract contours, the region boundaries; choose a plausible ball candidate and compute its center from image moments.\n5. **Draw the path:** Keep recent valid centers in a bounded queue; break the path when the ball disappears instead of connecting unrelated detections.\n6. **Record the demo:** Show the frame, mask, center, and trajectory together; repeat with the ball absent and under changed lighting.\n\n```mermaid\nflowchart LR\n A[Webcam] --> B[HSV range]\n B --> C[Clean mask]\n C --> D[Contours]\n D --> E[Center or absent]\n E --> F[Path overlay]\n```\n\n## Common pitfalls\n\n- **Zero area:** Before dividing image moments, require a nonzero area. The example below assumes a candidate contour already exists.\n\n```python\nM = cv2.moments(contour)\ncenter = None\nif M['m00'] != 0:\n    center = (int(M['m10'] / M['m00']),\n              int(M['m01'] / M['m00']))\n```\n\n- **Color distractors:** Add another similarly colored object; count wrong selections rather than treating the largest region as guaranteed identity.\n- **Lighting changes:** Save thresholds with the test conditions; a setting tuned at one desk is not universal object recognition.\n\n## When it's done\n\n- **Deliverable:** A replayable webcam clip and test table reporting successful tracks, misses, and false detections for normal, empty, and poorly lit scenes.",
+      "resources": [
+        {
+          "title": "Ball Tracking with OpenCV",
+          "url": "https://www.youtube.com/watch?v=dKpRsdYSCLQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the creator’s colored-ball tracker and trajectory overlay."
+        },
+        {
+          "title": "Ball Tracking with OpenCV",
+          "url": "https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Build the threshold, contour, and bounded-history baseline."
+        },
+        {
+          "title": "Thresholding Operations using inRange",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/tutorials/imgproc/threshold_inRange/threshold_inRange.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand HSV thresholding and interactive range controls."
+        },
+        {
+          "title": "Contour Features",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compute contour area and centroid from image moments."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=dKpRsdYSCLQ",
+        "https://pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/tutorials/imgproc/threshold_inRange/threshold_inRange.markdown",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.markdown"
+      ]
+    },
+    {
+      "node_id": "p:depth-camera-failure-atlas",
+      "type": "project",
+      "name": "Depth camera failure atlas",
+      "summary": "Build a measured gallery showing when a depth camera returns missing or misleading distances on difficult surfaces and lighting.",
+      "lesson_md": "## In one sentence\n\nBuild a measured gallery showing when a depth camera returns missing or misleading distances on difficult surfaces and lighting.\n\n![RealSense tuning guide example of an underexposed camera image](/img/lessons/projects_perception_1-depth-failures.webp)\n*RealSense tuning guide example of an underexposed camera image. Source: [Official publication](https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance), license unknown.*\n\n## What you will learn\n\n- **RGB-D** pairs a color image with a depth image, whose pixels encode distance; an attractive color picture does not prove valid depth.\n- **Invalid depth** means the camera could not provide a usable distance; distinguish that from a valid-looking but incorrect measurement.\n- **Software analogy:** Build a regression-test matrix for a sensor, changing one input condition at a time instead of collecting only successful screenshots.\n\n> **Key idea:** Measure missing pixels and distance error separately; filling a hole is not proof that the surface was measured correctly.\n\n## What you need\n\n- **Hardware:** Borrow one supported depth camera, such as RealSense D405 or OAK-D Pro, plus a ruler, matte target, glass, metal, and dark objects.\n- **Software:** Use the matching camera viewer and SDK; librealsense (RealSense SDK) includes a depth-quality tool for evaluating a selected image region.\n- **Preparation:** Start with Intro: calibrate a webcam and track AprilTags and Stereo & RGB-D depth sensing; exact purchase cost is unknown.\n- **Trial sheet:** Record camera model, firmware, exposure, illumination, target distance, and processing settings so another student can repeat each observation.\n\n## Steps\n\n1. **Establish a baseline:** Capture a flat matte target; compare the reported distance with a physical measurement before trying difficult materials.\n2. **Define the region:** Mark the same target area in each trial; save raw depth and color images before applying hole-filling filters.\n3. **Change one condition:** Test glass, shiny metal, dark material, and daylight separately, keeping geometry and camera settings documented.\n4. **Calculate metrics:** Count valid pixels and compare valid distances with the reference; never silently substitute zero for missing distance.\n5. **Test processing:** Compare raw and filtered output side by side; label whether an apparent improvement comes from new measurements or interpolation.\n6. **Publish the gallery:** Include empty scenes, missing targets, and poor lighting; report successes and failures without claiming every depth technology behaves identically.\n\n```mermaid\nflowchart LR\n A[Trial conditions] --> B[Raw capture]\n B --> C[Validity mask]\n B --> D[Reference comparison]\n C --> E[Metrics and gallery]\n D --> E\n```\n\n## Common pitfalls\n\n- **Worked metric:** Report fill rate as valid pixels divided by all pixels in the selected region; keep its region and validity rule beside the value.\n- **Exposure confound:** RealSense identifies poor exposure as a major depth-quality problem; inspect the stereo images before blaming the material alone.\n- **Transparent targets:** A plausible distance may describe the background, not the glass; compare against the intended surface rather than only counting nonempty pixels.\n\n## When it's done\n\n- **Deliverable:** A video atlas with synchronized color, depth, invalid-pixel masks, settings, and measured error tables that later grasping projects can consult.",
+      "resources": [
+        {
+          "title": "RealSense vs. OAK vs. ZED vs. Azure Kinect vs. Mech Mind 3D cameras comparison",
+          "url": "https://www.youtube.com/watch?v=JmZdSGtJHNw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a robotics practitioner compare depth output on glass, shiny, and dark targets."
+        },
+        {
+          "title": "Tuning depth cameras for best performance",
+          "url": "https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Control exposure, texture, range, and post-processing before interpreting failures."
+        },
+        {
+          "title": "Optical Filters for RealSense™ Depth Cameras",
+          "url": "https://www.realsenseai.com/stereo-depth/improving-depth-with-optical-filters/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand why reflections and illumination change depth quality."
+        },
+        {
+          "title": "Depth Quality Tool",
+          "url": "https://github.com/realsenseai/librealsense/tree/master/tools/depth-quality",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the official measurement tool rather than judging only colorized depth."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=JmZdSGtJHNw",
+        "https://dev.realsenseai.com/docs/tuning-depth-cameras-for-best-performance",
+        "https://www.realsenseai.com/stereo-depth/improving-depth-with-optical-filters/",
+        "https://github.com/realsenseai/librealsense/tree/master/tools/depth-quality"
+      ]
+    },
+    {
+      "node_id": "p:depth-from-a-single-photo",
+      "type": "project",
+      "name": "Depth from a single photo",
+      "summary": "Run Depth Anything V2 on images and webcam frames, then inspect a depth visualization and a clearly qualified point-cloud reconstruction.",
+      "lesson_md": "## In one sentence\n\nRun Depth Anything V2 on images and webcam frames, then inspect a depth visualization and a clearly qualified point-cloud reconstruction.\n\n![Depth Anything V2 published examples pairing photographs with predicted depth maps](/img/lessons/projects_perception_1-single-photo-depth.webp)\n*Depth Anything V2 published examples pairing photographs with predicted depth maps. Source: [Official publication](https://depth-anything-v2.github.io/), license unknown.*\n\n## What you will learn\n\n- **Monocular depth** estimates scene structure from one camera image; unlike stereo, it does not compare simultaneous views from two cameras.\n- **Relative depth** orders near and far surfaces without automatically providing meters; Depth Anything V2 also offers separately fine-tuned metric models.\n- **Software analogy:** Treat inference as an image-to-array API; a colorful frontend is not the numerical data contract needed by downstream geometry code.\n\n> **Key idea:** A convincing depth picture is not a calibrated distance sensor.\n\n## What you need\n\n- **Inputs:** A saved photograph, then a webcam or recorded video; begin with the Small checkpoint and the authors’ inference code.\n- **Tools:** Python, PyTorch, OpenCV, and Open3D for viewing a point cloud, a set of points in three-dimensional space.\n- **Budget:** Reuse a computer and images; GPU rental and a webcam may cost money. Additional cost is unknown, not a promised zero-cost hardware build.\n- **Map preparation:** Complete Intro: calibrate a webcam and track AprilTags, then connect the results to Monocular depth estimation.\n\n## Steps\n\n1. **Run a still image:** Download the matching checkpoint and configuration; save both the raw prediction array and the color visualization.\n2. **Inspect the contract:** Record image dimensions and numerical range. Keep visualization normalization separate from any geometry calculation.\n3. **Process a clip:** Display original frames beside colored depth; preserve timestamps and measure processing time instead of promising live performance.\n4. **Choose a geometry route:** For a metric point cloud, use a documented metric model and camera intrinsics, the parameters mapping pixels to viewing rays.\n5. **View the result:** Use Open3D to inspect reconstructed surfaces; label scale as arbitrary if you lack metric depth or verified camera calibration.\n6. **Demo the limitations:** Compare ordinary scenes, an empty table, missing targets, glass, and poor lighting; save obvious failures as well as attractive examples.\n\n```mermaid\nflowchart LR\n A[Photo or frame] --> B[Depth model]\n B --> C[Raw array]\n C --> D[Color display]\n C --> E[Check scale and intrinsics]\n E --> F[Point cloud]\n```\n\n**Worked API example:** After loading the model as documented, inference returns a height-by-width NumPy array, not automatically a meter-valued sensor stream.\n\n```python\nraw_depth = model.infer_image(raw_img)\nprint(raw_depth.shape)\n```\n\n## Common pitfalls\n\n- **False units:** Do not feed a relative-depth color image into a metric point-cloud routine and label the output meters.\n- **Video flicker:** Inspect stationary objects across adjacent frames; independent image predictions need not remain temporally stable.\n- **Missing input:** Reject unreadable images and camera failures explicitly rather than displaying the previous prediction as a new result.\n\n## When it's done\n\n- **Deliverable:** A side-by-side clip, saved numerical predictions, an inspectable point cloud with scale assumptions, and a table of successful and failed trials.",
+      "resources": [
+        {
+          "title": "Depth Anything v2: Generating 3D Point Clouds from a Single Image",
+          "url": "https://www.youtube.com/watch?v=3Upms4NunbE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow a concrete single-image depth-to-point-cloud demonstration."
+        },
+        {
+          "title": "Depth Anything V2",
+          "url": "https://depth-anything-v2.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the authors’ published qualitative depth examples."
+        },
+        {
+          "title": "Depth Anything V2",
+          "url": "https://github.com/DepthAnything/Depth-Anything-V2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Load checkpoints and run image or video inference."
+        },
+        {
+          "title": "open3d.geometry.PointCloud",
+          "url": "https://www.open3d.org/docs/release/python_api/open3d.geometry.PointCloud.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read depth-to-point-cloud assumptions, including intrinsics and depth scaling."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=3Upms4NunbE",
+        "https://depth-anything-v2.github.io/",
+        "https://github.com/DepthAnything/Depth-Anything-V2",
+        "https://www.open3d.org/docs/release/python_api/open3d.geometry.PointCloud.html"
+      ]
+    },
+    {
+      "node_id": "p:diy-stereo-camera-from-two-webcams",
+      "type": "project",
+      "name": "DIY stereo camera from two webcams",
+      "summary": "Mount two webcams rigidly, calibrate their geometry, and turn paired views into a live disparity map.",
+      "lesson_md": "## In one sentence\n\nMount two webcams rigidly, calibrate their geometry, and turn paired views into a live disparity map.\n\n![LearnOpenCV two-webcam stereo rig beside an OAK-D camera](/img/lessons/projects_perception_1-diy-stereo.webp)\n*LearnOpenCV two-webcam stereo rig beside an OAK-D camera. Source: [Official publication](https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/), license unknown.*\n\n## What you will learn\n\n- **Stereo vision** estimates geometry by finding the same scene feature in two camera views; closer features generally shift more between those views.\n- **Disparity** is that horizontal shift in pixels after **rectification**, the image transformation that aligns corresponding features onto matching rows.\n- **Software analogy:** Rectification creates a common schema before a join; stereo matching then searches for corresponding records along each row.\n\n> **Key idea:** Good stereo starts with a rigid, calibrated camera pair, not with a prettier depth colormap.\n\n## What you need\n\n- **Hardware:** Two USB webcams, preferably identical, a rigid base or printed mount, and a flat checkerboard with measured square size.\n- **Software:** OpenCV and paired image capture; keep both camera resolutions fixed and document how closely their exposures are synchronized.\n- **Budget:** Reuse webcams and print a mount if available; actual webcam and printing costs are unknown until you choose components.\n- **Map preparation:** Start with Intro: calibrate a webcam and track AprilTags, then Camera calibration (intrinsic, extrinsic & hand-eye) and Stereo & RGB-D depth sensing.\n\n## Steps\n\n1. **Build the rig:** Fix both cameras to the mount; record the baseline, the distance between their optical centers, and prevent movement after calibration.\n2. **Capture paired boards:** Move the checkerboard through different positions and tilts; accept a pair only when both cameras observe the same board pose.\n3. **Calibrate each camera:** Estimate intrinsics and lens distortion; preserve image size, board dimensions, and the unit used for square size.\n4. **Calibrate the pair:** Estimate their relative rotation and translation; rectify new images and overlay horizontal lines to inspect correspondence alignment.\n5. **Compute disparity:** Start with OpenCV’s StereoBM matcher on grayscale rectified images; display unmatched areas explicitly instead of inventing distances.\n6. **Demonstrate the rig:** Record a live disparity map, then compare static textured objects, an empty background, a missing target, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Paired frames] --> B[Calibration]\n B --> C[Rectification]\n C --> D[Row matching]\n D --> E[Disparity map]\n```\n\n**Worked relationship:** Depth equals baseline times focal length divided by disparity; use consistent physical units and focal length in pixels.\n\n`Z = B * f / disparity`\n\n## Common pitfalls\n\n- **Unsynchronized motion:** Two ordinary webcams can capture a moving object at different moments; begin with stationary scenes to separate timing errors from calibration errors.\n- **Textureless surfaces:** A plain wall offers ambiguous matches; distinguish invalid areas from genuine distant surfaces.\n- **Mount flex:** Recalibrate after moving either camera; an old calibration cannot describe a new camera arrangement.\n\n## When it's done\n\n- **Deliverable:** A documented rigid rig, saved calibration, rectified alignment example, live disparity video, and test counts identifying where matching succeeds or fails.",
+      "resources": [
+        {
+          "title": "3D Stereo Depth Vision with 2 Cameras - OpenCV Python Tutorial",
+          "url": "https://www.youtube.com/watch?v=k_QSqbj_bYo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a two-camera OpenCV stereo workflow before building your own rig."
+        },
+        {
+          "title": "Making A Low-Cost Stereo Camera Using OpenCV",
+          "url": "https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Build a rigid webcam pair and understand rectification."
+        },
+        {
+          "title": "Stereo Camera Calibration and Triangulation with OpenCV and Python",
+          "url": "https://temugeb.github.io/opencv/python/2021/02/02/stereo-camera-calibration-and-triangulation.html",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Follow paired checkerboard calibration and coordinate conventions."
+        },
+        {
+          "title": "Depth Map from Stereo Images",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_depthmap/py_depthmap.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Try StereoBM and understand the disparity-depth relationship."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=k_QSqbj_bYo",
+        "https://learnopencv.com/making-a-low-cost-stereo-camera-using-opencv/",
+        "https://temugeb.github.io/opencv/python/2021/02/02/stereo-camera-calibration-and-triangulation.html",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_depthmap/py_depthmap.markdown"
+      ]
+    },
+    {
+      "node_id": "p:edge-open-vocabulary-detection-on-jetson",
+      "type": "project",
+      "name": "Edge open-vocabulary detection on Jetson",
+      "summary": "Run text-prompted object detection locally on a Jetson and measure how prompts, optimization, and scene conditions affect the result.",
+      "lesson_md": "## In one sentence\n\nRun text-prompted object detection locally on a Jetson and measure how prompts, optimization, and scene conditions affect the result.\n\n![NanoOWL published result detecting an owl and a glove from text prompts](/img/lessons/projects_perception_1-jetson-open-vocab.webp)\n*NanoOWL published result detecting an owl and a glove from text prompts. Source: [Official publication](https://github.com/NVIDIA-AI-IOT/nanoowl), license unknown.*\n\n## What you will learn\n\n- **Open-vocabulary detection** uses text descriptions to request object boxes rather than restricting the interface to a fixed list of class IDs.\n- **Edge inference** runs the model on the robot’s local computer; this project measures actual behavior instead of assuming desktop performance transfers unchanged.\n- **Software analogy:** A prompt is a query, not a new training label; changing the query changes what the detector searches for without retraining it.\n\n> **Key idea:** Text flexibility and useful detection quality are separate properties; benchmark both on the actual board.\n\n## What you need\n\n- **Hardware:** Borrow a supported Jetson Orin and USB camera; use the board’s appropriate power supply and cooling. Purchase and storage costs are unknown.\n- **Software:** Use NanoOWL’s TensorRT-optimized OWL-ViT route for the first deployment; TensorRT compiles model operations into an inference engine for NVIDIA hardware.\n- **Model distinction:** The map also links OWLv2; NanoOWL optimizes OWL-ViT, so do not rename its benchmark as an OWLv2 deployment.\n- **Preparation:** Begin with Intro: calibrate a webcam and track AprilTags and Open-vocabulary detection & grounding; log the board, software stack, resolution, and prompts.\n\n## Steps\n\n1. **Establish a reference:** Run the repository’s supplied owl-and-glove image; verify that boxes align with the requested objects before connecting live capture.\n2. **Build the engine:** Follow the supported Jetson setup and build the image encoder engine; retain its configuration with the benchmark results.\n3. **Connect the camera:** Start the live tree-prediction demo; check the camera device on the host before debugging container access.\n4. **Query ordinary objects:** Keep a fixed test collection; compare wording changes while preserving frames and score thresholds for a fair comparison.\n5. **Profile the pipeline:** Measure capture-to-display delay and processed frames per second separately; include prompt updates and rendering rather than only model execution.\n6. **Record the evaluation:** Demonstrate present objects, absent requested objects, an empty scene, and poor lighting; report false boxes and missed targets alongside speed.\n\n```mermaid\nflowchart LR\n A[Camera frame] --> C[OWL image encoder]\n B[Text query] --> D[Text features]\n C --> E[Compare and locate]\n D --> E\n E --> F[Boxes and timings]\n```\n\n**Worked prompt:** The repository’s basic example requests `[an owl, a glove]`; reproduce it before replacing those descriptions with your own tabletop objects.\n\n## Common pitfalls\n\n- **Threshold tuning:** Lowering the score cutoff may reveal more objects and more false positives; save the threshold with every result.\n- **Model substitutions:** A faster OWL-ViT build does not establish that a different OWLv2 checkpoint will export, fit, or run at the same speed.\n- **No camera:** Treat missing input as an explicit failure state, not an unchanged last frame masquerading as live detection.\n\n## When it's done\n\n- **Deliverable:** A live text-editable detector with a reproducible environment, per-prompt success/failure counts, and measured throughput and end-to-end delay.",
+      "resources": [
+        {
+          "title": "Jetbot Orin Object Tracking using NanoOWL",
+          "url": "https://www.youtube.com/watch?v=HNumaRcdKuE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a creator demonstrate NanoOWL object tracking on Jetson Orin."
+        },
+        {
+          "title": "Tutorial - NanoOWL | Jetson AI Lab",
+          "url": "https://www.jetson-ai-lab.com/tutorials/nanoowl/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Start the supported container and live camera demo."
+        },
+        {
+          "title": "NVIDIA-AI-IOT/nanoowl",
+          "url": "https://github.com/NVIDIA-AI-IOT/nanoowl",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Build the TensorRT encoder and reproduce prompt-based detections."
+        },
+        {
+          "title": "OWLv2",
+          "url": "https://huggingface.co/docs/transformers/model_doc/owlv2",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the related map model without confusing it with NanoOWL’s OWL-ViT."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HNumaRcdKuE",
+        "https://www.jetson-ai-lab.com/tutorials/nanoowl/",
+        "https://github.com/NVIDIA-AI-IOT/nanoowl",
+        "https://huggingface.co/docs/transformers/model_doc/owlv2"
+      ]
+    },
+    {
+      "node_id": "p:edge-yolo-on-a-jetson-with-ros-2",
+      "type": "project",
+      "name": "Edge YOLO on a Jetson with ROS 2",
+      "summary": "Deploy a YOLO detector on a Jetson and publish timestamped detections through ROS 2 while measuring throughput and delay.",
+      "lesson_md": "## In one sentence\n\nDeploy a YOLO detector on a Jetson and publish timestamped detections through ROS 2 while measuring throughput and delay.\n\n![Ultralytics Jetson guide showing the embedded NVIDIA hardware ecosystem](/img/lessons/projects_perception_1-jetson-yolo.webp)\n*Ultralytics Jetson guide showing the embedded NVIDIA hardware ecosystem. Source: [Official publication](https://docs.ultralytics.com/guides/nvidia-jetson/), license unknown.*\n\n## What you will learn\n\n- **YOLO detection** turns an image into object classes, confidence scores, and bounding boxes, rectangles locating candidate objects in image coordinates.\n- **ROS 2 topics** carry messages between processes; a detector must preserve which camera frame produced each result, not just draw attractive boxes.\n- **Software analogy:** Exporting a model resembles compiling a program; ROS messages are its public API, and timestamps are essential request-tracing metadata.\n\n> **Key idea:** Fast inference is not the same as fresh robot information; measure the whole path from camera capture to published result.\n\n## What you need\n\n- **Hardware:** A Jetson, suitable power supply, cooling, storage, and camera; borrow the kit if possible. Exact hardware cost is unknown.\n- **Software:** A compatible JetPack environment, Ultralytics, TensorRT, ROS 2, and a working camera image topic before adding detection.\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags; connect this project to Real-time 2D object detection and YOLO11.\n- **Scope:** Use a small pretrained detector first. Isaac ROS is a related integration stack, not proof that an arbitrary YOLO export is automatically supported.\n\n## Steps\n\n1. **Verify camera messages:** Inspect image encoding, dimensions, header timestamp, and frame identifier; keep a saved recording for repeatable tests.\n2. **Establish baseline inference:** Run the chosen YOLO11 checkpoint without export first; save example boxes and confidence scores for later comparison.\n3. **Export and compare:** Build a TensorRT engine using the official export workflow; test identical recorded frames and check for changed predictions.\n4. **Wrap the detector:** Subscribe to camera messages, convert images correctly, and publish a documented detection message containing boxes, labels, scores, and original frame identity.\n5. **Bound the backlog:** Prefer a deliberate frame-dropping policy over an ever-growing queue; record dropped frames and processing duration separately.\n6. **Demo and measure:** Show live boxes plus a second ROS subscriber receiving results; test ordinary objects, missing targets, empty scenes, and poor lighting.\n\n```mermaid\nflowchart LR\n A[Camera topic] --> B[Image conversion]\n B --> C[YOLO engine]\n C --> D[Detection topic]\n D --> E[Subscriber and overlay]\n```\n\n**Worked export:** With the matching Ultralytics environment and checkpoint, the official export interface supports a TensorRT engine target.\n\n```python\nfrom ultralytics import YOLO\nmodel = YOLO('yolo11n.pt')\nmodel.export(format='engine')\n```\n\n## Common pitfalls\n\n- **Misleading speed:** Report both inference duration and capture-to-publication delay; compare clocks consistently rather than subtracting unrelated device timestamps.\n- **Stale detections:** Publish an empty result for a processed frame without objects; distinguish that from camera disconnection or inference failure.\n- **Unfair comparisons:** Keep checkpoint, image size, and thresholds fixed when comparing baseline and optimized runtime.\n\n## When it's done\n\n- **Deliverable:** A reproducible launch procedure, recorded input and output topics, measured latency/throughput, and success/failure counts, not merely an FPS counter.",
+      "resources": [
+        {
+          "title": "Object detection in Gazebo using Yolov5 and ROS2",
+          "url": "https://www.youtube.com/watch?v=594Gmkdo-_s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See YOLO detections integrated with ROS 2; the simulated example illustrates messaging rather than Jetson performance."
+        },
+        {
+          "title": "YOLO26 on NVIDIA Jetson Setup & Benchmarks | Ultralytics",
+          "url": "https://docs.ultralytics.com/guides/nvidia-jetson/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the current Jetson environment and deployment workflow; keep your selected YOLO11 checkpoint explicit."
+        },
+        {
+          "title": "Model Export with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/modes/export/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand engine export options and compare outputs after optimization."
+        },
+        {
+          "title": "Image",
+          "url": "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Image.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Preserve image encoding, acquisition timestamp, and camera frame identity."
+        },
+        {
+          "title": "Ultralytics YOLO11",
+          "url": "https://docs.ultralytics.com/models/yolo11/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose the map’s YOLO11 detection checkpoint and task."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=594Gmkdo-_s",
+        "https://docs.ultralytics.com/guides/nvidia-jetson/",
+        "https://docs.ultralytics.com/modes/export/",
+        "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Image.html",
+        "https://docs.ultralytics.com/models/yolo11/"
+      ]
+    },
+    {
+      "node_id": "p:event-frame-fusion-under-extreme-lighting",
+      "type": "project",
+      "name": "Event + frame fusion under extreme lighting",
+      "summary": "Combine conventional images with event-camera brightness changes, then test whether the fused view helps detection when lighting defeats the frame-only baseline.",
+      "lesson_md": "## In one sentence\n\nCombine conventional images with event-camera brightness changes, then test whether the fused view helps detection when lighting defeats the frame-only baseline.\n\n![Published event-and-frame complementary-filter figure from the reconstruction project](/img/lessons/projects_perception_1-event-frame-fusion.webp)\n*Published event-and-frame complementary-filter figure from the reconstruction project. Source: [Official publication](https://github.com/cedric-scheerlinck/dvs_image_reconstruction), license unknown.*\n\n## What you will learn\n\n- **Events** report pixel locations, times, and brightness-change polarity, meaning increase or decrease; they are not conventional pictures arriving faster.\n- **Fusion** combines complementary measurements: ordinary frames supply reference intensity while events describe rapid changes between frames.\n- **Software analogy:** Frames resemble database snapshots and events resemble a change log; replaying changes requires correct timestamps and an initial reference.\n\n> **Key idea:** Fusion must beat a synchronized frame-only baseline on the same trials; surviving extreme lighting is an experimental goal, not a promised result.\n\n## What you need\n\n- **Data first:** Start with recorded events and frames from the published reconstruction project; no event-camera purchase is necessary to test the processing idea.\n- **Software:** Use the authors’ notebook to explore event reconstruction, then a fixed detector for comparing frame-only and fused images.\n- **Hardware later:** A synchronized event/frame setup is needed for your own lighting trials; actual camera and integration costs are unknown.\n- **Preparation:** Begin with Intro: calibrate a webcam and track AprilTags and Event-based vision; Prophesee Metavision SDK is a related event-processing toolkit.\n\n## Steps\n\n1. **Replay a recording:** Display conventional frames beside event accumulations; retain original timestamps and document how pixels correspond across sensors.\n2. **Build the baseline:** Run one detector on ordinary frames; save boxes, thresholds, and reviewed target labels before trying fusion.\n3. **Reproduce fusion:** Use the published complementary filter, which combines slowly varying frame information with rapidly changing event information, as a transparent first baseline.\n4. **Compare detector inputs:** Feed reconstructed images into the same detector; keep thresholds fixed and count correct detections, misses, and false alarms.\n5. **Add controlled trials:** Record ordinary light, lights-off transitions, and flickering illumination; also include stationary targets, empty scenes, and missing targets.\n6. **Present the experiment:** Show synchronized frame-only, event, and fused results with detector overlays; report whether the proposed advantage actually appears.\n\n```mermaid\nflowchart LR\n A[Reference frames] --> C[Time-aligned fusion]\n B[Brightness events] --> C\n C --> D[Reconstructed image]\n D --> E[Fixed detector]\n A --> F[Frame-only detector]\n E --> G[Matched trial comparison]\n F --> G\n```\n\n**Worked event:** Interpret `(x, y, t, p)` as pixel column, row, timestamp, and change sign; never substitute event count for absolute scene brightness.\n\n## Common pitfalls\n\n- **Global flicker:** A light switch changes many pixels together; event activity alone does not prove an object moved or a detector remained correct.\n- **Legacy code:** The reference ROS package targets ROS Kinetic; use its notebook for exploration rather than presenting its installation as ROS 2 instructions.\n- **Domain mismatch:** A reconstructed image may differ from detector training images; sharper-looking output does not guarantee better detection.\n\n## When it's done\n\n- **Deliverable:** A reproducible synchronized comparison and per-condition success/failure counts; report a negative finding honestly if fusion does not improve the lighting challenge.",
+      "resources": [
+        {
+          "title": "Continuous-time Intensity Estimation Using Event Cameras",
+          "url": "https://www.youtube.com/watch?v=bZ0ZKido0Ag",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ event/frame reconstruction results before designing the lighting comparison."
+        },
+        {
+          "title": "cedric-scheerlinck/jupnote_event_demo",
+          "url": "https://github.com/cedric-scheerlinck/jupnote_event_demo",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Explore the published filtering idea without first porting a legacy ROS workspace."
+        },
+        {
+          "title": "Event-Based Concepts",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand event coordinates, polarity, timing, and frame construction."
+        },
+        {
+          "title": "cedric-scheerlinck/dvs_image_reconstruction",
+          "url": "https://github.com/cedric-scheerlinck/dvs_image_reconstruction",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Distinguish complementary event/frame fusion from pure-event reconstruction."
+        },
+        {
+          "title": "Continuous-time Intensity Estimation Using Event Cameras",
+          "url": "https://www.cedricscheerlinck.com/continuous-time-intensity-estimation",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Read the authors’ explanation of why the two sensor modalities complement each other."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=bZ0ZKido0Ag",
+        "https://github.com/cedric-scheerlinck/jupnote_event_demo",
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://github.com/cedric-scheerlinck/dvs_image_reconstruction",
+        "https://www.cedricscheerlinck.com/continuous-time-intensity-estimation"
+      ]
     }
   ]
 }
