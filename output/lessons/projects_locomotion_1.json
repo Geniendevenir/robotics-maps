@@ -1,0 +1,396 @@
+{
+  "batch": "projects_locomotion_1",
+  "lessons": [
+    {
+      "node_id": "p:add-contact-phase-resets",
+      "type": "project",
+      "name": "Add contact phase resets",
+      "summary": "Compare a repeating gait clock with one corrected by foot touchdown, using the same simulated robot and uneven floor.",
+      "lesson_md": "## In one sentence\n\nCompare a repeating gait clock with one corrected by foot touchdown, using the same simulated robot and uneven floor.\n\n![Stanford Pupper quadruped shown with its feet above the surface](/img/lessons/projects_locomotion_1-contact-resets.webp)\n*Stanford Pupper is a reference quadruped for understanding gait timing. Source: [Reference setup](https://github.com/stanfordroboticsclub/StanfordQuadruped), unknown.*\n\n## What you will learn\n\n- **A central pattern generator**, or CPG, uses repeating signals called oscillators to organize leg motion; phase describes progress through each repetition.\n- **Open-loop timing** follows its clock without checking the floor; touchdown feedback adds information about when a foot actually lands.\n- **An event callback** is the software analogy: update timing on a new contact event, not continuously while contact remains true.\n\n> **Key idea:** Contact is an event that can correct a gait clock, not evidence that a particular correction improves walking.\n\n## What you need\n\n- **Starting point:** Couple four gait oscillators and the related Central pattern generators node; retain the original controller as your comparison.\n- **Simulation setup:** A compatible quadruped model, foot-contact signals, uneven terrain, and plots sharing the simulation clock.\n- **Planning estimate:** 2-4 weeks; hardware €0 (sim only), excluding computer/GPU costs. This proposal requires no physical robot.\n\n## Steps\n\n1. **Freeze the baseline:** Save the robot model, oscillator settings, floor, command sequence and random seeds before adding feedback.\n2. **Detect touchdown:** Compare current and previous contact flags; plot every detected transition beside the oscillator phase.\n3. **Add a switchable correction:** Choose and document a touchdown phase, then reset only the landing leg when a new contact begins.\n\n```python\ntouchdown = contact and not previous_contact\nif resets_enabled and touchdown:\n    phase = touchdown_phase\nprevious_contact = contact\n```\n\n4. **Replay matched trials:** Compare flat and uneven floors, zero commands, absent contacts and invalid sensor values; reject invalid input explicitly.\n5. **Record the demo:** Overlay both phase traces and contact events; report falls, timeouts and completed runs, including cases where resetting hurts.\n\n```mermaid\nflowchart LR\n  A[Advance oscillator] --> B[Command foot]\n  B --> C[Read contact]\n  C --> D[Detect touchdown]\n  D --> E[Optional phase reset]\n  E --> A\n```\n\n## Common pitfalls\n\n- **Persistent contact** must not repeatedly reset the clock; noisy contact flags need a documented filtering rule.\n- **A timing improvement** can still produce abrupt foot targets; inspect commanded motion and actuator limits, not just phase alignment.\n\n## When it's done\n\n- **Deliver an experiment bundle:** Include replayable settings, paired videos, event logs and a comparison table before Benchmark CPG versus learned gait timing.",
+      "resources": [
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See oscillator-driven quadruped motion and disturbance tests before reading the method."
+        },
+        {
+          "title": "Ch. 4 - Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Connect periodic motion, contact events and simple walking models."
+        },
+        {
+          "title": "Computation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the contact dynamics behind the touchdown signal."
+        },
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://arxiv.org/abs/2211.00458",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand how learned amplitude and frequency modulation differs from fixed rhythmic timing."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+        "https://underactuated.mit.edu/simple_legs.html",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+        "https://arxiv.org/abs/2211.00458",
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped"
+      ]
+    },
+    {
+      "node_id": "p:animate-capture-point-stepping",
+      "type": "project",
+      "name": "Animate capture-point stepping",
+      "summary": "Animate where a simplified biped would need to step to stop after a horizontal push, and show when that point is unreachable.",
+      "lesson_md": "## In one sentence\n\nAnimate where a simplified biped would need to step to stop after a horizontal push, and show when that point is unreachable.\n\n![Humanoid walking model with center of mass and capture point](/img/lessons/projects_locomotion_1-capture-point.webp)\n*Walking model with its capture-point marker. Source: [Reference setup](https://scaron.info/robotics/capture-point.html), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **The center of mass** is the body's mass-weighted balance point; its horizontal position alone does not describe a moving robot's balance.\n- **The capture point** combines position and velocity to locate a stopping foot placement in a simplified walking model.\n- **The linear inverted pendulum model** concentrates mass at a fixed height above the floor; it deliberately omits much of a real biped.\n\n> **Key idea:** A calculated stopping point is useful only when the model assumptions hold and a foot can actually reach it.\n\n## What you need\n\n- **Background:** Bipedal walking control; connect this animation to Reproduce preview-style flat-ground walking after the basic model works.\n- **Tools:** A plotting library or browser canvas, a horizontal state integrator, and controls for push direction and model height.\n- **Planning estimate:** 1 week; hardware €0 (sim only), excluding computer/GPU costs. No full humanoid simulator is required.\n\n## Steps\n\n1. **Implement the model:** Start with fixed center-of-mass height and a flat floor; label position, velocity, support foot and units.\n2. **Compute the marker:** Add horizontal velocity divided by the model's natural frequency to horizontal position.\n\n`capture_x = com_x + com_velocity_x / omega`\n\n3. **Create a proposed push example:** Keep the same starting position, reverse the velocity, and show the stopping marker move to the opposite side.\n4. **Bound the step:** Add a visible reachable region; flag capture points outside it instead of silently teleporting the foot.\n5. **Test and demonstrate:** Compare no push, opposite pushes and unreachable steps; reject invalid height or non-finite velocity and save a replay.\n\n```mermaid\nflowchart LR\n  A[Push changes velocity] --> B[Update pendulum state]\n  B --> C[Compute capture point]\n  C --> D[Check reach]\n  D --> E[Animate step or failure]\n```\n\n## Common pitfalls\n\n- **Position-only graphics** hide momentum; retain a velocity arrow so the viewer can explain why identical poses need different steps.\n- **Instantaneous stepping** is an assumption, not a motor command; delayed steps and changing height need a richer model.\n\n## When it's done\n\n- **Show a reproducible interactive demo:** Every trial displays the requested point, reachable region and whether the simplified model approaches rest.\n- **Document the boundary:** State which dynamics were omitted; do not describe this animation as a hardware balance controller.",
+      "resources": [
+        {
+          "title": "Nadia Push Recovery with Cross-Over Steps",
+          "url": "https://www.youtube.com/watch?v=aM-qb1yd5mU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a real research demonstration of push recovery before building a simplified model."
+        },
+        {
+          "title": "Capture point",
+          "url": "https://scaron.info/robotics/capture-point.html",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Follow the stopping-point derivation and its physical meaning."
+        },
+        {
+          "title": "Linear inverted pendulum model",
+          "url": "https://scaron.info/robotics/linear-inverted-pendulum-model.html",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Understand fixed-height assumptions and the model's natural frequency."
+        },
+        {
+          "title": "Ch. 5 - Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand the simplified balance models behind whole-body walking."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=aM-qb1yd5mU",
+        "https://scaron.info/robotics/capture-point.html",
+        "https://scaron.info/robotics/linear-inverted-pendulum-model.html",
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://underactuated.mit.edu/simple_legs.html"
+      ]
+    },
+    {
+      "node_id": "p:animate-differential-versus-mecanum-motion",
+      "type": "project",
+      "name": "Animate differential versus mecanum motion",
+      "summary": "Render the same velocity commands on differential and mecanum chassis, making impossible sideways commands visible instead of pretending both robots can execute them.",
+      "lesson_md": "## In one sentence\n\nRender the same velocity commands on differential and mecanum chassis, making impossible sideways commands visible instead of pretending both robots can execute them.\n\n![Four-wheel mecanum chassis with angled rollers](/img/lessons/projects_locomotion_1-wheel-motion.webp)\n*Mecanum chassis used to illustrate sideways motion. Source: [Reference setup](https://docs.wpilib.org/en/stable/docs/software/hardware-apis/motors/wpi-drive-classes.html), Creative Commons Attribution 4.0 International.*\n\n## What you will learn\n\n- **Differential drive** steers by changing left and right wheel speeds; ideal conventional wheels do not slide sideways.\n- **Mecanum wheels** have angled rollers that allow a chassis to combine forward, sideways and turning motion.\n- **Kinematics** maps chassis velocity to wheel speeds without calculating forces; think of each chassis as a different implementation of the same command interface.\n\n> **Key idea:** A shared command format does not mean two robot designs can realize the same motion.\n\n## What you need\n\n- **Background:** Wheeled mobile robot kinematics; this project prepares you for Calibrate wheel-radius mismatch in simulation.\n- **Tools:** A browser canvas or plotting library, explicit wheel positions and radii, and separate wheel-speed mapping functions.\n- **Planning estimate:** 1 week; hardware €0 (sim only), excluding computer/GPU costs. Begin with ideal rolling, not a friction simulator.\n\n## Steps\n\n1. **Fix coordinate conventions:** Label forward, left and positive rotation in the robot frame; draw these axes beside both chassis.\n2. **Implement each mapping:** Use documented differential and mecanum kinematics; preserve wheel ordering and physical units in your configuration.\n3. **Animate a proposed command example:** Request only sideways motion; mecanum should show corresponding wheel speeds while differential drive marks that component infeasible.\n\n```python\nif requested_sideways_velocity != 0:\n    show_infeasible_component(requested_sideways_velocity)\n```\n\n4. **Add wheel limits:** Plot requested and realizable velocity separately; show speed saturation rather than silently changing the animation.\n5. **Replay the demo:** Include forward travel, turning, sideways travel, zero command and invalid input; save trajectories and wheel-speed traces.\n\n```mermaid\nflowchart LR\n  A[Same body command] --> B[Differential mapping]\n  A --> C[Mecanum mapping]\n  B --> D[Feasibility and limits]\n  C --> D\n  D --> E[Animate and plot]\n```\n\n## Common pitfalls\n\n- **Robot versus world frames** differ after turning; transform velocities before updating the world-position trace.\n- **Wheel ordering and roller orientation** affect signs; a plausible-looking animation can still implement the wrong mapping.\n- **Ideal sideways motion** says nothing about real wheel slip, floor conditions or motor power.\n\n## When it's done\n\n- **Deliver a side-by-side viewer:** A shared command timeline produces labeled wheel traces, trajectories and explicit infeasibility warnings.\n- **Keep the configuration:** Another student can replay each test without guessing geometry or sign conventions.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.2:  Omnidirectional Wheeled Mobile Robots (Part 1 of 2)",
+          "url": "https://www.youtube.com/watch?v=NcOT9hOsceE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch how mecanum wheel geometry maps chassis motion to wheel speeds."
+        },
+        {
+          "title": "Using the WPILib Classes to Drive your Robot",
+          "url": "https://docs.wpilib.org/en/stable/docs/software/hardware-apis/motors/wpi-drive-classes.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compare drive layouts and robot-oriented command conventions."
+        },
+        {
+          "title": "Differential Drive Kinematics",
+          "url": "https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/differential-drive-kinematics.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement the constrained two-wheel chassis mapping."
+        },
+        {
+          "title": "Mecanum Drive Kinematics",
+          "url": "https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/mecanum-drive-kinematics.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement the four-wheel mapping with explicit wheel positions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=NcOT9hOsceE",
+        "https://docs.wpilib.org/en/stable/docs/software/hardware-apis/motors/wpi-drive-classes.html",
+        "https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/differential-drive-kinematics.html",
+        "https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/mecanum-drive-kinematics.html"
+      ]
+    },
+    {
+      "node_id": "p:animate-payload-induced-balance-shifts",
+      "type": "project",
+      "name": "Animate payload-induced balance shifts",
+      "summary": "Show how a known fixed payload changes a simulated biped's combined center of mass, with clear overlays for the robot, load and support area.",
+      "lesson_md": "## In one sentence\n\nShow how a known fixed payload changes a simulated biped's combined center of mass, with clear overlays for the robot, load and support area.\n\n![OmniH2O humanoid preparing to pick up a basket](/img/lessons/projects_locomotion_1-payload-balance.webp)\n*Frame from OmniH2O's published basket-pickup demonstration, not this project's result. Source: [Reference setup](https://omni.human2humanoid.com/), unknown.*\n\n## What you will learn\n\n- **A payload** is an object carried by the robot; including its mass changes the combined center of mass.\n- **The support area** is the ground region available through the feet; projecting the center of mass onto it helps explain slow, static balance.\n- **Whole-body coordination** connects arm placement and locomotion; a carried object is not merely a decorative mesh attached to a hand.\n\n> **Key idea:** Moving the same known load changes the balance problem even when the robot's own mass is unchanged.\n\n## What you need\n\n- **Background:** Loco-manipulation coordination; use this fixed-load project before Walk with a moving virtual payload.\n- **Setup:** A compatible biped model, named body frames, documented masses, a fixed-load attachment and a viewer with overlays.\n- **Planning estimate:** 2-4 weeks; hardware €0 (sim only), excluding computer/GPU costs. Unknown model or payload masses must be labeled unknown.\n\n## Steps\n\n1. **Establish the unloaded pose:** Display the robot's center of mass and foot contacts; save the complete state for comparison.\n2. **Attach the known load:** Record its mass and attachment position; distinguish a physically modeled load from a visual-only object.\n3. **Compute combined balance:** Use the same world frame for robot and payload positions; show both individual markers and their weighted combination.\n\n```python\ntotal_mass = robot_mass + load_mass\ncombined_com = (\n    robot_mass * robot_com + load_mass * load_com\n) / total_mass\n```\n\n4. **Animate proposed comparisons:** Hold the body pose fixed while changing the load placement; then compare unloaded, centered and extended-arm cases.\n5. **Test and record:** Include zero load, missing mass data, invalid mass and lost foot contact; show an explicit warning rather than a misleading balance badge.\n\n```mermaid\nflowchart LR\n  A[Robot pose and masses] --> C[Combined center of mass]\n  B[Known load and placement] --> C\n  C --> D[Project onto floor]\n  D --> E[Compare foot support]\n```\n\n## Common pitfalls\n\n- **Static overlays** are not dynamic stability certificates; acceleration and angular motion matter when the robot walks.\n- **Double-counting mass** happens if the simulator already includes the attached object in its center-of-mass query.\n\n## When it's done\n\n- **Deliver a replayable animation:** Show load position, individual centers, combined center and contact state, with assumptions written beside the result.\n- **Report limitations:** Do not claim that the OmniH2O reference system supplies your model or proves your proposed carrying behavior.",
+      "resources": [
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See humanoid whole-body tasks that motivate studying carried objects."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://omni.human2humanoid.com/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the reference manipulation setup and distinguish it from a fixed-load animation."
+        },
+        {
+          "title": "Ch. 5 - Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand the simplified balance models behind whole-body walking."
+        },
+        {
+          "title": "OmniH2O: Universal and Dexterous Human-to-Humanoid Whole-Body Teleoperation and Learning",
+          "url": "https://arxiv.org/abs/2406.08858",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the research context for coordinating humanoid motion and manipulation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ofgxZHv0GMk",
+        "https://omni.human2humanoid.com/",
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://arxiv.org/abs/2406.08858",
+        "https://en.wikipedia.org/wiki/Center_of_mass"
+      ]
+    },
+    {
+      "node_id": "p:animate-thrust-and-attitude-coupling",
+      "type": "project",
+      "name": "Animate thrust and attitude coupling",
+      "summary": "Animate how unequal rotor forces tilt a quadrotor, redirect total thrust and change horizontal and vertical acceleration.",
+      "lesson_md": "## In one sentence\n\nAnimate how unequal rotor forces tilt a quadrotor, redirect total thrust and change horizontal and vertical acceleration.\n\n![Planar rotorcraft diagram with opposing rotor forces and tilt angle](/img/lessons/projects_locomotion_1-thrust-attitude.webp)\n*Planar rotorcraft model; the lesson extends this intuition to four rotors. Source: [Reference setup](https://underactuated.mit.edu/acrobot.html), unknown.*\n\n## What you will learn\n\n- **Thrust** is the force generated by a propeller; **attitude** means the vehicle's orientation, including roll, pitch and yaw.\n- **Torque** is a turning effect from force applied away from the center of mass; unequal rotor thrust can change attitude.\n- **Coupling** means one change affects another motion: tilting redirects thrust, so keeping the same total force need not maintain altitude.\n\n> **Key idea:** A quadrotor moves sideways by redirecting thrust through tilt, not by commanding an independent sideways motor.\n\n## What you need\n\n- **Background:** Multirotor flight dynamics & control; keep this visualization separate from a complete flight controller.\n- **Tools:** A lightweight integrator and viewer, documented mass and geometry, rotor-force sliders, and arrows for gravity and total thrust.\n- **Planning estimate:** 1 week; hardware €0 (sim only), excluding computer/GPU costs. Keep every test virtual.\n\n## Steps\n\n1. **Start with a planar model:** Follow the two-force teaching model before extending the renderer to four rotors; label this simplification clearly.\n2. **Separate force and rotation:** Sum rotor thrust for translation and compute its turning effect; define the positive tilt direction on screen.\n3. **Show a worked symbolic example:** For a tilted vehicle, vertical thrust is the total thrust multiplied by the cosine of tilt.\n\n`vertical_thrust = total_thrust * cos(tilt)`\n\n4. **Animate matched inputs:** Compare level hover, increased equal thrust and unequal thrust; show acceleration arrows, not merely an artistically tilted body.\n5. **Test and demonstrate:** Include zero thrust, zero command, invalid inputs and force limits; record altitude and horizontal motion alongside the rotor inputs.\n\n```mermaid\nflowchart LR\n  A[Rotor forces] --> B[Total force and torque]\n  B --> C[Update attitude]\n  C --> D[Rotate thrust into world]\n  D --> E[Acceleration and motion]\n```\n\n## Common pitfalls\n\n- **Command versus force:** Motor commands are not automatically forces in newtons; document the conversion or accept forces directly.\n- **Rotation conventions** can reverse motion; use an axis overlay and verify a single input before combining rotations.\n- **A planar model** cannot explain every yaw effect; use the four-rotor reference before making three-dimensional claims.\n\n## When it's done\n\n- **Deliver an interactive explanation:** A student can pause, identify the net force and predict the next acceleration from the displayed attitude.\n- **Connect the next project:** Preserve these plots for Tune a simulated hover cascade; this animation alone does not demonstrate stable feedback control.",
+      "resources": [
+        {
+          "title": "Setting Up the Control Problem | Drone Simulation and Control, Part 1",
+          "url": "https://www.mathworks.com/videos/drone-simulation-and-control-part-1-setting-up-the-control-problem-1539323440930.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how four rotor forces create thrust and rotational motion."
+        },
+        {
+          "title": "How Do You Get a Drone to Hover? | Drone Simulation and Control, Part 2",
+          "url": "https://www.mathworks.com/videos/drone-simulation-and-control-part-2-how-do-you-get-a-drone-to-hover--1539323448303.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Connect force balance to the hover problem."
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.mit.edu/acrobot.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Use the planar quadrotor force and torque equations."
+        },
+        {
+          "title": "Controller Diagrams",
+          "url": "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish attitude, rate and velocity loops in an actual flight stack."
+        }
+      ],
+      "sources": [
+        "https://www.mathworks.com/videos/drone-simulation-and-control-part-1-setting-up-the-control-problem-1539323440930.html",
+        "https://www.mathworks.com/videos/drone-simulation-and-control-part-2-how-do-you-get-a-drone-to-hover--1539323448303.html",
+        "https://underactuated.mit.edu/acrobot.html",
+        "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html"
+      ]
+    },
+    {
+      "node_id": "p:audit-transfer-across-two-simulators",
+      "type": "project",
+      "name": "Audit transfer across two simulators",
+      "summary": "Run one compatible robot and frozen controller in two simulation engines, then document where their behavior diverges before considering hardware deployment.",
+      "lesson_md": "## In one sentence\n\nRun one compatible robot and frozen controller in two simulation engines, then document where their behavior diverges before considering hardware deployment.\n\n![ASAP pipeline showing motion policy training and dynamics alignment](/img/lessons/projects_locomotion_1-simulator-audit.webp)\n*ASAP studies dynamics mismatch across simulation and reality. Source: [Reference setup](https://agile.human2humanoid.com/), unknown.*\n\n## What you will learn\n\n- **Sim-to-sim transfer** moves a controller between physics engines; matching visuals does not guarantee matching dynamics.\n- **A policy** maps observations to actions; both engines must supply the same meanings, order, units and timing at that interface.\n- **An adapter** is like an API compatibility layer: it translates conventions without secretly changing the controller being evaluated.\n\n> **Key idea:** Audit interface mismatches before treating a changed rollout as evidence about physics.\n\n## What you need\n\n- **Starting point:** Train randomized versus nominal walkers and the related RL locomotion with sim-to-real node.\n- **Compatibility check:** Confirm usable robot assets and a controller checkpoint in both engines; Isaac Sim / Isaac Lab and MuJoCo Playground are candidates, not guaranteed ports.\n- **Planning estimate:** 1-2 months; hardware €0 (sim only), excluding computer/GPU costs. Record unavailable assets as a blocker.\n\n## Steps\n\n1. **Freeze the experiment:** Save checkpoint, model revisions, simulator versions, commands, initial states and test seeds before running either engine.\n2. **Audit the interface:** Compare joint names, observation normalization, action scaling, coordinate frames, actuator limits and controller update timing.\n3. **Write a proposed parity check:** Convert both observation streams to a shared schema before comparing any trajectory.\n\n```python\nassert engine_a.joint_names == engine_b.joint_names\nassert engine_a.action_units == engine_b.action_units\nassert engine_a.control_period == engine_b.control_period\n```\n\n4. **Replay matched cases:** Include normal walking, zero command, lost contact and rejected invalid observations; log contacts, joint motion and action saturation.\n5. **Present the audit:** Count successes, falls and timeouts by condition; pair videos with traces and separate interface bugs from unresolved dynamics differences.\n\n```mermaid\nflowchart LR\n  A[Frozen controller] --> B[Engine A adapter]\n  A --> C[Engine B adapter]\n  B --> D[Matched trials]\n  C --> D\n  D --> E[Failure comparison]\n```\n\n## Common pitfalls\n\n- **Retuning one controller** invalidates the frozen-policy comparison; report any adaptation as a separate experiment.\n- **Different contact models** can change behavior even after interface parity; document friction and solver settings rather than declaring either engine correct.\n\n## When it's done\n\n- **Deliver a reproducible audit:** Include the compatibility matrix, adapter code, exact configurations and failure examples, not only a highlight video.\n- **Limit the conclusion:** Cross-engine agreement is not proof of safe or successful hardware transfer.",
+      "resources": [
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a study that explicitly includes transfer between simulation engines."
+        },
+        {
+          "title": "google-deepmind/mujoco_playground",
+          "url": "https://github.com/google-deepmind/mujoco_playground",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect available models and control interfaces before selecting a transfer target."
+        },
+        {
+          "title": "Computation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand contact and integration choices that can affect rollout comparisons."
+        },
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://arxiv.org/abs/2502.01143",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the IsaacGym-to-IsaacSim and IsaacGym-to-Genesis transfer scenarios."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+        "https://github.com/google-deepmind/mujoco_playground",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+        "https://arxiv.org/abs/2502.01143",
+        "https://agile.human2humanoid.com/"
+      ]
+    },
+    {
+      "node_id": "p:benchmark-cpg-versus-learned-gait-timing",
+      "type": "project",
+      "name": "Benchmark CPG versus learned gait timing",
+      "summary": "Compare oscillator-based and learned gait timing under equal speed targets and disturbances, reporting recovery, an energy proxy and foot slip.",
+      "lesson_md": "## In one sentence\n\nCompare oscillator-based and learned gait timing under equal speed targets and disturbances, reporting recovery, an energy proxy and foot slip.\n\n![Stanford Pupper quadruped shown with its feet above the surface](/img/lessons/projects_locomotion_1-gait-benchmark.webp)\n*Stanford Pupper is a reference quadruped for understanding gait timing. Source: [Reference setup](https://github.com/stanfordroboticsclub/StanfordQuadruped), unknown.*\n\n## What you will learn\n\n- **A CPG**, or central pattern generator, organizes rhythmic leg motion through coupled oscillators; a learned controller can instead choose or modify that timing.\n- **A fair benchmark** compares explicitly defined controller differences while keeping the robot, commands and evaluation conditions fixed.\n- **An energy proxy** is a declared approximation, not a battery measurement; foot slip means a contacting foot moves relative to the floor.\n\n> **Key idea:** If timing is the question, changing the robot or low-level controller at the same time makes the answer ambiguous.\n\n## What you need\n\n- **Starting point:** Add contact phase resets and Central pattern generators; keep the original timing implementation available.\n- **Setup:** A compatible simulated quadruped, a fixed oscillator baseline and an implementable learned timing variant with documented observations and actions.\n- **Planning estimate:** 1-2 months; hardware €0 (sim only), excluding computer/GPU costs. Check checkpoint availability before promising a reproduction.\n\n## Steps\n\n1. **Define both contestants:** State exactly what learning controls; CPG-RL combines oscillators with learning, so it is not an oscillator-free alternative.\n2. **Freeze shared components:** Use identical robot dynamics, target velocities, foot-motion interfaces and actuator limits; log remaining differences.\n3. **Specify evaluation:** Fix terrain, disturbances, seeds, timeout rules and recovery criteria before looking at scores; treat this like a regression-test fixture.\n4. **Implement a proposed metric:** Use absolute joint mechanical power integrated over time as an energy proxy, with units and exclusions documented.\n\n```python\nstep_proxy = sum(abs(torque * speed)\n                 for torque, speed in joint_pairs) * dt\nenergy_proxy += step_proxy\n```\n\n5. **Run and demonstrate:** Include normal targets, zero commands, lost contacts and invalid observations; report recovery, slip, falls, timeouts and successes for both controllers.\n\n```mermaid\nflowchart LR\n  A[Fixed test cases] --> B[CPG timing]\n  A --> C[Learned timing]\n  B --> D[Shared metric logger]\n  C --> D\n  D --> E[Paired comparison]\n```\n\n## Common pitfalls\n\n- **Unequal training or tuning budgets** can dominate the comparison; report those budgets separately from evaluation time.\n- **Contact definitions** affect slip measurements; compute foot velocity in the world frame and record which samples count as contact.\n- **Failed runs** belong in the results; do not average only successful trajectories.\n\n## When it's done\n\n- **Deliver a benchmark bundle:** Include frozen configurations, raw logs, paired videos and metric definitions, without claiming a winner before experiments run.",
+      "resources": [
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See oscillator-driven quadruped motion and disturbance tests before reading the method."
+        },
+        {
+          "title": "stanfordroboticsclub/StanfordQuadruped",
+          "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the separation between gait scheduling and foot-motion generation."
+        },
+        {
+          "title": "leggedrobotics/legged_gym",
+          "url": "https://github.com/leggedrobotics/legged_gym",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect a learned locomotion training setup and its model dependencies."
+        },
+        {
+          "title": "CPG-RL: Learning Central Pattern Generators for Quadruped Locomotion",
+          "url": "https://arxiv.org/abs/2211.00458",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand how learned amplitude and frequency modulation differs from fixed rhythmic timing."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=xqXHLzLsEV4",
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+        "https://github.com/leggedrobotics/legged_gym",
+        "https://arxiv.org/abs/2211.00458"
+      ]
+    },
+    {
+      "node_id": "p:build-a-held-out-virtual-parkour-course",
+      "type": "project",
+      "name": "Build a held-out virtual parkour course",
+      "summary": "Evaluate a simulated locomotion policy on unseen gaps and obstacles using a fixed training budget and a test course kept separate from tuning.",
+      "lesson_md": "## In one sentence\n\nEvaluate a simulated locomotion policy on unseen gaps and obstacles using a fixed training budget and a test course kept separate from tuning.\n\n![Quadruped traversing obstacles in Extreme Parkour demonstrations](/img/lessons/projects_locomotion_1-parkour-course.webp)\n*Published Extreme Parkour setup, not a proposed student benchmark result. Source: [Reference setup](https://github.com/chengxuxin/extreme-parkour), unknown.*\n\n## What you will learn\n\n- **Parkour locomotion** combines perception and motion to cross obstacles such as gaps and steps; dramatic videos are not a complete evaluation.\n- **Held-out terrain** is excluded from training and tuning, just like a test split in a machine-learning dataset.\n- **Generalization** means handling new conditions; changing the test course after seeing failures turns it into another development set.\n\n> **Key idea:** The unseen course is a test of your frozen method, not another place to optimize it.\n\n## What you need\n\n- **Starting point:** Replay a simulated jump with contact overlays and Agile & parkour locomotion; retain contact visualization for debugging failures.\n- **Compatibility check:** Select a working simulator, robot, terrain representation and policy; the Extreme Parkour release documents its own dependencies.\n- **Planning estimate:** 1-2 months; hardware €0 (sim only), excluding computer/GPU costs. Agree on a training budget before implementation.\n\n## Steps\n\n1. **Define course families:** Specify gap and obstacle parameters with units; divide configurations into training, development and sealed test sets.\n2. **Build deterministic layouts:** Save terrain definitions and seeds; a seed alone is insufficient if generator code changes.\n3. **Freeze the evaluation contract:** Define start states, commands, finish conditions, falls, timeouts and invalid-input handling before opening the test set.\n\n```python\nassert train_ids.isdisjoint(test_ids)\nassert development_ids.isdisjoint(test_ids)\nassert checkpoint_is_frozen\n```\n\n4. **Train within budget:** Tune only on development terrain; keep checkpoints and configuration revisions, including unsuccessful experiments.\n5. **Run the sealed course:** Include ordinary traversal, no-command cases and lost-contact failures; present success counts by obstacle condition with representative failure replays.\n\n```mermaid\nflowchart LR\n  A[Course specification] --> B[Train set]\n  A --> C[Development set]\n  A --> D[Sealed test set]\n  B --> E[Train policy]\n  C --> E\n  E --> F[Freeze and evaluate]\n  D --> F\n```\n\n## Common pitfalls\n\n- **Test leakage** includes manually choosing easier obstacles after viewing results; record the original test definition and every exclusion.\n- **A missing or incompatible checkpoint** blocks evaluation; do not replace it with an animation and call that a learned-policy result.\n- **Camera and contact settings** belong in the experiment configuration, since changing them changes the task.\n\n## When it's done\n\n- **Deliver a reproducible course:** Include layouts, budget, frozen policy reference and counts of successes, falls and timeouts.\n- **Prepare the next node:** Use the evidence in Design a risk-limited parkour benchmark; simulated success does not establish hardware safety.",
+      "resources": [
+        {
+          "title": "Extreme Parkour with Legged Robots via a Single Neural Net",
+          "url": "https://www.youtube.com/watch?v=cqvAgcQl6s4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the target obstacle behaviors and the research system's failure examples."
+        },
+        {
+          "title": "Extreme Parkour",
+          "url": "https://extreme-parkour.github.io/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Inspect the published obstacle demonstrations and live policy viewer."
+        },
+        {
+          "title": "chengxuxin/extreme-parkour",
+          "url": "https://github.com/chengxuxin/extreme-parkour",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check released terrain and training code before choosing your implementation."
+        },
+        {
+          "title": "Extreme Parkour with Legged Robots",
+          "url": "https://arxiv.org/abs/2309.14341",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original method and evaluation rather than inferring results from clips."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=cqvAgcQl6s4",
+        "https://extreme-parkour.github.io/",
+        "https://github.com/chengxuxin/extreme-parkour",
+        "https://arxiv.org/abs/2309.14341"
+      ]
+    },
+    {
+      "node_id": "p:build-an-interactive-gait-phase-viewer",
+      "type": "project",
+      "name": "Build an interactive gait phase viewer",
+      "summary": "Render walk, trot and bound contact timelines beside a simple quadruped animation, with one shared clock and controls for inspecting each foot.",
+      "lesson_md": "## In one sentence\n\nRender walk, trot and bound contact timelines beside a simple quadruped animation, with one shared clock and controls for inspecting each foot.\n\n![Stanford Pupper quadruped shown with its feet above the surface](/img/lessons/projects_locomotion_1-gait-viewer.webp)\n*Stanford Pupper is a reference quadruped for understanding gait timing. Source: [Reference setup](https://github.com/stanfordroboticsclub/StanfordQuadruped), unknown.*\n\n## What you will learn\n\n- **A gait** is a repeating coordination pattern for the legs; **stance** means a foot supports contact, while **swing** moves it toward its next placement.\n- **Phase** records progress through a repeating cycle; leg offsets express how each foot's timing differs from the shared clock.\n- **A gait scheduler** resembles an event loop: it chooses each leg's state before the renderer decides how that state looks.\n\n> **Key idea:** A contact schedule describes intended timing; it does not prove that a robot can balance or walk.\n\n## What you need\n\n- **Background:** Gaits & gait cycles; the viewer prepares you for Compare gait energy and slip.\n- **Tools:** A canvas or plotting library, labeled front and rear legs, a pause button and a scrubber for the cycle.\n- **Planning estimate:** 1 week; hardware €0 (sim only), excluding computer/GPU costs. A scheduler animation needs no physics engine.\n\n## Steps\n\n1. **Name the feet:** Keep the same leg order in the data table, contact chart and quadruped drawing; show front and left explicitly.\n2. **Encode schedules as data:** Define walk, trot and bound presets; label proposed offsets as illustrative rather than measured animal timings.\n3. **Drive both views together:** Use one simulation timestamp for the foot animation and timeline cursor; do not advance them with separate browser timers.\n\n```python\nleg_phase = (cycle_phase + leg_offset) % 1\nin_stance = leg_phase < stance_fraction\n```\n\n4. **Add inspection controls:** Pause, scrub and change playback speed; show the stance fraction, meaning the portion of each cycle assigned to contact.\n5. **Test and demonstrate:** Inspect a complete cycle, frozen playback, an empty schedule and invalid parameters; show errors instead of silently substituting a gait.\n\n```mermaid\nflowchart LR\n  A[Shared clock] --> B[Leg phases]\n  B --> C[Stance or swing]\n  C --> D[Contact timeline]\n  C --> E[Quadruped animation]\n  F[Pause and scrub] --> A\n```\n\n## Common pitfalls\n\n- **Trot timing** pairs diagonal legs, as the Pupper reference explains; visually swapping left and right can make a correct schedule look wrong.\n- **Boundary conditions** matter when a cycle wraps; test the transition without duplicating or dropping a frame.\n- **Drawn contact** is not sensed contact; distinguish scheduled stance from any later physics-engine collision signal.\n\n## When it's done\n\n- **Deliver the interactive viewer:** Selecting each gait updates both views, and scrubbing identifies the same contacting feet in each.\n- **Save the presets and tests:** Explain which timing values are illustrative and why no stability claim follows from the animation.",
+      "resources": [
+        {
+          "title": "Stanford Pupper",
+          "url": "https://www.youtube.com/watch?v=NIjodHA78UE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a real quadruped before reducing its motion to a contact schedule."
+        },
+        {
+          "title": "stanfordroboticsclub/StanfordQuadruped",
+          "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read the gait-scheduler explanation and diagonal-pair trot example."
+        },
+        {
+          "title": "StanfordQuadruped/src/Gaits.py at master",
+          "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped/blob/master/src/Gaits.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect how elapsed ticks select a phase and a contact vector."
+        },
+        {
+          "title": "Ch. 4 - Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Connect periodic motion, contact events and simple walking models."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=NIjodHA78UE",
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped",
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped/blob/master/src/Gaits.py",
+        "https://underactuated.mit.edu/simple_legs.html"
+      ]
+    }
+  ]
+}
