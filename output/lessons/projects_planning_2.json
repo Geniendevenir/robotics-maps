@@ -819,6 +819,57 @@
         "https://imrclab.github.io/teaching/motion-planning",
         "https://www.youtube.com/watch?v=OKshYo1_UZA"
       ]
+    },
+    {
+      "node_id": "p:planning-lab-plot-batched-collision-check-timing-against-a-cpu-baseline",
+      "type": "project",
+      "name": "Planning lab: plot batched collision-check timing against a CPU baseline",
+      "summary": "Time the same 2D collision checks as a plain CPU loop and as one batched GPU call, then plot how each scales as the batch grows.",
+      "lesson_md": "## In one sentence\n\nTime the same 2D collision checks as a plain CPU loop and as one batched GPU call, then plot how each scales as the batch grows.\n\n![A Franka robot arm next to the same arm approximated by green collision spheres](/img/lessons/projects_planning_2-curobo-spheres.webp)\n*cuRobo represents a robot as bounding spheres so many configurations can be checked in parallel. Source: [cuRobo paper on arXiv](https://arxiv.org/abs/2310.17274), CC BY-NC-ND 4.0, Sundaralingam et al. (NVIDIA).*\n\n## What you will learn\n\n- **GPU-parallel motion planning:** Planners like cuRobo check thousands of candidate poses at once on a GPU instead of one at a time.\n- **Sphere models:** Approximating a robot or obstacle by spheres turns collision checking into simple distance math that batches well.\n- **Fair benchmarking:** The PyTorch benchmark recipe warns about caveats such as thread counts and **CUDA synchronization**.\n- **Software analogy:** It is like replacing a `for` loop of SQL queries with one bulk query: overhead is paid once.\n\n> **Key idea:** A GPU only wins when the batch is big enough to hide launch and copy overhead, so the interesting result is the crossover point.\n\n## What you need\n\n- **Python with NumPy and PyTorch;** a CUDA GPU if available, otherwise a free cloud notebook GPU.\n- **Background:** Intro: ROS 2 and Nav2 with a simulated mobile robot, and GPU-parallel motion planning.\n- **Optional:** cuRobo installed, for the follow-up project.\n\n## Steps\n\n1. **Build a scene** of random circle obstacles and a robot made of three circles.\n2. **Write the CPU baseline** as a Python loop over poses, then a vectorized NumPy version.\n3. **Write the batched check** in PyTorch:\n\n```python\ndef collide(P, O, r):\n    # P: (batch, n, 2) robot circles, O: (m, 2) obstacles\n    d = torch.cdist(P.reshape(-1, 2), O)\n    return (d < r).reshape(P.shape[0], -1).any(1)\n```\n\n4. **Time fairly** with `torch.utils.benchmark.Timer`, after warm-up, for batch sizes from 1 to about 100,000.\n5. **Check correctness:** Assert that every version returns identical collision flags for the same seed.\n6. **Plot** time per pose against batch size on log axes and record an animation of the checked poses.\n\n```mermaid\nflowchart LR\n  S[Seeded scene] --> C[CPU loop]\n  S --> N[NumPy vectorized]\n  S --> G[GPU batch]\n  C --> V[Compare flags]\n  N --> V\n  G --> V\n  V --> T[Timing plot]\n```\n\n## Common pitfalls\n\n- **Timing without sync:** GPU calls return early; unsynchronized timers measure almost nothing.\n- **Counting the first call:** Warm-up includes setup costs that later calls skip.\n- **Copying every batch:** Moving data between CPU and GPU each call can erase the speedup.\n\n## When it's done\n\n- **A log-log plot** with the crossover batch size marked and your seeds published.\n- **A correctness report** showing zero mismatched flags, ready for Planning lab: benchmark cuRobo planning seeds and collision resolution.\n",
+      "resources": [
+        {
+          "title": "cuRobo: CUDA Accelerated Robot Motion Generation",
+          "url": "https://www.youtube.com/watch?v=Ux9tFBRLR-A",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Author's overview of GPU-parallel collision checking and motion generation."
+        },
+        {
+          "title": "cuRobo: Parallelized Collision-Free Minimum-Jerk Robot Motion Generation",
+          "url": "https://arxiv.org/abs/2310.17274",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Technical report explaining sphere models and parallel optimization."
+        },
+        {
+          "title": "cuRobo documentation",
+          "url": "https://curobo.org/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Official library docs listing its GPU collision-checking and planning modules."
+        },
+        {
+          "title": "NVlabs/curobo",
+          "url": "https://github.com/NVlabs/curobo",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Source code and examples for the follow-up cuRobo benchmark."
+        },
+        {
+          "title": "PyTorch Benchmark",
+          "url": "https://pytorch.org/tutorials/recipes/recipes/benchmark.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How to time PyTorch code correctly, including CUDA synchronization."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2310.17274",
+        "https://curobo.org/",
+        "https://pytorch.org/tutorials/recipes/recipes/benchmark.html",
+        "https://github.com/NVlabs/curobo",
+        "https://www.youtube.com/watch?v=Ux9tFBRLR-A"
+      ]
     }
   ]
 }
