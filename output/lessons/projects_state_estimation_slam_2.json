@@ -943,6 +943,146 @@
         "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/params/ekf.yaml",
         "https://www.gps.gov/gps-accuracy"
       ]
+    },
+    {
+      "node_id": "p:trade-localization-precision-for-particle-budget",
+      "type": "project",
+      "name": "Trade localization precision for particle budget",
+      "summary": "Replay identical localization trials with different particle counts, then use a slider to expose the measured tradeoff between position error, recovery success, and processing latency.",
+      "lesson_md": "## In one sentence\n\nReplay identical localization trials with different particle counts, then use a slider to expose the measured tradeoff between position error, recovery success, and processing latency.\n\n![PythonRobotics particle-filter localization with landmarks, particles, and estimated trajectory](/img/lessons/projects_state_estimation_slam_2-particle-budget.webp)\n*PythonRobotics particle-filter localization with landmarks, particles, and estimated trajectory. Source: [Official documentation](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html), license unknown.*\n\n## What you will learn\n\n- **A particle** is one possible robot state; its **weight** describes how well that hypothesis agrees with the observations.\n- **Resampling** replaces weak hypotheses with copies of stronger ones. **Effective sample size** measures how concentrated the weights have become, not how many particles exist.\n- **Latency** is processing delay. More hypotheses require more work in this implementation, but actual accuracy and recovery must be measured rather than assumed.\n- **Think load testing:** vary the worker budget while replaying the same requests; changing the workload at the same time would invalidate the comparison.\n\n> **Key idea:** A tight particle cloud can be confidently located in the wrong place; particle count alone is not an accuracy score.\n\n## What you need\n\n- **Complete Recover after a simulated robot kidnapping:** retain a reproducible test of recovering after an unexpected pose change.\n- **Use PythonRobotics:** its particle example combines motion inputs with distances to known landmarks; it is not a ready-made laser-map localizer or budget slider.\n- **Use an existing computer:** simulated observations avoid hardware purchases; record compute and storage costs separately.\n\n## Steps\n\n1. **Freeze the trials:** pre-generate truth, motion inputs, and landmark observations for asymmetric and symmetric layouts, noise conditions, and kidnapped starts.\n2. **Expose the particle budget:** parameterize particle arrays, uniform weights, and resampling thresholds together; changing only the global count would leave inconsistent state sizes.\n3. **Compare resampling schedules:** run a fixed schedule and an effective-sample-size trigger with saved random seeds; keep the input recordings identical across budgets.\n4. **Measure each trial:** record position error against truth, recovery success under a declared criterion, and per-update processing latency; retain failures in the totals.\n5. **Build the slider:** selecting a budget restarts the same saved trial and refreshes the particle cloud, error, recovery, and latency displays; label incomplete runs.\n6. **Demo held-out conditions:** show the budget tradeoff on layouts and noise cases not used to choose settings; change inference, not the simulated motion plan.\n\n**Worked budget example:** the source starts with 100 particles and resamples below half that count, so its initial effective-sample-size threshold is 50.\n\n```python\nNP = 100\nNTh = NP / 2.0\n```\n\n```mermaid\nflowchart LR\n  A[\"Saved observations\"] --> C[\"Particle filter\"]\n  B[\"Budget slider\"] --> C\n  C --> D[\"Weights and resampling\"]\n  D --> E[\"Pose and timing\"]\n  E --> F[\"Error and recovery\"]\n```\n\n## Common pitfalls\n\n- **Do not regenerate inputs inside the benchmark:** particle sampling also consumes randomness; changing particle count must not change the simulated sensor recording.\n- **Do not resize live arrays blindly:** restart from a documented initial state when switching budgets, or explicitly implement a consistent population-conversion method.\n- **Do not hide unrecovered trials:** report failures separately from the position errors of successful runs.\n\n## When it's done\n\n- **Deliver an interactive benchmark:** slider, frozen trials, particle visualization, held-out results, recovery counts, and latency measurements reproduce the claimed tradeoff.\n",
+      "resources": [
+        {
+          "title": "Particle Filter and Monte Carlo Localization (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=MsYlueVDLI0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains weighted particles, localization ambiguity, and resampling."
+        },
+        {
+          "title": "Particle filter localization",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Shows the runnable landmark-localization baseline and its particle visualization."
+        },
+        {
+          "title": "particle_filter.py",
+          "url": "https://raw.githubusercontent.com/AtsushiSakai/PythonRobotics/master/Localization/particle_filter/particle_filter.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Exposes the particle arrays, 100-particle default, effective sample size, and resampling implementation."
+        },
+        {
+          "title": "AMCL",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/others/configuring_amcl/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows production particle limits and resampling configuration as a comparison with the small Python baseline."
+        }
+      ],
+      "sources": [
+        "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+        "https://www.youtube.com/watch?v=MsYlueVDLI0",
+        "https://raw.githubusercontent.com/AtsushiSakai/PythonRobotics/master/Localization/particle_filter/particle_filter.py",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/others/configuring_amcl/"
+      ]
+    },
+    {
+      "node_id": "p:turn-trajectory-failures-into-a-reproducible-test-suite",
+      "type": "project",
+      "name": "Turn trajectory failures into a reproducible test suite",
+      "summary": "Turn timestamp offsets, missing poses, scale drift, and trajectory jumps into fixed regression cases that produce repeatable pass/fail reports without dropping unsuccessful comparisons.",
+      "lesson_md": "## In one sentence\n\nTurn timestamp offsets, missing poses, scale drift, and trajectory jumps into fixed regression cases that produce repeatable pass/fail reports without dropping unsuccessful comparisons.\n\n![Published evo absolute-pose-error visualization, a reporting pattern for the regression suite](/img/lessons/projects_state_estimation_slam_2-trajectory-tests.webp)\n*Published evo absolute-pose-error visualization, a reporting pattern for the regression suite. Source: [Official documentation](https://github.com/MichaelGrupp/evo), license unknown.*\n\n## What you will learn\n\n- **A trajectory** is a time-ordered sequence of poses, each containing position and orientation; a **reference** supplies independent comparison poses.\n- **Association** pairs estimated and reference samples by time. Its tolerance decides which samples count as comparable and must be fixed before testing.\n- **Absolute pose error** compares corresponding poses; **relative pose error** compares motion between poses. Both can miss failures hidden by missing coverage.\n- **Think regression testing:** preserve a bug-triggering input, the expected outcome, and the exact configuration instead of saving only a screenshot of a bad run.\n\n> **Key idea:** A case that cannot produce an error score is still a test outcome, not permission to remove it from the denominator.\n\n## What you need\n\n- **Complete Build a trajectory evaluation scorecard:** decide alignment, timing tolerance, coverage requirements, and error thresholds before inspecting candidate results.\n- **Use evo and a thin test runner:** evo supplies trajectory checks, metrics, plots, and result archives; you implement corruption injection and pass/fail policy.\n- **Use an existing computer:** public or synthetic trajectories need no robot purchase; budget storage and repeated processing separately.\n\n## Steps\n\n1. **Create a clean control:** freeze reference and estimated files, coordinate frames, formats, software revisions, and expected acceptable behavior.\n2. **Generate fixed corruptions:** save timestamp shifts, gaps, changing scale, and pose discontinuities with explicit parameters and seeds; keep original files immutable.\n3. **Validate before scoring:** check increasing timestamps, valid orientations, and data availability; classify malformed files and absent associations rather than silently skipping them.\n4. **Run fixed comparisons:** apply the declared association and alignment settings, then retain error statistics, matched coverage, process exit status, and runtime.\n5. **Apply explicit assertions:** a clean control should pass, and known corruptions should be detected; timeouts or missing outputs get visible failure statuses.\n6. **Demo one-command reproduction:** your runner emits a compact status table, error plots, configuration hashes, and result archives for every planned case.\n\n**Worked command example:** these are your exported TUM-format filenames. Save metric results separately from the test runner's pass/fail assertions.\n\n```bash\nevo_traj tum truth.tum estimate.tum --full_check\nevo_ape tum truth.tum estimate.tum --align --save_results run.zip\nevo_res run.zip --save_table summary.csv\n```\n\n```mermaid\nflowchart LR\n  A[\"Frozen trajectories\"] --> B[\"Fixed corruptions\"]\n  B --> C[\"Validate and associate\"]\n  C --> D[\"Metrics or failure status\"]\n  D --> E[\"Assertions\"]\n  E --> F[\"Dashboard and plots\"]\n```\n\n## Common pitfalls\n\n- **Do not optimize the association tolerance per case:** that can hide the timestamp fault the test was meant to expose.\n- **Do not rescale metric estimates automatically:** an alignment that changes distance can conceal scale corruption.\n- **Do not average away missing runs:** report completed, invalid, timed-out, and unassociated cases alongside the full planned case count.\n\n## When it's done\n\n- **Deliver a regression bundle:** one command recreates inputs, hashes, statuses, coverage, runtime, and plots; a deliberate known fault changes the expected test outcome.\n",
+      "resources": [
+        {
+          "title": "rerun_evo_demo.mp4",
+          "url": "https://github.com/user-attachments/assets/b780766a-2fcd-4b87-9a53-062f903f5cd1",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The evo creator demonstrates replaying trajectory errors over time for inspection."
+        },
+        {
+          "title": "evo_traj",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/evo_traj",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Documents full trajectory validity checks, including timestamps and unit-length orientation representations."
+        },
+        {
+          "title": "Formats",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Formats",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines supported pose formats and warns about timestamps and coordinate-frame mismatches."
+        },
+        {
+          "title": "Result Comparison",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Result-Comparison",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains saved metric archives and comparing their statistics without rerunning evaluation."
+        },
+        {
+          "title": "evo — Example Workflow",
+          "url": "https://github.com/MichaelGrupp/evo#example-workflow",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Provides the metric, saved-result, and summary-table commands to wrap in a regression runner."
+        }
+      ],
+      "sources": [
+        "https://github.com/MichaelGrupp/evo",
+        "https://github.com/user-attachments/assets/b780766a-2fcd-4b87-9a53-062f903f5cd1",
+        "https://github.com/MichaelGrupp/evo/wiki/evo_traj",
+        "https://github.com/MichaelGrupp/evo/wiki/Formats",
+        "https://github.com/MichaelGrupp/evo/wiki/Result-Comparison",
+        "https://github.com/MichaelGrupp/evo#example-workflow",
+        "https://github.com/MichaelGrupp/evo/wiki/Rerun-integration"
+      ]
+    },
+    {
+      "node_id": "p:visualize-a-contact-aided-inertial-estimate",
+      "type": "project",
+      "name": "Visualize a contact-aided inertial estimate",
+      "summary": "Animate a simulated robot body and foot contacts beside inertial-only and contact-corrected estimates, showing relative-motion improvement without claiming an absolute global position or heading.",
+      "lesson_md": "## In one sentence\n\nAnimate a simulated robot body and foot contacts beside inertial-only and contact-corrected estimates, showing relative-motion improvement without claiming an absolute global position or heading.\n\n![Published Cassie InEKF lidar-mapping demonstration; the exercise builds a separate synthetic comparison](/img/lessons/projects_state_estimation_slam_2-contact-inertial.webp)\n*Published Cassie InEKF lidar-mapping demonstration; the exercise builds a separate synthetic comparison. Source: [Official documentation](https://github.com/RossHartley/invariant-ekf), license unknown.*\n\n## What you will learn\n\n- **An IMU**, an inertial measurement unit, measures acceleration and rotation. Integrating those readings predicts body motion but accumulates errors.\n- **Forward kinematics** converts joint measurements and robot geometry into foot positions relative to the body.\n- **Contact aiding** uses a supporting foot's approximately fixed location to correct relative body motion; a slipping foot can violate that assumption.\n- **Think adding assertions to integration:** inertial propagation predicts the next state, while trusted contact geometry supplies another constraint on whether that prediction is consistent.\n\n> **Key idea:** Foot contacts constrain motion relative to the environment, but do not reveal an otherwise unknown global position or rotation around gravity.\n\n## What you need\n\n- **Complete Diff-drive odometry from scratch** and **Animate a one-dimensional robot belief** before adding three-dimensional state and contact visualization.\n- **Use invariant-ekf:** its C++ kinematic example processes inertial, contact-state, and kinematic measurements; follow the repository's build requirements.\n- **Use consistent synthetic data:** define body motion, foot locations, joint/contact observations, and an independent reference; keep stationary feet consistent with the body trajectory.\n- **Use an existing computer:** no legged robot purchase is required; budget compilation, simulation, and storage separately.\n\n## Steps\n\n1. **Inspect the kinematic example:** identify its IMU, CONTACT, and KINEMATIC records; retain timestamps, frame conventions, foot identifiers, and measurement uncertainty.\n2. **Create a known synthetic sequence:** include support and swing phases; a swing foot must not be treated as a stationary environmental constraint.\n3. **Run inertial-only propagation:** use the same initial state and IMU samples as the aided run, but omit contact-based corrections.\n4. **Run contact-aided estimation:** set contact states and apply kinematic corrections; add per-event state export because the example is not an animation tool.\n5. **Animate both estimates:** show body paths, supporting feet, reference motion, and errors together; add a documented slip interval to expose contact-assumption failures.\n6. **Demo relative improvement:** report drift and failure intervals under the same initial frame; explicitly label global position and yaw, rotation around gravity, as unobservable.\n\n**Worked API example:** the source separates propagation, contact flags, and kinematic correction. Here the measurements and time interval have already been parsed.\n\n```cpp\nfilter.Propagate(imu_measurement_prev, dt);\nfilter.setContacts(contacts);\nfilter.CorrectKinematics(measured_kinematics);\n```\n\n```mermaid\nflowchart LR\n  A[\"Synthetic IMU\"] --> B[\"Propagate body state\"]\n  C[\"Joint geometry\"] --> E[\"Contact correction\"]\n  D[\"Contact flags\"] --> E\n  B --> E\n  B --> F[\"Inertial-only path\"]\n  E --> G[\"Body and feet animation\"]\n  F --> G\n```\n\n## Common pitfalls\n\n- **Do not double-count a foot:** retain consistent identifiers across contact changes and kinematic records.\n- **Do not invent a world reference:** contact measurements alone leave absolute global position and yaw ambiguous, even if a plotted path looks stable.\n- **Do not hide slipping:** distinguish a deliberately invalid contact constraint from ordinary inertial noise.\n\n## When it's done\n\n- **Deliver a replayable animation:** synthetic inputs, initial conditions, both state histories, contact markers, error plots, and slip clips reproduce the comparison.\n",
+      "resources": [
+        {
+          "title": "Scenes of the UM Campus seen through the eyes of a bipedal robot: InEKF LiDAR mapping on Cassie Blue",
+          "url": "https://www.youtube.com/watch?v=pNyXsZ5zVZk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the authors using inertial, contact, and kinematic state estimation on a real biped."
+        },
+        {
+          "title": "invariant-ekf",
+          "url": "https://github.com/RossHartley/invariant-ekf",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Documents supported measurements, build requirements, and the contact-aided example."
+        },
+        {
+          "title": "kinematics.cpp",
+          "url": "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/src/examples/kinematics.cpp",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Shows the actual propagation, contact-state update, and kinematic-correction calls."
+        },
+        {
+          "title": "Contact-Aided Invariant Extended Kalman Filtering for Legged Robot State Estimation",
+          "url": "https://arxiv.org/abs/1805.10410",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains the estimator and why absolute position and yaw remain unobservable."
+        }
+      ],
+      "sources": [
+        "https://github.com/RossHartley/invariant-ekf",
+        "https://www.youtube.com/watch?v=pNyXsZ5zVZk",
+        "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/src/examples/kinematics.cpp",
+        "https://arxiv.org/abs/1805.10410",
+        "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/CMakeLists.txt"
+      ]
     }
   ]
 }
