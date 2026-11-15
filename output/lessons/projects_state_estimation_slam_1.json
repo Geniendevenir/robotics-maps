@@ -274,6 +274,403 @@
         "https://github.com/ethz-asl/kalibr/wiki/yaml-formats",
         "https://github.com/MichaelGrupp/evo/wiki/Metrics"
       ]
+    },
+    {
+      "node_id": "p:break-a-slam-replay-with-moving-foregrounds",
+      "type": "project",
+      "name": "Break a SLAM replay with moving foregrounds",
+      "summary": "Replay static and dynamic scenes to show when moving objects corrupt camera tracking, and compare a baseline with dynamic-object rejection.",
+      "lesson_md": "## In one sentence\n\nReplay static and dynamic scenes to show when moving objects corrupt camera tracking, and compare a baseline with dynamic-object rejection.\n\n![DynaSLAM results showing moving people removed from a reconstructed indoor scene](/img/lessons/projects_state_estimation_slam_1-moving-foregrounds.webp)\n*DynaSLAM results showing moving people removed from a reconstructed indoor scene. Source: [Published project media](https://github.com/BertaBescos/DynaSLAM), license unknown.*\n\n## What you will learn\n\n- **SLAM** means simultaneous localization and mapping: estimating camera motion while building an environment map.\n- **Static-scene assumption:** Many tracked image points should belong to the unmoving background; a walking person can violate that assumption.\n- **Dynamic-object rejection** excludes suspect observations. DynaSLAM combines learned object segmentation with geometry and builds on ORB-SLAM2.\n- **Software analogy:** A cache becomes misleading when its supposedly immutable inputs keep changing. Tracking foreground features creates a similar mismatch.\n\n> **Key idea:** Rejecting moving evidence helps only when enough reliable background evidence remains.\n\n## What you need\n\n- **Prerequisite:** Complete Replay a public visual-inertial trajectory; this experiment then uses compatible recorded RGB-D images, meaning color plus depth.\n- **Tools:** Use ORB-SLAM3 as a baseline and DynaSLAM as a separate comparison; pin their different build environments and input conversions.\n- **Budget:** This proposal estimates 2–4 weeks and €0 new hardware on an existing computer; storage and rented compute are separate.\n\n## Steps\n\n1. **Choose contrasting recordings:** TUM lists fr3/sitting_xyz and fr3/walking_xyz among its dynamic-object sequences; inspect their actual motion before grouping them.\n2. **Run the baseline:** Preserve calibration, timestamps, reference poses, and tracking status for every frame.\n3. **Enable the comparison:** DynaSLAM uses geometric rejection alone when mask arguments are absent; supplying PATH_TO_MASKS enables its learned masks.\n4. **Count failures:** Compare missing poses, recovery events, map ghosts, and trajectory errors using fixed evaluation settings.\n5. **Film the evidence:** Synchronize input images, masks, estimated motion, and map views; include the first failure rather than only the final map.\n\n```mermaid\nflowchart LR\n  N0[\"Recorded images\"] --> N1[\"Baseline and rejection\"]\n  N1[\"Baseline and rejection\"] --> N2[\"Tracking and map\"]\n  N2[\"Tracking and map\"] --> N3[\"Failure comparison\"]\n  N3[\"Failure comparison\"]\n```\n\n## Common pitfalls\n\n- **Different systems confound attribution:** An ORB-SLAM3 versus DynaSLAM comparison cannot isolate masking alone; add a within-DynaSLAM configuration comparison.\n- **Inpainting is appearance repair:** Filling hidden background pixels does not prove that the recovered camera path is accurate.\n- **Missing poses matter:** An apparently low error can result from evaluating only the frames that survived.\n\n## When it's done\n\n- **Deliver linked replays:** Show a quiet case, a moving-foreground case, and a failure table with tracking coverage and error.\n- **Explain the mechanism:** Connect your findings to Robust, dynamic & lifelong state estimation, then attempt Revisit a changed room without corrupting its map.",
+      "resources": [
+        {
+          "title": "DynaSLAM",
+          "url": "https://www.youtube.com/watch?v=EabI_goFmQs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors remove moving foregrounds and reconstruct static background."
+        },
+        {
+          "title": "DynaSLAM",
+          "url": "https://github.com/BertaBescos/DynaSLAM",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the RGB-D replay and mask-mode instructions."
+        },
+        {
+          "title": "Dataset Download",
+          "url": "https://cvg.cit.tum.de/data/datasets/rgbd-dataset/download",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose the labeled sitting and walking sequences with reference trajectories."
+        },
+        {
+          "title": "DynaSLAM: Tracking, Mapping and Inpainting in Dynamic Scenes",
+          "url": "https://arxiv.org/abs/1806.05620",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the static-scene assumption and rejection methods."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=EabI_goFmQs",
+        "https://github.com/BertaBescos/DynaSLAM",
+        "https://cvg.cit.tum.de/data/datasets/rgbd-dataset/download",
+        "https://arxiv.org/abs/1806.05620"
+      ]
+    },
+    {
+      "node_id": "p:build-a-look-alike-room-loop-rejection-test",
+      "type": "project",
+      "name": "Build a look-alike-room loop rejection test",
+      "summary": "Build a labeled gallery of similar-looking places, reject false revisits with geometric checks, and show the graph damage caused by accepting them.",
+      "lesson_md": "## In one sentence\n\nBuild a labeled gallery of similar-looking places, reject false revisits with geometric checks, and show the graph damage caused by accepting them.\n\n![RTAB-Map example of a graph distorted by incorrect loop closures](/img/lessons/projects_state_estimation_slam_1-look-alike-rooms.webp)\n*RTAB-Map example of a graph distorted by incorrect loop closures. Source: [Published project media](https://github.com/introlab/rtabmap/wiki/Robust-Graph-Optimization), license unknown.*\n\n## What you will learn\n\n- **Place recognition** retrieves images that resemble an earlier view; resemblance is a proposal, not proof of returning to that location.\n- **Geometric verification** checks whether matching image points support a compatible relative camera pose, meaning position and orientation.\n- **False loop closure:** An incorrect revisit adds a wrong constraint to the trajectory graph and can deform the whole map.\n- **Software analogy:** Treat image similarity like a hash lookup with collisions: retrieve candidates, then validate their contents before merging records.\n\n> **Key idea:** A plausible image match must earn the right to change the map.\n\n## What you need\n\n- **Prerequisites:** Complete Film a map correction after a verified loop and Close a tiny pose graph.\n- **Inputs:** Use RTAB-Map recordings containing true revisits and different places with similar objects; label them independently of detector scores.\n- **Budget:** This proposal estimates 2–4 weeks with €0 new hardware on an existing computer; storage and purchased compute are excluded.\n\n## Steps\n\n1. **Build the gallery:** Separate known revisits from confusing negatives; retain source frame identifiers and your labeling rule.\n2. **Rank candidates:** Save similarity scores before geometric checks so retrieval performance remains visible.\n3. **Verify geometry:** Display matched points, the estimated transform, and rejected correspondences; keep tuning scenes separate from evaluation scenes.\n4. **Replay accepted constraints:** Compare an unprotected graph against robust optimization using the same proposed loops.\n5. **Reproduce the documented setting:** RTAB-Map pairs Optimizer/Robust=true with RGBD/OptimizeMaxError=0; record these alternatives rather than mixing rejection modes.\n6. **Present the demo:** Click a gallery pair to show its label, verification decision, and resulting graph change.\n\n```mermaid\nflowchart LR\n  N0[\"Labeled image pairs\"] --> N1[\"Retrieve candidates\"]\n  N1[\"Retrieve candidates\"] --> N2[\"Verify geometry\"]\n  N2[\"Verify geometry\"] --> N3[\"Compare graph damage\"]\n  N3[\"Compare graph damage\"]\n```\n\n## Common pitfalls\n\n- **Appearance-only mode differs:** RTAB-Map’s loop-detection tutorial disables metric mapping; use it for retrieval inspection, then restore geometry for pose tests.\n- **Robust optimization is another defense:** It can limit bad constraints without proving the original image match was correct.\n- **Report both error types:** Precision measures accepted matches that are correct; recall measures true revisits that were recovered.\n\n## When it's done\n\n- **Deliver a labeled test set:** Include ranked confusing pairs, verification results, and before/after graphs with false constraints identified.\n- **Connect the lesson:** Explain Place recognition, loop closure & relocalization before Compare geometric and learned place matching.",
+      "resources": [
+        {
+          "title": "RTAB-Map: Robust Graph Optimization with GTSAM and Vertigo",
+          "url": "https://www.youtube.com/watch?v=A8v70DZxLF8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the map deformation caused by wrong loops and its robust-optimization comparison."
+        },
+        {
+          "title": "Loop closure detection",
+          "url": "https://github.com/introlab/rtabmap/wiki/Loop-closure-detection",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect candidate matching and pause on accepted appearances."
+        },
+        {
+          "title": "Robust Graph Optimization",
+          "url": "https://github.com/introlab/rtabmap/wiki/Robust-Graph-Optimization",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Reproduce the false-loop example and documented robust settings."
+        },
+        {
+          "title": "BetweenFactor",
+          "url": "https://borglab.github.io/gtsam/betweenfactor/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the relative-pose constraint that a loop inserts."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=A8v70DZxLF8",
+        "https://github.com/introlab/rtabmap/wiki/Loop-closure-detection",
+        "https://github.com/introlab/rtabmap/wiki/Robust-Graph-Optimization",
+        "https://borglab.github.io/gtsam/betweenfactor/"
+      ]
+    },
+    {
+      "node_id": "p:build-a-rigid-timestamped-camera-imu-rig",
+      "type": "project",
+      "name": "Build a rigid timestamped camera-IMU rig",
+      "summary": "Assemble a rigid camera and inertial sensor rig, document its timestamps, and validate calibration on recorded motion that was excluded from fitting.",
+      "lesson_md": "## In one sentence\n\nAssemble a rigid camera and inertial sensor rig, document its timestamps, and validate calibration on recorded motion that was excluded from fitting.\n\n![OpenVINS visual-inertial sensor rig with cameras and an inertial measurement unit](/img/lessons/projects_state_estimation_slam_1-camera-imu-rig.webp)\n*OpenVINS visual-inertial sensor rig with cameras and an inertial measurement unit. Source: [Published project media](https://docs.openvins.com/gs-calibration.html), license unknown.*\n\n## What you will learn\n\n- **An inertial measurement unit (IMU)** measures angular velocity and acceleration; the camera supplies visual observations of the surroundings.\n- **Extrinsic calibration** estimates the rigid transform between sensors. A bracket that bends makes that fixed-transform model incorrect.\n- **Timestamp provenance** means knowing what event a timestamp represents: sensor acquisition, driver receipt, or another stage.\n- **Software analogy:** A sensor interface needs both a spatial schema and a time contract, just as an event API needs units and ordering.\n\n> **Key idea:** Calibration is useful only while the hardware and timestamp meanings continue to match its model.\n\n## What you need\n\n- **Prerequisite:** Finish Design an observable calibration motion; use Kalibr and OpenVINS with supported drivers and documented camera/IMU data.\n- **Physical setup:** Choose a camera, IMU, rigid bracket, printed calibration target, power supply, and recording computer; verify synchronization support before purchase.\n- **Budget:** The proposal targets under €500 hardware and 1–2 months; a complete current parts quote is unknown.\n\n## Steps\n\n1. **Design the mount:** Keep the camera and IMU rigidly connected, with a visible target and no loose cable loads bending the bracket.\n2. **Trace the clocks:** Document acquisition timestamps, units, buffering, trigger signals, and any conversion into the recording clock.\n3. **Record calibration:** Kalibr reports good results with 20 Hz camera data and 200 Hz IMU data; treat these as documented examples.\n4. **Fit the model:** Calibrate camera geometry, characterize inertial noise, then estimate the camera-to-IMU transform and time offset.\n5. **Validate separately:** Replay held-out motion with OpenVINS; compare timing diagnostics and trajectory behavior before and after calibration.\n6. **Record the demonstration:** Show the actual rig, target sequence, reconstructed path, timestamp intervals, and calibration reports together.\n\n```mermaid\nflowchart LR\n  N0[\"Rigid mount\"] --> N1[\"Timestamp audit\"]\n  N1[\"Timestamp audit\"] --> N2[\"Calibrate sensors\"]\n  N2[\"Calibrate sensors\"] --> N3[\"Held-out VIO demo\"]\n  N3[\"Held-out VIO demo\"]\n```\n\n## Common pitfalls\n\n- **Receipt time is not acquisition time:** Shared computer arrival does not establish that both sensors sampled simultaneously.\n- **A flexible mount invalidates calibration:** Repeated estimates should not change merely because the cable was moved.\n- **Power and wiring:** Verify the selected devices’ electrical interfaces and pinouts before connecting them.\n\n## When it's done\n\n- **Deliver a reproducible rig:** Include assembly files, a complete parts list, calibration files, clock diagram, and held-out replay evidence.\n- **Explain the result:** Relate errors to Estimator calibration, timing & observability before Engineer a synchronized lidar-camera-IMU mapper.",
+      "resources": [
+        {
+          "title": "Visual-Inertial Sensor Calibration -- Live OpenVINS State Estimation Demo",
+          "url": "https://www.youtube.com/watch?v=rBT5O5TEOV4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow a real sensor calibration followed by live OpenVINS estimation."
+        },
+        {
+          "title": "Getting Started » Sensor Calibration",
+          "url": "https://docs.openvins.com/gs-calibration.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow camera, inertial-noise, and extrinsic calibration stages."
+        },
+        {
+          "title": "Camera IMU calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check rigid motion, recording rates, clock quality, and calibration outputs."
+        },
+        {
+          "title": "Multiple camera calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/Multiple-camera-calibration",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Estimate camera intrinsics before the joint camera/IMU stage."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=rBT5O5TEOV4",
+        "https://docs.openvins.com/gs-calibration.html",
+        "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+        "https://github.com/ethz-asl/kalibr/wiki/Multiple-camera-calibration"
+      ]
+    },
+    {
+      "node_id": "p:build-a-trajectory-evaluation-scorecard",
+      "type": "project",
+      "name": "Build a trajectory evaluation scorecard",
+      "summary": "Create a reproducible trajectory scorecard that reports pose error, tracking coverage, and alignment choices instead of relying on an attractive overlay.",
+      "lesson_md": "## In one sentence\n\nCreate a reproducible trajectory scorecard that reports pose error, tracking coverage, and alignment choices instead of relying on an attractive overlay.\n\n![evo absolute pose error visualization over an estimated trajectory](/img/lessons/projects_state_estimation_slam_1-trajectory-scorecard.webp)\n*evo absolute pose error visualization over an estimated trajectory. Source: [Published project media](https://github.com/MichaelGrupp/evo), license unknown.*\n\n## What you will learn\n\n- **A trajectory** is a timestamped sequence of positions and orientations; evaluation compares it with an independently measured reference.\n- **Absolute pose error (APE)** compares corresponding poses. **Relative pose error (RPE)** compares changes in pose over selected intervals.\n- **Alignment** removes a chosen coordinate-frame difference before comparison. Allowing scale changes can conceal a metric-scale error.\n- **Software analogy:** A benchmark needs its fixture and scoring rules versioned alongside the program; otherwise two passing scores may measure different things.\n\n> **Key idea:** The evaluation protocol is part of the result.\n\n## What you need\n\n- **Prerequisite:** Start from Replay a public visual-inertial trajectory or Replay a 3D lidar odometry baseline.\n- **Tools and inputs:** Use evo, its example trajectories or compatible public estimates, and the corresponding reference with known timestamp and frame conventions.\n- **Budget:** The student proposal estimates one week and €0 new hardware on an existing computer; compute and storage purchases are excluded.\n\n## Steps\n\n1. **Validate the files:** Use evo_traj with --full_check to inspect timestamps, array structure, and orientation normalization before scoring.\n2. **Freeze association:** Record timestamp units, permitted matching tolerance, any time shift, and the number of unmatched samples.\n3. **Choose alignment:** Compare rigid rotation/translation with similarity alignment only where justified by the sensor’s scale ambiguity.\n4. **Compute both errors:** Use the documented commands below; the RPE example compares angular drift over one-meter intervals.\n5. **Add coverage:** Report missing output and tracking failures alongside error statistics; preserve the full evaluation interval.\n6. **Make the demo:** Overlay reference and estimate with the scorecard; rerun after a deliberate timestamp or scale perturbation.\n\n```bash\nevo_ape tum reference.txt estimate.txt --align\nevo_rpe tum reference.txt estimate.txt --pose_relation angle_deg --delta 1 --delta_unit m\n```\n\n```mermaid\nflowchart LR\n  N0[\"Validate trajectories\"] --> N1[\"Associate timestamps\"]\n  N1[\"Associate timestamps\"] --> N2[\"Apply stated alignment\"]\n  N2[\"Apply stated alignment\"] --> N3[\"Error and coverage\"]\n  N3[\"Error and coverage\"]\n```\n\n## Common pitfalls\n\n- **Scale correction changes the question:** It is inappropriate when testing whether an estimator already produces accurate metric distances.\n- **Matched samples are a subset:** Missing difficult frames can improve an average while making the system less useful.\n- **Reference frames must agree:** Camera poses and IMU poses are different even when recorded at the same instant.\n\n## When it's done\n\n- **Deliver a rerunnable report:** Include commands, configurations, association counts, APE, RPE, and an explicit alignment statement.\n- **Explain tradeoffs:** Connect SLAM benchmarking, consistency & failure analysis to Turn trajectory failures into a reproducible test suite.",
+      "resources": [
+        {
+          "title": "Documentation - LaMAria",
+          "url": "https://lamaria.ethz.ch/slam_documentation",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See how a real benchmark specifies alignment, reference types, and missing estimates."
+        },
+        {
+          "title": "Project Aria at ICCV 2025 - Benchmarking Egocentric Visual-Intertial SLAM at City Scale",
+          "url": "https://www.youtube.com/watch?v=HD_eACowqW4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official discussion of benchmark metrics and failure analysis."
+        },
+        {
+          "title": "evo_traj",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/evo_traj",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Validate trajectories and inspect temporal and geometric alignment."
+        },
+        {
+          "title": "Metrics",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the documented absolute and relative pose error commands."
+        }
+      ],
+      "sources": [
+        "https://lamaria.ethz.ch/slam_documentation",
+        "https://www.youtube.com/watch?v=HD_eACowqW4",
+        "https://github.com/MichaelGrupp/evo/wiki/evo_traj",
+        "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+        "https://github.com/MichaelGrupp/evo"
+      ]
+    },
+    {
+      "node_id": "p:close-a-tiny-pose-graph",
+      "type": "project",
+      "name": "Close a tiny pose graph",
+      "summary": "Build a small graph of noisy robot poses, anchor its coordinate frame, and show how adding a valid loop constraint changes the optimized trajectory.",
+      "lesson_md": "## In one sentence\n\nBuild a small graph of noisy robot poses, anchor its coordinate frame, and show how adding a valid loop constraint changes the optimized trajectory.\n\n![GTSAM Pose2 SLAM example showing planar poses and uncertainty ellipses](/img/lessons/projects_state_estimation_slam_1-tiny-pose-graph.webp)\n*GTSAM Pose2 SLAM example showing planar poses and uncertainty ellipses. Source: [Published project media](https://borglab.github.io/gtsam/pose2slamexample/), license unknown.*\n\n## What you will learn\n\n- **A pose** contains position and orientation; GTSAM’s Pose2 stores planar x, y, and heading.\n- **A factor** is a noisy constraint connecting unknown variables. A between factor describes relative motion between two poses.\n- **An anchor** fixes the coordinate frame. Without one, translating or rotating the entire solution leaves relative measurements unchanged.\n- **Software analogy:** An optimizer is a constraint solver: changing one relationship can require coordinated updates across many dependent variables.\n\n> **Key idea:** Loop closure distributes a correction through connected poses; its effect depends on the other constraints and their uncertainties.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: ROS 2 and Nav2 with a simulated mobile robot, then work entirely in a small Python notebook.\n- **Tools:** Use GTSAM, numerical arrays, and plotting; read Factor graphs, smoothing & pose-graph SLAM for the accompanying concepts.\n- **Budget:** This proposal estimates one week and €0 new hardware using an existing computer.\n\n## Steps\n\n1. **Reproduce the example:** GTSAM’s tutorial uses five poses, two-meter relative translations, and right-angle turns.\n2. **Add an anchor:** Put a prior on pose 1; retain its stated uncertainty rather than pretending every variable is known.\n3. **Solve the chain:** Add consecutive between factors, perturb initial guesses, and plot the solution without a loop.\n4. **Close the loop:** Add the documented factor from pose 5 to pose 2, then optimize again with unchanged noise settings.\n5. **Inspect the compromise:** Compare each factor’s residual, meaning predicted-minus-measured disagreement, and plot uncertainty alongside pose changes.\n6. **Animate the demonstration:** Toggle the loop constraint and show the graph, initial guesses, optimized poses, and objective value together.\n\n```mermaid\nflowchart LR\n  N0[\"Anchor and odometry\"] --> N1[\"Solve pose chain\"]\n  N1[\"Solve pose chain\"] --> N2[\"Add verified loop\"]\n  N2[\"Add verified loop\"] --> N3[\"Compare corrected graph\"]\n  N3[\"Compare corrected graph\"]\n```\n\n## Common pitfalls\n\n- **Initial guess is not measurement noise:** A bad starting guess tests optimization; noisy factors test inference under conflicting evidence.\n- **A valid loop need not force zero residual:** Real noisy constraints generally require a weighted compromise.\n- **Units matter:** GTSAM’s documented pose-noise example uses meters for translation and radians for heading.\n\n## When it's done\n\n- **Deliver a compact notebook:** Preserve measurements, prior, noise settings, and before/after residuals so another student can reproduce the correction.\n- **Continue deliberately:** Use the graph in Film a map correction after a verified loop and Reject a malicious loop constraint in a toy graph.",
+      "resources": [
+        {
+          "title": "Graph-based SLAM using Pose Graphs (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=uHbRKvD8TWg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn why pose graphs minimize disagreement between relative-motion constraints."
+        },
+        {
+          "title": "Pose2 SLAM Example",
+          "url": "https://borglab.github.io/gtsam/pose2slamexample/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Reproduce the five-pose example, anchor, and loop factor."
+        },
+        {
+          "title": "Pose2",
+          "url": "https://borglab.github.io/gtsam/pose2/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect planar pose coordinates and relative transformations."
+        },
+        {
+          "title": "BetweenFactor",
+          "url": "https://borglab.github.io/gtsam/betweenfactor/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the measurement and noise model on a graph edge."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=uHbRKvD8TWg",
+        "https://borglab.github.io/gtsam/pose2slamexample/",
+        "https://borglab.github.io/gtsam/pose2/",
+        "https://borglab.github.io/gtsam/betweenfactor/"
+      ]
+    },
+    {
+      "node_id": "p:compare-filter-and-graph-vio-under-visual-loss",
+      "type": "project",
+      "name": "Compare filter and graph VIO under visual loss",
+      "summary": "Replay identical visual-inertial data through OpenVINS and ORB-SLAM3, inject documented image gaps, and compare drift, runtime, and recovery behavior.",
+      "lesson_md": "## In one sentence\n\nReplay identical visual-inertial data through OpenVINS and ORB-SLAM3, inject documented image gaps, and compare drift, runtime, and recovery behavior.\n\n![ORB-SLAM3 stereo-inertial demonstration showing camera tracking and a reconstructed map](/img/lessons/projects_state_estimation_slam_1-vio-visual-loss.webp)\n*ORB-SLAM3 stereo-inertial demonstration showing camera tracking and a reconstructed map. Source: [Published project media](https://github.com/UZ-SLAMLab/ORB_SLAM3), license unknown.*\n\n## What you will learn\n\n- **Visual-inertial odometry (VIO)** estimates motion using images and an inertial measurement unit, which senses acceleration and angular velocity.\n- **A filter** updates a compact estimate as measurements arrive; **graph optimization** adjusts connected state variables using multiple constraints.\n- **Recovery** can mean resuming tracking, starting a new map, or recognizing an old map; these outcomes are not equivalent.\n- **Software analogy:** Inject missing image messages like a controlled service outage; compare failure handling as carefully as normal-case throughput.\n\n> **Key idea:** A useful outage comparison records what the estimator believed and how it recovered, not just whether it kept publishing poses.\n\n## What you need\n\n- **Prerequisites:** Complete Show where metric scale comes from and Audit clock offsets before running VIO.\n- **Inputs:** Use a supported EuRoC recording, compatible calibration, OpenVINS, ORB-SLAM3, and an explicit pose-evaluation script.\n- **Budget:** This proposal estimates 1–2 months and €0 new hardware; storage and purchased compute are separate.\n\n## Steps\n\n1. **Establish clean baselines:** Keep sensor streams and calibration matched; record each system’s configuration, initialization interval, and build revision.\n2. **Check sampling:** OpenVINS documents EuRoC images at 20 frames per second and IMU samples at 200 per second.\n3. **Inject identical gaps:** Remove the same timestamped images from copies of the input, leaving inertial data untouched.\n4. **Mark state transitions:** Record lost tracking, new-map creation, relocalization, missing poses, and the time needed to resume output.\n5. **Separate mapping effects:** Distinguish local motion drift from later loop corrections or map merging when scoring the paths.\n6. **Record the demo:** Show blackout intervals beside both trajectories, runtime curves, and recovery labels across multiple recordings.\n\n```mermaid\nflowchart LR\n  N0[\"Matched camera and IMU\"] --> N1[\"Inject image gaps\"]\n  N1[\"Inject image gaps\"] --> N2[\"Replay two systems\"]\n  N2[\"Replay two systems\"] --> N3[\"Error and recovery\"]\n  N3[\"Error and recovery\"]\n```\n\n## Common pitfalls\n\n- **Black frames differ from absent frames:** Replacing images with dark pixels tests a different failure mechanism from dropping messages.\n- **Architecture is not the only difference:** Feature tracking, initialization, tuning, and map management also affect this comparison.\n- **Inertial propagation still drifts:** Continued output during visual loss does not establish accurate or globally referenced motion.\n\n## When it's done\n\n- **Deliver a matched experiment:** Include clean, interrupted, and restored replays with pose error, missing-output coverage, runtime, and recovery outcome.\n- **Explain the limits:** Relate findings to Visual odometry & visual-inertial SLAM without claiming every filter or graph behaves the same way.",
+      "resources": [
+        {
+          "title": "ORB-SLAM3: TUM-VI Stereo-Inertial, room1+magistrale1+magistrale5+slides1",
+          "url": "https://www.youtube.com/watch?v=HyLNq-98LRo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors’ stereo-inertial tracking and multi-map behavior."
+        },
+        {
+          "title": "Getting Started » Simple Tutorial",
+          "url": "https://docs.openvins.com/gs-tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Establish a working OpenVINS replay before modifying inputs."
+        },
+        {
+          "title": "Getting Started » Supported Datasets",
+          "url": "https://docs.openvins.com/gs-datasets.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check EuRoC sampling, supported sequences, and reference-frame details."
+        },
+        {
+          "title": "ORB-SLAM3",
+          "url": "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the supported visual-inertial dataset examples."
+        },
+        {
+          "title": "ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM",
+          "url": "https://arxiv.org/abs/2007.11898",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand map creation, recognition, and merging after visual difficulty."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HyLNq-98LRo",
+        "https://docs.openvins.com/gs-tutorial.html",
+        "https://docs.openvins.com/gs-datasets.html",
+        "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+        "https://arxiv.org/abs/2007.11898"
+      ]
+    },
+    {
+      "node_id": "p:compare-filtering-and-fixed-lag-smoothing",
+      "type": "project",
+      "name": "Compare filtering and fixed-lag smoothing",
+      "summary": "Compare an online filter with a bounded-window graph smoother on identical delayed observations, measuring both estimation error and the time each output becomes available.",
+      "lesson_md": "## In one sentence\n\nCompare an online filter with a bounded-window graph smoother on identical delayed observations, measuring both estimation error and the time each output becomes available.\n\n![GTSAM planar trajectory example illustrating the pose variables used in a smoothing graph](/img/lessons/projects_state_estimation_slam_1-fixed-lag-smoothing.webp)\n*GTSAM planar trajectory example illustrating the pose variables used in a smoothing graph. Source: [Published project media](https://borglab.github.io/gtsam/pose2slamexample/), license unknown.*\n\n## What you will learn\n\n- **Filtering** estimates the current state from measurements received so far; **smoothing** can also revise earlier states using later evidence.\n- **Fixed lag** keeps a recent time window. Older variables are marginalized: their information is summarized before the variables are removed.\n- **Measurement time** says when something happened; **arrival time** says when the estimator learned about it.\n- **Software analogy:** A bounded event-processing window can revise recent results when late events arrive, but it cannot retain an unlimited history.\n\n> **Key idea:** Delayed accuracy improvements must be reported together with the information and latency that made them possible.\n\n## What you need\n\n- **Prerequisite:** Complete Stage a sensor-dropout fusion challenge and review Kalman filtering & multisensor fusion.\n- **Tools:** Use a synthetic trajectory, one shared observation model, a filter, GTSAM’s fixed-lag smoother, and repeatable timing instrumentation.\n- **Budget:** This proposal estimates 1–2 months with €0 new hardware on an existing computer.\n\n## Steps\n\n1. **Reproduce the documented example:** GTSAM moves at 2 meters per second with observations every 0.25 seconds and a 2-second lag.\n2. **Make assumptions match:** Give both estimators identical motion noise, observation noise, initial information, and generated measurements.\n3. **Add delayed arrivals:** Keep original measurement timestamps; log arrival order separately and test delays both inside and outside the retained window.\n4. **Define filter behavior:** Choose whether late data is discarded or replayed; robot_localization documents a history-based replay option, which changes the baseline.\n5. **Measure fairly:** Plot current-state error separately from revised historical estimates, including computation time and output latency.\n6. **Record the demo:** Use a split screen showing the shared truth, delayed observations, filter estimate, smoother window, and error curves.\n\n```mermaid\nflowchart LR\n  N0[\"Timestamped observations\"] --> N1[\"Schedule arrivals\"]\n  N1[\"Schedule arrivals\"] --> N2[\"Filter and window graph\"]\n  N2[\"Filter and window graph\"] --> N3[\"Error and latency\"]\n  N3[\"Error and latency\"]\n```\n\n## Common pitfalls\n\n- **Future evidence changes fairness:** A revised historical estimate has more information than an estimate published immediately at that old timestamp.\n- **Matching linear models may agree:** Do not manufacture a winner by quietly changing one estimator’s noise or available evidence.\n- **Marginalization has consequences:** Measurements referring to removed variables need an explicit policy rather than silently extending the window.\n\n## When it's done\n\n- **Deliver reproducible curves:** Save the random seed, delay schedule, window length, late-data policy, error, memory, and runtime measurements.\n- **Explain the tradeoff:** Use the result to prepare Close a tiny pose graph and distinguish bounded smoothing from retaining an entire trajectory.",
+      "resources": [
+        {
+          "title": "TUM AI Lecture Series - Pushing Factor Graphs beyond SLAM (Frank Dellaert)",
+          "url": "https://www.youtube.com/watch?v=OvcD6Dz2Z20",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn how factor graphs represent state-estimation problems and support smoothing."
+        },
+        {
+          "title": "Fixed-Lag Smoother Example",
+          "url": "https://borglab.github.io/gtsam/fixedlagsmootherexample/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Reproduce the moving robot, sampling interval, and bounded time window."
+        },
+        {
+          "title": "FixedLagSmoother",
+          "url": "https://borglab.github.io/gtsam/fixedlagsmoother/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the retained variables and marginalization API."
+        },
+        {
+          "title": "State Estimation Nodes",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read smooth_lagged_data and history_length before defining the filter baseline."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=OvcD6Dz2Z20",
+        "https://borglab.github.io/gtsam/fixedlagsmootherexample/",
+        "https://borglab.github.io/gtsam/fixedlagsmoother/",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+        "https://borglab.github.io/gtsam/pose2slamexample/"
+      ]
+    },
+    {
+      "node_id": "p:compare-geometric-and-learned-place-matching",
+      "type": "project",
+      "name": "Compare geometric and learned place matching",
+      "summary": "Compare classical image matching with MASt3R-assisted verification on labeled revisits, keeping retrieval, geometric checks, and final loop decisions separate.",
+      "lesson_md": "## In one sentence\n\nCompare classical image matching with MASt3R-assisted verification on labeled revisits, keeping retrieval, geometric checks, and final loop decisions separate.\n\n![MASt3R matched image pair with colored correspondence lines](/img/lessons/projects_state_estimation_slam_1-learned-place-matching.webp)\n*MASt3R matched image pair with colored correspondence lines. Source: [Published project media](https://github.com/naver/mast3r), license unknown.*\n\n## What you will learn\n\n- **A correspondence** links pixels believed to depict the same physical point; many correct correspondences can support a relative camera pose.\n- **A descriptor** is a numerical summary used for matching visual features. Classical and learned methods construct these summaries differently.\n- **MASt3R** predicts dense local features and three-dimensional information from image pairs; its output still needs evaluation on confusing negative pairs.\n- **Software analogy:** Compare two search implementations behind one test interface, feeding the same queries and judging against independently labeled answers.\n\n> **Key idea:** A learned matcher changes how evidence is proposed; it does not replace the need to test whether a loop is true.\n\n## What you need\n\n- **Prerequisite:** Complete Build a look-alike-room loop rejection test, retaining its labeled positives, confusing negatives, and held-out scenes.\n- **Tools:** Use RTAB-Map or OpenCV for the classical baseline, MASt3R for learned matching, and saved image-pair identifiers.\n- **Budget:** This proposal estimates 1–2 months and €0 new hardware; GPU rental or purchase and storage require separate costing.\n\n## Steps\n\n1. **Freeze the pair list:** Keep true revisits and different-but-similar rooms; separate tuning pairs from final evaluation pairs.\n2. **Run classical matching:** Record descriptors, tentative correspondences, and the chosen geometric model rather than only a visual similarity score.\n3. **Run learned matching:** Use MASt3R’s documented matching example; its visualization selects 20 correspondences to display, not to define all accepted evidence.\n4. **Apply explicit verification:** Estimate compatible camera geometry and record residuals, accepted correspondences, and rejected pairs for each method.\n5. **Measure the tradeoff:** Plot precision versus recall as thresholds vary; report runtime and GPU memory using the same image pairs.\n6. **Demonstrate failures:** Click gallery examples to compare correspondence overlays, labels, scores, and resulting loop decisions side by side.\n\n```mermaid\nflowchart LR\n  N0[\"Labeled image pairs\"] --> N1[\"Two matchers\"]\n  N1[\"Two matchers\"] --> N2[\"Geometric verification\"]\n  N2[\"Geometric verification\"] --> N3[\"Precision and recall\"]\n  N3[\"Precision and recall\"]\n```\n\n## Common pitfalls\n\n- **Retrieval and verification differ:** Finding the correct image among candidates is different from estimating a valid transform between two selected images.\n- **Correspondence count can mislead:** Repeated textures may produce many matches with the wrong geometry.\n- **Model terms matter:** The MASt3R repository documents noncommercial licensing and additional checkpoint conditions; preserve the checkpoint identifier.\n\n## When it's done\n\n- **Deliver a comparison gallery:** Include labeled pairs, matching overlays, precision/recall curves, resource use, and representative failures.\n- **Connect the result:** Explain Place recognition, loop closure & relocalization before inserting either method’s decisions into a GTSAM graph.",
+      "resources": [
+        {
+          "title": "MASt3R – Matching And Stereo 3D Reconstruction",
+          "url": "https://europe.naverlabs.com/blog/mast3r-matching-and-stereo-3d-reconstruction/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ embedded reconstructions and learn what MASt3R predicts."
+        },
+        {
+          "title": "Feature Matching",
+          "url": "https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build the classical descriptor-matching baseline."
+        },
+        {
+          "title": "Grounding Image Matching in 3D with MASt3R",
+          "url": "https://github.com/naver/mast3r",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the matching example and inspect its visualization code."
+        },
+        {
+          "title": "Grounding Image Matching in 3D with MASt3R",
+          "url": "https://arxiv.org/abs/2406.09756",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the learned descriptors and three-dimensional grounding."
+        }
+      ],
+      "sources": [
+        "https://europe.naverlabs.com/blog/mast3r-matching-and-stereo-3d-reconstruction/",
+        "https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html",
+        "https://github.com/naver/mast3r",
+        "https://arxiv.org/abs/2406.09756"
+      ]
+    },
+    {
+      "node_id": "p:compare-lidar-filtering-and-smoothing-on-one-bag",
+      "type": "project",
+      "name": "Compare lidar filtering and smoothing on one bag",
+      "summary": "Run FAST-LIO2 and LIO-SAM on one compatible recorded route, comparing errors, missing output, and computation under documented sensor and mapping settings.",
+      "lesson_md": "## In one sentence\n\nRun FAST-LIO2 and LIO-SAM on one compatible recorded route, comparing errors, missing output, and computation under documented sensor and mapping settings.\n\n![LIO-SAM demonstration showing a reconstructed lidar map and trajectory](/img/lessons/projects_state_estimation_slam_1-lidar-filter-smoother.webp)\n*LIO-SAM demonstration showing a reconstructed lidar map and trajectory. Source: [Published project media](https://github.com/TixiaoShan/LIO-SAM), license unknown.*\n\n## What you will learn\n\n- **Lidar** measures distances using light; combining its scans with inertial data estimates motion and builds a three-dimensional map.\n- **FAST-LIO2** uses iterated Kalman filtering, while **LIO-SAM** represents measurements through factor-graph smoothing and mapping.\n- **Deskewing** compensates for motion during a scan: individual points were measured at different times.\n- **Software analogy:** Two database engines need the same workload and enabled features before their latency figures form a useful comparison.\n\n> **Key idea:** Sensor compatibility and enabled corrections define the comparison as much as the estimator labels do.\n\n## What you need\n\n- **Prerequisites:** Complete Replay a 3D lidar odometry baseline, Separate IMU bias from motion in replay, and Reject a malicious loop constraint in a toy graph.\n- **Inputs:** Select a bag, meaning a recorded message stream, with lidar fields, inertial data, and calibration supported by both systems.\n- **Budget:** This proposal estimates 1–2 months and €0 new hardware on an existing computer; purchased compute and storage are separate.\n\n## Steps\n\n1. **Audit compatibility:** Check lidar type, point timing, ring fields, IMU conventions, and transforms before assuming both programs can read the bag.\n2. **Reproduce the timing example:** LIO-SAM documents relative point times spanning 0–0.1 seconds for a lidar rotating at 10 Hz.\n3. **Establish baseline runs:** Preserve each documented configuration, build revision, playback rate, initialization interval, and exported pose frame.\n4. **Separate extra information:** Record whether loop closures or satellite-position factors are enabled; compare local odometry separately from those additional corrections.\n5. **Measure matched intervals:** Report trajectory error where reference data exists, missing poses, CPU usage, memory, and processing time.\n6. **Record the comparison:** Show both maps and trajectories beside timing diagnostics and a table that includes failed runs.\n\n```mermaid\nflowchart LR\n  N0[\"Compatible lidar bag\"] --> N1[\"Audit point timing\"]\n  N1[\"Audit point timing\"] --> N2[\"Run both estimators\"]\n  N2[\"Run both estimators\"] --> N3[\"Maps errors and compute\"]\n  N3[\"Maps errors and compute\"]\n```\n\n## Common pitfalls\n\n- **A missing time channel is consequential:** FAST-LIO warns that point timestamps are needed for motion propagation and compensation.\n- **Filtering versus smoothing is not an isolated variable:** Scan processing, mapping choices, and sensor support also differ.\n- **Smooth maps can hide errors:** Use reference poses or explicitly label accuracy unknown when no suitable reference exists.\n\n## When it's done\n\n- **Deliver a rerunnable benchmark:** Include the exact bag interval, sensor conversions, configurations, error conventions, coverage, and resource measurements.\n- **Explain mechanisms:** Relate findings to 3D lidar-inertial odometry & mapping before Engineer a synchronized lidar-camera-IMU mapper.",
+      "resources": [
+        {
+          "title": "LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping",
+          "url": "https://www.youtube.com/watch?v=A0H8CoORZJU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch LIO-SAM’s lidar-inertial mapping and correction behavior."
+        },
+        {
+          "title": "FAST-LIO",
+          "url": "https://github.com/hku-mars/FAST_LIO",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check FAST-LIO2 inputs, timing requirements, and supported lidar configurations."
+        },
+        {
+          "title": "LIO-SAM",
+          "url": "https://github.com/TixiaoShan/LIO-SAM",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check point time, ring fields, IMU frames, and optional graph constraints."
+        },
+        {
+          "title": "LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping",
+          "url": "https://arxiv.org/abs/2007.00258",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how inertial prediction, scan matching, and graph factors interact."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=A0H8CoORZJU",
+        "https://github.com/hku-mars/FAST_LIO",
+        "https://github.com/TixiaoShan/LIO-SAM",
+        "https://arxiv.org/abs/2007.00258"
+      ]
     }
   ]
 }
