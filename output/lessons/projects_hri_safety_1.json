@@ -1,0 +1,1223 @@
+{
+  "batch": "projects_hri_safety_1",
+  "lessons": [
+    {
+      "node_id": "p:ai-act-classifier-for-robot-features",
+      "type": "project",
+      "name": "AI Act classifier for robot features",
+      "summary": "Build a small web app where someone describes a robot feature and gets the AI Act articles that may apply, quoted and linked, with uncertainty flagged.",
+      "lesson_md": "## In one sentence\n\nBuild a small web app where someone describes a robot feature and gets the AI Act articles that may apply, quoted and linked, with uncertainty flagged.\n\n![EU pyramid of four AI risk levels: unacceptable, high, limited and minimal risk](/img/lessons/projects_hri_safety_1-ai-act.webp)\n*The AI Act sorts AI systems into four risk levels. Source: [European Commission, AI Act page](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai), license unknown.*\n\n## What you will learn\n\n- **Risk tiers:** The AI Act sorts AI systems into unacceptable, high, limited and minimal risk, each with different duties.\n- **Safety components:** Under **Article 6(1)**, AI used as a safety component of a product covered by Annex I law, and needing third-party checks, is high-risk.\n- **Moving dates:** The amended Article 113 applies Annex I high-risk rules from 2 August 2028 and Annex III rules from 2 December 2027.\n- **Retrieval-augmented generation (RAG):** The LLM answers only from passages your search step retrieved, like a function that must cite its inputs.\n\n> **Key idea:** The tool's value is in pointing to the exact legal text, not in giving a verdict; a lawyer still decides.\n\n## What you need\n\n- **Laptop-only setup:** Hardware cost is €0; LLM API costs are extra and not estimated here.\n- **Legal corpus:** The AI Act text, split per article, e.g. from the AI Act Explorer, which marks amended passages.\n- **Software skills:** Python, a vector search library and a small web front end.\n- **Prior project:** Intro: write a risk assessment for the lab robot, so you know hazard vocabulary.\n\n## Steps\n\n1. **Chunk the law** into one record per article, paragraph and annex point, keeping the article number as metadata.\n2. **Index the chunks** with embeddings so a feature description returns the closest passages.\n3. **Prompt with rules:** answer only from retrieved text, quote it, cite article numbers, and say \"uncertain\" when evidence is weak.\n4. **Write test cases** such as \"voice assistant on a desk arm\" or \"AI stop function on a cobot\", and record expected articles.\n5. **Demo the web app:** type a feature, see cited articles, an uncertainty flag and links to the source.\n\n```mermaid\nflowchart LR\n  A[\"Feature description\"] --> B[\"Search AI Act chunks\"]\n  B --> C[\"Top passages\"]\n  C --> D[\"LLM with citation rules\"]\n  D --> E[\"Cited articles + uncertainty\"]\n  E --> F[\"Human reads the law\"]\n```\n\n## Common pitfalls\n\n- **Outdated text:** The Digital Omnibus amendment changed dates and Annex I; index the current consolidated version and show its date.\n- **Hallucinated articles:** Reject any answer whose cited article number is not in the retrieved chunks.\n- **Overconfidence:** Label the output as educational; it is not legal advice and not a safety function.\n\n> **Watch out:** Never present the classifier's answer as a compliance decision for a real product.\n\n## When it's done\n\n- **Working demo:** Five test features each return at least one correct, quoted article and an honest uncertainty flag.\n- **Evaluation table:** For each test case, list expected versus returned articles, so the next team can improve retrieval.\n- **Next step:** Pair it with the EU robot regulation one-pager and the Robotics regulation & compliance in the EU knowledge node.",
+      "resources": [
+        {
+          "title": "Article 6: Classification Rules for High-Risk AI Systems",
+          "url": "https://artificialintelligenceact.eu/article/6/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Article 6 is the core rule your tool must retrieve for robot safety components."
+        },
+        {
+          "title": "Article 113: Entry into Force and Application",
+          "url": "https://artificialintelligenceact.eu/article/113/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows the amended application dates your tool should display."
+        },
+        {
+          "title": "AI Act | Shaping Europe’s digital future",
+          "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official overview of the four risk levels the classifier explains."
+        },
+        {
+          "title": "The EU's AI Act Explained",
+          "url": "https://www.youtube.com/watch?v=s_rxOnCt3HQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short plain-language tour of the AI Act before you index it."
+        },
+        {
+          "title": "EU AI Act Article 6 Explained | Classification Rules for High-Risk AI System",
+          "url": "https://www.youtube.com/watch?v=YIplEkvvUOc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Walks through Article 6 classification rules, the logic your tool cites."
+        }
+      ],
+      "sources": [
+        "https://artificialintelligenceact.eu/article/6/",
+        "https://artificialintelligenceact.eu/article/113/",
+        "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+        "https://www.youtube.com/watch?v=s_rxOnCt3HQ",
+        "https://www.youtube.com/watch?v=YIplEkvvUOc"
+      ]
+    },
+    {
+      "node_id": "p:cobot-mode-decision-tool",
+      "type": "project",
+      "name": "Cobot mode decision tool",
+      "summary": "Build a one-week web quiz that asks about a robot task and suggests which collaborative operation mode fits, with links to the public sources behind each answer.",
+      "lesson_md": "## In one sentence\n\nBuild a one-week web quiz that asks about a robot task and suggests which collaborative operation mode fits, with links to the public sources behind each answer.\n\n![KUKA LBR iiwa arm and an RGB-D camera above a shared collaborative workspace](/img/lessons/projects_hri_safety_1-cobot-modes.webp)\n*A KUKA LBR iiwa sharing a workspace, watched by an RGB-D camera. Source: [Svarny et al., arXiv 1908.03046](https://arxiv.org/html/1908.03046v2), license unknown.*\n\n## What you will learn\n\n- **Collaborative modes:** Standards such as ISO 10218-2:2025 and ISO/TS 15066:2016 describe how a robot and a person can share a workspace safely.\n- **Speed and separation monitoring (SSM):** The robot slows or stops as a person gets closer, measured by sensors.\n- **Power and force limiting (PFL):** Contact may happen, but the energy a person absorbs before the robot stops is limited.\n- **Mixing modes:** One study ran full speed far away, switched to reduced PFL speed when close, and stopped only near the head.\n\n> **Key idea:** \"Collaborative\" describes the application and its safeguards, not a robot you buy.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware; any web stack you like, such as a single HTML page with JavaScript.\n- **Public sources:** The ISO catalogue pages, papers on SSM and PFL, and the Collaborative operation modes (cobots) knowledge node.\n- **Prior project:** Intro: write a risk assessment for the lab robot.\n\n## Steps\n\n1. **List the modes** and, for each, write two sentences and one source link.\n2. **Write task questions** such as \"Will the person touch the robot?\" or \"Can a sensor measure distance?\".\n3. **Encode a decision tree** as a JSON file, like a router mapping answers to modes.\n4. **Build the page:** show questions, the suggested mode, the reasoning path and the sources.\n5. **Demo three scenarios:** desk arm handover, shared assembly table, robot behind a fence.\n\n```mermaid\nflowchart TD\n  A[\"Task questions\"] --> B{\"Contact expected?\"}\n  B -- \"Yes\" --> C[\"Power and force limiting\"]\n  B -- \"No\" --> D{\"Distance measurable?\"}\n  D -- \"Yes\" --> E[\"Speed and separation monitoring\"]\n  D -- \"No\" --> F[\"Guarding or stop\"]\n```\n\n## Common pitfalls\n\n- **Paywalled detail:** The ISO texts cost money; only encode what public pages and papers say, and mark gaps \"unknown\".\n- **Fake authority:** Every output screen must say \"educational, not a certified decision\".\n- **Oversimplifying:** Real cells often combine modes, so allow more than one suggestion.\n\n## When it's done\n\n- **Live quiz:** A classmate answers five questions and gets a mode with a clickable source for every claim.\n- **Review log:** One page listing which rules came from which source, so anyone can audit the tree.\n- **Next step:** Feed it into Robot safety standards & risk assessment and the Depth-camera separation monitor project.",
+      "resources": [
+        {
+          "title": "ISO/TS 15066:2016 Robots and robotic devices — Collaborative robots",
+          "url": "https://www.iso.org/standard/62996.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official scope of the collaborative-robot specification your quiz refers to."
+        },
+        {
+          "title": "ISO 10218-2:2025 Robotics — Safety requirements — Part 2: Industrial robot applications and robot cells",
+          "url": "https://www.iso.org/standard/73934.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official scope of the robot-cell safety standard behind collaborative applications."
+        },
+        {
+          "title": "Safe physical HRI: Toward a unified treatment of speed and separation monitoring together with power and force limiting",
+          "url": "https://arxiv.org/abs/1908.03046",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Combines separation monitoring and force limiting, a good model for multi-mode answers."
+        },
+        {
+          "title": "CRB 1300 robot with speed and separation monitoring",
+          "url": "https://www.youtube.com/watch?v=esJkeV3Lcxg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows speed and separation monitoring on a real industrial arm."
+        },
+        {
+          "title": "HC10 stops when bumped Power and Force Limit stop",
+          "url": "https://www.youtube.com/watch?v=u48fm391FGk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows a power and force limiting stop when a cobot is bumped."
+        }
+      ],
+      "sources": [
+        "https://www.iso.org/standard/62996.html",
+        "https://www.iso.org/standard/73934.html",
+        "https://arxiv.org/abs/1908.03046",
+        "https://www.youtube.com/watch?v=esJkeV3Lcxg",
+        "https://www.youtube.com/watch?v=u48fm391FGk",
+        "https://arxiv.org/html/1908.03046v2"
+      ]
+    },
+    {
+      "node_id": "p:compliance-checklist-for-a-lab-demo-robot",
+      "type": "project",
+      "name": "Compliance checklist for a lab demo robot",
+      "summary": "Turn EU regulation and safety-standard ideas into a practical checklist for showing the lab robot at a public event, then film yourself applying it.",
+      "lesson_md": "## In one sentence\n\nTurn EU regulation and safety-standard ideas into a practical checklist for showing the lab robot at a public event, then film yourself applying it.\n\n![Red emergency stop button on a yellow background on a control panel](/img/lessons/projects_hri_safety_1-compliance.webp)\n*An emergency stop button, one item every demo checklist should test. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Emergency_stop_button.jpg), CC BY-SA 3.0, Cjp24.*\n\n## What you will learn\n\n- **Machinery Regulation:** Regulation (EU) 2023/1230 replaces the Machinery Directive and applies from 20 January 2027, according to the European Commission.\n- **Risk assessment:** ISO 12100:2010 gives the general method: identify hazards, estimate and evaluate risk, then reduce it.\n- **Checklist design:** Each line must be a yes/no check someone can perform on site, like a unit test for the setup.\n- **Expert review:** A checklist written by students is a draft until a qualified person reviews it.\n\n> **Key idea:** A checklist is only useful if each item traces back to a hazard you identified and a source you can show.\n\n## What you need\n\n- **Prior project:** Intro: write a risk assessment for the lab robot, which gives you the hazard list.\n- **Public sources:** The Commission machinery page, the ISO 12100 and ISO 10218-2 catalogue pages, and the Robotics regulation & compliance in the EU node.\n- **Demo setup:** Photos or a floor plan of where the robot, table, cables and visitors will be.\n- **Phone camera:** For the walkthrough video; hardware cost is €0.\n\n## Steps\n\n1. **Map the space:** draw the robot's reach, visitor paths, cables and the emergency stop location.\n2. **Pull hazards** from your risk assessment: pinching, trip hazards, unexpected motion, hot parts.\n3. **Write checks** such as \"E-stop reachable within arm's length of the operator: yes/no\", each with a source link.\n4. **Get it reviewed** by a lab safety referent or expert, and record their changes.\n5. **Film the walkthrough:** apply every item to the real setup and show the result.\n\n```mermaid\nflowchart LR\n  A[\"Risk assessment\"] --> B[\"Hazard list\"]\n  B --> C[\"Checklist items + sources\"]\n  C --> D[\"Expert review\"]\n  D --> E[\"On-site walkthrough video\"]\n```\n\n## Common pitfalls\n\n- **Legal overreach:** Do not claim the checklist makes the demo \"compliant\"; it supports, not replaces, a formal assessment.\n- **Vague items:** \"Robot is safe\" cannot be checked; \"barrier keeps visitors 1 m from reach\" can.\n- **Forgotten states:** Check startup, shutdown and what happens if power or Wi-Fi drops.\n\n> **Watch out:** If the emergency stop has not been tested on the day, the robot does not move.\n\n## When it's done\n\n- **Reviewed checklist:** Every item has a hazard, a source and a pass/fail result from the real setup.\n- **Walkthrough video:** A few minutes showing each check applied at the demo location.\n- **Next step:** Reuse it for the Humanoid safety readiness review and link Robot safety standards & risk assessment.",
+      "resources": [
+        {
+          "title": "ISO 12100:2010 Safety of machinery — General principles for design — Risk assessment and risk reduction",
+          "url": "https://www.iso.org/standard/51528.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official scope of the risk-assessment method your checklist builds on."
+        },
+        {
+          "title": "Machinery - Internal Market, Industry, Entrepreneurship and SMEs",
+          "url": "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official Commission page for the Machinery Regulation and its dates."
+        },
+        {
+          "title": "Risk Assessment: ISO 12100:2010",
+          "url": "https://www.youtube.com/watch?v=hl7Za5nDtqQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains the ISO 12100 risk-assessment steps you turn into checks."
+        },
+        {
+          "title": "5-Minute Intro to Machine Safety & ISO 12100 | TroCo",
+          "url": "https://www.youtube.com/watch?v=pUo7ZTcTFmk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Five-minute intro to machine safety thinking before writing items."
+        }
+      ],
+      "sources": [
+        "https://www.iso.org/standard/51528.html",
+        "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
+        "https://www.youtube.com/watch?v=hl7Za5nDtqQ",
+        "https://www.youtube.com/watch?v=pUo7ZTcTFmk",
+        "https://commons.wikimedia.org/wiki/File:Emergency_stop_button.jpg"
+      ]
+    },
+    {
+      "node_id": "p:constant-velocity-vs-social-force-prediction",
+      "type": "project",
+      "name": "Constant-velocity vs social-force prediction",
+      "summary": "Implement a constant-velocity predictor and a social-force predictor for pedestrians, run both on a public dataset, and compare their errors.",
+      "lesson_md": "## In one sentence\n\nImplement a constant-velocity predictor and a social-force predictor for pedestrians, run both on a public dataset, and compare their errors.\n\n![Diagram of social forces acting on a pedestrian from goals, other people and obstacles](/img/lessons/projects_hri_safety_1-cv-sf.webp)\n*Forces from the goal, other people and obstacles in a Social Force Model. Source: [Gil and Sanfeliu, arXiv 2311.10582](https://arxiv.org/html/2311.10582v1), CC BY-NC-SA 4.0.*\n\n## What you will learn\n\n- **Constant velocity model (CVM):** Assume each person keeps their last velocity; a 2019 paper found it beats several neural predictors.\n- **Social Force Model:** Helbing and Molnár model walking as a pull toward a goal plus pushes away from people and walls.\n- **Error metrics:** **ADE** averages position error over the prediction; **FDE** measures only the last point.\n- **Why robots care:** A robot that guesses where people walk can slow down or reroute earlier.\n\n> **Key idea:** Always beat a dumb baseline first; if CVM wins, your fancy model is not helping yet.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, Python, NumPy and Matplotlib.\n- **Public dataset:** Pedestrian tracks such as the ETH/UCY scenes used in the trajectory-prediction papers below.\n- **Background:** The Human motion & intention prediction knowledge node.\n\n## Steps\n\n1. **Load tracks** and split each into 8 observed and 12 future steps.\n2. **Code CVM:** copy the last velocity forward, as below.\n3. **Code social force:** add a goal force and a repulsion from each nearby person, then integrate.\n4. **Score both** with ADE and FDE on the same test tracks.\n5. **Animate** predicted versus real paths for a few scenes.\n\n```python\nimport numpy as np\ndef cvm(obs, n_future=12, dt=0.4):\n    v = (obs[-1] - obs[-2]) / dt          # last velocity, m/s\n    steps = np.arange(1, n_future + 1)[:, None]\n    return obs[-1] + steps * v * dt       # straight-line future\nobs = np.array([[0.0, 0.0], [0.4, 0.2]])\nprint(cvm(obs)[-1])                       # [5.2 2.6] after 4.8 s\n```\n\n```mermaid\nflowchart LR\n  A[\"Pedestrian tracks\"] --> B[\"Constant velocity\"]\n  A --> C[\"Social force\"]\n  B --> D[\"ADE / FDE\"]\n  C --> D\n  D --> E[\"Animated comparison\"]\n```\n\n## Common pitfalls\n\n- **Unit mix-ups:** Check the dataset's frame rate and whether positions are metres or pixels.\n- **Unknown goals:** Social force needs a goal; estimating it from the future leaks the answer.\n- **Tuning on test data:** Fit force parameters on a training split only.\n\n## When it's done\n\n- **Results table:** ADE and FDE for both models on the same scenes.\n- **Animated plot:** Real versus predicted paths, showing where each model fails.\n- **Next step:** Use the predictor in LLM-generated social navigation scenarios.",
+      "resources": [
+        {
+          "title": "What the Constant Velocity Model Can Teach Us About Pedestrian Motion Prediction",
+          "url": "https://arxiv.org/abs/1903.07933",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The paper showing why the constant-velocity baseline is hard to beat."
+        },
+        {
+          "title": "Social Force Model for Pedestrian Dynamics",
+          "url": "https://arxiv.org/abs/cond-mat/9805244",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Original Social Force Model you implement."
+        },
+        {
+          "title": "Human motion trajectory prediction using the Social Force Model for real-time and low computational cost applications",
+          "url": "https://arxiv.org/abs/2311.10582",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Modern use of social forces for real-time trajectory prediction."
+        },
+        {
+          "title": "Pedestrian flow simulation with the Social Force Model",
+          "url": "https://www.youtube.com/watch?v=IDrqmr5-DPM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the Social Force Model move crowds before coding it."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1903.07933",
+        "https://arxiv.org/abs/cond-mat/9805244",
+        "https://arxiv.org/abs/2311.10582",
+        "https://www.youtube.com/watch?v=IDrqmr5-DPM",
+        "https://arxiv.org/html/2311.10582v1"
+      ]
+    },
+    {
+      "node_id": "p:controlled-fall-and-safe-stop-behaviours-in-sim",
+      "type": "project",
+      "name": "Controlled-fall and safe-stop behaviours in sim",
+      "summary": "In simulation, make a humanoid detect a fault and choose a safe stop or controlled fall, then compare strategies.",
+      "lesson_md": "## In one sentence\n\nIn simulation, make a humanoid detect a fault and choose a safe stop or controlled fall, then compare strategies.\n\n![Unitree humanoid robot standing in an industrial pick-and-place cell with conveyors](/img/lessons/projects_hri_safety_1-safe-fall.webp)\n*A humanoid in an industrial cell, the setting of a 2026 fail-passive safety study. Source: [arXiv 2608.02809](https://arxiv.org/html/2608.02809v1), license unknown.*\n\n## What you will learn\n\n- **Fail-passive gap:** Cutting power makes a fixed arm stop, but a balancing humanoid may fall uncontrollably, as arXiv 2608.02809 explains.\n- **Safe-stop strategies:** Options include freezing joints, crouching, sitting, or falling in a planned direction.\n- **Fault detection:** Watch signals like joint torque or orientation and trigger a behaviour, like an exception handler.\n- **Context-aware behaviour:** SafeHumanoid adjusts upper-body stiffness and speed according to the scene and nearby humans.\n\n> **Key idea:** For a legged robot, \"stop\" is itself a motion you must design and test.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, MuJoCo and a humanoid model, for example from MuJoCo Menagerie.\n- **Background:** Safety of humanoids & dynamically stable mobile robots and Safe learning & safety filters.\n- **Time:** About 1–2 months; this is an advanced project.\n\n## Steps\n\n1. **Load a humanoid** in MuJoCo with a standing controller.\n2. **Inject faults:** a weak motor, a sensor dropout, a push.\n3. **Detect them** with simple rules, such as torso tilt above a threshold.\n4. **Implement three responses:** power cut, crouch, directed fall.\n5. **Measure outcomes** for each: peak impact, fall direction, distance travelled.\n6. **Record a montage** comparing the responses.\n\n```mermaid\nflowchart LR\n  A[\"Standing controller\"] --> B[\"Fault injected\"]\n  B --> C[\"Detector\"]\n  C --> D{\"Choose response\"}\n  D --> E[\"Power cut\"]\n  D --> F[\"Crouch\"]\n  D --> G[\"Directed fall\"]\n  E --> H[\"Compare metrics\"]\n  F --> H\n  G --> H\n```\n\n## Common pitfalls\n\n- **Sim-only results:** Simulated contacts are approximations; never claim a real robot will behave the same.\n- **Late detection:** A detector that fires after the fall started leaves no time to act.\n- **Single test:** Repeat each fault many times with random pushes.\n\n> **Watch out:** This is a study, not a certified safety function for a real humanoid.\n\n## When it's done\n\n- **Comparison table:** Each strategy versus each fault, with metrics.\n- **Montage video:** The humanoid detecting a fault and choosing a safe posture.\n- **Next step:** Bring results to the Humanoid safety readiness review.",
+      "resources": [
+        {
+          "title": "Toward Certified Functional Safety for Industrial Humanoid Robots: The Fail-Passive Gap and a Feasibility Study",
+          "url": "https://arxiv.org/abs/2608.02809",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains why cutting power is not a safe stop for humanoids."
+        },
+        {
+          "title": "SafeHumanoid: VLM-RAG-driven Control of Upper Body Impedance for Humanoid Robot",
+          "url": "https://arxiv.org/abs/2511.23300",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Context-aware stiffness and speed control, an alternative safe behaviour."
+        },
+        {
+          "title": "End-to-End Humanoid Robot Safe and Comfortable Locomotion Policy",
+          "url": "https://arxiv.org/abs/2508.07611",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Humanoid locomotion policy with safety constraints to compare against."
+        },
+        {
+          "title": "Making Humanoid Robots Safe - Florian Weißhardt - Synapticon: GmbH",
+          "url": "https://www.youtube.com/watch?v=njHdPOUCcoE",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Industry talk on making humanoid robots safe."
+        },
+        {
+          "title": "google-deepmind/mujoco_menagerie",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Ready-made humanoid models to load in MuJoCo."
+        },
+        {
+          "title": "Overview - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/overview.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "MuJoCo basics for building the fault-injection simulation."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2608.02809",
+        "https://arxiv.org/abs/2511.23300",
+        "https://arxiv.org/abs/2508.07611",
+        "https://www.youtube.com/watch?v=njHdPOUCcoE",
+        "https://github.com/google-deepmind/mujoco_menagerie",
+        "https://mujoco.readthedocs.io/en/stable/overview.html",
+        "https://arxiv.org/html/2608.02809v1"
+      ]
+    },
+    {
+      "node_id": "p:correct-a-robot-with-one-keypress",
+      "type": "project",
+      "name": "Correct a robot with one keypress",
+      "summary": "In simulation, let a human press one key to take over a learned policy, log the corrections, and retrain the policy on them.",
+      "lesson_md": "## In one sentence\n\nIn simulation, let a human press one key to take over a learned policy, log the corrections, and retrain the policy on them.\n\n![Test vehicle and its sensors used for human-gated imitation learning](/img/lessons/projects_hri_safety_1-keypress.webp)\n*The vehicle used to test HG-DAgger, where a human expert takes control when needed. Source: [Kelly et al., arXiv 1810.02890](https://arxiv.org/html/1810.02890v2), CC BY 4.0.*\n\n## What you will learn\n\n- **Distribution shift:** A cloned policy drifts into states the demonstrations never showed, and errors compound.\n- **DAgger:** Run the learner, ask an expert what it should have done, add that data, retrain.\n- **HG-DAgger:** The human only takes control when things go wrong, and those takeovers become training data.\n- **Interactive imitation learning:** A survey describes it as human feedback given intermittently during execution.\n\n> **Key idea:** Corrections collected where the robot actually fails are worth more than more perfect demos.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, MuJoCo and a simple reaching or pushing task.\n- **Background:** Learning from human feedback & corrections.\n- **Starter policy:** A behaviour-cloning model trained on a few demos.\n\n## Steps\n\n1. **Train** a small behaviour-cloning policy.\n2. **Run the policy** and listen for a keypress each step.\n3. **Switch control** to keyboard actions while the key is held, logging state and action.\n4. **Aggregate** logged corrections with the original demos and retrain.\n5. **Repeat** for a few rounds and plot success rate.\n\n```python\ndata = demos[:]\nfor rnd in range(3):\n    for t in range(T):\n        human = key_pressed(\"space\")\n        a = keyboard_action() if human else policy(obs)\n        if human:\n            data.append((obs, a))   # only takeovers are logged\n        obs = env.step(a)\n    policy = train(data)\n```\n\n```mermaid\nflowchart LR\n  A[\"Policy acts\"] --> B{\"Key pressed?\"}\n  B -- \"No\" --> A\n  B -- \"Yes\" --> C[\"Human acts + log\"]\n  C --> D[\"Aggregate data\"]\n  D --> E[\"Retrain\"]\n  E --> A\n```\n\n## Common pitfalls\n\n- **Late takeovers:** If you correct only after a crash, the data teaches recovery from bad states too late.\n- **Laggy input:** Keyboard handling inside the sim loop must not block physics stepping.\n- **No baseline:** Compare against training on the same amount of plain demos.\n\n## When it's done\n\n- **Clip:** A user presses a key, takes over, releases, and the policy continues.\n- **Plot:** Success rate per round, with versus without corrections.\n- **Next step:** Move to Human-gated interactive imitation on SO-101.",
+      "resources": [
+        {
+          "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
+          "url": "https://arxiv.org/abs/1011.0686",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original DAgger algorithm your loop simplifies."
+        },
+        {
+          "title": "HG-DAgger: Interactive Imitation Learning with Human Experts",
+          "url": "https://arxiv.org/abs/1810.02890",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Human-gated DAgger: exactly the take-over-when-needed design you build."
+        },
+        {
+          "title": "Interactive Imitation Learning in Robotics: A Survey",
+          "url": "https://arxiv.org/abs/2211.00600",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Survey placing keypress corrections in interactive imitation learning."
+        },
+        {
+          "title": "CS 182: Lecture 14: Part 3: Imitation Learning",
+          "url": "https://www.youtube.com/watch?v=a5wkzPa4fO4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Lecture on imitation learning, distribution shift and DAgger."
+        },
+        {
+          "title": "Overview - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/overview.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Simulator basics for the task environment."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1011.0686",
+        "https://arxiv.org/abs/1810.02890",
+        "https://arxiv.org/abs/2211.00600",
+        "https://www.youtube.com/watch?v=a5wkzPa4fO4",
+        "https://mujoco.readthedocs.io/en/stable/overview.html",
+        "https://arxiv.org/html/1810.02890v2"
+      ]
+    },
+    {
+      "node_id": "p:depth-camera-separation-monitor",
+      "type": "project",
+      "name": "Depth-camera separation monitor",
+      "summary": "Use an RGB-D camera to measure the distance between a person and an SO-101 arm, and shrink the arm's speed as that distance falls.",
+      "lesson_md": "## In one sentence\n\nUse an RGB-D camera to measure the distance between a person and an SO-101 arm, and shrink the arm's speed as that distance falls.\n\n![Robot and human skeleton keypoints with separation distances drawn between them](/img/lessons/projects_hri_safety_1-depth-ssm.webp)\n*Distances between robot and human keypoints, computed from an RGB-D camera. Source: [Svarny et al., arXiv 1908.03046](https://arxiv.org/html/1908.03046v2), license unknown.*\n\n## What you will learn\n\n- **RGB-D camera:** Gives a colour image plus a depth value per pixel, so 2D keypoints become 3D points.\n- **Separation distance:** One paper computes pairwise distances between robot and human body keypoints and keeps the minimum.\n- **Speed and separation monitoring (SSM):** Speed is lowered as the person gets closer, and the arm stops when too close.\n- **Self-occlusion:** The robot can hide parts of the person or appear as a \"human\"; filtering matters.\n\n> **Key idea:** Separation monitoring is a loop: measure distance, map it to a speed limit, send the limit, repeat fast.\n\n## What you need\n\n- **Hardware under €500:** An SO-101 arm, a depth camera and a laptop.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** A body-keypoint detector, the camera SDK and LeRobot.\n- **Background:** The Speed & separation monitoring implementation knowledge node.\n\n## Steps\n\n1. **Calibrate** camera and robot into one coordinate frame using a known marker.\n2. **Detect** human keypoints and convert them to 3D with depth.\n3. **Compute** the minimum distance to the arm's link positions from forward kinematics.\n4. **Map** distance to a speed scale, for example the rule below.\n5. **Apply** the scale to commanded joint velocities and show a speed bar.\n\n```python\ndef speed_scale(d, d_stop=0.5, d_full=1.5):  # metres, example values\n    if d <= d_stop: return 0.0\n    if d >= d_full: return 1.0\n    return (d - d_stop) / (d_full - d_stop)\nprint(speed_scale(1.0))  # 0.5 -> half speed\n```\n\n```mermaid\nflowchart LR\n  A[\"RGB-D frame\"] --> B[\"Human keypoints 3D\"]\n  C[\"Robot joint angles\"] --> D[\"Link positions\"]\n  B --> E[\"Minimum distance\"]\n  D --> E\n  E --> F[\"Speed scale\"]\n  F --> G[\"Arm command + speed bar\"]\n```\n\n## Common pitfalls\n\n- **Frame errors:** A few centimetres of calibration error shift every distance; test with a tape measure.\n- **Latency:** Measure end-to-end delay; a slow loop means the person moved before the arm reacted.\n- **Missed detections:** If no person is detected, slow down instead of assuming the space is empty.\n\n> **Watch out:** This demo is not a certified safety function; keep a hardware stop within reach.\n\n## When it's done\n\n- **Video:** The speed bar shrinks and the arm slows as a person approaches.\n- **Log:** Distance and speed scale over time for one approach.\n- **Next step:** Compare with Learned speed scaling vs analytic rule.",
+      "resources": [
+        {
+          "title": "Toward safe separation distance monitoring from RGB-D sensors in human-robot interaction",
+          "url": "https://arxiv.org/abs/1810.04953",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Computes robot-human keypoint distances from an RGB-D camera, the core of this project."
+        },
+        {
+          "title": "Safe physical HRI: Toward a unified treatment of speed and separation monitoring together with power and force limiting",
+          "url": "https://arxiv.org/abs/1908.03046",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Shows how distance drives speed changes and stops on a real arm."
+        },
+        {
+          "title": "Speed and Separation Monitoring using on-robot Time--of--Flight laser--ranging sensor arrays",
+          "url": "https://arxiv.org/abs/1904.07379",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Speed modulation from minimum distance and relative velocity, with occlusion filtering."
+        },
+        {
+          "title": "Demo Speed and Separation Monitoring",
+          "url": "https://www.youtube.com/watch?v=9wJbrgnP-EM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Demo of speed and separation monitoring in action."
+        },
+        {
+          "title": "CRB 1300 robot with speed and separation monitoring",
+          "url": "https://www.youtube.com/watch?v=esJkeV3Lcxg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Industrial example of an arm slowing as people approach."
+        },
+        {
+          "title": "ISO/TS 15066:2016 Robots and robotic devices — Collaborative robots",
+          "url": "https://www.iso.org/standard/62996.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official scope of the collaborative-robot specification behind separation monitoring."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1810.04953",
+        "https://arxiv.org/abs/1908.03046",
+        "https://arxiv.org/abs/1904.07379",
+        "https://www.youtube.com/watch?v=9wJbrgnP-EM",
+        "https://www.youtube.com/watch?v=esJkeV3Lcxg",
+        "https://www.iso.org/standard/62996.html",
+        "https://arxiv.org/html/1908.03046v2"
+      ]
+    },
+    {
+      "node_id": "p:detect-an-open-hand-ready-to-receive",
+      "type": "project",
+      "name": "Detect an open hand ready to receive",
+      "summary": "Build a webcam demo that labels \"ready to receive\" when a person extends an open palm, the first step of a robot-to-human handover.",
+      "lesson_md": "## In one sentence\n\nBuild a webcam demo that labels \"ready to receive\" when a person extends an open palm, the first step of a robot-to-human handover.\n\n![Grid of hand gestures recognised by MediaPipe, including open palm and closed fist](/img/lessons/projects_hri_safety_1-open-hand.webp)\n*Gestures recognised out of the box, including Open_Palm. Source: [Google AI Edge, Gesture Recognizer](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer), license unknown.*\n\n## What you will learn\n\n- **Hand landmarks:** MediaPipe Hand Landmarker tracks 21 3D keypoints per hand and reports left or right.\n- **Gesture classes:** The Gesture Recognizer returns labels such as **Open_Palm**, Closed_Fist and Thumb_Up.\n- **Handover phases:** A review splits handovers into a pre-handover phase and the physical exchange.\n- **Debouncing:** Require the label for several frames, like debouncing a button press in embedded code.\n\n> **Key idea:** A robot should start a handover only when the person clearly signals they are ready.\n\n## What you need\n\n- **Webcam and laptop:** Hardware cost is under €500, and a laptop webcam is enough.\n- **MediaPipe:** The Python or web version of the Gesture Recognizer.\n- **Background:** Human-robot handovers and Human detection & body-pose tracking for HRI.\n\n## Steps\n\n1. **Run** the Gesture Recognizer demo to see labels and scores live.\n2. **Read** labels per frame in your own Python loop.\n3. **Debounce:** set \"ready\" only after the open palm is seen for enough consecutive frames.\n4. **Add a pose check** with the Pose Landmarker: the arm is extended, not just raised.\n5. **Overlay** the \"ready to receive\" label on the video and log timings.\n\n```python\nREADY_FRAMES = 10\ncount = 0\nfor frame in camera():\n    g = recognizer.recognize(frame)\n    top = g.gestures[0][0].category_name if g.gestures else \"None\"\n    count = count + 1 if top == \"Open_Palm\" else 0\n    show(frame, \"ready to receive\" if count >= READY_FRAMES else \"\")\n```\n\n```mermaid\nflowchart LR\n  A[\"Webcam frame\"] --> B[\"Gesture Recognizer\"]\n  B --> C{\"Open_Palm?\"}\n  C -- \"Yes, N frames\" --> D[\"Ready to receive\"]\n  C -- \"No\" --> E[\"Reset counter\"]\n```\n\n## Common pitfalls\n\n- **Waving looks like readiness:** An open palm while waving is not an offer; combine with arm pose.\n- **Lighting and distance:** Test in the real room; small or dark hands lower confidence.\n- **Single user:** Test several people, hands and skin tones.\n\n## When it's done\n\n- **Demo:** The label appears within about a second of a clear open palm and disappears when the hand closes.\n- **Confusion table:** True and false \"ready\" counts for a few test gestures.\n- **Next step:** Use it to trigger the robot in Handover benchmark in simulation.",
+      "resources": [
+        {
+          "title": "Gesture Recognizer | Google AI Edge",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Provides the Open_Palm label and a live demo."
+        },
+        {
+          "title": "Hand Landmarker | Google AI Edge",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Explains the 21 hand keypoints behind the gesture labels."
+        },
+        {
+          "title": "Pose Landmarker | Google AI Edge",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Body pose to check the arm is extended toward the robot."
+        },
+        {
+          "title": "Hand landmark detection - ML on Web with MediaPipe: Episode 4",
+          "url": "https://www.youtube.com/watch?v=hV5S4iQhNkI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Google walkthrough of hand landmark detection in the browser."
+        },
+        {
+          "title": "Object Handovers: a Review for Robotics",
+          "url": "https://arxiv.org/abs/2007.12952",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Review of handover phases, so you know what comes after detection."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+        "https://www.youtube.com/watch?v=hV5S4iQhNkI",
+        "https://arxiv.org/abs/2007.12952"
+      ]
+    },
+    {
+      "node_id": "p:detect-collisions-from-motor-current",
+      "type": "project",
+      "name": "Detect collisions from motor current",
+      "summary": "Read an SO-101's servo load telemetry while it moves, set a threshold that flags bumps into a foam block, and explain why this is not certified collision detection.",
+      "lesson_md": "## In one sentence\n\nRead an SO-101's servo load telemetry while it moves, set a threshold that flags bumps into a foam block, and explain why this is not certified collision detection.\n\n![SO-101 follower robot arm](/img/lessons/projects_hri_safety_1-motor-current.webp)\n*The SO-101 follower arm whose servo telemetry you will log. Source: [Hugging Face LeRobot docs](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Servo telemetry:** Smart bus servos report internal values such as position and load, readable over the serial bus.\n- **Thresholding:** A collision shows up as a spike above the normal effort for that motion.\n- **Power and force limiting (PFL):** Real collaborative robots limit contact force; one study adapts collision sensitivity using the robot's effective mass.\n- **False alarms:** Fast moves and payloads also raise load, like noisy CPU spikes triggering a bad alert.\n\n> **Key idea:** Telemetry thresholds can detect some bumps, but they are an experiment, not a safety function.\n\n## What you need\n\n- **Hardware under €500:** An assembled SO-101 and a soft foam block.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** LeRobot, Python and Matplotlib.\n- **Background:** Experimental contact detection from servo telemetry and Collision detection & reaction (power and force limiting).\n\n## Steps\n\n1. **Check** which telemetry registers your servos expose and their units; write \"unknown\" if undocumented.\n2. **Log** load for a repeated slow motion with nothing in the way.\n3. **Compute** a baseline per joint and a threshold, for example mean plus a margin.\n4. **Repeat** the motion with the foam block in the path and mark contact times.\n5. **Plot** both runs and count hits and false alarms.\n\n```python\nbase = logs_free[:, joint]            # load samples, no contact\nthr = base.mean() + 4 * base.std()    # example margin\nhits = logs_block[:, joint] > thr\nprint(\"first contact sample:\", hits.argmax() if hits.any() else None)\n```\n\n```mermaid\nflowchart LR\n  A[\"Move arm\"] --> B[\"Read servo load\"]\n  B --> C{\"Above threshold?\"}\n  C -- \"Yes\" --> D[\"Flag contact + stop command\"]\n  C -- \"No\" --> A\n```\n\n## Common pitfalls\n\n- **Polling too slowly:** A slow read loop can miss short spikes; record the sample rate.\n- **One threshold for all:** Each joint and speed needs its own baseline.\n- **Hard objects:** Use only foam; never test on hands or faces.\n\n> **Watch out:** Do not present this as certified collision detection; it is unvalidated.\n\n## When it's done\n\n- **Plot:** Load over time with clear spikes at foam contacts and the threshold line.\n- **Write-up:** Detection rate, false alarms, and why the method is not certified.\n- **Next step:** Combine with the Depth-camera separation monitor.",
+      "resources": [
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official SO-101 setup guide for the arm you instrument."
+        },
+        {
+          "title": "Adaptive Collision Sensitivity for Efficient and Safe Human-Robot Collaboration",
+          "url": "https://arxiv.org/abs/2409.20184",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "How real collaborative robots tune collision sensitivity, for your comparison."
+        },
+        {
+          "title": "HC10 stops when bumped Power and Force Limit stop",
+          "url": "https://www.youtube.com/watch?v=u48fm391FGk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a certified cobot stop when bumped, the behaviour you only approximate."
+        },
+        {
+          "title": "The LeRobot SO101 Arm: Hardware, DOF & Why LeRobot Exists | Ep. 01",
+          "url": "https://www.youtube.com/watch?v=WFmkVGL_wZY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Tour of the SO-101 hardware and its servos."
+        },
+        {
+          "title": "ISO/TS 15066:2016 Robots and robotic devices — Collaborative robots",
+          "url": "https://www.iso.org/standard/62996.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official scope of the specification covering force limits for cobots."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://arxiv.org/abs/2409.20184",
+        "https://www.youtube.com/watch?v=u48fm391FGk",
+        "https://www.youtube.com/watch?v=WFmkVGL_wZY",
+        "https://www.iso.org/standard/62996.html"
+      ]
+    },
+    {
+      "node_id": "p:eu-robot-regulation-one-pager",
+      "type": "project",
+      "name": "EU robot regulation one-pager",
+      "summary": "Make a one-page annotated infographic of the EU Machinery Regulation timeline and how it meets the AI Act for robots, using official sources only.",
+      "lesson_md": "## In one sentence\n\nMake a one-page annotated infographic of the EU Machinery Regulation timeline and how it meets the AI Act for robots, using official sources only.\n\n![European Commission diagram of the steps for a high-risk AI system to reach the market](/img/lessons/projects_hri_safety_1-eu-onepager.webp)\n*How a high-risk AI system moves from development to the market under the AI Act. Source: [European Commission, AI Act page](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai), license unknown.*\n\n## What you will learn\n\n- **Machinery Regulation:** Regulation (EU) 2023/1230 was adopted on 14 June 2023 and applies from 20 January 2027.\n- **Old regime:** Machinery placed on the market before that date follows Machinery Directive 2006/42/EC.\n- **AI Act dates:** Article 113 sets general application from 2 August 2026, with amended later dates for some high-risk rules.\n- **Interaction:** The new machinery rules cover AI-powered safety functions, and the AI Act treats some AI safety components as high-risk.\n\n> **Key idea:** A good one-pager shows dates and links, so readers can check every claim in the official text.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware and a drawing tool such as Figma or draw.io.\n- **Official sources:** The Commission machinery page, the Commission AI Act page and the AI Act Explorer article pages.\n- **Background:** Robotics regulation & compliance in the EU.\n\n## Steps\n\n1. **Collect dates** from official pages into a table: date, event, source URL.\n2. **Mark uncertainty:** note any date changed by later amendments, with the amending act.\n3. **Draw a timeline** from 2023 to 2028 with both laws on parallel tracks.\n4. **Annotate** what a robot builder must care about at each point.\n5. **Peer review:** a classmate checks each date against its link.\n\n```mermaid\nflowchart LR\n  A[\"14 Jun 2023: Machinery Regulation adopted\"] --> B[\"2 Aug 2026: AI Act general application\"]\n  B --> C[\"20 Jan 2027: Machinery Regulation applies\"]\n  C --> D[\"Later: amended high-risk dates\"]\n```\n\n## Common pitfalls\n\n- **Secondary sources:** Blogs often have outdated dates; use only official texts and pages.\n- **Moving targets:** The AI Act dates were amended; print the date you checked on the page.\n- **Too much text:** One page means short labels and links, not paragraphs.\n\n## When it's done\n\n- **Infographic:** One page, every date linked to an official source.\n- **Changelog:** Where you saw each date and when you checked it.\n- **Next step:** Use it in the AI Act classifier for robot features and the Compliance checklist for a lab demo robot.",
+      "resources": [
+        {
+          "title": "Machinery - Internal Market, Industry, Entrepreneurship and SMEs",
+          "url": "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official source for Machinery Regulation adoption and application dates."
+        },
+        {
+          "title": "Article 113: Entry into Force and Application",
+          "url": "https://artificialintelligenceact.eu/article/113/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "AI Act application dates, including amendments, for your timeline."
+        },
+        {
+          "title": "AI Act | Shaping Europe’s digital future",
+          "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official AI Act overview for the second track of your infographic."
+        },
+        {
+          "title": "EU Machinery Regulation 2023/1230 Explained | The New Era of Safety, Cyber, & AI",
+          "url": "https://www.youtube.com/watch?v=7pegCpKPiHo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains what changes with the Machinery Regulation."
+        },
+        {
+          "title": "The EU's AI Act Explained",
+          "url": "https://www.youtube.com/watch?v=s_rxOnCt3HQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Quick AI Act explainer for the annotations."
+        }
+      ],
+      "sources": [
+        "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
+        "https://artificialintelligenceact.eu/article/113/",
+        "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+        "https://www.youtube.com/watch?v=7pegCpKPiHo",
+        "https://www.youtube.com/watch?v=s_rxOnCt3HQ"
+      ]
+    },
+    {
+      "node_id": "p:goal-inference-assistive-arm",
+      "type": "project",
+      "name": "Goal-inference assistive arm",
+      "summary": "Teleoperate an SO-101 toward one of several objects while the robot infers which one you want and blends in help to finish the grasp.",
+      "lesson_md": "## In one sentence\n\nTeleoperate an SO-101 toward one of several objects while the robot infers which one you want and blends in help to finish the grasp.\n\n![Diagram of a robot inferring the user's goal among several objects during shared autonomy](/img/lessons/projects_hri_safety_1-goal-inference.webp)\n*Shared autonomy: the robot infers which object the user wants. Source: [arXiv 2606.29846](https://arxiv.org/html/2606.29846v2), CC BY 4.0.*\n\n## What you will learn\n\n- **Shared autonomy:** User input and autonomous control are combined, so neither does everything alone.\n- **Goal inference:** Estimate the probability of each target from the direction of the user's commands.\n- **Arbitration:** Blend user and robot commands, giving the robot more weight when it is confident.\n- **Legibility:** A 2026 paper makes assistive motion reveal the robot's inferred goal to the user.\n\n> **Key idea:** Assistance should grow with confidence; when unsure, let the human drive.\n\n## What you need\n\n- **Hardware under €500:** An SO-101 with a leader arm or gamepad, and two or three cups.\n- **Software:** LeRobot and Python.\n- **Background:** Shared control & shared autonomy, plus Joystick shared control in sim first.\n\n## Steps\n\n1. **Register targets:** store each cup's position in the robot frame.\n2. **Score goals** by how well the user's motion points toward each target.\n3. **Blend:** command = (1 − α)·user + α·robot, with α from confidence.\n4. **Run a study:** a few people grasp with and without assistance.\n5. **Measure** task time and ask users to rate control and helpfulness.\n\n```python\nimport numpy as np\ndef goal_probs(ee, u, targets, beta=5.0):\n    dirs = targets - ee\n    cos = dirs @ u / (np.linalg.norm(dirs, axis=1) * np.linalg.norm(u) + 1e-9)\n    p = np.exp(beta * cos); return p / p.sum()\np = goal_probs(np.zeros(2), np.array([1.0, 0.1]), np.array([[1, 0], [0, 1]]))\nalpha = max(0.0, p.max() - 0.5) * 2   # 0 when unsure, 1 when certain\n```\n\n```mermaid\nflowchart LR\n  A[\"User command\"] --> B[\"Goal probabilities\"]\n  B --> C[\"Confidence\"]\n  C --> D[\"Blend user + robot\"]\n  A --> D\n  D --> E[\"Arm motion\"]\n```\n\n## Common pitfalls\n\n- **Taking over:** Strong assistance toward the wrong cup frustrates users; cap α.\n- **No baseline:** Always compare with pure teleoperation.\n- **Unsafe speed:** Keep slow speeds and a stop button during user tests.\n\n## When it's done\n\n- **Video:** A person teleoperates and the robot finishes the grasp on the inferred cup.\n- **Results:** Task time and ratings, assisted versus unassisted.\n- **Next step:** Show the robot's belief in the Legible shared autonomy display.",
+      "resources": [
+        {
+          "title": "Shared Autonomy via Deep Reinforcement Learning",
+          "url": "https://arxiv.org/abs/1802.01744",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Shared autonomy that infers user goals and blends control."
+        },
+        {
+          "title": "Legible Shared Autonomy: Implicit Communication of Robot Belief through Motion",
+          "url": "https://arxiv.org/abs/2606.29846",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Makes assistance reveal the robot's inferred goal, with confidence-aware authority."
+        },
+        {
+          "title": "Shared autonomy for interactive robotics",
+          "url": "https://www.youtube.com/watch?v=t2n2oLINt_k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Talk introducing shared autonomy for interactive robots."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Set up the SO-101 you teleoperate."
+        },
+        {
+          "title": "huggingface/lerobot",
+          "url": "https://github.com/huggingface/lerobot",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "LeRobot code for teleoperation and control."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1802.01744",
+        "https://arxiv.org/abs/2606.29846",
+        "https://www.youtube.com/watch?v=t2n2oLINt_k",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://github.com/huggingface/lerobot",
+        "https://arxiv.org/html/2606.29846v2"
+      ]
+    },
+    {
+      "node_id": "p:guardrail-for-a-language-commanded-arm",
+      "type": "project",
+      "name": "Guardrail for a language-commanded arm",
+      "summary": "Put a two-stage guardrail in front of a language-commanded simulated arm: turn safety rules into checks for the scene, then refuse unsafe plans with an explanation.",
+      "lesson_md": "## In one sentence\n\nPut a two-stage guardrail in front of a language-commanded simulated arm: turn safety rules into checks for the scene, then refuse unsafe plans with an explanation.\n\n![RoboGuard architecture: a root-of-trust LLM contextualises rules, then a plan checker validates the robot plan](/img/lessons/projects_hri_safety_1-guardrail.webp)\n*RoboGuard checks an LLM planner's output before execution. Source: [Ravichandran et al., arXiv 2503.07885](https://arxiv.org/html/2503.07885v2), CC BY 4.0.*\n\n## What you will learn\n\n- **Prompt-level safety is weak:** Jailbreaking work showed LLM-controlled robots can be talked into harmful actions.\n- **RoboGuard:** A trusted LLM turns rules into scene-specific specifications, then plans are checked with temporal logic before acting.\n- **Reported effect:** In RoboGuard's tests, unsafe plan execution fell from 92% to below 3%.\n- **Layered guardrails:** Another paper argues for separate monitoring and intervention layers.\n\n> **Key idea:** Never let the language model be the last check; validate its plan with code you control.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, MuJoCo with a simple arm and objects.\n- **LLM access:** Any model API for the planner and rule contextualisation.\n- **Background:** Semantic safety & guardrails for LLM/VLA-controlled robots and RoboGuard.\n\n## Steps\n\n1. **Define skills** the arm can do, such as `pick(obj)` and `place(obj, loc)`.\n2. **Write rules** in plain English: \"never move a knife toward the person zone\".\n3. **Contextualise:** ask an LLM to map rules to concrete checks on scene objects.\n4. **Check plans:** a deterministic checker rejects any step that breaks a check.\n5. **Demo** safe and unsafe commands, with refusals and explanations.\n\n```python\nFORBIDDEN = {(\"knife\", \"person_zone\")}\ndef check(plan):\n    for step in plan:\n        if step.skill == \"place\" and (step.obj, step.loc) in FORBIDDEN:\n            return False, f\"refused: {step.obj} near person\"\n    return True, \"ok\"\n```\n\n```mermaid\nflowchart LR\n  A[\"User command\"] --> B[\"LLM planner\"]\n  C[\"Safety rules + scene\"] --> D[\"Contextualised checks\"]\n  B --> E[\"Plan checker\"]\n  D --> E\n  E -- \"Safe\" --> F[\"Execute in sim\"]\n  E -- \"Unsafe\" --> G[\"Refuse + explain\"]\n```\n\n## Common pitfalls\n\n- **Checker as LLM:** If the checker is also a prompt, it can be jailbroken the same way.\n- **Missing objects:** Rules only cover objects the scene description includes.\n- **Tiny test set:** Include adversarial phrasings from the jailbreaking paper.\n\n## When it's done\n\n- **Video:** Unsafe commands refused with explanations, safe commands executed.\n- **Table:** Attack prompts versus outcome, with and without the guardrail.\n- **Next step:** Build Safe shared-workspace SO-101 assistant: language guardrail, safety filter and handover.",
+      "resources": [
+        {
+          "title": "Safety Guardrails for LLM-Enabled Robots",
+          "url": "https://arxiv.org/abs/2503.07885",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "RoboGuard, the two-stage guardrail you reproduce."
+        },
+        {
+          "title": "Modular Safety Guardrails Are Necessary for Foundation-Model-Enabled Robots in the Real World",
+          "url": "https://arxiv.org/abs/2602.04056",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Argues for layered monitoring and intervention guardrails."
+        },
+        {
+          "title": "Jailbreaking LLM-Controlled Robots",
+          "url": "https://arxiv.org/abs/2410.13691",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Jailbreak attacks your guardrail should resist."
+        },
+        {
+          "title": "Safety Guardrails for LLM-enabled Robots",
+          "url": "https://www.youtube.com/watch?v=HAXjnidNqNI",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk on RoboGuard's design and results."
+        },
+        {
+          "title": "Jailbreaking LLM-Controlled Robots: RoboPair Promo Video | Penn Engineering",
+          "url": "https://www.youtube.com/watch?v=A4HbargVKXo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short video showing why LLM-controlled robots need guardrails."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2503.07885",
+        "https://arxiv.org/abs/2602.04056",
+        "https://arxiv.org/abs/2410.13691",
+        "https://www.youtube.com/watch?v=HAXjnidNqNI",
+        "https://www.youtube.com/watch?v=A4HbargVKXo",
+        "https://arxiv.org/html/2503.07885v2"
+      ]
+    },
+    {
+      "node_id": "p:handover-benchmark-in-simulation",
+      "type": "project",
+      "name": "Handover benchmark in simulation",
+      "summary": "Run a public simulated handover benchmark, reproduce a baseline, and explain its successes and failures with a video and results table.",
+      "lesson_md": "## In one sentence\n\nRun a public simulated handover benchmark, reproduce a baseline, and explain its successes and failures with a video and results table.\n\n![Simulated robot reaching toward an object offered by a human hand in HandoverSim.](/img/lessons/projects_hri_safety_1-handover.webp)\n*A frame from the HandoverSim paper’s simulated handover sequence. Source: [Published setup](https://arxiv.org/html/2205.09747), license unknown.*\n\n## What you will learn\n\n- **Handover** means transferring an object between a person and a robot; taking an offered object differs from picking one off a table.\n- **Benchmark** means shared tasks and scoring rules: think of it as an integration-test suite rather than a spectacular single passing test.\n- **Direction matters:** HandoverSim studies human-to-robot transfers; R2HandoverSim studies robot-to-human transfers. Choose one before comparing results.\n\n> **Key idea:** A success rate is meaningful only alongside its task definition, evaluation split, and failure criteria.\n\n## What you need\n\n- **Start here:** Complete Intro: write a risk assessment for the lab robot and read Human-robot handovers for transfer timing and grasp context.\n- **Software:** Use HandoverSim’s repository and supported simulator setup; keep dependency versions and downloaded assets in an experiment manifest.\n- **Budget:** No physical robot is required. The map estimates 2–4 weeks; computer availability, storage, and compute costs remain separate.\n\n## Steps\n\n1. **Reproduce the installation** and run an unchanged baseline before modifying the receiver’s behavior.\n2. **Inspect one episode:** Identify the offered object, moving human hand, robot grasp, and benchmark termination condition.\n3. **Freeze the evaluation split** and save configuration, seeds, baseline revision, and task identifiers with each run.\n4. **Make one adaptation,** such as receiver timing; rerun exactly the same evaluation cases for both versions.\n5. **Build a results table:** As a toy calculation, 8 successes in 10 attempts gives 80%; report the denominator and failed attempts too.\n6. **Record the demo:** Show successful transfers, missed grasps, and collisions beside the table, not only the best episode.\n\n```mermaid\nflowchart LR\n  A[\"Fixed cases\"] --> B[\"Baseline and variant\"]\n  B --> C[\"Simulated transfer\"]\n  C --> D[\"Score and inspect\"]\n```\n\n## Common pitfalls\n\n- **Do not reverse the task:** A human-giver benchmark does not automatically evaluate a robot offering an object to a person.\n- **Simulation evidence is limited:** Keep simulator contact failures separate from task failures; neither establishes safety for real hands.\n\n## When it's done\n\n- **Reproducible artifact:** A teammate can rerun the saved evaluation and recover the same table structure, including every failed or invalid episode.\n- **Clear conclusion:** Explain whether your change helped, hurt, or remained inconclusive, using the benchmark’s own metrics and your annotated video.",
+      "resources": [
+        {
+          "title": "ICRA 2022: HandoverSim: A Simulation Framework and Benchmark for Human-to-Robot Object Handovers",
+          "url": "https://www.youtube.com/watch?v=lX3CF4lFKWo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creators demonstrate human-to-robot object transfers before reading the benchmark code."
+        },
+        {
+          "title": "HandoverSim: A Simulation Framework and Benchmark for Human-to-Robot Object Handovers",
+          "url": "https://handover-sim.github.io",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See the benchmark scene, baseline demonstrations, and links to its implementation."
+        },
+        {
+          "title": "GitHub - NVlabs/handover-sim: A simulation environment and benchmark for human-to-robot object handovers · GitHub",
+          "url": "https://github.com/NVlabs/handover-sim",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Follow installation and evaluation instructions for the unchanged baseline."
+        },
+        {
+          "title": "HandoverSim: A Simulation Framework and Benchmark for Human-to-Robot Object Handovers",
+          "url": "https://arxiv.org/abs/2205.09747",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the training/evaluation protocol and human-giver simulation assumptions."
+        },
+        {
+          "title": "R2HandoverSim: A Simulation Framework and Benchmark for Robot-to-Human Object Handovers",
+          "url": "https://arxiv.org/abs/2606.21011",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Contrast the opposite transfer direction and its complementary quality metrics."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=lX3CF4lFKWo",
+        "https://handover-sim.github.io",
+        "https://github.com/NVlabs/handover-sim",
+        "https://arxiv.org/abs/2205.09747",
+        "https://arxiv.org/abs/2606.21011",
+        "https://arxiv.org/html/2205.09747"
+      ]
+    },
+    {
+      "node_id": "p:hri-study-toolkit-for-the-lab",
+      "type": "project",
+      "name": "HRI study toolkit for the lab",
+      "summary": "Build a reusable command that records a human–robot study session and joins video, robot state, and questionnaire answers into a report.",
+      "lesson_md": "## In one sentence\n\nBuild a reusable command that records a human–robot study session and joins video, robot state, and questionnaire answers into a report.\n\n![Shape placement task and colored robot trajectories used in a published human correction study.](/img/lessons/projects_hri_safety_1-study-toolkit.webp)\n*A published user-study task, not a photograph of the 42AI lab. Source: [Published setup](https://arxiv.org/html/2501.03515), CC BY 4.0.*\n\n## What you will learn\n\n- **Human–robot interaction (HRI)** studies how people and robots affect each other; a working controller is not yet a well-designed user study.\n- **Condition** means one experimental setting, such as a motion speed; **questionnaire** means the same questions asked consistently after each setting.\n- **Session logging** resembles distributed tracing: timestamps and a shared identifier connect events that otherwise live in separate files.\n\n> **Key idea:** A useful study toolkit preserves what happened and how it was measured, not merely a final average.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot; use HRI foundations & user-study methods to write the study question.\n- **Setup:** Begin with prerecorded SO-101 motions, a browser questionnaire, local video storage, and a robot-state CSV rather than live participant contact.\n- **Budget:** The map estimates 2–4 weeks with no new robot purchase; recording equipment and storage availability are unknown.\n\n## Steps\n\n1. **Define the protocol:** State the question, conditions, questionnaire wording, consent process, withdrawal option, and who can access recordings.\n2. **Create a session folder** containing an anonymous identifier, configuration, event timestamps, video reference, robot-state log, and questionnaire version.\n3. **Implement one launcher** that starts logging and records the actual start time of each stream; document how clocks are aligned.\n4. **Add browser forms:** For an illustrative two-speed comparison, record condition A or B with every answer and vary presentation order across viewers.\n5. **Generate a report** with session counts, missing files, per-condition answers, and time-aligned events; never silently replace missing answers with zero.\n6. **Pilot and demo:** Rehearse with teammates, then run the proposed ten-person perceived-safety exercise only after the protocol and recording consent are settled.\n\n```mermaid\nflowchart LR\n  P[\"Protocol\"] --> S[\"Session ID\"]\n  S --> L[\"Video state answers\"]\n  L --> J[\"Join timestamps\"]\n  J --> R[\"Report and inspect\"]\n```\n\n## Common pitfalls\n\n- **Perceived safety is subjective:** A comfortable-looking motion does not prove low injury risk; report questionnaire findings separately from physical risk assessment.\n- **Browser data can disappear:** jsPsych distinguishes in-memory data from permanent storage; test saving and recovery before collecting real sessions.\n\n## When it's done\n\n- **One-command demonstration:** Produce a report from a complete session, then visibly flag a deliberately missing state log rather than generating a misleading result.\n- **Reusable handoff:** Another team can reuse the template, understand each column, and reproduce the report without knowing your folder conventions.",
+      "resources": [
+        {
+          "title": "Methods and Application in Human-Robot Interaction",
+          "url": "https://www.youtube.com/watch?v=hhG_x2eFewo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Start with the textbook author’s introduction to HRI methods and applications."
+        },
+        {
+          "title": "survey-likert - jsPsych",
+          "url": "https://www.jspsych.org/latest/plugins/survey-likert/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build consistently labeled questionnaire responses for each motion condition."
+        },
+        {
+          "title": "Data Storage, Aggregation, and Manipulation - jsPsych",
+          "url": "https://www.jspsych.org/latest/overview/data/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Attach session identifiers and persist trial data rather than leaving it only in memory."
+        },
+        {
+          "title": "Perceived Safety in Physical Human Robot Interaction -- A Survey",
+          "url": "https://arxiv.org/abs/2105.14499",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Distinguish questionnaires and other perceived-safety measurements from physical safety."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hhG_x2eFewo",
+        "https://www.jspsych.org/latest/plugins/survey-likert/",
+        "https://www.jspsych.org/latest/overview/data/",
+        "https://arxiv.org/abs/2105.14499",
+        "https://arxiv.org/html/2501.03515",
+        "https://www.human-robot-interaction.org/",
+        "https://www.human-robot-interaction.org/course/"
+      ]
+    },
+    {
+      "node_id": "p:human-gated-interactive-imitation-on-so-101",
+      "type": "project",
+      "name": "Human-gated interactive imitation on SO-101",
+      "summary": "Let a person take over an SO-101 policy, record those corrections, and compare retraining against an unchanged offline-only baseline.",
+      "lesson_md": "## In one sentence\n\nLet a person take over an SO-101 policy, record those corrections, and compare retraining against an unchanged offline-only baseline.\n\n![SO-101 follower arm used as the target platform for human intervention experiments.](/img/lessons/projects_hri_safety_1-human-gated.webp)\n*The SO-101 follower; the intervention mechanism is software you will implement. Source: [Published setup](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Policy** means the function mapping observations to actions; **interactive imitation learning** adds human feedback while that function is running.\n- **Human-gated** means the person explicitly chooses when to take control, rather than the learner silently deciding which commands to trust.\n- **The software analogy** is a production bug report with a replay: capture the state where behavior failed and the corrective action, not just “it broke.”\n\n> **Key idea:** Corrections should cover the learner’s actual mistakes while evaluation remains separate from retraining data.\n\n## What you need\n\n- **Prerequisite:** Finish Autonomous pick-and-place with ACT with a repeatable task and an evaluation baseline before adding interventions.\n- **Stack:** Use SO-101, LeRobot, cameras, a calibrated leader interface, and a clear takeover control with an on-screen ownership indicator.\n- **Budget:** The map’s under-€500 band is a planning estimate, not a verified shopping list; actual arm, camera, and compute costs are unknown.\n- **Related concepts:** Read Learning from human feedback & corrections and Shared control & shared autonomy before deciding who owns each command.\n\n## Steps\n\n1. **Freeze the baseline** checkpoint and held-out start positions; save its completion and failure records before collecting new demonstrations.\n2. **Build a command arbiter:** Only the selected source, human or policy, may send the next action to the follower.\n3. **Record intervention episodes** with observations, proposed policy actions, executed actions, takeover boundaries, and timestamps.\n4. **Inspect the corrections:** As a toy example, tag a missed grasp followed by a human-guided recovery; retain the whole recovery context.\n5. **Retrain a separate checkpoint** on the documented data mixture; keep an unchanged offline-only checkpoint for comparison under matched evaluation conditions.\n6. **Demo both policies** from held-out starts, showing takeovers, task completion, and failures; improvement is a hypothesis, not an acceptance requirement.\n\n```mermaid\nflowchart LR\n  O[\"Observation\"] --> P[\"Policy\"]\n  P --> G[\"Human ownership gate\"]\n  H[\"Leader command\"] --> G\n  G --> A[\"Execute and log\"]\n  A --> T[\"Retrain offline\"]\n```\n\n## Common pitfalls\n\n- **Ownership changes can jump:** Prevent stale queued policy actions from executing after takeover or release; test switching without an object first.\n- **Blending is different:** BlenDAgger combines commands during intervention; that is not the same experiment as an exclusive human takeover.\n- **Keep hands outside** the powered follower’s reachable space; intervene through the leader rather than grabbing a moving link.\n\n## When it's done\n\n- **Evidence package:** Deliver before/after videos, held-out results, intervention counts, dataset revisions, and checkpoints, including an honest negative result if retraining does not help.",
+      "resources": [
+        {
+          "title": "Stanford Seminar - Interactive Imitation Learning: Planning Alongside Humans",
+          "url": "https://www.youtube.com/watch?v=iEpu-ZWuGIY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See interactive imitation learning explained in a Stanford research seminar."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Implement and verify the underlying observation, teleoperation, recording, training, and evaluation workflow."
+        },
+        {
+          "title": "Interactive Imitation Learning in Robotics: A Survey",
+          "url": "https://arxiv.org/abs/2211.00600",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand feedback types and the difference between interactive and offline imitation."
+        },
+        {
+          "title": "BlenDAgger: Blended Shared Control for Interactive Imitation Learning",
+          "url": "https://arxiv.org/abs/2609.37599",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Compare exclusive human gating with blended shared-control interventions."
+        },
+        {
+          "title": "Effects of Robot Competency and Motion Legibility on Human Correction Feedback",
+          "url": "https://arxiv.org/abs/2501.03515",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Examine how robot behavior affects when people decide to correct it."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=iEpu-ZWuGIY",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://arxiv.org/abs/2211.00600",
+        "https://arxiv.org/abs/2609.37599",
+        "https://arxiv.org/abs/2501.03515",
+        "https://huggingface.co/docs/lerobot/so101"
+      ]
+    },
+    {
+      "node_id": "p:humanoid-safety-readiness-review",
+      "type": "project",
+      "name": "Humanoid safety readiness review",
+      "summary": "Review humanoid hazards, public standards information, and manufacturer limits, then present a go/no-go evidence checklist for a lab demonstration.",
+      "lesson_md": "## In one sentence\n\nReview humanoid hazards, public standards information, and manufacturer limits, then present a go/no-go evidence checklist for a lab demonstration.\n\n![Semi-enclosed humanoid robot test cell illustrated in a functional-safety research paper.](/img/lessons/projects_hri_safety_1-humanoid-review.webp)\n*The paper’s humanoid test cell, not a certified design for the student lab. Source: [Published setup](https://arxiv.org/html/2608.02809), license unknown.*\n\n## What you will learn\n\n- **Readiness review** means checking whether evidence supports a specific planned activity; it is not permission to operate every feature a robot advertises.\n- **Dynamic stability** means balance depends on continuing control. The cited humanoid paper explains why removing power from a walking biped can cause a fall.\n- **Treat the review like a release gate:** Every proposed capability needs evidence, an owner, and a blocked state when evidence is missing.\n\n> **Key idea:** An external emergency-stop chain does not by itself prove that a balancing humanoid will reach a safe state.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot, then read Safety of humanoids & dynamically stable mobile robots.\n- **Evidence:** Use the exact Unitree G1 variant’s public documentation, the research paper, and dated standards catalog entries; hardware is unnecessary for this desk review.\n- **Scope:** Robot safety standards & risk assessment provides vocabulary; the map estimates one week and no new hardware purchase, not certification costs.\n\n## Steps\n\n1. **Describe the event:** Record intended movements, payload, floor, audience access, transport, setup, shutdown, and who may initiate each behavior.\n2. **Separate source types:** Put manufacturer statements, published standards, research claims, and student proposals in different columns with access dates.\n3. **Inventory hazards:** Include falls, unexpected motion, pinch points, carried objects, and loss of communication; relate each to the proposed demonstration.\n4. **Trace each stopping assumption:** In a worked review row, mark “power removed while balancing” as unresolved until robot-specific evidence establishes the outcome.\n5. **Check standards status live:** The supplied ISO 25785 search did not provide a usable status; record it as unknown, not “published” or “compliant.”\n6. **Present the decision:** Deliver slides with allowed activities, prohibited activities, unresolved evidence, and a named action for each blocked item.\n\n```mermaid\nflowchart LR\n  A[\"Planned demo\"] --> H[\"Hazard inventory\"]\n  H --> E[\"Evidence by source\"]\n  E --> G[\"Go or block\"]\n  G --> R[\"Review slides\"]\n```\n\n## Common pitfalls\n\n- **Scope is not interchangeable:** ISO 10218-2 addresses industrial robot applications and cells; do not assert that its catalog abstract certifies a humanoid event.\n- **Demo videos show capability,** not guaranteed stopping behavior. The cited functional-safety paper explicitly avoids claiming end-to-end certification.\n\n## When it's done\n\n- **Decision-ready slides:** A teammate can identify what remains unknown and why a particular event plan is blocked without inspecting your browser history.",
+      "resources": [
+        {
+          "title": "Unitree Introducing | Unitree G1 Humanoid Agent | AI Avatar | Price from $16K",
+          "url": "https://www.youtube.com/watch?v=GzX1qOIO1bE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Inspect the manufacturer’s G1 capability footage and list behaviors that require separate readiness evidence."
+        },
+        {
+          "title": "Humanoid robot G1_Humanoid Robot Functions_Humanoid Robot Price | Unitree Robotics",
+          "url": "https://www.unitree.com/g1/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Identify the manufacturer’s robot variants and distinguish capability claims from your event rules."
+        },
+        {
+          "title": "ISO 10218-2:2025 - Robotics — Safety requirements — Part 2: Industrial robot applications and robot cells",
+          "url": "https://www.iso.org/standard/73934.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read the public scope of ISO 10218-2:2025 without treating the paid standard as freely reviewed."
+        },
+        {
+          "title": "Toward Certified Functional Safety for Industrial Humanoid Robots: The Fail-Passive Gap and a Feasibility Study",
+          "url": "https://arxiv.org/abs/2608.02809",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand the fail-passive gap and the limits of an external humanoid safety chain."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=GzX1qOIO1bE",
+        "https://www.unitree.com/g1/",
+        "https://www.iso.org/standard/73934.html",
+        "https://arxiv.org/abs/2608.02809",
+        "https://arxiv.org/html/2608.02809",
+        "https://www.iso.org/search.html?q=25785"
+      ]
+    },
+    {
+      "node_id": "p:interruptible-conversational-robot",
+      "type": "project",
+      "name": "Interruptible conversational robot",
+      "summary": "Build a conversational robot that cancels speech and pending gestures when a user interrupts, then resumes with the updated request.",
+      "lesson_md": "## In one sentence\n\nBuild a conversational robot that cancels speech and pending gestures when a user interrupts, then resumes with the updated request.\n\n![MIRA paper figure showing speech-driven interaction and expressive behavior on an Astribot robot.](/img/lessons/projects_hri_safety_1-interruptible.webp)\n*MIRA’s research system motivates the interruption design; it is not a Reachy Mini implementation. Source: [Published setup](https://arxiv.org/html/2609.24547), CC BY-NC-SA 4.0.*\n\n## What you will learn\n\n- **Barge-in** means speaking while the robot is already responding; **full-duplex** interaction allows listening and speaking to overlap.\n- **Cancellation** must reach both sound playback and movement execution. Stopping text generation alone leaves buffered speech or gestures running.\n- **Think of an aborted HTTP request:** Canceling the caller is insufficient if downstream workers keep processing an obsolete request identifier.\n\n> **Key idea:** An interruption must invalidate old work at every execution boundary, not just change the conversation transcript.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot; read Conversational & multimodal robot interfaces for turn-taking concepts.\n- **Stack:** Begin with a microphone, speaker, simulated gestures, and Whisper for transcription; add Reachy Mini only after cancellation works without hardware.\n- **Reference:** MIRA demonstrates the richer research problem on Astribot S1; this student project implements a smaller interruptible interaction, not the entire paper.\n- **Budget:** The map estimates 1–2 months and under €500 hardware; actual robot availability, speech-service fees, and compute costs are unknown.\n\n## Steps\n\n1. **Implement explicit states:** Listening, replying, interrupted, and waiting; attach a generation identifier to every speech and gesture job.\n2. **Detect incoming speech** while output continues; keep the interruption signal separate from waiting for a complete transcription.\n3. **Propagate cancellation:** Stop audio playback, discard pending response jobs, and request a robot-appropriate interruption of the active gesture.\n4. **Test stale work:** In a toy trace, request 7 is interrupted by request 8; reject every late result still labeled 7.\n5. **Preserve context:** Ask for clarification or answer the revised request only after arbitration decides the user’s turn has ended.\n6. **Record the demo:** Interrupt mid-sentence, mid-gesture, and during silence; timestamp detection, audio stop, and motion acknowledgement separately.\n\n```mermaid\nflowchart LR\n  M[\"Microphone\"] --> D[\"Speech event\"]\n  D --> C[\"Cancel old generation\"]\n  C --> A[\"Audio and gesture queues\"]\n  C --> T[\"Update conversation\"]\n  T --> N[\"New reply\"]\n```\n\n## Common pitfalls\n\n- **Self-interruption:** Speaker output can trigger the microphone path; include playback-only trials rather than tuning solely on clean headset audio.\n- **Software stop is not emergency stop:** Use bounded, tested motions and do not replace robot-specific physical safeguards with speech recognition.\n\n## When it's done\n\n- **Visible cancellation evidence:** The recording shows speech and gestures stop, old jobs cannot restart, and the next reply reflects the interruption; report failures and measured delays.",
+      "resources": [
+        {
+          "title": "MIRA: Real-Time Full-Duplex Human-Robot Interaction for Embodied Companions",
+          "url": "https://gagajian.github.io/MIRA/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creators’ Long Dialog clips showing user barge-in alongside their system explanation."
+        },
+        {
+          "title": "GitHub - openai/whisper: Robust Speech Recognition via Large-Scale Weak Supervision · GitHub",
+          "url": "https://github.com/openai/whisper",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Build the speech-transcription component while keeping interruption detection independent of full transcription."
+        },
+        {
+          "title": "Core Concepts & Architecture · Hugging Face",
+          "url": "https://huggingface.co/docs/reachy_mini/main/SDK/core-concept",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the daemon/client boundary where motion commands and robot-side checks live."
+        },
+        {
+          "title": "MIRA: Real-Time Full-Duplex Human-Robot Interaction for Embodied Companions",
+          "url": "https://arxiv.org/abs/2609.24547",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the distinction between streaming generation, conversational arbitration, and robot execution."
+        }
+      ],
+      "sources": [
+        "https://gagajian.github.io/MIRA/",
+        "https://github.com/openai/whisper",
+        "https://huggingface.co/docs/reachy_mini/main/SDK/core-concept",
+        "https://arxiv.org/abs/2609.24547",
+        "https://arxiv.org/html/2609.24547"
+      ]
+    },
+    {
+      "node_id": "p:intro-write-a-risk-assessment-for-the-lab-robot",
+      "type": "project",
+      "name": "Intro: write a risk assessment for the lab robot",
+      "summary": "Make a hazard table for an SO-101 desk task, choose risk-reduction measures, and explain the remaining risks in a short walkthrough video.",
+      "lesson_md": "## In one sentence\n\nMake a hazard table for an SO-101 desk task, choose risk-reduction measures, and explain the remaining risks in a short walkthrough video.\n\n![SO-101 follower arm with its gripper and exposed tabletop workspace.](/img/lessons/projects_hri_safety_1-risk-assessment.webp)\n*Use the actual arm, gripper, mounting, and surroundings as the assessment boundary. Source: [Published setup](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Hazard** means a potential source of harm; **risk assessment** identifies hazards, estimates and evaluates risks, then informs risk reduction.\n- **Application scope matters:** The robot alone is not the whole task; include the tool, carried object, table, cables, and people entering the workspace.\n- **The software analogy is threat modeling:** Enumerate failure paths before deployment rather than treating a successful nominal run as proof of safety.\n\n> **Key idea:** Assess the complete intended activity, including foreseeable mistakes, and document what remains unresolved after each mitigation.\n\n## What you need\n\n- **A concrete setup:** Use the lab’s SO-101 documentation, a photograph of its desk arrangement, and one precisely described task; no powered motion is needed.\n- **Vocabulary:** Robot safety standards & risk assessment connects the ISO 12100 public abstract to hazard identification, risk estimation, evaluation, and reduction.\n- **Budget:** The map estimates one week and no new hardware. Actual costs of any later protective equipment are unknown until measures are chosen.\n\n## Steps\n\n1. **Define task limits:** Describe who uses the arm, what object it handles, reachable space, setup, normal operation, recovery, and shutdown.\n2. **Identify hazards** during each phase; give every row an exposed person, hazardous situation, possible harm, and source of evidence.\n3. **Estimate initial risk:** Define an ordinal scoring rubric for the exercise; label it a lab prioritization aid, not an ISO-prescribed formula.\n4. **Work one row:** “Finger near closing gripper during recovery → pinch → redesign recovery to avoid hand access”; leave residual risk unresolved until checked.\n5. **Choose reduction measures:** Prefer removing the hazardous action, then protective measures, then clear instructions; record evidence needed to verify each choice.\n6. **Record the walkthrough:** Explain the hazard table, initial and residual scores, rejected assumptions, and a concrete stop condition for the planned demo.\n\n```mermaid\nflowchart LR\n  L[\"Task limits\"] --> H[\"Identify hazards\"]\n  H --> R[\"Estimate and evaluate\"]\n  R --> M[\"Reduce risk\"]\n  M --> V[\"Verify and document\"]\n  V --> R\n```\n\n## Common pitfalls\n\n- **A numeric score is not certification:** A low spreadsheet number cannot establish compliance or substitute for evidence that a measure works.\n- **Public abstracts have limits:** ISO 10218-2 covers industrial robot applications; do not claim to have checked inaccessible clauses or universal applicability.\n\n## When it's done\n\n- **Reviewable artifact:** Another student can trace every chosen measure to a hazard, see the scoring rubric, and identify unresolved risks before later HRI projects.",
+      "resources": [
+        {
+          "title": "Risk Assessment: ISO 12100:2010",
+          "url": "https://www.youtube.com/watch?v=hl7Za5nDtqQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn ISO 12100 risk-assessment vocabulary before writing the lab’s hazard table."
+        },
+        {
+          "title": "SO-101 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the actual SO-101 platform rather than assessing an abstract generic robot."
+        },
+        {
+          "title": "ISO 12100:2010 - Safety of machinery — General principles for design — Risk assessment and risk reduction",
+          "url": "https://www.iso.org/standard/51528.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read ISO’s public description of machinery risk assessment and risk reduction."
+        },
+        {
+          "title": "ISO 10218-2:2025 - Robotics — Safety requirements — Part 2: Industrial robot applications and robot cells",
+          "url": "https://www.iso.org/standard/73934.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the application-and-cell scope of ISO 10218-2:2025 from its free catalog entry."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hl7Za5nDtqQ",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.iso.org/standard/51528.html",
+        "https://www.iso.org/standard/73934.html"
+      ]
+    },
+    {
+      "node_id": "p:joystick-shared-control-in-sim",
+      "type": "project",
+      "name": "Joystick shared control in sim",
+      "summary": "Drive a simulated arm with a gamepad and compare manual control against a small assistive push toward the estimated target.",
+      "lesson_md": "## In one sentence\n\nDrive a simulated arm with a gamepad and compare manual control against a small assistive push toward the estimated target.\n\n![Franka Panda arm model rendered in MuJoCo.](/img/lessons/projects_hri_safety_1-joystick.webp)\n*A MuJoCo arm model suitable for an entirely simulated shared-control exercise. Source: [Published setup](https://mujoco.readthedocs.io/en/stable/models.html), license unknown.*\n\n## What you will learn\n\n- **Shared control** combines human commands and robot assistance; the human still influences motion rather than merely naming a task.\n- **Goal inference** means guessing the intended target from available evidence; nearest-object assistance is a deliberately simple guess, not mind reading.\n- **Think of autocomplete:** A useful suggestion saves input, but an overconfident wrong completion makes the user fight the interface.\n\n> **Key idea:** Assistance should be evaluated when its goal guess is wrong, not only when it agrees with the user.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot and read Shared control & shared autonomy before designing command ownership.\n- **Software:** Use MuJoCo with a supported arm model, a gamepad or keyboard fallback, visible targets, and a log of user and assisted commands.\n- **Budget:** No physical arm is needed; the map estimates one week. A gamepad is optional, and actual controller or compute costs are unknown.\n\n## Steps\n\n1. **Start with manual motion:** Map input axes to bounded tool-tip velocity, meaning the gripper’s speed and direction, and add an immediate assistance-off toggle.\n2. **Display the guessed goal** and a vector pointing toward it; start with the nearest object so the rule remains inspectable.\n3. **Blend both commands:** In a toy example, human velocity 0.10 and assist velocity 0.20 give 0.125 using 25% assistance, in consistent units.\n4. **Cap the combined command** and log the blend weight; test released controls, disconnected input, and commands opposing the guessed target.\n5. **Replay matched starts** with assistance off and on; compare completion, path, time, and corrective user input rather than assuming help always helps.\n6. **Make the demo video** show both modes, the inferred target, blend weight, and a case where the user deliberately selects the other object.\n\n```mermaid\nflowchart LR\n  J[\"Gamepad\"] --> B[\"Bounded blend\"]\n  S[\"Scene\"] --> G[\"Guess target\"]\n  G --> B\n  B --> A[\"Sim arm\"]\n  A --> S\n```\n\n## Common pitfalls\n\n- **Do not mislabel the baseline:** Reddy’s paper learns shared autonomy with reinforcement learning; this project’s vector blend is a simpler teaching exercise.\n- **Too much authority** can hide a poor goal guess; show the target and keep assistance easy to disable during evaluation.\n\n## When it's done\n\n- **Inspectable comparison:** Save side-by-side rollouts, raw input logs, and a small results table; explain at least one case where assistance was unhelpful.",
+      "resources": [
+        {
+          "title": "Shared Autonomy with Learned Latent Actions",
+          "url": "https://www.youtube.com/watch?v=7BouKojzVyk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a research demonstration of assisted arm control and the role of user intent."
+        },
+        {
+          "title": "Shared Autonomy via Deep Reinforcement Learning – The Berkeley Artificial Intelligence Research Blog",
+          "url": "https://bair.berkeley.edu/blog/2018/04/18/shared-autonomy/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand why augmenting user commands differs from replacing the user."
+        },
+        {
+          "title": "Shared Autonomy via Deep Reinforcement Learning",
+          "url": "https://arxiv.org/abs/1802.01744",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Compare your hand-designed blend with a learned shared-autonomy formulation."
+        },
+        {
+          "title": "Model Gallery - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/models.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Choose a supported arm model for the simulated control comparison."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=7BouKojzVyk",
+        "https://bair.berkeley.edu/blog/2018/04/18/shared-autonomy/",
+        "https://arxiv.org/abs/1802.01744",
+        "https://mujoco.readthedocs.io/en/stable/models.html"
+      ]
+    },
+    {
+      "node_id": "p:learned-speed-scaling-vs-analytic-rule",
+      "type": "project",
+      "name": "Learned speed scaling vs analytic rule",
+      "summary": "Train a small model to imitate a distance-based speed rule, then compare both on held-out simulated encounters and deliberately difficult inputs.",
+      "lesson_md": "## In one sentence\n\nTrain a small model to imitate a distance-based speed rule, then compare both on held-out simulated encounters and deliberately difficult inputs.\n\n![Robot and human monitoring experiment with sensor-based distance measurement.](/img/lessons/projects_hri_safety_1-speed-scaling.webp)\n*The speed-and-separation paper’s experimental setup motivates the simulated distance features. Source: [Published setup](https://arxiv.org/html/1904.07379), license unknown.*\n\n## What you will learn\n\n- **Speed scaling** multiplies a planned movement by a factor: zero requests no progress, while one leaves the requested speed unchanged.\n- **Analytic rule** means an explicit calculation; a learned regressor approximates that calculation from examples rather than making it inherently safer.\n- **The software analogy** is replacing a reference function with an optimized implementation: compare outputs and edge cases before considering performance benefits.\n\n> **Key idea:** Matching a chosen rule is a prediction task, not evidence that either controller provides a certified protective function.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot; connect Speed & separation monitoring implementation with Safe learning & safety filters.\n- **Software:** Use MuJoCo, scripted moving human proxies, distance logging, a simple regression model, and plots; no physical human–robot encounter is required.\n- **Budget:** The map estimates 2–4 weeks and no new hardware purchase. Training time and compute costs depend on your implementation.\n\n## Steps\n\n1. **Define the reference rule** and its assumptions, including what happens at missing distance, negative distance, and zero separation.\n2. **Generate simulated encounters** spanning approaches, departures, and pauses; log distance, relative motion, reference scale, and applied command with units.\n3. **Work a toy example:** A scale of 0.25 applied to a requested 0.20 m/s produces 0.05 m/s; these are illustrative, not safety limits.\n4. **Split by encounter,** not neighboring frames; train a small regressor only on training encounters and preserve independent evaluation trajectories.\n5. **Compare both outputs:** Plot prediction error, overly permissive predictions, minimum separation, and task progress, including missing-feature and out-of-range tests.\n6. **Record the comparison** with synchronized trajectories and speed traces; show where the learned model diverges instead of presenting only average accuracy.\n\n```mermaid\nflowchart LR\n  E[\"Sim encounters\"] --> F[\"Distance features\"]\n  F --> R[\"Reference rule\"]\n  R --> T[\"Train regressor\"]\n  T --> C[\"Held-out comparison\"]\n  R --> C\n```\n\n## Common pitfalls\n\n- **Distance is not the whole problem:** The source papers consider geometry and relative motion; a one-feature classroom rule deliberately omits important system assumptions.\n- **Clipping predictions** into zero-to-one bounds prevents invalid scale values, but does not make a too-large in-range prediction safe.\n\n## When it's done\n\n- **Honest benchmark:** Deliver the paired simulation video, held-out plots, rule definition, feature units, and failure cases; keep the experiment out of the protective control path.",
+      "resources": [
+        {
+          "title": "Speed & Separation Monitoring using on-robot Time-of-Flight laser ranging sensor arrays",
+          "url": "https://www.youtube.com/watch?v=EHnzosrpkR0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors’ sensor-based speed-and-separation experiment before building its simplified simulated analogue."
+        },
+        {
+          "title": "MLPRegressor — scikit-learn 1.9.1 documentation",
+          "url": "https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Implement the small regression baseline and record its training configuration."
+        },
+        {
+          "title": "Toward safe separation distance monitoring from RGB-D sensors in human-robot interaction",
+          "url": "https://arxiv.org/abs/1810.04953",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand keypoint-based human–robot distance monitoring and its geometry assumptions."
+        },
+        {
+          "title": "Speed and Separation Monitoring using on-robot Time--of--Flight laser--ranging sensor arrays",
+          "url": "https://arxiv.org/abs/1904.07379",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read how measured distance and relative velocity affect robot speed modulation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=EHnzosrpkR0",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html",
+        "https://arxiv.org/abs/1810.04953",
+        "https://arxiv.org/abs/1904.07379",
+        "https://arxiv.org/html/1904.07379"
+      ]
+    },
+    {
+      "node_id": "p:legibility-online-experiment",
+      "type": "project",
+      "name": "Legibility online experiment",
+      "summary": "Build a browser experiment that measures how early viewers identify robot goals from matched motion clips, then report accuracy and response timing.",
+      "lesson_md": "## In one sentence\n\nBuild a browser experiment that measures how early viewers identify robot goals from matched motion clips, then report accuracy and response timing.\n\n![Published comparison of predictable solid paths and legible dashed paths toward two goals.](/img/lessons/projects_hri_safety_1-legibility-online.webp)\n*The correction-feedback paper’s reaching diagram illustrates the trajectory conditions you will turn into videos. Source: [Published setup](https://arxiv.org/html/2501.03515), CC BY 4.0.*\n\n## What you will learn\n\n- **Legibility** means making the intended goal easy to infer; **predictability** means following the motion someone expects when they already know the goal.\n- **A trial** is one clip and response opportunity; a condition specifies which motion design the viewer sees.\n- **Think of an A/B test:** Keep the interface and task fixed so a difference in answers can be attributed to the motion condition.\n\n> **Key idea:** Measure what viewers infer before the endpoint reveals the answer, not whether they recognize a completed reach.\n\n## What you need\n\n- **Preparation:** Complete Intro: write a risk assessment for the lab robot and read HRI foundations & user-study methods plus Legible & expressive robot motion.\n- **Software:** Use MuJoCo to render matched reaching clips, a browser experiment, anonymous identifiers, consent text, and persistent results storage.\n- **Budget:** The map estimates 2–4 weeks without physical hardware; hosting and participant-recruitment arrangements remain to be decided.\n\n## Steps\n\n1. **Write the question** and success metric before collecting answers; distinguish goal-choice accuracy, response time, confidence, and subjective preference.\n2. **Generate matched clips:** Keep start, targets, camera, duration, and endpoint consistent across legible, predictable, and baseline trajectories.\n3. **Configure a video-response trial:** As an illustrative mapping, key A selects the left goal and key B selects the right; log both answer and timing.\n4. **Vary condition order** and clip assignment; record actual stimulus identity, preload failures, and unanswered trials rather than silently dropping them.\n5. **Pilot the full path** from consent through saved response; then collect the map’s target of at least 50 viewers, documenting exclusions and repeated participation.\n6. **Demo and report:** Show the browser task, anonymized export, and per-condition accuracy/timing charts; include uncertainty and counts instead of declaring a universal winner.\n\n```mermaid\nflowchart LR\n  C[\"Matched clips\"] --> O[\"Assign order\"]\n  O --> V[\"Viewer guesses\"]\n  V --> S[\"Save trial record\"]\n  S --> A[\"Compare conditions\"]\n```\n\n## Common pitfalls\n\n- **Timing needs interpretation:** jsPsych reports response time from stimulus appearance; verify video loading before treating that number as elapsed robot motion time.\n- **Online reach is not lab interaction:** Results from watching a clip do not directly establish how people behave beside a moving arm.\n\n## When it's done\n\n- **Auditable results:** Another student can trace each chart to condition labels, clip versions, response rules, exclusions, and participant counts without accessing identifying information.",
+      "resources": [
+        {
+          "title": "RI Seminar: Anca Dragan : Optimizing for coordination with people",
+          "url": "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear a legibility researcher explain why motion must account for human interpretation."
+        },
+        {
+          "title": "video-keyboard-response - jsPsych",
+          "url": "https://www.jspsych.org/latest/plugins/video-keyboard-response/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Play clips and record goal-choice keys and response times with explicit trial behavior."
+        },
+        {
+          "title": "Running Experiments - jsPsych",
+          "url": "https://www.jspsych.org/latest/overview/running-experiments/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Handle preloading, local versus hosted operation, and saving participant data."
+        },
+        {
+          "title": "Legibility and Predictability of Robot Motion - Robotics Institute Carnegie Mellon University",
+          "url": "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand the foundational distinction behind the motion conditions."
+        },
+        {
+          "title": "Do Robots Need Body Language? Comparing Communication Modalities for Legible Motion Intent in Human-Shared Spaces",
+          "url": "https://arxiv.org/abs/2604.03451",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Compare your reaching task with an online video study of robot navigation-intent signals."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+        "https://www.jspsych.org/latest/plugins/video-keyboard-response/",
+        "https://www.jspsych.org/latest/overview/running-experiments/",
+        "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+        "https://arxiv.org/abs/2604.03451",
+        "https://arxiv.org/html/2501.03515"
+      ]
+    },
+    {
+      "node_id": "p:legible-shared-autonomy-display",
+      "type": "project",
+      "name": "Legible shared autonomy display",
+      "summary": "Make a simulated assistive arm reveal its guessed goal through motion, so the user can notice and correct a mistaken inference.",
+      "lesson_md": "## In one sentence\n\nMake a simulated assistive arm reveal its guessed goal through motion, so the user can notice and correct a mistaken inference.\n\n![Three panels showing a robot’s inferred tissue goal and how legible motion communicates that belief.](/img/lessons/projects_hri_safety_1-shared-display.webp)\n*The legible shared-autonomy paper’s motivating interaction. Source: [Published setup](https://arxiv.org/html/2606.29846), CC BY 4.0.*\n\n## What you will learn\n\n- **Belief** means the robot’s current estimate of what the user wants; it can be uncertain and wrong even when the controller runs correctly.\n- **Legible assistance** moves toward a target while making that target easier to recognize; the display here is motion, not only a GUI label.\n- **Think of a debugger’s preview:** Exposing an impending wrong decision is useful only if the user still has time and authority to change it.\n\n> **Key idea:** Motion can communicate an inferred goal, turning assistance into a two-way interaction rather than an invisible correction.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot; study Shared control & shared autonomy and Legible & expressive robot motion.\n- **Software:** Use MuJoCo with two nearby targets, joystick input, a goal estimator, bounded assistance, and logs of user commands and inferred goals.\n- **Budget:** The map estimates 1–2 months without a physical robot; controller, compute, and participant-study costs are not established here.\n\n## Steps\n\n1. **Build ordinary assistance first:** Infer a candidate goal and assist along a direct path; log belief values and keep manual control available.\n2. **Create ambiguity deliberately:** Place two targets in similar directions, then record a baseline where the user cannot easily identify the robot’s guess.\n3. **Add a legible motion term** that separates the intended target from alternatives while preserving the same task endpoint and command bounds.\n4. **Work a mistaken-belief case:** The user wants the left target, the robot initially guesses right; preserve correction authority instead of committing irreversibly.\n5. **Compare matched runs:** Measure goal-understanding accuracy, time until correction, and user input; change communication strength separately from assistance strength.\n6. **Record the demo:** Show direct assistance, legible assistance, and the user correcting a wrong guess; provide belief traces alongside the visible motion.\n\n```mermaid\nflowchart LR\n  U[\"User input\"] --> I[\"Infer goal\"]\n  I --> L[\"Legible assistance\"]\n  L --> O[\"User observes motion\"]\n  O --> U\n  L --> R[\"Sim arm\"]\n```\n\n## Common pitfalls\n\n- **Do not substitute a target label:** A useful debugging label is not evidence that the arm’s motion itself communicates the belief.\n- **Confidence is not correctness:** The paper adapts authority using confidence; your evaluation must still include confidently wrong inferences and ambiguous starts.\n- **Avoid exaggerated detours** that make the goal obvious only by sacrificing controllability; record task progress and corrective effort as well.\n\n## When it's done\n\n- **Two-way interaction is visible:** Viewers can see the guessed goal in motion and the operator can redirect it; report whether legibility helped compared with ordinary assistance.",
+      "resources": [
+        {
+          "title": "RI Seminar: Anca Dragan : Optimizing for coordination with people",
+          "url": "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for robot motion designed around human inference."
+        },
+        {
+          "title": "Shared Autonomy via Deep Reinforcement Learning – The Berkeley Artificial Intelligence Research Blog",
+          "url": "https://bair.berkeley.edu/blog/2018/04/18/shared-autonomy/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand how assistance and human control are combined before adding a communication objective."
+        },
+        {
+          "title": "Legibility and Predictability of Robot Motion - Robotics Institute Carnegie Mellon University",
+          "url": "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Define legibility separately from efficient or unsurprising motion."
+        },
+        {
+          "title": "Legible Shared Autonomy: Implicit Communication of Robot Belief through Motion",
+          "url": "https://arxiv.org/abs/2606.29846",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the specific motion-based belief communication and confidence-aware authority proposal."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+        "https://bair.berkeley.edu/blog/2018/04/18/shared-autonomy/",
+        "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+        "https://arxiv.org/abs/2606.29846",
+        "https://arxiv.org/html/2606.29846"
+      ]
+    },
+    {
+      "node_id": "p:legible-vs-predictable-reaching",
+      "type": "project",
+      "name": "Legible vs predictable reaching",
+      "summary": "Animate two reaches to the same goal and test whether viewers distinguish an expected path from one that reveals the goal early.",
+      "lesson_md": "## In one sentence\n\nAnimate two reaches to the same goal and test whether viewers distinguish an expected path from one that reveals the goal early.\n\n![Two-goal reaching diagram with predictable solid paths and legible dashed paths.](/img/lessons/projects_hri_safety_1-reaching.webp)\n*The correction-feedback paper illustrates the distinction introduced by Dragan and colleagues. Source: [Published setup](https://arxiv.org/html/2501.03515), CC BY 4.0.*\n\n## What you will learn\n\n- **Predictable motion** answers “Given the goal, what path do I expect?”; **legible motion** answers “Given this partial path, which goal is intended?”\n- **Those questions differ:** A direct-looking reach may remain ambiguous when several possible destinations lie close together.\n- **The software analogy** is naming a function versus inspecting its output: knowing the intended operation changes what evidence an observer needs.\n\n> **Key idea:** A path can be unsurprising once its goal is known yet poor at communicating that goal before arrival.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot, then read Legible & expressive robot motion for the observer’s perspective.\n- **Software:** Use MuJoCo or a simple trajectory renderer, two clearly visible targets, a fixed camera, and a small viewer poll.\n- **Budget:** The map estimates one week without physical hardware; use simulation so motion design can change without exposing hands to an arm.\n\n## Steps\n\n1. **Build a two-target scene:** Give both reaches the same start and endpoint; show the alternative goal so inference is genuinely necessary.\n2. **Generate a predictable baseline** using a simple low-effort trajectory, then add a waypoint or optimization term that separates the intended goal early.\n3. **Label the simplification:** A hand-designed waypoint demonstrates the idea; it is not automatically a numerical reproduction of the original paper’s model.\n4. **Work the observer example:** Hide the final part of each clip and ask “left or right?”; separately reveal the goal and ask which path was expected.\n5. **Run a small poll** with varied clip order; record guesses, viewing point, and confidence rather than only asking which animation looks nicer.\n6. **Demo both reaches** alongside the poll results; explain whether earlier goal recognition changed without assuming that a more curved path is always better.\n\n```mermaid\nflowchart LR\n  G[\"Same goal\"] --> P[\"Expected path\"]\n  G --> L[\"Goal-revealing path\"]\n  P --> V[\"Partial clips\"]\n  L --> V\n  V --> O[\"Viewer guesses\"]\n```\n\n## Common pitfalls\n\n- **Endpoint leakage:** Showing the completed grasp answers the goal question for the viewer and hides the phenomenon you intended to measure.\n- **Control the presentation:** Camera angle, duration, target visibility, and labels can communicate the answer independently of motion.\n- **Preference is not legibility:** A visually attractive path need not reveal intent sooner; report the actual question asked in your poll.\n\n## When it's done\n\n- **Concrete comparison:** Deliver the paired simulation video and a chart of guesses with viewer counts; explicitly distinguish the known-goal and unknown-goal questions.",
+      "resources": [
+        {
+          "title": "RI Seminar: Anca Dragan : Optimizing for coordination with people",
+          "url": "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear the motion-planning researcher explain coordination and human interpretation."
+        },
+        {
+          "title": "Legibility and Predictability of Robot Motion - Robotics Institute Carnegie Mellon University",
+          "url": "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the original definitions and why they can imply different motions."
+        },
+        {
+          "title": "Effects of Robot Competency and Motion Legibility on Human Correction Feedback",
+          "url": "https://arxiv.org/abs/2501.03515",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "See predictable and legible reaching paths in a later human-correction study."
+        },
+        {
+          "title": "Model Gallery - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/models.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Select a simulated arm if you extend the planar path sketch to robot reaching."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=AQ-w5o2oGI8",
+        "https://www.ri.cmu.edu/publications/legibility-and-predictability-of-robot-motion/",
+        "https://arxiv.org/abs/2501.03515",
+        "https://mujoco.readthedocs.io/en/stable/models.html",
+        "https://arxiv.org/html/2501.03515"
+      ]
+    },
+    {
+      "node_id": "p:llm-generated-social-navigation-scenarios",
+      "type": "project",
+      "name": "LLM-generated social navigation scenarios",
+      "summary": "Turn text prompts into validated pedestrian-navigation scenarios, replay a fixed planner, and inspect both generated situations and robot behavior.",
+      "lesson_md": "## In one sentence\n\nTurn text prompts into validated pedestrian-navigation scenarios, replay a fixed planner, and inspect both generated situations and robot behavior.\n\n![Arena 4.0 figure illustrating generated environments and human-centric navigation simulation.](/img/lessons/projects_hri_safety_1-social-scenarios.webp)\n*Arena 4.0’s published setup motivates text-conditioned navigation testing. Source: [Published setup](https://arxiv.org/html/2409.12471), CC BY 4.0.*\n\n## What you will learn\n\n- **Social navigation** concerns moving among people, including context such as queues and doorways, rather than merely reaching a collision-free endpoint.\n- **Scenario generation** turns a description into a map, actors, starting positions, routes, and behaviors that a simulator can execute.\n- **Treat the language model as a compiler front end:** It proposes structured input; validation rejects malformed or impossible output before anything runs.\n\n> **Key idea:** Generated scenarios become useful tests only after their validity, intended social interaction, and reproducibility have been checked.\n\n## What you need\n\n- **Prerequisite:** Complete Intro: write a risk assessment for the lab robot; connect Social & human-aware navigation with Semantic safety & guardrails for LLM/VLA-controlled robots.\n- **Stack:** Use Arena 4.0 or a compatible simulation workflow with Nav2, structured scenario files, a fixed planner configuration, and a text-generation interface.\n- **Budget:** The map estimates 1–2 months with no physical robot purchase; GPU requirements, model access, and API fees are implementation-dependent and unknown.\n\n## Steps\n\n1. **Freeze the planner and map** before comparing scenarios; preserve their versions so changes in robot behavior are interpretable.\n2. **Define a scenario schema** for actors, coordinates, routes, and constraints; use a worked prompt such as “a robot approaches a queue beside a doorway.”\n3. **Validate generated content:** Reject invalid coordinates, missing actors, blocked goals, and unsupported behaviors; do not execute arbitrary model-generated code on the host.\n4. **Preview and label each scenario:** Confirm that a queue actually forms and that the doorway interaction occurs, rather than trusting the prompt description.\n5. **Run matched trials** with saved scenario files and seeds; log completion, collisions, travel time, and the specific social behavior being tested.\n6. **Make the montage:** Show queue, crowd, and doorway cases, including rejected generations and planner failures; retain prompts and validated files with the results.\n\n```mermaid\nflowchart LR\n  P[\"Text prompt\"] --> L[\"Model proposal\"]\n  L --> V[\"Schema and geometry checks\"]\n  V --> S[\"Simulate pedestrians\"]\n  S --> N[\"Run fixed planner\"]\n  N --> R[\"Metrics and review\"]\n```\n\n## Common pitfalls\n\n- **Do not equate motion with meaning:** Moving pedestrians may never create the intended queue, crossing conflict, or social convention.\n- **Benchmarks can drift:** Regenerating a scenario for each planner makes comparisons unfair; replay the exact validated files instead.\n- **Version names matter:** Arena 3.0 footage provides background, while the cited 4.0 paper describes generative environment construction; do not merge their claims.\n\n## When it's done\n\n- **Reproducible scenario pack:** Deliver the montage, acceptance/rejection log, validated files, and a planner report that separates physical navigation metrics from human judgments of appropriateness.",
+      "resources": [
+        {
+          "title": "Arena 3.0: Advancing Social Navigation in Collaborative and Highly Dynamic Environments",
+          "url": "https://www.youtube.com/watch?v=V1ltwfrGoWQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See Arena’s earlier social-navigation simulation workflow before adding generative scenarios."
+        },
+        {
+          "title": "GitHub - Arena-Rosnav/arena-rosnav · GitHub",
+          "url": "https://github.com/Arena-Rosnav/arena-rosnav",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the framework setup and supported scenario-generation workflow."
+        },
+        {
+          "title": "Arena 4.0: A Comprehensive ROS2 Development and Benchmarking Platform for Human-centric Navigation Using Generative-Model-based Environment Generation",
+          "url": "https://arxiv.org/abs/2409.12471",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read Arena 4.0’s generative environment construction and ROS 2 integration."
+        },
+        {
+          "title": "SocRATES: Towards Automated Scenario-based Testing of Social Navigation Algorithms",
+          "url": "https://arxiv.org/abs/2412.19595",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Follow SocRATES from contextual descriptions to trajectories and simulated pedestrian behavior."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=V1ltwfrGoWQ",
+        "https://github.com/Arena-Rosnav/arena-rosnav",
+        "https://arxiv.org/abs/2409.12471",
+        "https://arxiv.org/abs/2412.19595",
+        "https://arxiv.org/html/2409.12471",
+        "https://arxiv.org/abs/2610.11220"
+      ]
+    },
+    {
+      "node_id": "p:mixed-reality-kinesthetic-teaching",
+      "type": "project",
+      "name": "Mixed-reality kinesthetic teaching",
+      "summary": "Overlay a recorded arm motion on the real workspace, letting a demonstrator preview the replay before any physical execution.",
+      "lesson_md": "## In one sentence\n\nOverlay a recorded arm motion on the real workspace, letting a demonstrator preview the replay before any physical execution.\n\n![Experimenter using a mixed-reality overlay to teach the Tiago++ robot through a holographic wrist marker.](/img/lessons/projects_hri_safety_1-mixed-reality.webp)\n*The paper’s holographic teaching setup; the proposed SO-101 adaptation is a separate student implementation. Source: [Published setup](https://arxiv.org/html/2409.02305), CC BY-NC-ND 4.0.*\n\n## What you will learn\n\n- **Kinesthetic teaching** records a demonstration through physical guidance; **mixed reality** places virtual objects in a view of the real environment.\n- **Registration** aligns the virtual robot with the physical workspace so an overlaid path refers to the correct location rather than floating nearby.\n- **Think of a dry-run deployment:** Previewing a change helps reveal mistakes, but the preview must represent the same data that will later execute.\n\n> **Key idea:** An informative overlay depends on accurate coordinate alignment and replay timing, not just a convincing-looking virtual arm.\n\n## What you need\n\n- **Prerequisites:** Finish Record a motion by moving the arm by hand and Assemble & teleoperate an SO-101 before adding a new interface.\n- **Concepts:** Read Physical HRI: hand-guiding & kinesthetic teaching and Learning from human feedback & corrections to distinguish physical guidance, leader teleoperation, and virtual manipulation.\n- **Setup:** Use SO-101, recorded joint states, a robot model, and a compatible phone/headset or camera-view overlay; device compatibility must be checked first.\n- **Budget:** The map’s 1–2 months and under-€500 band are planning estimates; headset availability and the complete hardware cost remain unknown.\n\n## Steps\n\n1. **Record a short demonstration** using the previously validated teaching method; store joint values, timestamps, robot configuration, and the intended replay mode.\n2. **Align coordinate frames:** Measure the transform, meaning relative position and orientation, between robot base and viewing system using visible reference points.\n3. **Render the recorded replay** without moving the real arm; show the virtual gripper and path clearly separated from live robot state.\n4. **Work an alignment check:** Preview the same recorded pose from two viewpoints; a virtual gripper that shifts relative to the real one indicates registration error.\n5. **Add preview controls** for pause, scrub, and reject; invalidate the preview whenever calibration or the recorded demonstration changes.\n6. **Record the demo:** Show teaching, aligned preview, and an intentionally rejected misaligned replay; allow physical replay only under the previously assessed operating conditions.\n\n```mermaid\nflowchart LR\n  T[\"Teaching data\"] --> M[\"Robot model\"]\n  C[\"Frame alignment\"] --> M\n  M --> P[\"Overlay preview\"]\n  P --> R[\"Review or reject\"]\n  R --> E[\"Assessed replay\"]\n```\n\n## Common pitfalls\n\n- **Do not force powered SO-101 joints:** A leader-arm demonstration is not direct hand-guiding of the follower; retain the safe method established by the prerequisites.\n- **The paper uses holographic interaction** as well as physical teaching; an SO-101 overlay is an adaptation, not a claim of reproducing its hardware or results.\n\n## When it's done\n\n- **Traceable preview:** Deliver a phone/headset recording, saved demonstration, alignment procedure, and a visible rejection path; document measured misalignment rather than describing the overlay as exact.",
+      "resources": [
+        {
+          "title": "Kinesthetic Teaching in Virtual Reality",
+          "url": "https://www.youtube.com/watch?v=waBYCskHE-4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a published virtual-reality kinesthetic-teaching demonstration before designing your overlay."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Record and inspect SO-101 demonstration data; distinguish its leader workflow from direct physical guidance."
+        },
+        {
+          "title": "Spaces and reference spaces: Spatial tracking in WebXR - Web APIs | MDN",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API/Spatial_tracking",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand reference spaces and coordinate tracking needed for a spatially aligned overlay."
+        },
+        {
+          "title": "Kinesthetic Teaching in Robotics: a Mixed Reality Approach",
+          "url": "https://arxiv.org/abs/2409.02305",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the mixed-reality teaching interface and its comparison with physical kinesthetic teaching."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=waBYCskHE-4",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API/Spatial_tracking",
+        "https://arxiv.org/abs/2409.02305",
+        "https://arxiv.org/html/2409.02305"
+      ]
+    }
+  ]
+}
