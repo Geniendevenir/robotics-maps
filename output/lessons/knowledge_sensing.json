@@ -526,6 +526,282 @@
         "https://arxiv.org/abs/2409.08276",
         "https://reskin.dev/"
       ]
+    },
+    {
+      "node_id": "k:ros-2-sensor-drivers-metadata-recording",
+      "type": "knowledge",
+      "name": "ROS 2 sensor drivers, metadata & recording",
+      "summary": "ROS 2 sensor drivers translate device output into messages with meaningful metadata, while rosbag2 records those messages for inspection and replay.",
+      "lesson_md": "## In one sentence\n\nROS 2 sensor drivers translate device output into messages with meaningful metadata, while rosbag2 records those messages for inspection and replay.\n\n![Turtlesim motion recorded in the ROS 2 bag tutorial](/img/lessons/knowledge_sensing-ros2-recording.webp)\n*Turtlesim motion recorded in the ROS 2 bag tutorial. Source: [ROS 2 documentation contributors](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html), license unknown.*\n\n## Why it matters for us\n\n- **Separate device access from algorithms:** a driver handles the hardware interface so downstream programs can consume named message streams, called topics.\n- **Keep the measurement interpretable:** pixel bytes without encoding, timestamps, or coordinate-frame names are insufficient for reliably comparing recordings.\n- **Debug without hardware:** recorded messages let teammates inspect the same input rather than repeatedly rebuilding a physical experiment.\n\n> **Key idea:** A bag preserves messages; trustworthy acquisition still depends on correct metadata and compatible delivery settings.\n\n## How it works\n\n- **Treat messages like typed API objects:** the driver must satisfy both the field layout and the meaning of each field, not merely serialize bytes.\n- **Read the Image contract:** its header timestamp should describe acquisition time; its frame identifies the camera optical coordinates, not an arbitrary robot link.\n- **Describe the pixels:** height, width, encoding, and row step explain the image buffer. Preserve these fields instead of assuming every camera produces identical arrays.\n- **Choose delivery settings:** quality of service, or QoS, controls communication behavior. Best-effort delivery may lose samples; incompatible publisher/subscriber profiles can prevent communication entirely.\n- **Work through one recording:** with turtlesim publishing pose, `ros2 bag record -o pose_demo /turtle1/pose` saves that topic into a named bag directory.\n- **Inspect before replay:** `ros2 bag info pose_demo` reports recorded topics and message counts; `ros2 bag play pose_demo` publishes recorded messages again.\n\n```mermaid\nflowchart LR\n  D[Device output] --> R[Driver]\n  R --> M[Messages and metadata]\n  M --> B[Bag recording]\n  B --> P[Replay and inspect]\n```\n\n## Key terms\n\n- **Driver**: software translating a device interface into usable measurements.\n- **Frame**: named coordinate system in which a measurement is interpreted.\n- **QoS**: communication policies governing delivery, buffering, and compatibility.\n- **Bag**: recording of topic messages with information needed for replay.\n\n## Before / after\n\n- **Before:** Review Time synchronization & timestamping and the relevant sensor lesson before interpreting recorded fields.\n- **After:** Use Wrist cameras & multi-camera data-collection rigs to apply these contracts across several camera streams.\n\n## Try it in an afternoon\n\n1. **Follow the official turtlesim setup** and record its pose topic using the worked command; no physical robot is needed.\n2. **Inspect the bag** and compare its topic type and message count with what you intended to capture.\n3. **Stop the original publisher**, replay the bag, and inspect the pose messages from another terminal.\n4. **Write a camera recording checklist** covering acquisition timestamps, optical frames, encoding, calibration identity, and QoS compatibility.",
+      "resources": [
+        {
+          "title": "ROS2 - Create and Replay a ROS2 Bag",
+          "url": "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch topic recording, inspection, and replay from the command line."
+        },
+        {
+          "title": "Recording and playing back data",
+          "url": "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Try the complete free turtlesim recording exercise."
+        },
+        {
+          "title": "Quality of Service settings",
+          "url": "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand sensor-data delivery and incompatible profiles."
+        },
+        {
+          "title": "Image.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the acquisition-time, optical-frame, and pixel-buffer contract."
+        },
+        {
+          "title": "rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect recorder options and QoS handling."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+        "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+        "https://github.com/ros2/rosbag2"
+      ]
+    },
+    {
+      "node_id": "k:sensor-characteristics-uncertainty-noise",
+      "type": "knowledge",
+      "name": "Sensor characteristics, uncertainty & noise",
+      "summary": "Sensor characterization measures how readings differ from a reference and from one another, separating resolution, repeatability, bias, and random variation.",
+      "lesson_md": "## In one sentence\n\nSensor characterization measures how readings differ from a reference and from one another, separating resolution, repeatability, bias, and random variation.\n\n![Published Allan deviation plot for RealSense accelerometer measurements](/img/lessons/knowledge_sensing-sensor-noise.webp)\n*Published Allan deviation plot for RealSense accelerometer measurements. Source: [Russell Buchanan / Oxford Robotics Institute](https://github.com/ori-drs/allan_variance_ros), license unknown.*\n\n## Why it matters for us\n\n- **More digits are not proof:** a finely resolved reading can remain consistently wrong. Resolution and accuracy describe different aspects of a measurement.\n- **Give algorithms realistic inputs:** noise estimates help explain why stationary measurements fluctuate instead of implying that the robot is secretly moving.\n- **Measure your setup:** Kalibr warns that stationary, constant-temperature models omit temperature and scale-factor effects found in real deployments.\n\n> **Key idea:** First separate persistent error from scatter; averaging scattered values does not establish that their center is correct.\n\n## How it works\n\n- **Start with a reference:** compare the reported quantity with a known input. Accuracy concerns agreement with that reference, not the number of displayed decimal places.\n- **Repeat without changing the input:** precision describes reproducibility. A tight cluster can be precise while remaining displaced from the reference.\n- **Think of benchmark results:** repeated runtimes show scatter, but a consistently misconfigured timer adds systematic error. Those require different debugging strategies.\n- **Work a tiny example:** illustrative readings of 1.02, 1.03, and 1.04 m around a 1.00 m reference average 1.03 m: a 0.03 m offset.\n- **Model different timescales:** Kalibr separates rapidly fluctuating white noise from slowly varying bias rather than calling every deviation one interchangeable error.\n- **Inspect averaging behavior:** Allan deviation plots variation against averaging time. The pictured tool uses long stationary IMU recordings, not a quick motion demonstration.\n\n```mermaid\nflowchart LR\n  R[Reference input] --> S[Repeated readings]\n  S --> E[Errors against reference]\n  E --> B[Estimate offset]\n  E --> N[Inspect scatter and timescales]\n```\n\n## Key terms\n\n- **Resolution**: smallest distinguishable change in a reading.\n- **Bias**: persistent or slowly varying offset in a measurement model.\n- **Standard deviation**: a summary of how widely values scatter around their mean.\n- **Uncertainty**: quantified doubt about a measurement, not a guarantee that every error source has been modeled.\n\n## Before / after\n\n- **Before:** Use basic statistics and units; IMUs: accelerometers, gyroscopes & magnetometers gives a concrete inertial-sensor example.\n- **After:** Continue to Sensor simulation & noise models to reproduce measured error patterns in software.\n\n## Try it in an afternoon\n\n1. **Create the illustrative three-value dataset** and calculate each error against the reference in a notebook.\n2. **Plot the readings and their mean**; subtract the estimated offset and state why this does not establish accuracy on another target.\n3. **Compare the published Allan plots** with a basic histogram; identify which plot preserves information about averaging time.\n4. **Design a characterization log** that preserves sensor settings, units, temperature conditions, timestamps, and the reference used.",
+      "resources": [
+        {
+          "title": "Pressure sensor accuracy | 3 common errors | WIKA",
+          "url": "https://www.youtube.com/watch?v=HrXNZWDktYA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Distinguish offset, span, and nonlinearity using a concrete sensor."
+        },
+        {
+          "title": "Sensor Terminology",
+          "url": "https://www.ni.com/en/shop/data-acquisition/sensor-fundamentals/sensor-terminology.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Separate precision, resolution, and accuracy."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn the white-noise and bias model and its limitations."
+        },
+        {
+          "title": "allan_variance_ros",
+          "url": "https://github.com/ori-drs/allan_variance_ros",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Interpret published Allan deviation plots and the stationary-recording workflow."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=HrXNZWDktYA",
+        "https://www.ni.com/en/shop/data-acquisition/sensor-fundamentals/sensor-terminology.html",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://github.com/ori-drs/allan_variance_ros"
+      ]
+    },
+    {
+      "node_id": "k:sensor-simulation-noise-models",
+      "type": "knowledge",
+      "name": "Sensor simulation & noise models",
+      "summary": "A simulated sensor converts a virtual scene or robot state into measurements, then optionally adds modeled errors before software consumes them.",
+      "lesson_md": "## In one sentence\n\nA simulated sensor converts a virtual scene or robot state into measurements, then optionally adds modeled errors before software consumes them.\n\n![Gazebo sensor tutorial world with a robot facing a blue wall](/img/lessons/knowledge_sensing-sensor-simulation.webp)\n*Gazebo sensor tutorial world with a robot facing a blue wall. Source: [Gazebo documentation contributors](https://gazebosim.org/docs/harmonic/sensors/), license unknown.*\n\n## Why it matters for us\n\n- **Test without a device:** a virtual IMU, contact sensor, or LiDAR lets us inspect acquisition software before assembling the corresponding hardware.\n- **Perfect data hides weaknesses:** realistic test inputs include imperfect readings, not only the exact distances computed from a clean virtual scene.\n- **Keep a reference:** simulation provides an underlying state to compare with measurements, helping distinguish sensor-model error from downstream algorithm mistakes.\n\n> **Key idea:** A noise model is an explicit testing assumption, not evidence that the simulated sensor matches the real one.\n\n## How it works\n\n- **Define the sensor first:** Gazebo describes sensor type, pose, publication topic, and update rate in the world description; these shape what the program receives.\n- **Think of a test double:** replace the physical device while preserving its output interface, then deliberately vary the returned values to exercise consumers.\n- **Add modeled error:** Gaussian noise uses a bell-shaped random distribution. Gazebo exposes its mean, standard deviation, and bias separately in its noise-model API.\n- **Work one model:** an illustrative 2.00 m ideal range plus 0.03 m bias gives a 2.03 m center before random noise is added.\n- **Separate changing effects:** Kalibr distinguishes rapid white noise from slowly wandering bias. Independent random samples alone do not reproduce every kind of drift.\n- **Compare with recordings:** inspect errors and timing against real data before claiming transfer. A successful simulated run only tests the assumptions actually included.\n\n```mermaid\nflowchart LR\n  W[Virtual world state] --> I[Ideal sensor output]\n  I --> N[Noise and bias model]\n  N --> M[Published measurements]\n  M --> T[Software under test]\n  W --> C[Reference comparison]\n  M --> C\n```\n\n## Key terms\n\n- **Ground truth**: reference state supplied by the simulator for comparison.\n- **Gaussian noise**: random error described here by a mean and standard deviation.\n- **Bias**: systematic or slowly varying displacement of measurements.\n- **Update rate**: frequency at which the simulated sensor generates readings.\n\n## Before / after\n\n- **Before:** Read Sensor characteristics, uncertainty & noise and ROS 2 sensor drivers, metadata & recording before comparing synthetic and recorded streams.\n- **After:** Use Short-range ranging: ultrasonic, infrared & ToF to investigate where a real ranging device differs from an ideal ray.\n\n## Try it in an afternoon\n\n1. **Open the Gazebo sensor tutorial** and run its example world using the documented installation and launch instructions.\n2. **Inspect its IMU topic** with the documented `gz topic -e -t /imu` command, then move the virtual robot.\n3. **Make a notebook test double** for the illustrative range; compare ideal values, bias-only values, and Gaussian-noise values on one plot.\n4. **Save your model parameters** and list omitted effects, such as missing readings, rather than describing the experiment as realistic by default.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Sensors",
+          "url": "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official sensor-world walkthrough."
+        },
+        {
+          "title": "Sensors",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Add and inspect IMU, contact, and LiDAR sensors."
+        },
+        {
+          "title": "GaussianNoiseModel Class Reference",
+          "url": "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the exposed noise, bias, and sampling interface."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand why white noise and drifting bias are different processes."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model"
+      ]
+    },
+    {
+      "node_id": "k:short-range-ranging-ultrasonic-infrared-tof",
+      "type": "knowledge",
+      "name": "Short-range ranging: ultrasonic, infrared & ToF",
+      "summary": "Short-range sensors estimate nearby distance using sound echoes, reflected infrared light geometry, or optical time of flight rather than producing a full scene image.",
+      "lesson_md": "## In one sentence\n\nShort-range sensors estimate nearby distance using sound echoes, reflected infrared light geometry, or optical time of flight rather than producing a full scene image.\n\n![Pololu VL53L1X optical time-of-flight distance sensor carrier](/img/lessons/knowledge_sensing-short-range.webp)\n*Pololu VL53L1X optical time-of-flight distance sensor carrier. Source: [Pololu](https://www.pololu.com/product/3415), license unknown.*\n\n## Why it matters for us\n\n- **Add local awareness:** a compact rangefinder can monitor a nearby obstacle or approach distance without processing an entire camera image.\n- **Choose the physical mechanism:** ultrasonic sound and infrared light interact differently with targets; a working driver does not establish useful measurements on every surface.\n- **Read conditions, not headlines:** Pololu explicitly makes the VL53L1X maximum range dependent on the target, environment, and configuration.\n\n> **Key idea:** Treat range as a measurement with validity conditions, not as an unconditional distance to whatever object you intended to observe.\n\n## How it works\n\n- **Ultrasonic sensing times echoes:** a transmitter emits sound and the receiver detects its return. The elapsed time includes travel out to the target and back.\n- **Infrared triangulation uses geometry:** reflected light lands at a position related to distance. The Sharp sensor exposes an analog voltage rather than a digital distance packet.\n- **Optical ToF measures light travel:** the VL53L1X uses emitted infrared laser pulses and their reflections; the carrier exposes a digital interface.\n- **Think of a network timeout:** a missing response is not a valid zero-latency reply. Likewise, a failed range acquisition must not silently become zero distance.\n- **Work a unit conversion:** the VL53L1X headline maximum is 4 m under favorable conditions, equivalent to 400 cm; its 1 mm resolution is not guaranteed accuracy.\n- **Respect the usable interval:** the Sharp GP2Y0A21 is specified around 10–80 cm. A target closer than its minimum is not simply a better measurement.\n\n```mermaid\nflowchart LR\n  E[Emit sound or light] --> T[Target interaction]\n  T --> R[Receive return]\n  R --> D[Estimate distance]\n  D --> V[Check validity and units]\n```\n\n## Key terms\n\n- **ToF**: time of flight, estimating distance from signal travel time.\n- **Triangulation**: inferring distance from known optical geometry.\n- **Analog output**: voltage that software reads through an analog-to-digital converter.\n- **Minimum range**: lower boundary of the specified measurement interval.\n\n## Before / after\n\n- **Before:** Review Sensor characteristics, uncertainty & noise before comparing resolution, maximum range, and measured error.\n- **After:** Compare real readings with Sensor simulation & noise models instead of assuming every virtual ray represents real hardware.\n\n## Try it in an afternoon\n\n1. **Choose one documented sensor** and list its output type, units, usable range, and electrical requirements before connecting anything.\n2. **Measure a flat target against a ruler** at several distances, or design the same recording table if hardware is unavailable.\n3. **Change target angle and material**, preserving failed readings explicitly instead of averaging them into successful measurements.\n4. **Plot measured versus reference distance** and label the conditions where the sensor stopped giving useful results.",
+      "resources": [
+        {
+          "title": "DIY Ultrasonic Distance Parking Sensor for your Garage #diyelectronics #arduino",
+          "url": "https://www.youtube.com/watch?v=fYZAnxdpF1E",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See an ultrasonic rangefinder driving a distance-based indicator."
+        },
+        {
+          "title": "Overview | Ultrasonic Sonar Distance Sensors",
+          "url": "https://learn.adafruit.com/ultrasonic-sonar-distance-sensors/overview",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand sonar boards and their acquisition interfaces."
+        },
+        {
+          "title": "Sharp/Socle GP2Y0A21YK0F Analog Distance Sensor 10-80cm",
+          "url": "https://www.pololu.com/product/136",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect an analog infrared rangefinder and its output curve."
+        },
+        {
+          "title": "VL53L1X Time-of-Flight Distance Sensor Carrier with Voltage Regulator, 400cm Max",
+          "url": "https://www.pololu.com/product/3415",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read optical ranging limits and configuration-dependent behavior."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=fYZAnxdpF1E",
+        "https://learn.adafruit.com/ultrasonic-sonar-distance-sensors/overview",
+        "https://www.pololu.com/product/136",
+        "https://www.pololu.com/product/3415",
+        "https://www.pololu.com/file/0J85/gp2y0a21yk0f.pdf"
+      ]
+    },
+    {
+      "node_id": "k:time-synchronization-timestamping",
+      "type": "knowledge",
+      "name": "Time synchronization & timestamping",
+      "summary": "Timestamping identifies when a measurement happened, while synchronization aligns clocks or capture events so readings from different devices can be compared in time.",
+      "lesson_md": "## In one sentence\n\nTimestamping identifies when a measurement happened, while synchronization aligns clocks or capture events so readings from different devices can be compared in time.\n\n![Basler plot showing offset-from-master variation during PTP synchronization](/img/lessons/knowledge_sensing-timestamping.webp)\n*Basler plot showing offset-from-master variation during PTP synchronization. Source: [Basler](https://docs.baslerweb.com/precision-time-protocol), license unknown.*\n\n## Why it matters for us\n\n- **Motion makes time visible:** readings taken at different moments can describe different physical states even when both sensors are working correctly.\n- **Arrival is a separate event:** network and software delays intervene between acquisition and the callback that receives a message.\n- **Combine streams deliberately:** Extrinsic & multi-sensor calibration describes spatial alignment; matching measurements also requires knowing their temporal relationship.\n\n> **Key idea:** Aligned clock readings and aligned exposures solve different problems; verify which event each timestamp actually describes.\n\n## How it works\n\n- **Record acquisition time:** ROS Image specifies an acquisition-time timestamp. Substituting callback time changes the meaning even if the field remains syntactically valid.\n- **Think of distributed logs:** two servers cannot order events correctly from unsynchronized clocks; collecting their logs centrally does not repair the original event timestamps.\n- **Align clocks with PTP:** the Precision Time Protocol exchanges network messages to synchronize devices with a selected reference clock; attainable precision depends on the network setup.\n- **Align captures with triggers:** a configured camera starts an acquisition in response to a supported signal. Basler distinguishes electrical hardware triggers from software commands.\n- **Work a delay example:** illustrative acquisition at 1.000 s and reception at 1.020 s imply 20 ms elapsed, not a second measurement at reception.\n- **Keep the clock domain:** Basler notes that a PTP network without an absolute-time reference can use an arbitrary epoch. Synchronized does not automatically mean UTC.\n\n```mermaid\nflowchart LR\n  C[Clock alignment] --> A[Acquisition timestamp]\n  T[Capture trigger] --> E[Exposure event]\n  E --> A\n  A --> N[Transport and queues]\n  N --> R[Arrival timestamp]\n```\n\n## Key terms\n\n- **Clock offset**: difference between two clocks at a given moment.\n- **Clock drift**: change in their relative timing as their rates differ.\n- **Latency**: elapsed time between two specified pipeline events.\n- **Trigger**: signal requesting a configured capture event.\n- **Epoch**: time origin used to interpret timestamp values.\n\n## Before / after\n\n- **Before:** Know sampling and units; use Sensor characteristics, uncertainty & noise to distinguish timing variability from measurement-value noise.\n- **After:** Apply this in ROS 2 sensor drivers, metadata & recording and Wrist cameras & multi-camera data-collection rigs.\n\n## Try it in an afternoon\n\n1. **Create a synthetic event table** with acquisition and arrival timestamps from the worked example, keeping both columns.\n2. **Add varying transport delays** and plot arrival minus acquisition; explain why this exercise assumes a common clock domain.\n3. **Compare two shifted synthetic streams** before and after correcting their known offset; distinguish that correction from changing the transport delay.\n4. **Draft a real capture checklist** naming each clock, timestamp event, trigger capability, and evidence needed to measure exposure alignment.",
+      "resources": [
+        {
+          "title": "How Do Multi-Camera Setups Benefit from GigE Vision 2.0? – Vision Campus",
+          "url": "https://www.youtube.com/watch?v=nalWpxsFs5U",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why multi-camera systems need synchronized timing."
+        },
+        {
+          "title": "Triggered Image Acquisition",
+          "url": "https://docs.baslerweb.com/triggered-image-acquisition",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distinguish hardware and software capture triggers."
+        },
+        {
+          "title": "Precision Time Protocol",
+          "url": "https://docs.baslerweb.com/precision-time-protocol",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand camera clock synchronization and arbitrary epochs."
+        },
+        {
+          "title": "Image.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check exactly which event a ROS image timestamp represents."
+        },
+        {
+          "title": "ptp4l(8): PTP Boundary/Ordinary/Transparent Clock",
+          "url": "https://www.linuxptp.org/documentation/ptp4l/",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect Linux PTP implementation and hardware/software timestamping options."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=nalWpxsFs5U",
+        "https://docs.baslerweb.com/triggered-image-acquisition",
+        "https://docs.baslerweb.com/precision-time-protocol",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+        "https://www.linuxptp.org/documentation/ptp4l/"
+      ]
+    },
+    {
+      "node_id": "k:wrist-cameras-multi-camera-data-collection-rigs",
+      "type": "knowledge",
+      "name": "Wrist cameras & multi-camera data-collection rigs",
+      "summary": "A camera collection rig combines moving wrist views and fixed workspace views with identifiable devices, stable mounting, calibration, and timing information.",
+      "lesson_md": "## In one sentence\n\nA camera collection rig combines moving wrist views and fixed workspace views with identifiable devices, stable mounting, calibration, and timing information.\n\n![UMI project overview showing its handheld camera-equipped gripper and manipulation setup](/img/lessons/knowledge_sensing-wrist-camera-rigs.webp)\n*UMI project overview showing its handheld camera-equipped gripper and manipulation setup. Source: [UMI authors](https://umi-gripper.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Views complement one another:** a wrist view follows the tool, while a fixed view preserves workspace context when the tool blocks its own camera.\n- **Capture trustworthy experiments:** rigid mounting and identifiable streams make recordings comparable across sessions rather than an anonymous collection of video files.\n- **Start with accessible hardware:** LeRobot supports OpenCV cameras including USB webcams; a first acquisition exercise does not require buying a robot arm.\n\n> **Key idea:** A useful rig preserves which camera saw what, from where, and when—not merely a folder containing playable videos.\n\n## How it works\n\n- **Choose viewpoints deliberately:** keep the object, gripper, and target visible in at least one view. Check occlusion by moving through the intended workspace.\n- **Use UMI as an example:** its handheld parallel-jaw gripper carries a GoPro camera. The project treats observation latency explicitly rather than assuming images arrive instantly.\n- **Discover actual devices:** LeRobot documents `lerobot-find-cameras opencv`; identifiers can change after reconnection or reboot, so verify the mapping before each recording.\n- **Think of database keys:** camera names should identify streams reliably. Accidentally swapping wrist and workspace inputs is like joining tables on the wrong identifier.\n- **Work one configuration:** LeRobot shows width 1920, height 1080, and 15 fps in an OpenCV example; record requested and observed settings separately.\n- **Preserve geometry and timing:** associate recordings with mounting configuration, calibration, and timestamp meaning; remounting a camera changes the geometry even if its name stays unchanged.\n\n```mermaid\nflowchart LR\n  W[Wrist camera] --> I[Identify and configure]\n  F[Fixed camera] --> I\n  I --> C[Check views and calibration]\n  C --> T[Record timing and frames]\n  T --> V[Inspect paired observations]\n```\n\n## Key terms\n\n- **Wrist camera**: camera mounted to move with the robot tool or handheld gripper.\n- **Extrinsics**: spatial relationship between camera and another coordinate frame.\n- **Occlusion**: an object blocking another object from a camera's view.\n- **Manifest**: accompanying record of devices, settings, calibration, and timing conventions.\n\n## Before / after\n\n- **Before:** Review RGB cameras & intrinsic calibration, Extrinsic & multi-sensor calibration, and Time synchronization & timestamping before trusting paired views.\n- **After:** Use ROS 2 sensor drivers, metadata & recording to archive interpretable multi-camera streams for later experiments.\n\n## Try it in an afternoon\n\n1. **Discover available cameras** using the documented command; one webcam is enough to prototype the stream manifest before adding a second.\n2. **Label each physical device** and record its identifier, viewpoint, requested settings, and observed image dimensions.\n3. **Record a moving object** from available views, checking visibility and keeping acquisition-time information distinct from host arrival time.\n4. **Reconnect the cameras** and verify the mapping again; compare recordings and record any mounting or configuration changes.",
+      "resources": [
+        {
+          "title": "UMI - Assembly Tutorial",
+          "url": "https://www.youtube.com/watch?v=x3ko0v_xwpg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Inspect how a real camera-equipped handheld gripper is assembled."
+        },
+        {
+          "title": "Cameras",
+          "url": "https://huggingface.co/docs/lerobot/cameras",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Discover cameras, configure capture, and understand frame access."
+        },
+        {
+          "title": "Universal Manipulation Interface: In-The-Wild Robot Teaching Without In-The-Wild Robots",
+          "url": "https://umi-gripper.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See the wrist-mounted camera hardware and latency-aware system design."
+        },
+        {
+          "title": "Universal Manipulation Interface",
+          "url": "https://github.com/real-stanford/universal_manipulation_interface",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the published hardware and data-collection implementation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=x3ko0v_xwpg",
+        "https://huggingface.co/docs/lerobot/cameras",
+        "https://umi-gripper.github.io/",
+        "https://github.com/real-stanford/universal_manipulation_interface",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg"
+      ]
     }
   ],
   "skipped": []
