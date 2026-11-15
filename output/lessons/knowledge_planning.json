@@ -416,6 +416,145 @@
         "https://mapf.info/index.php/Main/Tutorials",
         "https://commons.wikimedia.org/wiki/File:Example_of_Multi-Agent_Path_Finding_in_a_grid_environment.png"
       ]
+    },
+    {
+      "node_id": "k:planning-under-uncertainty-belief-space",
+      "type": "knowledge",
+      "name": "Planning under uncertainty & belief space",
+      "summary": "Belief-space planning chooses actions using a probability distribution over possible states, including actions that gather information before committing.",
+      "lesson_md": "## In one sentence\n\nBelief-space planning chooses actions using a probability distribution over possible states, including actions that gather information before committing.\n\n![Agent and environment linked by observation and action arrows with German labels](/img/lessons/knowledge_planning-belief-space.webp)\n*MartinThoma’s POMDP loop: Beobachtung = observation, Aktion = action, Umwelt = environment. Converted to WebP. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Agent-environment-diagram-pomdp.svg), CC0 1.0 Universal Public Domain Dedication.*\n\n## Why it matters for us\n\n- **Sensors do not reveal everything:** A robot may receive an ambiguous observation rather than know its exact location.\n- **Information changes decisions:** Looking again can be better than immediately moving toward the apparent goal.\n- **MDP**: A Markov decision process models uncertain action outcomes while assuming the current state is known.\n- **POMDP**: A partially observable MDP also hides the current state; the planner must reason from observations.\n\n> **Key idea:** An action can be valuable because it changes what the robot knows, even when it makes no physical progress.\n\n## How it works\n\nInstead of storing one guessed state, keep probabilities for the alternatives.\nThink of a debugger maintaining several hypotheses about a bug and choosing a diagnostic test before applying a fix.\n\n- **Predict:** Use the action model to propagate the current belief into possible next states.\n- **Observe:** Weight those predictions by how likely the new sensor reading is under each state, then normalize the probabilities.\n- **Plan:** Compare future rewards while accounting for future observations, not merely the most likely state now.\n- **Worked example:** POMDPs.jl's Tiger problem has two doors, a uniform initial belief, and a listening observation that is correct 85% of the time.\n- **Update after hearing left:** Bayes' rule gives `P(left | heard left) = (0.85 × 0.5) / (0.85 × 0.5 + 0.15 × 0.5) = 0.85`.\n- **Compare consequences:** Listening costs 1 reward unit; opening the tiger's door gives −100, while escaping gives +10. Information must justify its cost.\n\n```mermaid\nflowchart LR\n  B[Current belief] --> P[Choose action]\n  P --> A[Act and observe]\n  A --> U[Bayesian update]\n  U --> B\n```\n\n## Key terms\n\n- **Belief**: a probability distribution over possible hidden states.\n- **Observation model**: the probability of a sensor reading given the hidden state and action.\n- **Policy**: a rule mapping a belief to an action.\n- **Belief space**: the collection of possible beliefs, where the planner reasons.\n\n## Before / after\n\n- **Before:** Review probability, Bayes' rule, value iteration, and Graph search & incremental replanning; state estimation supplies the belief update.\n- **After:** Explore POMDPs.jl and World-model predictive planning, distinguishing explicit uncertainty from a learned prediction alone.\n\n## Try it in an afternoon\n\n1. **Reproduce the calculation:** Print the two posterior probabilities; check they sum to one.\n2. **Listen twice:** Apply the same update to another left observation, assuming conditionally independent readings; compare confidence before and after.\n3. **Reverse the second reading:** Observe how conflicting evidence changes the belief instead of overwriting it.\n4. **Inspect the Tiger implementation:** Identify its states, observations, rewards, and transition reset after opening a door.",
+      "resources": [
+        {
+          "title": "POMDPs: Partially Observable Markov Decision Processes | Decision Making Under Uncertainty POMDPs.jl",
+          "url": "https://www.youtube.com/watch?v=KDFzObtE6cs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow Julia Academy's introduction to hidden states, beliefs, and decisions."
+        },
+        {
+          "title": "Defining POMDPs and MDPs",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/def_pomdp/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read the complete Tiger model and reproduce its observation and reward numbers."
+        },
+        {
+          "title": "Concepts and Architecture",
+          "url": "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate models, beliefs, updaters, solvers, policies, and simulators."
+        },
+        {
+          "title": "Planning Under Uncertainty",
+          "url": "https://underactuated.mit.edu/belief.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Understand belief-MDP reasoning and the value of information-gathering actions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=KDFzObtE6cs",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/def_pomdp/",
+        "https://juliapomdp.github.io/POMDPs.jl/stable/concepts/",
+        "https://underactuated.mit.edu/belief.html",
+        "https://commons.wikimedia.org/wiki/File:Agent-environment-diagram-pomdp.svg"
+      ]
+    },
+    {
+      "node_id": "k:symbolic-task-planning-with-pddl",
+      "type": "knowledge",
+      "name": "Symbolic task planning with PDDL",
+      "summary": "PDDL describes actions through preconditions and effects so a planner can find a sequence that transforms known facts into a desired goal.",
+      "lesson_md": "## In one sentence\n\nPDDL describes actions through preconditions and effects so a planner can find a sequence that transforms known facts into a desired goal.\n\n![PlanSys2 directed plan graph connecting action nodes and their dependencies](/img/lessons/knowledge_planning-pddl-task-planning.webp)\n*A PlanSys2 plan graph, converted to WebP. Source: [PlanSys2 design](https://plansys2.github.io/4.0.0/design/index.html), license unknown.*\n\n## Why it matters for us\n\n- **Describe what must happen:** A courier task needs rooms, connections, battery facts, and a destination, not just a hard-coded sequence of motor commands.\n- **Separate reasoning from execution:** PlanSys2 provides a ROS 2 framework for planning with PDDL and executing actions through dedicated performers.\n- **Inspect the model:** Missing facts or incorrect effects change what the planner believes is possible, even when the code runs without exceptions.\n\n> **Key idea:** The planner proves a route through your symbolic model, not that the physical robot can perform every step.\n\n## How it works\n\nTreat the model like an API contract: preconditions are requirements, and effects describe the promised state changes.\nThe planner searches for compatible calls instead of requiring you to hand-write their order.\n\n- **Define a domain:** Declare object types, predicates, and reusable actions. A predicate is a statement such as “robot is in room” that can be true or false.\n- **Define a problem:** Supply particular objects, initial facts, and the goal to achieve.\n- **Ground the actions:** Replace action parameters with actual objects, such as robot `leia` and room `entrance`.\n- **Worked example:** PlanSys2's terminal tutorial gives `move` a duration of 5 and requires connected rooms, the robot at its origin, and a full battery throughout.\n- **Apply its effects:** Moving removes the origin-location fact at the start and adds the destination-location fact at the end.\n- **Trace one move:** With the tutorial's connection from `entrance` to `dinning`, and a full battery, `move leia entrance dinning` establishes `(robot_at leia dinning)`.\n- **Respect the whole task:** The full tutorial starts with a low battery; reaching its bathroom goal requires accounting for charging, not assuming the move is immediately available.\n\n```mermaid\nflowchart LR\n  D[Domain and problem] --> S[Search actions]\n  S --> P[Symbolic plan]\n  P --> E[Action performers]\n  E --> F[Update world facts]\n  F --> S\n```\n\n## Key terms\n\n- **PDDL**: Planning Domain Definition Language, a family of languages for describing planning problems.\n- **Precondition**: a condition required for an action to apply.\n- **Effect**: a change an action makes to the modeled world.\n- **Goal**: the condition the plan should make true.\n\n## Before / after\n\n- **Before:** Learn logic, search, and Behavior trees & task executives; distinguish selecting actions from carrying them out.\n- **After:** Explore PlanSys2 and Manipulation: Long-horizon / task-and-motion planning to connect symbolic choices with geometric feasibility.\n\n## Try it in an afternoon\n\n1. **Read the terminal tutorial:** Copy its room connections and location facts onto paper; mark the bathroom goal.\n2. **Trace the worked move:** List its required facts and the facts removed or added.\n3. **Remove a connection:** Determine which formerly valid move becomes unavailable and why.\n4. **Restore the low-battery start:** Explain why the complete example includes charging actions before accepting a proposed route.",
+      "resources": [
+        {
+          "title": "PlanSys2 Presentation at IROS 2021",
+          "url": "https://www.youtube.com/watch?v=58pvI8rgUvk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear PlanSys2 coauthor Francisco Martín Rico explain the planning framework."
+        },
+        {
+          "title": "Terminal Usage",
+          "url": "https://plansys2.github.io/4.0.0/tutorials/docs/terminal_usage.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the concrete rooms, predicates, action conditions, and bathroom goal."
+        },
+        {
+          "title": "What is PDDL?",
+          "url": "https://planning.wiki/guide/whatis/pddl",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Learn why objects, predicates, conditions, and effects form a planning model."
+        },
+        {
+          "title": "PDDL Domain",
+          "url": "https://planning.wiki/ref/pddl/domain",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect domain syntax and explicit action preconditions and effects."
+        },
+        {
+          "title": "PlanSys2 design",
+          "url": "https://plansys2.github.io/4.0.0/design/index.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Connect the domain expert, problem expert, planner, executor, and action performers."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=58pvI8rgUvk",
+        "https://plansys2.github.io/4.0.0/tutorials/docs/terminal_usage.html",
+        "https://planning.wiki/guide/whatis/pddl",
+        "https://planning.wiki/ref/pddl/domain",
+        "https://plansys2.github.io/4.0.0/design/index.html"
+      ]
+    },
+    {
+      "node_id": "k:world-model-predictive-planning",
+      "type": "knowledge",
+      "name": "World-model predictive planning",
+      "summary": "World-model predictive planning evaluates candidate actions with a learned predictor, then executes part of the best plan and replans from fresh observations.",
+      "lesson_md": "## In one sentence\n\nWorld-model predictive planning evaluates candidate actions with a learned predictor, then executes part of the best plan and replans from fresh observations.\n\n![DINO-WM architecture showing image patch encoding and action-conditioned future feature prediction](/img/lessons/knowledge_planning-world-model-planning.webp)\n*DINO-WM model architecture, converted to WebP. Source: [DINO-WM authors](https://dino-wm.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Try actions before executing them:** A learned predictor compares imagined outcomes before acting.\n- **Use visual goals:** DINO-WM plans toward a target image by comparing predicted visual features with goal features.\n- **Keep planning distinct from prediction:** A model forecasts what actions might do; a planner chooses which actions to attempt.\n\n> **Key idea:** The best imagined future is only a proposal; new observations must close the loop with the actual environment.\n\n## How it works\n\nThink of a dry-run API for candidate action sequences.\nUnlike replaying a fixed script, the caller compares predicted results and can revise its next request after observing what happened.\n\n- **Train from trajectories:** DINO-WM learns from previously collected observations and actions, predicting future features rather than reconstructing pixels as its planning representation.\n- **Encode images:** Pretrained DINOv2 supplies spatial patch features: compact numeric descriptions of image regions.\n- **Roll out alternatives:** The transition model predicts how those features change under candidate actions.\n- **Score the endpoint:** Compare the final predicted features with the goal's features; lower squared difference means a better match under this objective.\n- **Optimize and execute:** The cross-entropy method (CEM) repeatedly samples and refines action sequences. Model predictive control executes a prefix, observes again, and replans.\n- **Worked example:** The paper's Table 8 reports PointMaze success rates of 0.80 for open-loop CEM and 0.98 for MPC: an 18-percentage-point difference.\n- **Interpret the comparison:** Open-loop CEM executes the entire optimized sequence without correction; MPC permits replanning with CEM. These benchmark results are not guarantees.\n\n```mermaid\nflowchart LR\n  O[Current image] --> F[Encode features]\n  F --> R[Predict candidate futures]\n  G[Goal image features] --> C[Score and refine]\n  R --> C\n  C --> A[Execute prefix]\n  A --> O\n```\n\n> **Watch out:** A good predicted goal match does not prove the real outcome will match; compare imagined and actual rollouts before trusting a planner.\n\n## Key terms\n\n- **World model**: a learned model predicting future observations or internal representations from actions.\n- **Latent state**: the compact feature representation used inside the model.\n- **Horizon**: how many future action steps the planner considers.\n- **MPC**: model predictive control, repeatedly planning while incorporating environment feedback.\n\n## Before / after\n\n- **Before:** Study Planning under uncertainty & belief space, neural networks, and Model predictive control (MPC); consider which situations the training data covers.\n- **After:** Explore DINO-WM and Planning lab: animate a learned toy dynamics model against real simulator rollouts.\n\n## Try it in an afternoon\n\n1. **Watch the authors' demos:** Compare the upper ground-truth row with the lower imagined row; identify where the predictions differ.\n2. **Reproduce the table calculation:** Subtract the PointMaze success rates and express the difference in percentage points, not relative percent.\n3. **Trace `MPCPlanner.plan`:** Find the action-prefix slice and the environment observation used for the next planning iteration.\n4. **Design an evaluation:** Record predicted goal error and actual task success separately; explain how one could improve while the other worsens.",
+      "resources": [
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://dino-wm.github.io/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors' embedded videos comparing actual and imagined action-conditioned rollouts, including successes and failures."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://github.com/gaoyuezhou/dino_wm",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find pretrained checkpoints, datasets, and concrete planning commands."
+        },
+        {
+          "title": "mpc.py",
+          "url": "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/main/planning/mpc.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Trace how the MPC loop executes an action prefix and uses environment feedback."
+        },
+        {
+          "title": "DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning",
+          "url": "https://arxiv.org/html/2411.04983v2",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the feature-space planning objective and Table 8's open-loop versus MPC comparison."
+        }
+      ],
+      "sources": [
+        "https://dino-wm.github.io/",
+        "https://github.com/gaoyuezhou/dino_wm",
+        "https://raw.githubusercontent.com/gaoyuezhou/dino_wm/main/planning/mpc.py",
+        "https://arxiv.org/html/2411.04983v2",
+        "https://dino-wm.github.io/mfiles/figs/teaser_video_small.mp4"
+      ]
     }
   ]
 }
