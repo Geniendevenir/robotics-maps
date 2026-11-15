@@ -45,6 +45,47 @@ reader answer: "What is this, why should I care, how does it roughly work, and w
 - Mention related map nodes by their exact `name` so they can be linked.
 - Hiring is out of scope.
 
+## Visual style (required)
+Readers prefer visual explanations to walls of text. Every lesson and guide chapter must be easy to
+scan:
+- Paragraphs: at most 2 sentences / 40 words. Prefer bullets; most sections should be bullets.
+- Bold the key phrase of each bullet and each defined term (`**encoder**`), at least 5 bold spans
+  per lesson/chapter. Do not bold whole sentences.
+- At least one image per lesson, per guide chapter and in the guide intro: a photo of the
+  robot/part, a labelled diagram of the concept, or a screenshot of the tool/demo. Download it
+  (Wikimedia Commons, the official docs/repo or the maker's press page; prefer CC-licensed or
+  official media), convert to `.webp` (max 1200 px wide) and save it as
+  `viz/web/public/img/lessons/<slug>.webp`. Embed it as its own paragraph:
+  `![Alt text describing the picture](/img/lessons/<slug>.webp)` followed on the next line by
+  `*Caption. Source: [Site](page-url), license.*`. The image must show exactly this node/topic;
+  never a logo-only or text-only card. Max 2 images per lesson/chapter.
+- Use real published media only: never generate or draw your own image files. Record every image
+  in `viz/web/public/img/lessons/credits.json` as
+  `"<file>.webp": {"page_url": "...", "image_url": "...", "license": "...", "author": "..."}`, where
+  `page_url` is the page that publishes that exact image (a Commons file page, or the docs/blog page
+  embedding it), `image_url` is the original file, and `license` is copied from that page
+  (`unknown` if not stated). The caption's Source link is `page_url`.
+- Put the first image right after the `## In one sentence` content (or the first section of a
+  chapter/intro), so every lesson starts with a picture.
+- At most 3 prose paragraphs per lesson/chapter (6 in the guide intro); everything else is bullets,
+  numbered steps or a table. `## Before / after` is two bullets, `**Before:**` and `**After:**`.
+  Steps and "Try it" sections are numbered lists. Start bullets with a bold phrase where natural.
+- The Key idea is the insight to remember, not a copy of the one-sentence summary.
+- Short items, not paragraphs in disguise: each bullet or numbered step is at most 30 words
+  (one idea); prose paragraphs at most 40 words. Split a long point into several bullets.
+  Numbered lists (`## Steps`, `## Try it in an afternoon`, `## Getting started`) have 3-7 steps.
+- Place the Mermaid diagram inside the section that explains the mechanism (`## How it works`,
+  `## Steps`, `## Where it sits in the robot loop`), not at the end.
+- Use a Mermaid diagram (```` ```mermaid ```` fence, `flowchart LR` or `flowchart TD`, at most
+  8 nodes, short labels) for every loop, pipeline or sequence: the robot loop in the intro, a
+  field-specific flow in each guide chapter (e.g. the control loop, the SLAM pipeline), and each
+  knowledge and project lesson. Optional for
+  robot/org lessons. Mermaid code does not count toward the word limits.
+- Exactly one `> **Key idea:** ...` callout per lesson/chapter (the single sentence to remember),
+  and at most one `> **Watch out:** ...` callout (a real pitfall or hazard).
+- Robot/model lessons: a "spec sheet" Markdown table (2 columns, 4-8 rows: the sourced numbers)
+  under `## What it is made of / how it works`.
+
 ## Lesson body (Markdown) per node type
 Use exactly these `##` headings, in this order. Skip a heading only if it truly does not apply.
 

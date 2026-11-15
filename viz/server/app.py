@@ -27,6 +27,14 @@ async def lifespan(_app):
         yield
 
 
+class WebFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.media_type == "text/html":
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 app = FastAPI(title="42AI Robotics Maps API", lifespan=lifespan)
 
 
@@ -234,4 +242,4 @@ if img_dir.exists():
     app.mount("/img", StaticFiles(directory=img_dir), name="img")
 web_dist = VIZ_ROOT / "web" / "dist"
 if web_dist.exists():
-    app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
+    app.mount("/", WebFiles(directory=web_dist, html=True), name="web")

@@ -34,7 +34,7 @@ export default function App() {
   if (err) return <div className="loading">Could not load data: {err}<br />Is the server running on :8765?</div>;
   if (!data) return <div className="loading">Loading maps…</div>;
   return (
-    <div className={"app" + (leftOpen && !learn ? "" : " no-left") + (rightOpen ? "" : " no-right")}>
+    <div className={"app" + (leftOpen && !learn ? "" : " no-left") + (rightOpen ? "" : " no-right") + (learn ? " learning" : "")}>
       <header>
         <div className="brand">42AI Robotics Maps</div>
         <nav>

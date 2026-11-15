@@ -98,10 +98,33 @@ FORMATS = {"Video", "Course", "Docs", "Blog", "Article", "Paper", "Book", "Repo"
 LEVELS = {"Beginner", "Intermediate", "Advanced"}
 WORD_RE = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
 URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+MERMAID_BLOCK_RE = re.compile(r"(?ms)^```mermaid[ \t]*\n.*?^```[ \t]*(?:\n|$)")
+MARKDOWN_IMAGE_RE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)")
+LESSON_IMAGE_PATH_RE = re.compile(r"^/img/lessons/(?P<name>[^/\s]+\.webp)$")
+LESSON_IMAGE_DIR = Path(__file__).resolve().parents[1] / "web" / "public" / "img" / "lessons"
+LESSON_CREDITS_PATH = LESSON_IMAGE_DIR / "credits.json"
+VISUAL_STEP_HEADINGS = {
+    "## Steps",
+    "## Try it in an afternoon",
+    "## Getting started",
+}
+HEADING_STOP_WORDS = {"a", "an", "and", "for", "in", "is", "it", "of", "the", "to", "us"}
+GENERIC_LEAD_WORDS = {
+    ("application",),
+    ("how", "works"),
+    ("why", "matters"),
+}
+BOLD_LEAD_FUNCTION_WORDS = {
+    "a", "an", "the", "of", "to", "is", "are", "was", "on", "in", "for",
+    "and", "or", "with", "that", "it", "as", "by", "at", "from", "its",
+    "be", "can", "may", "will", "would", "should", "must", "if", "this",
+    "their", "your", "one", "into", "than", "then", "also", "still", "only",
+    "so",
+}
 
 
 def word_count(text: str) -> int:
-    return len(WORD_RE.findall(text))
+    return len(WORD_RE.findall(MERMAID_BLOCK_RE.sub("", text)))
 
 
 def _normalize(text: str) -> str:
@@ -116,8 +139,16 @@ def _section_text(markdown: str, heading: str) -> str:
         return ""
     for end in range(start, len(lines)):
         if lines[end].startswith("## "):
-            return _normalize("\n".join(lines[start:end]))
-    return _normalize("\n".join(lines[start:]))
+            section = lines[start:end]
+            break
+    else:
+        section = lines[start:]
+    text = MARKDOWN_IMAGE_RE.sub("", "\n".join(section))
+    text = "\n".join(
+        line for line in text.splitlines()
+        if not (line.strip().startswith("*") and "Source:" in line)
+    )
+    return _normalize(text)
 
 
 def _check_headings(markdown: object, expected: list[str], label: str, errors: list[str],
@@ -170,6 +201,314 @@ def _check_word_count(text: str, minimum: int, maximum: int, label: str,
     count = word_count(text)
     if count < minimum or count > maximum:
         errors.append(f"{label}: {count} words; expected {minimum}-{maximum}")
+
+
+def _section_lines(markdown: str, heading: str) -> list[str]:
+    lines = markdown.splitlines()
+    try:
+        start = lines.index(heading) + 1
+    except ValueError:
+        return []
+    end = next(
+        (index for index in range(start, len(lines)) if lines[index].startswith("## ")),
+        len(lines),
+    )
+    return lines[start:end]
+
+
+def _prose_paragraphs(markdown: str) -> list[str]:
+    paragraphs: list[str] = []
+    current: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        nonlocal current
+        if current:
+            block = "\n".join(current)
+            first = current[0].strip()
+            is_list = (
+                first.startswith(("- ", "* ", "+ "))
+                or re.match(r"^\d+[.)]\s", first) is not None
+            )
+            is_caption = first.startswith("*") and first.endswith("*")
+            if not (
+                first.startswith(("## ", "# ", ">", "|", "!["))
+                or is_list
+                or is_caption
+                or re.fullmatch(r"[-*_]{3,}", first)
+            ):
+                paragraphs.append(block)
+            current = []
+
+    for line in markdown.splitlines():
+        if line.strip().startswith("```"):
+            flush()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if line.startswith(("## ", "# ")):
+            flush()
+            continue
+        if not line.strip():
+            flush()
+        else:
+            current.append(line)
+    flush()
+    return paragraphs
+
+
+def _visual_list_items(markdown: str) -> list[tuple[str, str, str]]:
+    items: list[tuple[str, str, str]] = []
+    current_heading = ""
+    current_marker: str | None = None
+    current_text: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        nonlocal current_marker, current_text
+        if current_marker is not None:
+            items.append((current_heading, current_marker, " ".join(current_text)))
+        current_marker = None
+        current_text = []
+
+    for line in markdown.splitlines():
+        if line.strip().startswith("```"):
+            flush()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if line.startswith("## "):
+            flush()
+            current_heading = line.strip()
+            continue
+        match = re.match(r"^\s*(?P<marker>[-*+]|\d+[.)])\s+(?P<text>.*)$", line)
+        if match:
+            flush()
+            current_marker = match.group("marker")
+            current_text = [match.group("text").strip()]
+        elif current_marker is not None and line.startswith(("  ", "\t")) and line.strip():
+            current_text.append(line.strip())
+        else:
+            flush()
+    flush()
+    return items
+
+
+def _normalized_lead_words(text: str) -> tuple[str, ...]:
+    return tuple(
+        word.casefold()
+        for word in WORD_RE.findall(text)
+        if word.casefold() not in HEADING_STOP_WORDS
+    )
+
+
+def _check_visuals(markdown: object, label: str, kind: str,
+                   errors: list[str]) -> None:
+    if not isinstance(markdown, str):
+        errors.append(f"{label}: markdown body must be a string")
+        return
+
+    lines = markdown.splitlines()
+    visible_headings: set[str] = set()
+    in_fence = False
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and line.startswith("## "):
+            visible_headings.add(line.strip())
+
+    list_items = _visual_list_items(markdown)
+    for heading, marker, content in list_items:
+        count = word_count(content)
+        if count > 30:
+            errors.append(f"{label}: list item has {count} words; maximum is 30")
+        if content and content[0].islower():
+            errors.append(f"{label}: list item starts with a lowercase letter")
+        bold_lead = re.match(r"^\*\*([^*\n]+)\*\*", content)
+        if bold_lead is not None:
+            lead_text = bold_lead.group(1)
+            normalized_lead = lead_text.rstrip(": ")
+            if normalized_lead and normalized_lead[0].islower():
+                errors.append(f"{label}: bold lead starts with a lowercase letter")
+            if " ," in lead_text:
+                errors.append(f"{label}: bold lead contains ' ,'")
+            lead_words = WORD_RE.findall(normalized_lead)
+            if lead_words and lead_words[-1].casefold() in BOLD_LEAD_FUNCTION_WORDS:
+                errors.append(f"{label}: bold lead ends with a function word")
+        if bold_lead is not None and heading != "## Before / after":
+            lead_words = _normalized_lead_words(bold_lead.group(1))
+            heading_words = _normalized_lead_words(heading)
+            if lead_words and (
+                lead_words in GENERIC_LEAD_WORDS
+                or heading_words[:len(lead_words)] == lead_words
+            ):
+                errors.append(
+                    f"{label}: bold lead {bold_lead.group(1)!r} uses a generic label "
+                    "or repeats its section heading"
+                )
+
+    for heading in VISUAL_STEP_HEADINGS & visible_headings:
+        section_items = [item for item in list_items if item[0] == heading]
+        numbered_items = [
+            item for item in section_items if re.fullmatch(r"\d+[.)]", item[1])
+        ]
+        if any(not re.fullmatch(r"\d+[.)]", item[1]) for item in section_items):
+            errors.append(f"{label} {heading}: steps must use a numbered list")
+        if not 3 <= len(numbered_items) <= 7:
+            errors.append(
+                f"{label} {heading}: has {len(numbered_items)} numbered steps; expected 3-7"
+            )
+
+    image_lines = [(index, line.strip()) for index, line in enumerate(lines) if "![" in line]
+    if not 1 <= len(image_lines) <= 2:
+        errors.append(f"{label}: has {len(image_lines)} images; expected 1-2")
+    try:
+        credits = json.loads(LESSON_CREDITS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"{label}: cannot read lesson image credits: {exc}")
+        credits = {}
+    if not isinstance(credits, dict):
+        errors.append(f"{label}: lesson image credits must be a JSON object")
+        credits = {}
+    for index, line in image_lines:
+        match = MARKDOWN_IMAGE_RE.fullmatch(line)
+        if match is None:
+            errors.append(
+                f"{label}: image must use ![alt](/img/lessons/<file>.webp) on its own line"
+            )
+            continue
+        if not match.group("alt").strip():
+            errors.append(f"{label}: image alt text must not be empty")
+        path_match = LESSON_IMAGE_PATH_RE.fullmatch(match.group("path"))
+        if path_match is None:
+            errors.append(f"{label}: image path must be /img/lessons/<file>.webp")
+        else:
+            name = path_match.group("name")
+            if not (LESSON_IMAGE_DIR / name).is_file():
+                errors.append(f"{label}: image file does not exist: {match.group('path')}")
+
+        caption_index = next(
+            (next_index for next_index in range(index + 1, len(lines) if lines else index + 1)
+             if lines[next_index].strip()),
+            None,
+        )
+        if caption_index is None:
+            errors.append(f"{label}: image must be followed by a caption containing Source:")
+        else:
+            caption = lines[caption_index].strip()
+            if not caption.startswith("*") or "Source:" not in caption:
+                errors.append(f"{label}: image caption must start with '*' and contain 'Source:'")
+            if "Original" in caption:
+                errors.append(f"{label}: image caption must not contain 'Original'")
+
+        if path_match is not None:
+            name = path_match.group("name")
+            credit = credits.get(name)
+            if not isinstance(credit, dict):
+                errors.append(f"{label}: missing image credit for {name}")
+                continue
+            urls: dict[str, str] = {}
+            for field in ("page_url", "image_url"):
+                value = credit.get(field)
+                parsed = urlparse(value) if isinstance(value, str) else None
+                if parsed is None or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                    errors.append(f"{label}: {name} credit requires an HTTP(S) {field}")
+                else:
+                    urls[field] = value
+            for field in ("license", "author"):
+                if not isinstance(credit.get(field), str) or not credit[field].strip():
+                    errors.append(f"{label}: {name} credit requires a non-empty {field}")
+            if caption_index is not None and "page_url" in urls:
+                caption = lines[caption_index].strip()
+                linked_urls = re.findall(r"\[[^\]]+\]\(([^)]+)\)", caption)
+                if urls["page_url"] not in linked_urls:
+                    errors.append(f"{label}: image caption must link to its exact page_url")
+
+    required_mermaid = kind in {"intro", "chapter", "knowledge", "project"}
+    if required_mermaid and not any(
+        re.fullmatch(r"```mermaid[ \t]*", line.strip()) for line in lines
+    ):
+        errors.append(f"{label}: requires a Mermaid flowchart")
+
+    key_ideas = [line for line in lines if line.startswith("> **Key idea:**")]
+    if len(key_ideas) != 1:
+        errors.append(f"{label}: has {len(key_ideas)} Key idea callouts; expected exactly 1")
+    watch_outs = [line for line in lines if line.startswith("> **Watch out:**")]
+    if len(watch_outs) > 1:
+        errors.append(f"{label}: has {len(watch_outs)} Watch out callouts; maximum is 1")
+
+    bold_spans = re.findall(r"\*\*[^*\n]+\*\*", markdown)
+    if len(bold_spans) < 5:
+        errors.append(f"{label}: has {len(bold_spans)} bold spans; expected at least 5")
+
+    for paragraph in _prose_paragraphs(markdown):
+        count = word_count(paragraph)
+        if count > 40:
+            errors.append(
+                f"{label}: prose paragraph has {count} words; maximum is 40"
+            )
+
+    paragraph_limit = 6 if kind == "intro" else 3
+    prose_count = len(_prose_paragraphs(markdown))
+    if prose_count > paragraph_limit:
+        errors.append(
+            f"{label}: has {prose_count} prose paragraphs; maximum is {paragraph_limit}"
+        )
+
+    if kind == "knowledge":
+        before_after = [line.strip() for line in _section_lines(markdown, "## Before / after")
+                        if line.strip()]
+        bullets = [line for line in before_after if line.startswith("- ")]
+        if (len(bullets) != 2 or len(before_after) != 2
+                or not bullets[0].startswith("- **Before:**")
+                or not bullets[1].startswith("- **After:**")):
+            errors.append(
+                f"{label}: ## Before / after must contain exactly the Before and After bullets"
+            )
+
+    if kind in {"knowledge", "robot", "project", "org"} and len(key_ideas) == 1:
+        sentence = _section_text(markdown, "## In one sentence")
+        key_idea = key_ideas[0].partition(":**")[2].strip()
+        normalize_idea = lambda text: re.sub(
+            r"[.!?]+$", "", re.sub(r"[*_`]", "", _normalize(text))
+        ).casefold()
+        if sentence and normalize_idea(sentence) == normalize_idea(key_idea):
+            errors.append(f"{label}: Key idea must differ from the In one sentence text")
+
+    for block in re.findall(r"(?ms)^```[^\n]*\n(.*?)^```[ \t]*(?:\n|$)", markdown):
+        content_lines = block.splitlines()
+        if (len(content_lines) >= 4
+                and sum(not line.strip() for line in content_lines) / len(content_lines) > 0.4):
+            errors.append(f"{label}: code fence has excessive blank-line padding")
+
+    if kind == "robot":
+        table_lines = [
+            line.strip() for line in _section_lines(
+                markdown, "## What it is made of / how it works"
+            )
+            if line.strip().startswith("|")
+        ]
+        if not table_lines:
+            errors.append(
+                f"{label}: robot lessons require a spec table under "
+                "'## What it is made of / how it works'"
+            )
+        else:
+            rows: list[list[str]] = []
+            for line in table_lines:
+                cells = [cell.strip() for cell in line.strip("|").split("|")]
+                if len(cells) != 2:
+                    errors.append(f"{label}: robot spec table must have exactly 2 columns")
+                    continue
+                if not all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+                    rows.append(cells)
+            data_rows = rows[1:] if rows else []
+            if not 4 <= len(data_rows) <= 8:
+                errors.append(
+                    f"{label}: robot spec table has {len(data_rows)} data rows; expected 4-8"
+                )
 
 
 def _check_resources(resources: object, label: str, minimum: int, maximum: int,
@@ -266,6 +605,7 @@ def _check_lesson(lesson: object, index: int, graph_nodes: dict[str, dict[str, s
         if isinstance(markdown, str):
             minimum, maximum = (150, 300) if lesson_type == "org" else (250, 500)
             _check_word_count(markdown, minimum, maximum, label, errors)
+            _check_visuals(markdown, label, lesson_type, errors)
             if lesson_type in {"knowledge", "robot"}:
                 _check_bullet_section(markdown, "## Key terms", 3, 6, label, errors,
                                       term_format=True)
@@ -294,6 +634,7 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
     _check_headings(intro, GUIDE_INTRO_HEADINGS, f"{label} intro", errors)
     if isinstance(intro, str):
         _check_word_count(intro, 500, 900, f"{label} intro", errors)
+        _check_visuals(intro, f"{label} intro", "intro", errors)
     chapters = data.get("chapters")
     if not isinstance(chapters, list):
         errors.append(f"{label}: chapters must be a list")
@@ -331,6 +672,7 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
         if isinstance(body, str):
             _check_word_count(body, 250, 450, chapter_label, errors)
             _check_bullet_section(body, "## The big ideas", 3, 5, chapter_label, errors)
+            _check_visuals(body, chapter_label, "chapter", errors)
         start_here = chapter.get("start_here")
         if not isinstance(start_here, list) or not 3 <= len(start_here) <= 6:
             errors.append(f"{chapter_label}: start_here must contain 3-6 node IDs")
