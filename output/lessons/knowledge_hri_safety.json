@@ -705,6 +705,156 @@
         "https://arxiv.org/abs/2602.04056",
         "https://www.youtube.com/watch?v=A4HbargVKXo"
       ]
+    },
+    {
+      "node_id": "k:shared-control-shared-autonomy",
+      "type": "knowledge",
+      "name": "Shared control & shared autonomy",
+      "summary": "In shared control, a human steers the robot with a joystick or teleoperation and the robot blends that input with its own autonomy to help finish the task.",
+      "lesson_md": "## In one sentence\nIn shared control, a human steers the robot with a joystick or teleoperation and the robot blends that input with its own autonomy to help finish the task.\n\n![Robot arm frames and diagrams showing the joystick input meaning changing with robot confidence](/img/lessons/knowledge_hri_safety-shared-control.webp)\n*As the robot grows confident about the goal (b), the same joystick input shifts from choosing the goal to fine manipulation. Source: [Shared Autonomy with Learned Latent Actions](https://arxiv.org/html/2005.03210), license unknown.*\n\n## Why it matters for us\n- **Assistive use:** shared autonomy helps people with motor impairments control robot arms for everyday tasks like eating.\n- **Better training data:** BlenDAgger blends human and policy actions during corrections and gained 30+ points on two real tasks over HG-DAgger.\n- **Sim-only start:** a joystick-plus-assistant demo needs no hardware.\n\n## How it works\nThink of **autocomplete in an editor**: you type, it guesses what you mean, and it fills in more as its guess gets confident. You can always keep typing to override.\n\n```mermaid\nflowchart LR\n  A[Human joystick input] --> B[Goal inference]\n  C[Scene: candidate goals] --> B\n  B --> D[Robot assistive action]\n  A --> E[Arbitration / blending]\n  D --> E\n  E --> F[Robot arm]\n```\n\n- **Goal inference:** the user's goal is often unknown in advance, so the robot infers it from their input.\n- **Arbitration:** a blending rule mixes user and robot actions, giving the robot more weight as confidence rises.\n- **Model-free option:** Reddy et al. learn assistance with deep RL, discarding low-value actions and picking the one closest to the user's input.\n- **Latent actions:** a low-dimensional joystick can map to useful high-dimensional arm motions.\n- **Legibility problem:** shortest-path assistance can hide which goal the robot inferred, so users keep steering or notice errors late.\n\n> **Key idea:** The human stays in charge of intent, the robot takes over the precise, tiring parts, and control shifts with confidence.\n\n> **Watch out:** Too much assistance toward a wrong guess feels like the robot fighting the user; always let input override it.\n\n## Key terms\n- **Shared autonomy**: Combining user input with semi-autonomous control toward a common goal.\n- **Arbitration**: The rule deciding how much each side's command counts.\n- **Goal inference**: Estimating which target the user wants from their inputs.\n- **Teleoperation**: Directly driving a robot remotely, for example with a joystick.\n- **Latent action**: A compact control signal decoded into full robot motion.\n\n## Before / after\n- **Before:** Basic teleoperation and Human motion & intention prediction.\n- **After:** Learning from human feedback & corrections and Legible & expressive robot motion.\n\n## Try it in an afternoon\n1. **Build a 2D world:** draw a point \"gripper\" and three goal dots in Python.\n2. **Read input:** move the point with arrow keys as the user command.\n3. **Infer the goal:** score each goal by how well recent inputs point toward it.\n4. **Blend commands:** mix user input with a step toward the top goal, weighted by its score.\n5. **Compare effort:** count keypresses needed with and without assistance.\n",
+      "resources": [
+        {
+          "title": "Shared Autonomy with Learned Latent Actions",
+          "url": "https://www.youtube.com/watch?v=7BouKojzVyk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Experiment videos of assisted eating with a robot arm."
+        },
+        {
+          "title": "Shared Autonomy with Learned Latent Actions",
+          "url": "https://arxiv.org/abs/2005.03210",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Combines latent actions and shared autonomy for precise assistive manipulation."
+        },
+        {
+          "title": "Shared Autonomy via Deep Reinforcement Learning",
+          "url": "https://arxiv.org/abs/1802.01744",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Model-free shared autonomy that does not assume known goals."
+        },
+        {
+          "title": "Legible Shared Autonomy: Implicit Communication of Robot Belief through Motion",
+          "url": "https://arxiv.org/abs/2606.29846",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Makes assistive motion reveal which goal the robot inferred."
+        },
+        {
+          "title": "BlenDAgger: Blended Shared Control for Interactive Imitation Learning",
+          "url": "https://arxiv.org/abs/2609.37599",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Uses blended shared control to collect better imitation-learning corrections."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2005.03210",
+        "https://arxiv.org/html/2005.03210",
+        "https://arxiv.org/abs/1802.01744",
+        "https://arxiv.org/abs/2606.29846",
+        "https://arxiv.org/abs/2609.37599",
+        "https://www.youtube.com/watch?v=7BouKojzVyk"
+      ]
+    },
+    {
+      "node_id": "k:social-human-aware-navigation",
+      "type": "knowledge",
+      "name": "Social & human-aware navigation",
+      "summary": "Social navigation means a mobile robot reaches its goal among people while respecting personal space, not cutting through groups, and moving predictably.",
+      "lesson_md": "## In one sentence\nSocial navigation means a mobile robot reaches its goal among people while respecting personal space, not cutting through groups, and moving predictably.\n\n![HuNavSim architecture: simulator wrapper, ROS 2 services, HuNav manager with behavior trees and evaluator](/img/lessons/knowledge_hri_safety-social-navigation.webp)\n*HuNavSim connects any robotics simulator through a wrapper and computes human agents plus social metrics. Source: [HuNavSim on GitHub](https://github.com/robotics-upo/hunav_sim), license unknown.*\n\n## Why it matters for us\n- **Real deployments:** delivery, hospital and event robots move through crowds, not empty maps.\n- **Hard to evaluate:** success depends on how people perceive the robot, not only on reaching the goal.\n- **Free tooling:** HuNavSim and Arena run on ROS 2 in simulation, so starting costs €0.\n\n## How it works\nNormal path planning treats people as moving obstacles. Social navigation is closer to **UX design**: the \"user\" is every pedestrian, and comfort counts as much as speed.\n\n```mermaid\nflowchart LR\n  A[Sensors] --> B[People tracking]\n  B --> C[Social cost map]\n  D[Goal] --> E[Planner, e.g. Nav2]\n  C --> E\n  E --> F[Robot motion]\n  F --> G[Social metrics]\n```\n\n- **Principles:** a 2023 guidelines paper lists safety, comfort, legibility, politeness, social competency, agent understanding, proactivity and context responsiveness.\n- **Simulated humans:** HuNavSim moves people with a Social Force Model, including groups.\n- **Human reactions:** agents can be regular, impassive, surprised, curious, scared or threatening toward the robot.\n- **Benchmark loop:** a ROS 2 service returns updated human states each step; an evaluator computes social metrics.\n- **Scenario generation:** Arena 4.0 uses LLMs and diffusion models to build human-centric worlds from text prompts or floorplans.\n\n> **Key idea:** A socially good path is judged by the people around it, so you must measure comfort and predictability, not just arrival time.\n\n## Key terms\n- **Social Force Model**: A model where people are pushed by goals and repelled by obstacles and others.\n- **Personal space**: The area around a person that others avoid entering.\n- **Legibility**: How easily people can tell where the robot is going.\n- **Cost map**: A grid giving each cell a cost the planner tries to minimize.\n- **Benchmark**: A shared set of scenarios and metrics to compare methods fairly.\n\n## Before / after\n- **Before:** Basic mobile navigation with ROS 2 Nav2 and Human detection & body-pose tracking for HRI.\n- **After:** Human motion & intention prediction for crowds and Legible & expressive robot motion.\n\n## Try it in an afternoon\n1. **Read the README:** go through HuNavSim's features and the list of human behaviors.\n2. **Sketch a cost:** in Python, add a Gaussian cost around each person on a grid.\n3. **Plan twice:** run A* with and without the social cost.\n4. **Measure comfort:** compare minimum distance to people and path length for both paths.\n",
+      "resources": [
+        {
+          "title": "RISS Community Series: Dr. Jean Oh - Social Robot Navigation",
+          "url": "https://www.youtube.com/watch?v=rSzUOJZUEWE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Talk introducing social robot navigation research."
+        },
+        {
+          "title": "Principles and Guidelines for Evaluating Social Robot Navigation Algorithms",
+          "url": "https://arxiv.org/abs/2306.16740",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Defines socially navigating robots and how to evaluate them."
+        },
+        {
+          "title": "HuNavSim",
+          "url": "https://github.com/robotics-upo/hunav_sim",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "ROS 2 human navigation simulator with behaviors and social metrics."
+        },
+        {
+          "title": "Arena 4.0: A Comprehensive ROS2 Development and Benchmarking Platform for Human-centric Navigation Using Generative-Model-based Environment Generation",
+          "url": "https://arxiv.org/abs/2409.12471",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Benchmark platform generating human-centric worlds with LLMs."
+        },
+        {
+          "title": "NAV2 - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official docs for the ROS 2 navigation stack social layers build on."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2306.16740",
+        "https://github.com/robotics-upo/hunav_sim",
+        "https://raw.githubusercontent.com/robotics-upo/hunav_sim/master/README.md",
+        "https://arxiv.org/abs/2305.01303",
+        "https://arxiv.org/abs/2409.12471",
+        "https://arxiv.org/abs/2610.11220",
+        "https://docs.nav2.org/rolling/",
+        "https://www.youtube.com/watch?v=rSzUOJZUEWE"
+      ]
+    },
+    {
+      "node_id": "k:speed-separation-monitoring-implementation",
+      "type": "knowledge",
+      "name": "Speed & separation monitoring implementation",
+      "summary": "Speed and separation monitoring continuously measures the distance between robot and person and slows or stops the robot so it can always halt before contact.",
+      "lesson_md": "## In one sentence\nSpeed and separation monitoring continuously measures the distance between robot and person and slows or stops the robot so it can always halt before contact.\n\n![Real UR10 cell with a person and motion capture next to its digital twin in simulation](/img/lessons/knowledge_hri_safety-separation.webp)\n*A UR10 with three on-robot time-of-flight arrays, validated against a motion-capture digital twin. Source: [Kumar, Arora and Sahin, arXiv 1904.07379](https://arxiv.org/html/1904.07379), license unknown.*\n\n## Why it matters for us\n- **Standard mode:** ISO/TS 15066 covers collaborative robot systems, and SSM is one of two risk-reduction approaches next to power and force limiting.\n- **No cage needed:** the robot works at full speed when nobody is near, and slows only as someone approaches.\n- **Cheap prototype:** a depth camera plus pose tracking can drive a demo on a desk arm.\n\n## How it works\nIt works like **adaptive cruise control** for an arm: measure the gap, compute how fast you may go and still stop in time, repeat every cycle.\n\n```mermaid\nflowchart LR\n  A[Sensors: ToF, RGB-D, lidar] --> B[Detect human]\n  B --> C[Min distance robot-human]\n  D[Robot link positions] --> C\n  C --> E[Speed scaling rule]\n  E --> F[Robot speed command]\n  F --> D\n```\n\n- **Distance first:** compute the minimum distance between every robot link and the person, not just the gripper.\n- **Relative velocity:** Kumar et al. modulate speed from both minimum distance and relative velocity.\n- **Self-occlusion:** on-robot sensors also see the robot itself, so ray casting filters those readings out.\n- **Keypoint pairs:** an RGB-D approach measures distance between all robot and human skeleton keypoints using OpenPose.\n- **Validation:** compare your sensor distances against ground truth, such as motion capture or a 2D lidar.\n\n> **Key idea:** The robot may only move as fast as it can still stop before reaching the nearest person.\n\n> **Watch out:** Research prototypes like these are not certified safety functions; a hobby camera pipeline must not protect real people alone.\n\n## Key terms\n- **SSM**: Speed and separation monitoring, keeping a protective distance by scaling speed.\n- **Protective separation distance**: The minimum gap required for the robot to stop in time.\n- **Time-of-flight sensor**: A sensor that measures distance by timing reflected light.\n- **Digital twin**: A simulated copy of the real cell used for testing.\n- **Speed scaling**: Reducing commanded speed as a function of distance.\n\n## Before / after\n- **Before:** Collaborative operation modes (cobots) and Human detection & body-pose tracking for HRI.\n- **After:** Collision detection & reaction (power and force limiting) and Safe learning & safety filters.\n\n## Try it in an afternoon\n1. **Track a person:** run MediaPipe Pose on a webcam and keep shoulder keypoints.\n2. **Fake a robot:** pick a fixed 2D point on screen as the robot.\n3. **Compute distance:** take the minimum pixel distance between keypoints and that point.\n4. **Scale speed:** map distance to 0–100% speed with stop and full-speed thresholds, and display it.\n",
+      "resources": [
+        {
+          "title": "Speed & Separation Monitoring using on-robot Time-of-Flight laser ranging sensor arrays",
+          "url": "https://www.youtube.com/watch?v=EHnzosrpkR0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the on-robot sensor arrays slow a UR10 near a person."
+        },
+        {
+          "title": "Speed and Separation Monitoring using on-robot Time--of--Flight laser--ranging sensor arrays",
+          "url": "https://arxiv.org/abs/1904.07379",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Full implementation with self-occlusion filtering and a digital twin."
+        },
+        {
+          "title": "Toward safe separation distance monitoring from RGB-D sensors in human-robot interaction",
+          "url": "https://arxiv.org/abs/1810.04953",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Keypoint-based distance monitoring using RealSense and OpenPose."
+        },
+        {
+          "title": "ISO/TS 15066:2016 — Robots and robotic devices — Collaborative robots",
+          "url": "https://www.iso.org/standard/62996.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official abstract of the collaborative robot safety specification."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1904.07379",
+        "https://arxiv.org/html/1904.07379",
+        "https://arxiv.org/abs/1810.04953",
+        "https://www.iso.org/standard/62996.html",
+        "https://www.youtube.com/watch?v=EHnzosrpkR0"
+      ]
     }
   ]
 }
