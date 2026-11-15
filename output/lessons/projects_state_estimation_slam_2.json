@@ -726,6 +726,223 @@
         "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/srv/SerializePoseGraph.srv",
         "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/README.md"
       ]
+    },
+    {
+      "node_id": "p:separate-imu-bias-from-motion-in-replay",
+      "type": "project",
+      "name": "Separate IMU bias from motion in replay",
+      "summary": "Replay synthetic inertial measurements with known motion, gravity, and bias, then compare raw integration with bias correction without mistaking gravity or frame errors for sensor offsets.",
+      "lesson_md": "## In one sentence\n\nReplay synthetic inertial measurements with known motion, gravity, and bias, then compare raw integration with bias correction without mistaking gravity or frame errors for sensor offsets.\n\n![OpenVINS single-run trajectory error plots, a comparison format to reuse for bias experiments](/img/lessons/projects_state_estimation_slam_2-imu-bias.webp)\n*OpenVINS single-run trajectory error plots, a comparison format to reuse for bias experiments. Source: [Official documentation](https://docs.openvins.com/eval-error.html), license unknown.*\n\n## What you will learn\n\n- **An IMU**, an inertial measurement unit, measures angular velocity with gyroscopes and acceleration with accelerometers.\n- **Bias** is a sensor offset; **noise** is random variation. Integrating measurements accumulates their effects into orientation, velocity, and position errors.\n- **A coordinate frame** defines axis directions; gravity must be represented in the sensor's current frame before separating it from motion.\n- **Think debugging a counter:** correcting a constant increment error helps, but cannot fix reading increments in the wrong coordinate system.\n\n> **Key idea:** A stationary accelerometer still measures gravity; subtracting its entire mean would confuse gravity with bias.\n\n## What you need\n\n- **Complete Diff-drive odometry from scratch:** understand how sampled motion becomes a trajectory before adding inertial errors.\n- **Use synthetic measurements:** keep the true trajectory, gravity, sensor orientation, injected biases, noise seed, and stationary intervals as separate reference data.\n- **Use Python arrays and plots:** an existing computer needs no new IMU; budget compute and storage rather than promising free infrastructure.\n\n## Steps\n\n1. **Define a reproducible motion script:** include stationary and moving intervals with known rotations; generate acceleration and angular-rate measurements using the documented OpenVINS model.\n2. **Integrate without bias correction:** rotate acceleration into the world frame and remove gravity consistently; this baseline should expose bias, not deliberately broken frame handling.\n3. **Estimate stationary offsets:** average gyroscope readings at rest; subtract the known gravity projection from the accelerometer mean before treating the remainder as bias.\n4. **Replay with correction:** subtract estimated offsets before integration; compare estimated bias with injected bias and highlight the stationary calibration interval.\n5. **Challenge the assumptions:** change orientation and allow bias to vary; show why a fixed offset estimate is not a complete navigation solution.\n6. **Demo synchronized plots:** show raw measurements, bias estimates, velocity, and trajectory errors beside truth; distinguish improvement from elimination of drift.\n\n**Worked array example:** for a known fixed orientation at rest, `still` selects stationary samples and `gravity_body` is gravity expressed in that sensor frame.\n\n```python\ngyro_bias = gyro[still].mean(axis=0)\nacc_bias = accel[still].mean(axis=0) - gravity_body\ngyro_corrected = gyro - gyro_bias\nacc_corrected = accel - acc_bias\n```\n\n```mermaid\nflowchart LR\n  A[\"Known motion\"] --> B[\"Gravity and sensor errors\"]\n  B --> C[\"Raw integration\"]\n  B --> D[\"Estimate and subtract bias\"]\n  D --> E[\"Corrected integration\"]\n  C --> F[\"Compare with truth\"]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Do not equate zero acceleration with rest:** constant-speed motion can also have zero acceleration; keep the known synthetic stationary labels explicit.\n- **Do not remove gravity twice:** document whether the input contains gravity and which coordinate frame each operation uses.\n- **Do not claim global position recovery:** bias subtraction does not supply an external position reference or repair an incorrect initial orientation.\n\n## When it's done\n\n- **Deliver both replays:** shared inputs, calibration interval, bias errors, highlighted stationary periods, and motion-error plots make the improvement reproducible.\n",
+      "resources": [
+        {
+          "title": "Understanding Sensor Fusion and Tracking, Part 2: Fusing a Mag, Accel, & Gyro Estimate",
+          "url": "https://www.youtube.com/watch?v=0rlvvYgmTvI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains gyro integration, bias-driven drift, and the different information supplied by inertial sensors."
+        },
+        {
+          "title": "Preparing Your Data for Use with robot_localization",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Explains inertial coordinate conventions and the gravity reading of a stationary accelerometer."
+        },
+        {
+          "title": "Visual-Inertial Simulator",
+          "url": "https://docs.openvins.com/simulation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines synthetic inertial measurements with gravity, random noise, and time-varying bias."
+        },
+        {
+          "title": "System Evaluation » Filter Error Evaluation Methods",
+          "url": "https://docs.openvins.com/eval-error.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows the published error-plot format used to compare replay estimates with truth."
+        },
+        {
+          "title": "IMU Propagation Derivations",
+          "url": "https://docs.openvins.com/propagation.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Provides the bias, gravity, rotation, and integration model underlying the experiment."
+        },
+        {
+          "title": "Measurement Update Derivations » Zero Velocity Update",
+          "url": "https://docs.openvins.com/update-zerovelocity.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Explains stationarity tests and why zero acceleration alone cannot prove zero velocity."
+        }
+      ],
+      "sources": [
+        "https://docs.openvins.com/eval-error.html",
+        "https://www.youtube.com/watch?v=0rlvvYgmTvI",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+        "https://docs.openvins.com/simulation.html",
+        "https://docs.openvins.com/propagation.html",
+        "https://docs.openvins.com/update-zerovelocity.html"
+      ]
+    },
+    {
+      "node_id": "p:show-where-metric-scale-comes-from",
+      "type": "project",
+      "name": "Show where metric scale comes from",
+      "summary": "Replay monocular, stereo, and visual-inertial estimates on compatible recordings, then expose which measurements determine real-world distances and which evaluation alignments can hide scale errors.",
+      "lesson_md": "## In one sentence\n\nReplay monocular, stereo, and visual-inertial estimates on compatible recordings, then expose which measurements determine real-world distances and which evaluation alignments can hide scale errors.\n\n![ORB-SLAM3 stereo-inertial demonstration with camera imagery and reconstructed trajectory](/img/lessons/projects_state_estimation_slam_2-metric-scale.webp)\n*ORB-SLAM3 stereo-inertial demonstration with camera imagery and reconstructed trajectory. Source: [Official documentation](https://github.com/UZ-SLAMLab/ORB_SLAM3), license unknown.*\n\n## What you will learn\n\n- **Metric scale** means distances correspond to real units such as meters, rather than an arbitrary map size.\n- **Monocular** uses one camera; its purely visual reconstruction has unknown scale. **Stereo** uses two calibrated cameras whose known separation anchors distance.\n- **Visual-inertial estimation** combines images with an **IMU**, measuring acceleration and rotation; initialization must estimate scale, gravity, velocity, and sensor offsets.\n- **Think unit conversion:** a path stored in arbitrary units can have the right shape without representing the correct distance in meters.\n\n> **Key idea:** An evaluation that rescales every trajectory can erase the very metric-scale failure you are trying to measure.\n\n## What you need\n\n- **Complete Replay a public visual-inertial trajectory:** retain its lessons about calibration, coordinate frames, initialization, and independent references.\n- **Use ORB-SLAM3 and evo:** choose one supported EuRoC sequence containing stereo images, inertial data, calibration, and reference poses; no camera purchase is needed.\n- **Budget replay resources:** use an existing computer and record download, storage, and processing requirements rather than assuming all infrastructure is free.\n\n## Steps\n\n1. **Freeze one sequence:** retain its identity, timestamps, calibration, software revision, and full evaluation interval; do not choose a different route for each sensor mode.\n2. **Run pure monocular estimation:** use one image stream without inertial measurements; export its trajectory and record initialization delay, failures, and missing estimates.\n3. **Run stereo estimation:** provide both calibrated image streams and the matching configuration; preserve the camera separation instead of tuning it to match truth.\n4. **Run visual-inertial estimation:** use the supported configuration and synchronized IMU stream; retain scale-initialization behavior and failed starts, not only successful tracking.\n5. **Evaluate distance and shape separately:** record the fitted scale multiplier before applying it, then compare paths using the alignment rules below and identical reference coverage.\n6. **Demo three paths:** show images, reference overlays, initialization timelines, and scale results; identify which actual measurements supplied the distance information.\n\n**Worked evaluation example:** these are your exported filenames. Rotation-and-translation alignment preserves metric scale; only the scale-ambiguous monocular comparison also permits rescaling.\n\n```bash\nevo_ape tum reference.tum monocular.tum --align --correct_scale\nevo_ape tum reference.tum stereo.tum --align\nevo_ape tum reference.tum visual_inertial.tum --align\n```\n\n```mermaid\nflowchart LR\n  A[\"Same recording\"] --> B[\"One camera\"]\n  A --> C[\"Calibrated stereo\"]\n  A --> D[\"Camera and IMU\"]\n  B --> E[\"Scale and shape audit\"]\n  C --> E\n  D --> E\n```\n\n## Common pitfalls\n\n- **Do not hide stereo errors:** rescaling a metric trajectory can disguise wrong calibration or failed inertial initialization.\n- **Do not compare different origins blindly:** ORB-SLAM3 documents different reference frames for pure-visual and visual-inertial EuRoC outputs; apply the appropriate transformation.\n- **Do not treat initialization as instant:** a missing trajectory before successful initialization is missing coverage, not zero error.\n\n## When it's done\n\n- **Deliver a scale audit:** configurations, three exported trajectories, pre-rescaling scale discrepancies, alignment settings, and failed intervals reproduce the comparison.\n",
+      "resources": [
+        {
+          "title": "ORB-SLAM3: TUM-VI Stereo-Inertial, room1+magistrale1+magistrale5+slides1",
+          "url": "https://www.youtube.com/watch?v=HyLNq-98LRo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows stereo-inertial reconstruction and the tool outputs to reproduce."
+        },
+        {
+          "title": "ORB-SLAM3",
+          "url": "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Documents EuRoC sensor configurations, calibration, and the camera-versus-IMU evaluation frames."
+        },
+        {
+          "title": "Metrics",
+          "url": "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguishes rigid alignment from similarity alignment that also changes trajectory scale."
+        },
+        {
+          "title": "Inertial-Only Optimization for Visual-Inertial Initialization",
+          "url": "https://arxiv.org/abs/2003.05766",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains how initialization recovers metric scale alongside gravity, velocity, and inertial biases."
+        },
+        {
+          "title": "ORB-SLAM2: an Open-Source SLAM System for Monocular, Stereo and RGB-D Cameras",
+          "url": "https://arxiv.org/abs/1610.06475",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains monocular scale ambiguity and calibrated stereo distance information."
+        }
+      ],
+      "sources": [
+        "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+        "https://www.youtube.com/watch?v=HyLNq-98LRo",
+        "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+        "https://arxiv.org/abs/2003.05766",
+        "https://arxiv.org/abs/1610.06475",
+        "https://arxiv.org/pdf/2003.05766",
+        "https://arxiv.org/pdf/1610.06475"
+      ]
+    },
+    {
+      "node_id": "p:stage-a-sensor-dropout-fusion-challenge",
+      "type": "project",
+      "name": "Stage a sensor-dropout fusion challenge",
+      "summary": "Inject repeatable sensor outages into a fusion replay and compare continued measurement updates, prediction-only gaps, uncertainty, and recovery without silently freezing the estimator clock.",
+      "lesson_md": "## In one sentence\n\nInject repeatable sensor outages into a fusion replay and compare continued measurement updates, prediction-only gaps, uncertainty, and recovery without silently freezing the estimator clock.\n\n![Published PythonRobotics UKF localization baseline, not an injected-dropout result](/img/lessons/projects_state_estimation_slam_2-fusion-dropout.webp)\n*Published PythonRobotics UKF localization baseline, not an injected-dropout result. Source: [Official documentation](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/unscented_kalman_filter_localization/unscented_kalman_filter_localization.html), license unknown.*\n\n## What you will learn\n\n- **Sensor fusion** combines observations into one motion estimate; **prediction** advances the motion model, while **correction** incorporates a measurement.\n- **An IMU** measures acceleration and rotation; wheel odometry estimates movement from wheel measurements. Losing one does not imply losing both.\n- **Covariance** represents estimated uncertainty. It is a model output to compare with actual errors, not a guarantee that the estimate is correct.\n- **Think chaos testing:** interrupt selected message streams with a saved fault schedule, then compare identical inputs rather than manually unplugging sensors at unpredictable times.\n\n> **Key idea:** An IMU outage with valid wheel measurements still permits corrections; prediction-only operation starts when no usable measurements remain.\n\n## What you need\n\n- **Complete Fuse simulated wheel and IMU messages:** preserve its working ROS 2 configuration and a reference trajectory independent of the estimator.\n- **Use robot_localization:** its extended Kalman filter, **EKF**, locally approximates the model; its unscented filter, **UKF**, propagates representative sample states instead.\n- **Use an existing computer:** synthetic or compatible recorded messages avoid new hardware; budget processing and storage, and retain the replay clock.\n\n## Steps\n\n1. **Freeze a healthy baseline:** record wheel and IMU inputs, reference motion, configuration, message timestamps, output covariance, and processing time.\n2. **Inject an IMU-only gap:** withhold inertial messages but continue valid wheel updates; log which measurements were actually accepted.\n3. **Inject an all-sensor gap:** stop every usable measurement stream while the replay clock advances; verify new predicted outputs instead of repeated stale timestamps.\n4. **Restore the streams:** measure recovery delay, error, and abrupt pose changes; distinguish missing measurements from measurements rejected as invalid.\n5. **Vary uncertainty separately:** repeat with altered measurement covariance, then compare EKF and UKF under identical assumptions; report runtime, uncertainty, and reference errors.\n6. **Demo one shared timeline:** overlay outage windows, accepted updates, prediction-only periods, trajectory error, and uncertainty; publish the exact fault schedule.\n\n**Worked configuration example:** the supplied EKF configuration uses 30 Hz output and a 0.1-second sensor timeout. Verify prediction-only behavior during a complete measurement gap.\n\n```yaml\nfrequency: 30.0\nsensor_timeout: 0.1\n```\n\n```mermaid\nflowchart LR\n  A[\"Recorded messages\"] --> B[\"Saved outage schedule\"]\n  B --> C[\"Usable measurement?\"]\n  C --> D[\"Predict and correct\"]\n  C --> E[\"Predict only\"]\n  D --> F[\"Error and covariance\"]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Do not freeze time with the sensors:** keep the replay clock independent of the streams whose messages you suppress.\n- **Do not change everything together:** test missing messages and altered measurement covariance in separate runs before combining them.\n- **Do not reward false certainty:** compare covariance with reference errors, including whether uncertainty grows during unsupported motion.\n\n## When it's done\n\n- **Deliver the challenge bundle:** baseline, fixed outages, covariance-change runs, recovery traces, timestamps, and runtime measurements let another student reproduce both filters' behavior.\n- **Continue with Survive GNSS dropout and bad fixes in replay** to add corrupted global-position observations.\n",
+      "resources": [
+        {
+          "title": "Unscented Kalman Filter localization",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/unscented_kalman_filter_localization/unscented_kalman_filter_localization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Provides a runnable localization baseline and uncertainty visualization before adding fault injection."
+        },
+        {
+          "title": "ROSCon 2015 Hamburg: Day 2 - Tom Moore: Working with the robot localization Package",
+          "url": "https://vimeo.com/142624091",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains practical multisensor configuration and the robot_localization estimator design."
+        },
+        {
+          "title": "Configuring robot_localization",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains sensor selection and the uncertainty settings to keep consistent across challenge runs."
+        },
+        {
+          "title": "State Estimation Nodes",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines EKF/UKF behavior, sensor timeouts, prediction, and covariance parameters."
+        },
+        {
+          "title": "ekf.yaml",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/params/ekf.yaml",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Supplies the documented 30 Hz and 0.1-second worked configuration values."
+        }
+      ],
+      "sources": [
+        "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/unscented_kalman_filter_localization/unscented_kalman_filter_localization.html",
+        "https://vimeo.com/142624091",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/params/ekf.yaml"
+      ]
+    },
+    {
+      "node_id": "p:survive-gnss-dropout-and-bad-fixes-in-replay",
+      "type": "project",
+      "name": "Survive GNSS dropout and bad fixes in replay",
+      "summary": "Replay local motion with synthetic satellite-position outages and biased fixes, then compare unguarded fusion with measurement rejection while keeping drift, uncertainty, and recovery jumps visible.",
+      "lesson_md": "## In one sentence\n\nReplay local motion with synthetic satellite-position outages and biased fixes, then compare unguarded fusion with measurement rejection while keeping drift, uncertainty, and recovery jumps visible.\n\n![robot_localization satellite-position transformation and fusion workflow](/img/lessons/projects_state_estimation_slam_2-gnss-dropout.webp)\n*robot_localization satellite-position transformation and fusion workflow. Source: [Official documentation](https://github.com/cra-ros-pkg/robot_localization/blob/ros2/doc/integrating_gps.rst), license unknown.*\n\n## What you will learn\n\n- **GNSS** means global navigation satellite systems; GPS is one such system. A **fix** is a reported geographic position.\n- **An outage** removes fixes; **bias** moves their reported position. Multipath, signals arriving through reflections, can produce wrong positions rather than silence.\n- **Measurement gating** rejects observations inconsistent with the predicted state and uncertainty; it cannot prove that every accepted fix is correct.\n- **Think validating API input:** a syntactically valid location can still be wrong; accepting every packet is not the same as handling missing packets.\n\n> **Key idea:** Continuing to estimate during satellite loss is different from trusting satellite positions when they return.\n\n## What you need\n\n- **Complete Convert synthetic GNSS fixes into a local map frame** and **Stage a sensor-dropout fusion challenge** before combining coordinate conversion with fault injection.\n- **Use synthetic truth:** generate compatible wheel, inertial, and satellite messages with consistent timestamps, known frames, and explicit covariance; keep truth outside estimator inputs.\n- **Use robot_localization and navsat_transform_node:** the latter converts geographic fixes using heading and an existing pose estimate into the estimator's world coordinates.\n- **Use an existing computer:** no satellite receiver purchase is needed; budget compute and storage separately.\n\n## Steps\n\n1. **Run a clean baseline:** retain the known trajectory, sensor configuration, geographic origin, heading convention, and all estimated outputs.\n2. **Separate local and global estimates:** follow the documented two-filter pattern: local wheel/inertial fusion remains continuous while the global estimate also consumes transformed GNSS.\n3. **Inject distinct faults:** save fixed intervals for missing fixes, isolated outliers, and sustained biased positions; label the latter as synthetic corruption, not measured multipath.\n4. **Replay unguarded fusion:** keep other inputs identical and log drift, covariance, and jumps when satellite observations return or become inconsistent.\n5. **Enable a documented rejection gate:** tune on separate development faults; log rejection decisions and evaluate held-out corruptions, including gradually changing bias.\n6. **Demo the outdoor-style replay:** show truth, local and global paths, outage windows, rejected measurements, uncertainty, and recovery jumps; report when gating still fails.\n\n**Worked configuration example:** for transformed GNSS on `odom0`, fuse absolute positions rather than their differences. The example filter configuration supplies this illustrative rejection threshold.\n\n```yaml\nodom0_differential: false\nodom0_pose_rejection_threshold: 5.0\n```\n\n```mermaid\nflowchart LR\n  A[\"Wheel and IMU\"] --> B[\"Local estimate\"]\n  C[\"Satellite fixes\"] --> D[\"Outage and bias injector\"]\n  D --> E[\"Coordinate transform\"]\n  B --> E\n  E --> F[\"Global fusion and gate\"]\n  B --> F\n  F --> G[\"Truth and recovery audit\"]\n```\n\n## Common pitfalls\n\n- **Do not interpret missing fixes as zero position:** withhold messages, while valid local motion updates continue.\n- **Do not treat the threshold as meters:** rejection uses Mahalanobis distance, which accounts for predicted and measurement uncertainty.\n- **Do not promise bias immunity:** gradual corruption can remain consistent enough to pass the gate; report accepted bad fixes as failures.\n\n## When it's done\n\n- **Deliver a paired replay:** shared truth, corruption schedule, gated/unguarded configurations, rejection logs, drift, uncertainty, and recovery-jump measurements make the tradeoff inspectable.\n",
+      "resources": [
+        {
+          "title": "Understanding Sensor Fusion and Tracking, Part 3: Fusing a GPS and IMU to Estimate Pose",
+          "url": "https://www.youtube.com/watch?v=hN8dL55rP5I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains how satellite positions correct inertial drift and why both sensors contribute."
+        },
+        {
+          "title": "Integrating GPS Data",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/integrating_gps.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains the continuous-local and GNSS-corrected global two-filter setup."
+        },
+        {
+          "title": "navsat_transform_node",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/navsat_transform_node.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines required heading, pose, and satellite inputs and warns against differential fusion of transformed positions."
+        },
+        {
+          "title": "State Estimation Nodes",
+          "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Documents timeout and Mahalanobis-distance rejection parameters."
+        },
+        {
+          "title": "Feature request: discard erroneous measurements",
+          "url": "https://github.com/cra-ros-pkg/robot_localization/issues/417",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "The maintainer explains how state and measurement covariance affect outlier rejection."
+        }
+      ],
+      "sources": [
+        "https://github.com/cra-ros-pkg/robot_localization/blob/ros2/doc/integrating_gps.rst",
+        "https://www.youtube.com/watch?v=hN8dL55rP5I",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/integrating_gps.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/navsat_transform_node.rst",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+        "https://github.com/cra-ros-pkg/robot_localization/issues/417",
+        "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/params/ekf.yaml",
+        "https://www.gps.gov/gps-accuracy"
+      ]
     }
   ]
 }
