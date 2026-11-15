@@ -810,6 +810,134 @@
       "sources": [
         "https://www.fanuc.eu/eu-en/accessory/software/simulation-software-roboguide"
       ]
+    },
+    {
+      "node_id": "r:fast-tokenizer",
+      "type": "robot",
+      "name": "FAST tokenizer",
+      "summary": "FAST tokenizer compresses chunks of continuous robot actions into discrete tokens that sequence models can learn to predict.",
+      "lesson_md": "## In one sentence\n\nFAST tokenizer compresses chunks of continuous robot actions into discrete tokens that sequence models can learn to predict.\n\n![Published FAST paper figure explaining action-sequence tokenization and robot learning](/img/lessons/robots_simulator_tool_2-fast-tokenizer.webp)\n*Published FAST paper figure explaining action-sequence tokenization and robot learning. Source: [Publisher](https://arxiv.org/html/2501.09747v1), license unknown.*\n\n## Why it matters for us\n\n- **Actions are not words**: a robot command is usually a vector of numbers; a language-style model needs a representation that converts those numbers into tokens.\n- **Software analogy**: FAST acts like a compression codec between a numerical time series and a token-based model, rather than being the robot controller itself.\n\n## What it is made of / how it works\n\n- **Transform the chunk**: the discrete cosine transform expresses each action channel as frequency components, capturing patterns across time rather than treating every sample independently.\n- **Quantize and compress**: round those components, flatten them and apply byte-pair encoding to obtain dense discrete action tokens.\n- **Decode back to actions**: reconstruction needs both the number of timesteps and the action dimension; compressing actions is separate from choosing good actions.\n\n| Released tokenizer detail | Published value |\n| --- | --- |\n| Expanded name | Frequency-space Action Sequence Tokenization |\n| Universal release | FAST+ |\n| FAST+ training data | 1 million real robot action sequences |\n| Recommended chunk | 1 second |\n| Recommended input range | Normalized to [-1, 1] |\n| Model-card example shape | 256 × 50 × 14 |\n\n- **Worked example**: the example shape means 256 chunks, each containing 50 timesteps with 14 action values per timestep; tokens encode each whole chunk.\n- **Compare reconstruction** against the original normalized actions before training a policy; rounding means an encode/decode cycle need not preserve every number exactly.\n\n> **Key idea:** FAST changes how actions are represented for learning; it does not supply a trained robot policy by itself.\n\n## Key terms\n\n- **Action chunk**: a short sequence of robot commands.\n- **Token**: a discrete symbol represented by an integer identifier.\n- **Quantization**: replacing continuous values with a finite set of representable values.\n- **Byte-pair encoding**: compression that merges recurring symbol sequences.\n\n## Getting started\n\n1. **Watch the authors' demonstrations** on the research page and distinguish the tokenizer from the complete vision-language-action policy using it.\n2. **Read the public model card** and install its listed Python dependencies in an isolated environment; this exercise needs no physical robot.\n3. **Inspect the processor source** before loading custom code through `trust_remote_code=True`, then encode the card's dummy action data.\n4. **Decode and plot a channel**, checking input normalization and shape metadata before testing recorded robot commands.\n\n## Used in\n\n- **Action chunking & action tokenization** explains the representation problem.\n- **FAST action compression oscilloscope** and **Frequency-aware token allocation study** can compare reconstructed signals and token counts across action patterns.\n",
+      "resources": [
+        {
+          "title": "FAST: Efficient Robot Action Tokenization",
+          "url": "https://www.pi.website/research/fast",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch Physical Intelligence demonstrate policies trained using FAST."
+        },
+        {
+          "title": "physical-intelligence/fast · Hugging Face",
+          "url": "https://huggingface.co/physical-intelligence/fast",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Encode and decode action chunks using the official examples."
+        },
+        {
+          "title": "processing_action_tokenizer.py · physical-intelligence/fast at main",
+          "url": "https://huggingface.co/physical-intelligence/fast/blob/main/processing_action_tokenizer.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the DCT, rounding and decoding implementation."
+        },
+        {
+          "title": "FAST: Efficient Action Tokenization for Vision-Language-Action Models",
+          "url": "https://arxiv.org/abs/2501.09747",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the method and its evaluation on robot policies."
+        }
+      ],
+      "sources": [
+        "https://www.pi.website/research/fast",
+        "https://huggingface.co/physical-intelligence/fast",
+        "https://huggingface.co/physical-intelligence/fast/blob/main/processing_action_tokenizer.py",
+        "https://arxiv.org/abs/2501.09747",
+        "https://arxiv.org/html/2501.09747v1"
+      ]
+    },
+    {
+      "node_id": "r:fast-lio2",
+      "type": "robot",
+      "name": "FAST-LIO2",
+      "summary": "FAST-LIO2 estimates sensor motion and builds a point-cloud map by combining laser scans with inertial measurements in an iterated filter.",
+      "lesson_md": "## In one sentence\n\nFAST-LIO2 estimates sensor motion and builds a point-cloud map by combining laser scans with inertial measurements in an iterated filter.\n\n![FAST-LIO repository visualization of an indoor point-cloud mapping result](/img/lessons/robots_simulator_tool_2-fast-lio2.webp)\n*FAST-LIO repository visualization of an indoor point-cloud mapping result. Source: [Publisher](https://github.com/hku-mars/FAST_LIO), license unknown.*\n\n## Why it matters for us\n\n- **Motion needs a reference**: a mobile robot must estimate how it moves before its sensor observations can become a consistent map.\n- **Software analogy**: an inertial prediction is a cached estimate; each new laser scan provides evidence that updates the estimate and the spatial index.\n\n## What it is made of / how it works\n\n- **Predict with the IMU**: an inertial measurement unit supplies acceleration and angular-motion observations between laser scans.\n- **Register raw points**: FAST-LIO2 aligns LiDAR points directly to the map instead of requiring a separate edge-and-plane feature-extraction stage.\n- **Update the filter and map**: an iterated Kalman filter refines the estimated state; the incremental k-d tree supports inserting and removing map points efficiently.\n\n| Reference implementation property | Published detail |\n| --- | --- |\n| Main inputs | LiDAR points and IMU data |\n| Estimation approach | Tightly coupled iterated Kalman filter |\n| Map structure | ikd-Tree |\n| Supported sensor patterns | Spinning and solid-state LiDAR |\n| Example replay | Livox Avia ROS bag |\n| Saved point-cloud file | scans.pcd |\n\n- **Worked example**: the documented Avia replay launches `mapping_avia.launch`, then plays a recorded bag; the configuration selects `/livox/lidar` and `/livox/imu` as input topics.\n- **Preserve per-point timing**: scans are collected while the sensor moves, so individual point timestamps matter for compensating motion within a scan.\n- **Check calibration**: the configured translation and rotation describe the LiDAR relative to the IMU, not arbitrary mounting dimensions you can copy between rigs.\n\n> **Key idea:** Correct timestamps and sensor-to-sensor geometry are part of the estimator's input, not optional cleanup after mapping.\n\n## Key terms\n\n- **LiDAR**: laser-based ranging that measures surrounding surfaces.\n- **Odometry**: estimating motion incrementally from sensor observations.\n- **Point cloud**: a collection of three-dimensional measured points.\n- **Extrinsic calibration**: the fixed position and orientation between sensors.\n\n## Getting started\n\n1. **Watch the authors' FAST-LIO2 video** and inspect the public repository's recorded-data examples before buying sensors.\n2. **Prepare a compatible environment** from the repository requirements; its documented launch commands use ROS 1, not interchangeable ROS 2 commands.\n3. **Replay a supplied example** with matching topics, timestamps and configuration, keeping the known sensor geometry rather than guessing new values.\n4. **Inspect trajectory and map output**, then save the point cloud; evaluate motion accuracy separately from how dense the visualization looks.\n\n## Used in\n\n- **Compare lidar filtering and smoothing on one bag** can contrast this filter-based approach with another estimator on identical recordings.\n- **Estimator calibration, timing & observability** and **3D lidar-inertial odometry & mapping** explain prerequisites for interpreting the results.\n",
+      "resources": [
+        {
+          "title": "FAST-LIO2: Fast Direct LiDAR-inertial Odometry",
+          "url": "https://www.youtube.com/watch?v=2OvjGnxszf8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors demonstrate fast motion and mapping."
+        },
+        {
+          "title": "FAST_LIO",
+          "url": "https://github.com/hku-mars/FAST_LIO",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Follow recorded-data replay and inspect timestamp requirements."
+        },
+        {
+          "title": "FAST_LIO/config/avia.yaml at main · hku-mars/FAST_LIO · GitHub",
+          "url": "https://github.com/hku-mars/FAST_LIO/blob/main/config/avia.yaml",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Identify input topics and sensor-to-sensor calibration settings."
+        },
+        {
+          "title": "FAST-LIO2: Fast Direct LiDAR-inertial Odometry",
+          "url": "https://arxiv.org/abs/2107.06829",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study raw-point registration and incremental map maintenance."
+        }
+      ],
+      "sources": [
+        "https://github.com/hku-mars/FAST_LIO",
+        "https://github.com/hku-mars/FAST_LIO/blob/main/config/avia.yaml",
+        "https://arxiv.org/abs/2107.06829"
+      ]
+    },
+    {
+      "node_id": "r:fast-livo2",
+      "type": "robot",
+      "name": "FAST-LIVO2",
+      "summary": "FAST-LIVO2 combines laser scans, inertial measurements and camera images to estimate motion and reconstruct a three-dimensional environment.",
+      "lesson_md": "## In one sentence\n\nFAST-LIVO2 combines laser scans, inertial measurements and camera images to estimate motion and reconstruct a three-dimensional environment.\n\n![Official FAST-LIVO2 framework diagram showing the multisensor estimation pipeline](/img/lessons/robots_simulator_tool_2-fast-livo2.webp)\n*Official FAST-LIVO2 framework diagram showing the multisensor estimation pipeline. Source: [Publisher](https://github.com/hku-mars/FAST-LIVO2), license unknown.*\n\n## Why it matters for us\n\n- **Different sensors provide different evidence**: cameras observe appearance, lasers measure scene geometry, and inertial sensors describe motion between those observations.\n- **Software analogy**: merging three event streams only works if their timestamps and coordinate conventions agree; adding streams does not automatically improve the result.\n\n## What it is made of / how it works\n\n- **Predict and update**: inertial data predicts state, then LiDAR and image measurements update an error-state iterated Kalman filter sequentially.\n- **Use direct measurements**: the laser module registers raw points; the visual module minimizes brightness differences between image patches rather than extracting corner descriptors.\n- **Share one voxel map**: three-dimensional cells organize geometric points and their associated image patches so both measurement types refer to the same scene.\n\n| Published framework property | Detail |\n| --- | --- |\n| Sensor streams | LiDAR, IMU, camera |\n| Filter update | Sequential LiDAR and visual updates |\n| Shared representation | Unified voxel map |\n| Visual comparison | Direct photometric error |\n| Code release | 23 January 2025 |\n| Main code licence | GPLv2 |\n\n- **Worked example**: the handheld rig records `/livox/lidar`, `/livox/imu` and `left_camera/image` together; these are three related streams, not three independent maps.\n- **Synchronization happens at acquisition**: the associated hardware repository provides a trigger scheme, microcontroller code and wiring instructions, not just a software launch file.\n- **Calibration links frames**: LiDAR-camera extrinsic parameters belong in the configuration; a sharp image cannot compensate for incorrect sensor alignment.\n\n> **Key idea:** Multisensor fusion starts with well-aligned measurements in time and space, before any sophisticated estimation algorithm runs.\n\n## Key terms\n\n- **IMU**: an inertial measurement unit sensing acceleration and angular motion.\n- **Voxel**: a small cell in a three-dimensional spatial grid.\n- **Photometric error**: a difference between observed image brightness values.\n- **Hardware synchronization**: coordinated sensor capture driven by shared timing signals.\n\n## Getting started\n\n1. **Watch the accompanying demonstration** and read the public code requirements; replaying recordings avoids assembling a sensor rig for the first exercise.\n2. **Follow the repository's dataset links** and documented environment, noting its ROS 1 build and launch workflow.\n3. **Replay the example configuration** with `mapping_avia.launch` and a matching bag, checking all three input streams before interpreting the map.\n4. **Inspect the rig documentation** before recording new data; treat trigger timing, calibration and image format as explicit integration tasks.\n\n## Used in\n\n- **Engineer a synchronized lidar-camera-IMU mapper** directly exercises this integration workflow.\n- **Estimator calibration, timing & observability** supplies the prerequisites; **3D lidar-inertial odometry & mapping** provides a useful comparison without visual measurements.\n",
+      "resources": [
+        {
+          "title": "FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry",
+          "url": "https://www.youtube.com/watch?v=6dF2DzgbtlY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors demonstrate multisensor localization and reconstruction."
+        },
+        {
+          "title": "FAST-LIVO2",
+          "url": "https://github.com/hku-mars/FAST-LIVO2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read the official setup, example replay and dataset pointers."
+        },
+        {
+          "title": "LiDAR_Inertial_Visual_Handhold",
+          "url": "https://github.com/xuankuzcr/LIV_handhold",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the sensor rig, trigger scheme and recorded topics."
+        },
+        {
+          "title": "FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry",
+          "url": "https://arxiv.org/abs/2408.14035",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study sequential fusion and the unified voxel representation."
+        }
+      ],
+      "sources": [
+        "https://github.com/hku-mars/FAST-LIVO2",
+        "https://github.com/xuankuzcr/LIV_handhold",
+        "https://arxiv.org/abs/2408.14035"
+      ]
     }
   ]
 }
