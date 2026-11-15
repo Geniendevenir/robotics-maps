@@ -1,0 +1,221 @@
+{
+  "batch": "projects_simulation_1",
+  "lessons": [
+    {
+      "node_id": "p:action-ignored-video-simulator-detector",
+      "type": "project",
+      "name": "Action-ignored video simulator detector",
+      "summary": "Build paired-action tests that reveal whether a learned video simulator responds to commands rather than merely predicting plausible motion.",
+      "lesson_md": "## In one sentence\n\nBuild paired-action tests that reveal whether a learned video simulator responds to commands rather than merely predicting plausible motion.\n\n![Dreamer authors’ montage of simulated control environments](/img/lessons/projects_simulation_1-action-ignored-video-simulator-detector.webp)\n*Dreamer authors’ montage of simulated control environments. Source: [Official source](https://danijar.com/project/dreamerv3/), license unknown.*\n\n## What you will learn\n\n- **Action conditioning** means predicted futures depend on the command, not just the starting image; Dreamer learns an environment model used for imagined behavior.\n- **A causal probe** changes one input while holding the others fixed, like testing whether an API actually uses its request parameter.\n- **Start with the map project** Imagined pendulum rollout microscope, then turn its prediction viewer into an automated paired-action test.\n\n> **Key idea:** A convincing video is not evidence that changing the command changes the predicted future.\n\n## What you need\n\n- **Use a toy pendulum**, recorded actions and a trained prediction model with accessible rollout code; DreamerV3 is a starting implementation, not a ready-made detector.\n- **Budget for model training:** no robot is required; compute cost is unknown. Save model weights, preprocessing and the simulator revision alongside the test cases.\n\n## Steps\n\n1. **Freeze the initial observation** and model memory; branch the same saved state into paired rollouts with matched random draws.\n2. **Apply opposite legal torques**, then compare predicted angle traces against corresponding physics rollouts; keep observation history identical until the intervention.\n3. **Add a deliberately broken baseline** that replaces every action with zero. Your detector should distinguish it from a responsive model.\n4. **Exercise empty and invalid inputs:** blank images should receive a named status; reject out-of-range commands rather than silently treating them as valid.\n5. **Publish a synchronized demo** showing starting image, action arrows, predicted motion and a table of paired differences, including failed model loads.\n\n```mermaid\nflowchart LR\n  S[Saved start] --> A[Opposite actions]\n  A --> M[Model futures]\n  M --> C[Compare responses]\n```\n\n## Common pitfalls\n\n- **Uncontrolled sampling** can create differences even when actions are ignored; repeat pairs with matched randomness and report variation.\n- **Pixel change alone** can reflect background motion. Measure task state where available and do not label every small difference a successful causal response.\n\n## When it's done\n\n- **Proposed miniature test:** compare positive, zero and negative torque from one saved pendulum start; these are test conditions, not claimed model results.\n- **Deliver a scorecard** with response magnitude, disagreement with physics, trial count and explicit exceptions; report inconclusive pairs instead of hiding them.",
+      "resources": [
+        {
+          "title": "Mastering Diverse Control Tasks through World Models",
+          "url": "https://danijar.com/project/dreamerv3/",
+          "format": "Video",
+          "why": "Watch the authors’ control rollouts; use them as context, not proof that your model passes this audit.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Pendulum - Gymnasium Documentation",
+          "url": "https://gymnasium.farama.org/environments/classic_control/pendulum/",
+          "format": "Docs",
+          "why": "Use the documented pendulum observations and bounded torque actions for paired intervention tests.",
+          "level": "Beginner"
+        },
+        {
+          "title": "danijar/dreamerv3: Mastering Diverse Domains through World Models",
+          "url": "https://github.com/danijar/dreamerv3",
+          "format": "Repo",
+          "why": "Inspect model training and checkpoint configuration before instrumenting predictions.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Mastering Diverse Domains through World Models",
+          "url": "https://arxiv.org/abs/2301.04104",
+          "format": "Paper",
+          "why": "Read how Dreamer learns dynamics and improves behavior using imagined trajectories.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://danijar.com/project/dreamerv3/",
+        "https://gymnasium.farama.org/environments/classic_control/pendulum/",
+        "https://github.com/danijar/dreamerv3",
+        "https://arxiv.org/abs/2301.04104"
+      ]
+    },
+    {
+      "node_id": "p:adaptive-fidelity-regression-gate",
+      "type": "project",
+      "name": "Adaptive fidelity regression gate",
+      "summary": "Create an automated gate that rejects simulator changes when motion errors exceed tolerances declared before the comparison.",
+      "lesson_md": "## In one sentence\n\nCreate an automated gate that rejects simulator changes when motion errors exceed tolerances declared before the comparison.\n\n![MuJoCo example scene with a hinged body above a floor](/img/lessons/projects_simulation_1-adaptive-fidelity-regression-gate.webp)\n*MuJoCo example scene with a hinged body above a floor. Source: [Official source](https://mujoco.readthedocs.io/en/stable/overview.html), license unknown.*\n\n## What you will learn\n\n- **Time stepping** advances motion in discrete increments; the integrator is the algorithm that turns forces and current state into the next state.\n- **Numerical fidelity** concerns agreement with a reference, not how attractive the rendering looks. Treat an engine update like changing a database implementation behind an API.\n- **Related project:** Simulation speed versus fidelity dashboard provides plots to convert into repeatable acceptance criteria rather than choosing thresholds after seeing the new engine.\n\n> **Key idea:** A faster configuration is useful only when its errors remain acceptable for the task being tested.\n\n## What you need\n\n- **Use MuJoCo and Python** with a free-swinging joint and a constrained scene; store model files, solver settings and starting states in version control.\n- **No robot purchase is needed:** use an existing computer. Compute cost is unknown; begin with a small scene before allocating larger experiments.\n\n## Steps\n\n1. **Define reference traces** for free motion and constrained motion; record positions, velocities and elapsed simulation time, with units and sampling times.\n2. **Declare separate tolerances** for motion error and runtime before running the candidate configuration; explain which downstream behavior each tolerance protects.\n3. **Run candidate configurations** using identical initial states and commands. Vary timestep or solver effort while keeping the scene and comparison horizon fixed.\n4. **Check convergence** by refining the reference timestep; call it a numerical reference rather than physical ground truth.\n5. **Inject failure cases:** an empty test suite, missing model and non-finite state must fail visibly, never count as zero error.\n6. **Demo the gate** accepting a saved baseline and rejecting a deliberately degraded configuration; attach both trajectories and the machine-readable decision.\n\n```mermaid\nflowchart LR\n  B[Baseline traces] --> C[Candidate run]\n  C --> E[Measure errors]\n  E --> G[Accept or reject]\n```\n\n## Common pitfalls\n\n- **Different sample times** can look like motion drift. Align trajectories by simulation time before subtracting positions.\n- **One global average** can hide a broken constraint; retain per-scene maximum errors and report which assertion failed.\n\n## When it's done\n\n- **Proposed example:** compare one joint at a chosen timestep and at half that timestep; write down your tolerance before looking at either result.\n- **Ship a reproducible command** returning a failing exit status on rejected runs, plus configuration hashes and plots another student can regenerate.",
+      "resources": [
+        {
+          "title": "8.5. Forward Dynamics of Open Chains – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+          "format": "Video",
+          "why": "Watch forward dynamics and numerical integration before designing trajectory checks.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Overview - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/overview.html",
+          "format": "Docs",
+          "why": "Locate the simulation pipeline and understand numerical integration choices.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Python - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/python.html",
+          "format": "Docs",
+          "why": "Use Python state access to collect repeatable comparison traces.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Simulation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/programming/simulation.html",
+          "format": "Docs",
+          "why": "Inspect simulation stepping and state initialization details.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+        "https://mujoco.readthedocs.io/en/stable/overview.html",
+        "https://mujoco.readthedocs.io/en/stable/python.html",
+        "https://mujoco.readthedocs.io/en/stable/programming/simulation.html"
+      ]
+    },
+    {
+      "node_id": "p:backend-portability-learning-microbenchmark",
+      "type": "project",
+      "name": "Backend portability learning microbenchmark",
+      "summary": "Implement one small learning task on two simulator backends and separate API mismatches, simulation cost and learned policy quality.",
+      "lesson_md": "## In one sentence\n\nImplement one small learning task on two simulator backends and separate API mismatches, simulation cost and learned policy quality.\n\n![MuJoCo example scene with a hinged body above a floor](/img/lessons/projects_simulation_1-backend-portability-learning-microbenchmark.webp)\n*MuJoCo example scene with a hinged body above a floor. Source: [Official source](https://mujoco.readthedocs.io/en/stable/overview.html), license unknown.*\n\n## What you will learn\n\n- **A backend** is the engine underneath the task API; swapping it resembles replacing a storage driver without changing the application contract.\n- **A policy** maps observations to actions. Identical training code is not a fair comparison if rewards, action units or episode endings differ.\n- **Inspect** GPU-parallel simulation & vectorized environments before timing experiments; GPU means graphics processing unit, used here to advance many worlds together.\n\n> **Key idea:** First prove the task means the same thing on both backends; only then compare learning.\n\n## What you need\n\n- **Choose a state-based balance task**, meaning observations contain numeric positions and velocities rather than images. Use two documented environments and a common training baseline.\n- **Pin the software revisions** and record accelerator, driver and precision. No robot is needed; hardware availability and compute cost depend on your existing machine.\n\n## Steps\n\n1. **Write the task contract:** list observation order, action scaling, reward terms, reset distribution and time limit before implementing the adapters.\n2. **Replay fixed action sequences** on both backends without learning; inspect trajectories for sign, unit and control-period mistakes.\n3. **Test resets and endings**, including an empty action batch and failed environment creation; distinguish task failure from reaching the time limit.\n4. **Measure startup separately** from steady stepping. Synchronize accelerator work before stopping the timer and record rendering separately.\n5. **Train the same baseline** with matched interaction budgets and several recorded seeds; keep evaluation starts outside training.\n6. **Demo a side-by-side replay** with learning curves and separate tables for API correctness, runtime and task success.\n\n```mermaid\nflowchart LR\n  T[Task contract] --> A[Two adapters]\n  A --> R[Replay checks]\n  R --> L[Matched learning runs]\n```\n\n## Common pitfalls\n\n- **Current versus older examples** may use different stacks. Read the pinned Playground revision instead of assuming every example still uses MJX.\n- **A faster step loop** does not establish better learning; also report environment interactions and evaluation success, including runs that crashed.\n\n## When it's done\n\n- **Proposed contract example:** both adapters expose angle before angular velocity, and positive action has the same direction; verify this with a scripted pulse.\n- **Deliver an adapter test suite** and a results manifest so another student can tell backend differences from task-definition mistakes.",
+      "resources": [
+        {
+          "title": "MuJoCo Playground",
+          "url": "https://playground.mujoco.org/",
+          "format": "Video",
+          "why": "Watch the embedded launch reel and inspect the balance-task quickstart as a concrete backend workflow.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Creating a Direct Workflow RL Environment — Isaac Lab Documentation",
+          "url": "https://isaac-sim.github.io/IsaacLab/main/source/how-to/create_direct_rl_env.html",
+          "format": "Docs",
+          "why": "Study how observations, rewards, resets and episode endings are defined in a direct RL environment.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "GPU Simulation — ManiSkill 3.0.1 documentation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+          "format": "Docs",
+          "why": "Understand batching and sub-scene semantics before designing equivalent tasks.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "google-deepmind/mujoco_playground: An open-source library for sim and real robot demos on top of MuJoCo.",
+          "url": "https://github.com/google-deepmind/mujoco_playground",
+          "format": "Repo",
+          "why": "Pin the implementation used for the learning baseline and inspect its training entry points.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://playground.mujoco.org/",
+        "https://isaac-sim.github.io/IsaacLab/main/source/how-to/create_direct_rl_env.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+        "https://github.com/google-deepmind/mujoco_playground",
+        "https://mujoco.readthedocs.io/en/stable/overview.html"
+      ]
+    },
+    {
+      "node_id": "p:batch-reset-correctness-kaleidoscope",
+      "type": "project",
+      "name": "Batch-reset correctness kaleidoscope",
+      "summary": "Build a tiled viewer and automated checks proving that resetting selected simulated worlds leaves their neighboring worlds unchanged.",
+      "lesson_md": "## In one sentence\n\nBuild a tiled viewer and automated checks proving that resetting selected simulated worlds leaves their neighboring worlds unchanged.\n\n![ManiSkill diagram showing the relationship between a scene and its sub-scenes](/img/lessons/projects_simulation_1-batch-reset-correctness-kaleidoscope.webp)\n*ManiSkill diagram showing the relationship between a scene and its sub-scenes. Source: [Official source](https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html), license unknown.*\n\n## What you will learn\n\n- **A vectorized environment** stores many worlds in arrays and advances them together; a partial reset should change only the selected rows.\n- **Think of database isolation:** resetting one tenant must not overwrite another tenant’s state, random generator or accumulated episode statistics.\n- **ManiSkill documents a physical trap:** objects leaving a sub-scene can interact with neighboring sub-scenes when spacing is insufficient. Array isolation alone is not enough.\n\n> **Key idea:** Partial reset correctness includes hidden state and neighboring motion, not just the reset world’s visible position.\n\n## What you need\n\n- **Use a documented parallel simulator** such as ManiSkill or MJX, a toy scene, fixed random seeds and access to state before and after reset.\n- **Plan a simulation-only exercise:** no robot is required; accelerator memory requirements and compute cost are unknown until measured on your chosen machine.\n\n## Steps\n\n1. **Create visibly distinct worlds** with recorded seeds, then label each tile with world index and episode counter.\n2. **Snapshot all relevant state:** positions, velocities, task counters and random-generator state where available; preserve a no-reset control run.\n3. **Reset a selected subset**, then compare untouched worlds against their corresponding control states before taking another simulation step.\n4. **Test boundary selections:** no worlds, every world, repeated indices and invalid indices; document whether the API rejects or normalizes each request.\n5. **Check physical separation** by advancing the scene and detecting unintended cross-world contacts; include deliberately inadequate spacing as a diagnostic case.\n6. **Demo the kaleidoscope** with reset events highlighted and failing assertions visible beside the tile grid.\n\n```mermaid\nflowchart LR\n  S[Snapshot batch] --> R[Reset subset]\n  R --> C[Compare untouched worlds]\n  C --> V[Tiled report]\n```\n\n## Common pitfalls\n\n- **Fresh observations can conceal stale memory:** inspect controller buffers and episode lengths, not just positions returned by the next observation call.\n- **Expected random changes** must be distinguished from corruption; match seeds and compare against an untouched control execution.\n\n## When it's done\n\n- **Proposed example:** snapshot worlds A, B and C, reset B, and assert A and C retain their saved state before stepping.\n- **Publish an isolation report** with selected indices, before/after differences, reset failures and a replay command; an empty selection must be explicitly covered.",
+      "resources": [
+        {
+          "title": "MuJoCo Playground",
+          "url": "https://playground.mujoco.org/",
+          "format": "Video",
+          "why": "See many robot tasks rendered in the launch reel before building your tiled diagnostic.",
+          "level": "Beginner"
+        },
+        {
+          "title": "GPU Simulation — ManiSkill 3.0.1 documentation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+          "format": "Docs",
+          "why": "Read the sub-scene spacing warning and reset lifecycle that motivate the isolation assertions.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "MuJoCo XLA (MJX) - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/mjx.html",
+          "format": "Docs",
+          "why": "Understand batched data structures for parallel worlds.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "google-deepmind/mujoco_playground: An open-source library for sim and real robot demos on top of MuJoCo.",
+          "url": "https://github.com/google-deepmind/mujoco_playground",
+          "format": "Repo",
+          "why": "Inspect a maintained parallel training stack and pin the revision used for your demo.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://playground.mujoco.org/",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+        "https://mujoco.readthedocs.io/en/stable/mjx.html",
+        "https://github.com/google-deepmind/mujoco_playground"
+      ]
+    },
+    {
+      "node_id": "p:calibrated-so-101-digital-twin-that-predicts-real-policy-success",
+      "type": "project",
+      "name": "Calibrated SO-101 digital twin that predicts real policy success",
+      "summary": "Test whether a calibrated simulation of your SO-101 desk predicts the real success rates and ordering of five fixed policies.",
+      "lesson_md": "## In one sentence\n\nTest whether a calibrated simulation of your SO-101 desk predicts the real success rates and ordering of five fixed policies.\n\n![SO-101 follower arm used for tabletop experiments](/img/lessons/projects_simulation_1-calibrated-so-101-digital-twin-that-predicts-real-policy-success.webp)\n*SO-101 follower arm used for tabletop experiments. Source: [Official source](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **A digital twin** is a model of a particular physical setup, not simply a generic robot that looks similar.\n- **Calibration** fits model settings to measurements; **held-out evaluation** checks predictions on trials excluded from fitting, like a test suite not used during development.\n- **SIMPLER evaluates other robot embodiments**, so its results motivate this experiment but do not establish predictive accuracy for your SO-101.\n\n> **Key idea:** A twin earns trust by predicting unseen real outcomes, not by matching the images used to build it.\n\n## What you need\n\n- **Start after** Digital twin policy-ranking audit and the SO-101 calibration work; use an assembled SO-101, cameras, bounded commands and a simulator model.\n- **Budget is setup-dependent:** reuse existing hardware where possible. Total robot, camera and compute cost is unknown; keep purchases separate from the experimental claim.\n\n## Steps\n\n1. **Define one tabletop task** with an observable completion rule, fixed camera naming and a recorded set of starting object poses.\n2. **Collect calibration traces** for joint motion and camera alignment; fit only on these traces and keep evaluation trials separate.\n3. **Freeze five policy variants** and their input/output conventions before evaluation; do not silently retrain the worst policy midway.\n4. **Run matched simulation and real trials**, logging successes, misses, resets and aborted runs with their denominators.\n5. **Plot paired success rates** and rank agreement, meaning whether the same policy ordering appears in both settings; show ties and sampling uncertainty.\n6. **Demo synchronized clips** with the prediction made before each real trial and annotate cases where the twin was wrong.\n\n```mermaid\nflowchart LR\n  C[Calibration data] --> T[Frozen twin]\n  T --> S[Sim predictions]\n  S --> R[Real trials]\n  R --> A[Audit agreement]\n```\n\n## Common pitfalls\n\n- **A pretty reconstruction** can still have wrong contact geometry or actuator behavior. Validate motion and camera alignment separately.\n- **Keep the real workspace clear**, validate bounded joint commands and retain a stop procedure before running any fixed policy on hardware.\n\n## When it's done\n\n- **Proposed comparison:** label policies A through E and publish every simulation/real outcome pair; five is the project scope, not a guarantee of statistical power.\n- **Deliver reproducible evidence** including calibration split, policy revisions, trial counts and disagreement analysis; never claim prediction from a single successful clip.",
+      "resources": [
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies\nin Simulation",
+          "url": "https://simpler-env.github.io/",
+          "format": "Video",
+          "why": "Watch paired real/sim rollouts and the system-identification comparison; note the robots are not SO-101.",
+          "level": "Beginner"
+        },
+        {
+          "title": "SO-101 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "why": "Check the physical arm calibration workflow before collecting real motion traces.",
+          "level": "Beginner"
+        },
+        {
+          "title": "simpler-env/SimplerEnv: Evaluating and reproducing real-world robot manipulation policies (e.g., RT-1, RT-1-X, Octo) in simulation under common setups (e.g., Google Robot, WidowX+Bridge) (CoRL 2024)",
+          "url": "https://github.com/simpler-env/SimplerEnv",
+          "format": "Repo",
+          "why": "Inspect the separation of visual matching and real-policy evaluation.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "spearmanr — SciPy v1.18.0 Manual",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html",
+          "format": "Docs",
+          "why": "Compute rank correlation while understanding ties and statistical limitations.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://simpler-env.github.io/",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://github.com/simpler-env/SimplerEnv",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html"
+      ]
+    }
+  ]
+}
