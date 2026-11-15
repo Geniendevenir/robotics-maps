@@ -1,0 +1,495 @@
+{
+  "batch": "projects_control_1",
+  "lessons": [
+    {
+      "node_id": "p:acrobot-swing-up-then-lqr-catch",
+      "type": "project",
+      "name": "Acrobot swing-up then LQR catch",
+      "summary": "Plan a swing-up for a simulated acrobot with trajectory optimization, then hand over to an LQR controller that catches and holds it upright.",
+      "lesson_md": "## In one sentence\n\nPlan a swing-up for a simulated acrobot with trajectory optimization, then hand over to an LQR controller that catches and holds it upright.\n\n![Diagram of the acrobot: two links hanging from a fixed shoulder, with a motor only at the elbow](/img/lessons/projects_control_1-acrobot.webp)\n*The acrobot: a two-link arm with a motor at the elbow only. Source: [Underactuated Robotics, Ch. 3](https://underactuated.csail.mit.edu/acrobot.html), license unknown.*\n\n## What you will learn\n\n- **Acrobot:** A planar two-link arm with an actuator at the elbow and none at the shoulder, so you cannot command every joint.\n- **Direct collocation:** A trajectory optimization method that finds a whole swing-up motion by solving for states and torques together.\n- **Controller switching:** Using one controller far from the goal and a second, LQR (Linear Quadratic Regulator), near upright.\n- **Region of attraction:** The set of states LQR can actually recover from, which decides when to switch.\n\n> **Key idea:** Trajectory optimization gets you close to the top; LQR is a local controller that only works once you are close.\n\n## What you need\n\n- **Software:** Drake (Python), which provides the acrobot model, direct collocation and `LinearQuadraticRegulator`.\n- **Warm-ups:** Balance a cart-pole with LQR and Pendulum swing-up with direct collocation.\n- **Skills:** Python, NumPy, and comfort reading state vectors.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Load the acrobot** in Drake and confirm the upright fixed point is both angles at the top with zero velocity.\n2. **Compute the catch gain** with LQR at upright and test it from small offsets.\n3. **Optimize the swing-up** with direct collocation from hanging down to upright, under a torque limit.\n4. **Seed the solver** with a straight-line state guess from start to goal; the book reports this was necessary for the acrobot.\n5. **Switch controllers** when the state is close to upright, then let LQR hold it.\n6. **Run a fixed trial set** with varied start states and count catches and failures.\n\n```mermaid\nflowchart LR\n  D[\"Hanging down\"] --> T[\"Collocation trajectory\"]\n  T --> C{\"Near upright?\"}\n  C -->|\"no\"| T\n  C -->|\"yes\"| L[\"LQR catch\"]\n  L --> U[\"Balanced upright\"]\n```\n\n## Common pitfalls\n\n- **Open-loop drift:** Replaying optimized torques without feedback drifts off the plan; stabilize it or switch early enough.\n- **Arbitrary switch threshold:** A threshold that is too loose hands LQR a state it cannot recover from.\n- **Solver failures:** Without a sensible initial guess, collocation often returns no solution.\n\n## When it's done\n\n- **Swing-up video:** The simulated acrobot goes from hanging to upright and stays there.\n- **Trial table:** Catch and failure counts over the fixed set, plus the switching rule you used.\n- **Stretch goal:** Replace the planned swing-up with an energy-pumping controller and compare, as in Energy-shaping pendulum swing-up.",
+      "resources": [
+        {
+          "title": "6.8210 Spring 2024 Lecture 5: Acrobots, Cart-poles, and Quadrotors I",
+          "url": "https://www.youtube.com/watch?v=UBPL0IbyJy4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "MIT lecture introducing the acrobot and its swing-up and balance task."
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.csail.mit.edu/acrobot.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Acrobot equations, upright fixed point, LQR balancing and energy-based swing-up."
+        },
+        {
+          "title": "Ch. 10 - Trajectory Optimization",
+          "url": "https://underactuated.csail.mit.edu/trajopt.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Direct collocation examples for the pendulum, acrobot and cart-pole swing-up."
+        },
+        {
+          "title": "Ch. 8 - Linear Quadratic Regulators",
+          "url": "https://underactuated.csail.mit.edu/lqr.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "The LQR theory and Drake call used for the catch controller."
+        }
+      ],
+      "sources": [
+        "https://underactuated.csail.mit.edu/acrobot.html",
+        "https://underactuated.csail.mit.edu/trajopt.html",
+        "https://underactuated.csail.mit.edu/lqr.html"
+      ]
+    },
+    {
+      "node_id": "p:admittance-hand-guiding-in-simulation",
+      "type": "project",
+      "name": "Admittance hand-guiding in simulation",
+      "summary": "Make a simulated arm move when you push on it, like hand-guiding a real cobot, and see how virtual mass, damping and stiffness change the feel.",
+      "lesson_md": "## In one sentence\n\nMake a simulated arm move when you push on it, like hand-guiding a real cobot, and see how virtual mass, damping and stiffness change the feel.\n\n![robosuite banner showing many simulated robot arms at tables](/img/lessons/projects_control_1-admittance.webp)\n*robosuite, one of the simulators you can use for this project. Source: [robosuite](https://robosuite.ai/), license unknown.*\n\n## What you will learn\n\n- **Admittance control:** A position-controlled robot with a force-torque sensor turns measured force into motion by moving its own setpoint.\n- **Virtual dynamics:** The controller makes the tool behave like `F = M*a + D*v + S*(x - x_d)`: chosen mass `M`, damping `D` and stiffness `S`.\n- **Damping ratio:** ros2_controllers lets you set `zeta = D / (2 * sqrt(M * S))` instead of `D`.\n- **Hand-guiding:** With zero stiffness the arm stays wherever you push it; with stiffness it springs back.\n\n> **Key idea:** You do not command a position; you choose how heavy, sticky and springy the robot should feel.\n\n## What you need\n\n- **Software:** ROS 2 with ros2_control and the `admittance_controller` from ros2_controllers, plus a kinematics plugin from kinematics_interface.\n- **Simulation:** Any simulated arm with a force-torque sensor in its robot description; robosuite is an alternative Python route.\n- **Warm-up:** PID tuning playground in simulation.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Load an arm** in simulation with a force-torque sensor at the wrist and a position or velocity command interface.\n2. **Configure the controller:** Set `ft_sensor.name`, `kinematics` and `admittance.selected_axes` for the axes allowed to move.\n3. **Start soft:** Choose `admittance.mass`, `damping_ratio` and `stiffness` values, with stiffness at zero for hand-guiding.\n4. **Push virtually:** Inject a force on the simulated sensor and record end-effector position and velocity.\n5. **Sweep parameters:** Repeat with heavier mass, higher damping and non-zero stiffness, then plot each response.\n6. **Hit a wall:** Add stiffness and move the target into a virtual wall to show the tool yielding against it.\n\n```mermaid\nflowchart LR\n  F[\"Measured force F\"] --> A[\"F = M*a + D*v + S*(x - x_d)\"]\n  A --> P[\"New setpoint\"]\n  P --> R[\"Position-controlled arm\"]\n  R --> F\n```\n\n## Common pitfalls\n\n- **Gravity in the sensor:** The tool's weight reads as a push; configure `gravity_compensation` or the arm drifts.\n- **Too little damping:** Low `damping_ratio` makes the arm oscillate after a push.\n- **Wrong frames:** Gravity must point down in `fixed_world_frame`; a wrong frame makes motion go sideways.\n\n## When it's done\n\n- **Response plots:** Position after the same push for at least three mass/damping/stiffness sets.\n- **Wall demo:** The simulated end-effector yielding against a wall instead of fighting it.\n- **Next steps:** Insert a peg with compliance and Learned stiffness schedule for wiping.",
+      "resources": [
+        {
+          "title": "Admittance controller with low and high dampning",
+          "url": "https://www.youtube.com/watch?v=OZGieHzbpAg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how damping changes the feel when a person pushes an arm."
+        },
+        {
+          "title": "Admittance Controller — ROS2_Control: Rolling Nov 2026 documentation",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Every parameter you configure in steps 2 and 3."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Explains stiffness, impedance and admittance control from first principles."
+        },
+        {
+          "title": "Lecture 13: MIT 6.800/6.843 Robotics Manipulation (Fall 2021) | \"Force Control\"",
+          "url": "https://www.youtube.com/watch?v=8VB5NneTKLE",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Full lecture on force and impedance control."
+        },
+        {
+          "title": "Chapter 11 – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/chapters/chapter11/",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Video series on robot control, including force and hybrid motion-force control."
+        }
+      ],
+      "sources": [
+        "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html",
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://robosuite.ai/"
+      ]
+    },
+    {
+      "node_id": "p:balance-a-cart-pole-with-lqr",
+      "type": "project",
+      "name": "Balance a cart-pole with LQR",
+      "summary": "Linearize a simulated cart-pole around upright, compute an LQR gain, and show it recovering from pushes under different cost weights.",
+      "lesson_md": "## In one sentence\n\nLinearize a simulated cart-pole around upright, compute an LQR gain, and show it recovering from pushes under different cost weights.\n\n![Diagram of the cart-pole: a cart on a track with a pole hinged on top](/img/lessons/projects_control_1-cartpole-lqr.webp)\n*Cart-pole model and its coordinates. Source: [Underactuated Robotics, Ch. 3](https://underactuated.csail.mit.edu/acrobot.html), license unknown.*\n\n## What you will learn\n\n- **Underactuation:** The motor only pushes the cart; the pole has no motor, so you balance it indirectly through the cart.\n- **Linearization:** Near upright, the nonlinear dynamics are approximated by a linear model `xdot = A x + B u`.\n- **LQR (Linear Quadratic Regulator):** Picks the gain matrix `K` in `u = -K x` that minimizes a weighted sum of state error and effort.\n- **Cost weights:** `Q` penalizes state error and `R` penalizes force; tuning them trades recovery speed against effort.\n\n> **Key idea:** You never tune four gains by hand; you state what you care about in Q and R and the Riccati equation returns K.\n\n## What you need\n\n- **Software:** Python with the Python Control Systems Library (`control.lqr`) or Drake (`LinearQuadraticRegulator`); both are free.\n- **Model:** A cart-pole simulation, e.g. the Underactuated Robotics notebook or your own ODE integrator.\n- **Skills:** Matrices, NumPy, and the PID tuning playground in simulation as a warm-up.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Write the state** as cart position, pole angle and both velocities, with upright as the target fixed point.\n2. **Linearize at upright** to get `A` and `B`, numerically or from the book's derivation.\n3. **Compute the gain** with `K, S, E = control.lqr(A, B, Q, R)` and check every closed-loop eigenvalue in `E` has a negative real part.\n4. **Close the loop** on the nonlinear simulation with `u = -K x` and start a few degrees off upright.\n5. **Push the pole** with a disturbance force and record the angle and cart force over time.\n6. **Sweep the weights:** Raise the angle weight in `Q`, then raise `R`, and compare recovery time and peak force.\n\n```mermaid\nflowchart LR\n  M[\"Nonlinear model\"] --> L[\"Linearize at upright\"]\n  L --> K[\"lqr(A, B, Q, R)\"]\n  K --> U[\"u = -K x\"]\n  U --> S[\"Simulated cart-pole\"]\n  S -->|\"state x\"| U\n```\n\n## Common pitfalls\n\n- **Large starting angles:** LQR is only guaranteed near the linearization point; far from upright the pole falls.\n- **Angle wrapping:** Measure the pole error relative to upright, or a 2π jump will make the controller spin.\n- **Cart limits:** LQR knows nothing about track length or force limits; check them in simulation.\n\n## When it's done\n\n- **Push-recovery plot:** Angle and force versus time for at least three Q/R settings, all returning upright.\n- **Trial count:** Success and failure counts over a fixed set of push sizes, as the project spec asks.\n- **Next step:** Reuse this controller as the \"catch\" stage in Acrobot swing-up then LQR catch.",
+      "resources": [
+        {
+          "title": "Linear Quadratic Regulator (LQR) Control for the Inverted Pendulum on a Cart [Control Bootcamp]",
+          "url": "https://www.youtube.com/watch?v=1_UobILf3cc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Steve Brunton designs an LQR gain for exactly this cart-pole system."
+        },
+        {
+          "title": "What Is Linear Quadratic Regulator (LQR) Optimal Control? | State Space, Part 4",
+          "url": "https://www.youtube.com/watch?v=E_RDCFOlJx4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "MATLAB Tech Talk explaining what the Q and R weights mean."
+        },
+        {
+          "title": "control.lqr",
+          "url": "https://python-control.readthedocs.io/en/latest/generated/control.lqr.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The function signature, inputs and K, S, E outputs used in step 3."
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.csail.mit.edu/acrobot.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Derives the cart-pole equations, linearization and an interactive LQR example."
+        },
+        {
+          "title": "Ch. 8 - Linear Quadratic Regulators",
+          "url": "https://underactuated.csail.mit.edu/lqr.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Derives LQR and the algebraic Riccati equation behind lqr()."
+        }
+      ],
+      "sources": [
+        "https://underactuated.csail.mit.edu/acrobot.html",
+        "https://underactuated.csail.mit.edu/lqr.html",
+        "https://python-control.readthedocs.io/en/latest/generated/control.lqr.html",
+        "https://www.youtube.com/watch?v=1_UobILf3cc"
+      ]
+    },
+    {
+      "node_id": "p:build-a-reaction-wheel-inverted-pendulum",
+      "type": "project",
+      "name": "Build a reaction-wheel inverted pendulum",
+      "summary": "Build a small 3D-printed pendulum that swings itself up and balances by spinning a motor-driven wheel, then film it surviving pushes.",
+      "lesson_md": "## In one sentence\n\nBuild a small 3D-printed pendulum that swings itself up and balances by spinning a motor-driven wheel, then film it surviving pushes.\n\n![Exploded view of the SimpleFOC reaction-wheel pendulum: printed wheel, pendulum arm, base, BLDC motor and encoders](/img/lessons/projects_control_1-reaction-wheel.webp)\n*Components of the open-source SimpleFOC reaction-wheel pendulum. Source: [simplefoc/Arduino-FOC-reaction-wheel-inverted-pendulum](https://github.com/simplefoc/Arduino-FOC-reaction-wheel-inverted-pendulum), MIT license.*\n\n## What you will learn\n\n- **Reaction wheel:** Spinning a heavy wheel one way pushes the pendulum the other way, so the motor balances the arm without touching the ground.\n- **State feedback:** One linear rule using pendulum angle, pendulum velocity and wheel velocity, the same form LQR produces.\n- **BLDC and FOC:** A brushless gimbal motor driven by field oriented control (FOC) gives smooth torque at low speed.\n- **System identification:** Measuring your own robot so the model you feed LQR matches reality.\n\n> **Key idea:** The reference build balances with one line: `target_voltage = 40*p_angle + 7*p_vel + 0.3*m_vel`.\n\n## What you need\n\n- **Printed parts:** Wheel, pendulum arm and base STL files from the SimpleFOC repository; check hole sizes against your motor first.\n- **Electronics:** A gimbal BLDC motor (iPower GM4108H-120T class), SimpleFOC Shield on an Arduino, and two encoders such as AMT103; an IMU or AS5048 also works.\n- **Software:** SimpleFOC Arduino library, plus Python Control for LQR.\n- **Budget:** Under €500 per the project card; exact part prices unknown.\n\n## Steps\n\n1. **Print and assemble** the three parts and mount motor, wheel and pendulum encoder.\n2. **Spin the wheel** in torque (voltage) mode with `motor.controller = MotionControlType::torque` and check both encoders count correctly.\n3. **Balance first:** Hold the arm upright, run the state-feedback rule every ~25 ms, and tune the three gains.\n4. **Add the swing-up:** Apply `-sign(pendulum velocity) * 0.4 * supply voltage` and switch to balancing within 0.5 rad of upright.\n5. **Identify and redo:** Log responses, fit a linear model, compute gains with `control.lqr`, and compare with hand-tuned ones.\n6. **Push tests:** Run a fixed set of pushes and count recoveries and falls.\n\n```mermaid\nflowchart LR\n  E[\"Pendulum + wheel encoders\"] --> C{\"Within 0.5 rad?\"}\n  C -->|\"no\"| S[\"Swing-up rule\"]\n  C -->|\"yes\"| B[\"State feedback / LQR\"]\n  S --> M[\"FOC motor drive\"]\n  B --> M\n  M --> E\n```\n\n> **Watch out:** The wheel spins fast and the swing-up uses high voltage; clamp the base, keep fingers and cables clear, and keep a hand on the power switch.\n\n## Common pitfalls\n\n- **Too much swing voltage:** The author found 40% was enough; more makes it arrive too fast to catch.\n- **Angle offset:** Measure the pendulum angle relative to upright and wrap it, or balancing fights a constant error.\n- **Loop timing:** Run FOC every ~1 ms but the balance rule at 20–50 ms, as the reference build does.\n\n## When it's done\n\n- **Push-test video:** Swing-up, balance and recovery from pushes on camera.\n- **Recovery count:** Successes versus falls over the fixed push set, for hand-tuned and LQR gains.\n- **Next step:** Disturbance-rejecting balancer: MPC with a learned residual on real hardware.",
+      "resources": [
+        {
+          "title": "Arduino Reaction Wheel Inverted Pendulum - Tutorial",
+          "url": "https://www.youtube.com/watch?v=Ih-izQyXJCI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build walkthrough of the reference SimpleFOC pendulum."
+        },
+        {
+          "title": "3D printed open source inertia wheel inverted pendulum",
+          "url": "https://www.youtube.com/watch?v=POPPNbzDYbw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the finished pendulum swinging up and balancing."
+        },
+        {
+          "title": "Reaction Wheel Pendulum | Arduino-FOC",
+          "url": "https://docs.simplefoc.com/simplefoc_pendulum",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official SimpleFOC page for this project's hardware and code."
+        },
+        {
+          "title": "simplefoc/Arduino-FOC-reaction-wheel-inverted-pendulum",
+          "url": "https://github.com/simplefoc/Arduino-FOC-reaction-wheel-inverted-pendulum",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "STL files, wiring, gains and the full Arduino control code."
+        },
+        {
+          "title": "Ch. 8 - Linear Quadratic Regulators",
+          "url": "https://underactuated.csail.mit.edu/lqr.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Theory for replacing hand-tuned gains with an LQR design."
+        }
+      ],
+      "sources": [
+        "https://github.com/simplefoc/Arduino-FOC-reaction-wheel-inverted-pendulum",
+        "https://docs.simplefoc.com/simplefoc_pendulum",
+        "https://underactuated.csail.mit.edu/lqr.html"
+      ]
+    },
+    {
+      "node_id": "p:cart-pole-controller-shoot-out-in-safe-control-gym",
+      "type": "project",
+      "name": "Cart-pole controller shoot-out in safe-control-gym",
+      "summary": "Run LQR, MPC and reinforcement learning on the same constrained cart-pole tasks in safe-control-gym and compare success and constraint violations.",
+      "lesson_md": "## In one sentence\n\nRun LQR, MPC and reinforcement learning on the same constrained cart-pole tasks in safe-control-gym and compare success and constraint violations.\n\n![safe-control-gym illustration: cart-pole and quadrotor environments with constraints, disturbances and controllers](/img/lessons/projects_control_1-safe-control-gym.webp)\n*How safe-control-gym connects environments, constraints and controllers. Source: [learnsyslab/safe-control-gym](https://github.com/learnsyslab/safe-control-gym), license unknown.*\n\n## What you will learn\n\n- **Benchmarking:** Comparing controllers fairly means same task, same start states, same disturbances and the same metrics.\n- **Constraints:** Limits on states or inputs, like how far the cart may travel; a controller can succeed while still breaking them.\n- **Model-based vs learned:** LQR and MPC (Model Predictive Control) use the known dynamics; PPO or SAC learn from trial and error.\n- **Safety filters:** Add-ons such as CBF (control barrier function) filters that edit unsafe commands.\n\n> **Key idea:** \"It balanced\" is not enough; report how often each controller violated a constraint while doing it.\n\n## What you need\n\n- **Software:** safe-control-gym (Python 3.10 in a conda env), built on PyBullet with CasADi symbolic dynamics.\n- **Warm-up:** Balance a cart-pole with LQR, so you know what the LQR baseline should look like.\n- **Compute:** A laptop for LQR and MPC; RL training takes longer, exact time unknown.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Install and run** the LQR example: `python3 lqr/lqr_experiment.py --algo lqr --task cartpole` with the cart-pole stabilization override files from the README.\n2. **Run the others:** Use `mpc/mpc_experiment.py` and `rl/rl_experiment.py` on the same cart-pole task and config.\n3. **Fix the trial set:** Same seeds, start states and disturbance settings for every controller.\n4. **Log metrics:** Success, tracking or stabilization error, and number of constraint violations per run.\n5. **Add one filter:** Wrap the RL policy in a provided safety filter and rerun.\n6. **Build the table** and record short videos of a typical run for each controller.\n\n```mermaid\nflowchart LR\n  T[\"Cart-pole task + constraints\"] --> L[\"LQR\"]\n  T --> M[\"MPC\"]\n  T --> R[\"RL policy\"]\n  R --> F[\"Safety filter\"]\n  L --> X[\"Metrics table\"]\n  M --> X\n  F --> X\n```\n\n## Common pitfalls\n\n- **Unequal settings:** Different seeds or disturbances make one controller look better for the wrong reason.\n- **Training budget:** Report how long RL trained; a short run is not a verdict on RL.\n- **Hidden violations:** A run that ends upright may still have crossed a limit midway; count every step.\n\n## When it's done\n\n- **Comparison table:** Success and violation counts for LQR, MPC and at least one RL method on a fixed trial set.\n- **Videos:** One clip per controller on the same disturbance.\n- **Next step:** Study the filter itself in CBF safety filter for a 2D robot.",
+      "resources": [
+        {
+          "title": "safe-control-gym - Angela Schoellig @ ICRA 22 | Tools for Robotics RL 5/8",
+          "url": "https://www.youtube.com/watch?v=91ectPQHEs0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The lab lead presents what the benchmark is for and how it is used."
+        },
+        {
+          "title": "learnsyslab/safe-control-gym",
+          "url": "https://github.com/learnsyslab/safe-control-gym",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Install steps, example commands and the list of controllers and safety filters."
+        },
+        {
+          "title": "safe-control-gym: a Unified Benchmark Suite for Safe Learning-based Control and Reinforcement Learning in Robotics",
+          "url": "https://arxiv.org/abs/2109.06325",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The benchmark paper: systems, tasks, constraints and the extended Gym API."
+        },
+        {
+          "title": "Safe Learning in Robotics: From Learning-Based Control to Safe Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2108.06266",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Survey that frames the families of methods you are comparing."
+        }
+      ],
+      "sources": [
+        "https://github.com/learnsyslab/safe-control-gym",
+        "https://arxiv.org/abs/2109.06325",
+        "https://arxiv.org/abs/2108.06266"
+      ]
+    },
+    {
+      "node_id": "p:cbf-safety-filter-for-a-2d-robot",
+      "type": "project",
+      "name": "CBF safety filter for a 2D robot",
+      "summary": "Wrap a naive go-to-goal controller for a simulated 2D robot in a control barrier function QP that changes its command only as much as needed to avoid obstacles.",
+      "lesson_md": "## In one sentence\n\nWrap a naive go-to-goal controller for a simulated 2D robot in a control barrier function QP that changes its command only as much as needed to avoid obstacles.\n\n![Segway experiment: with PD control only the pitch leaves the safety set; with the safety filter it stays inside](/img/lessons/projects_control_1-cbf.webp)\n*A safety filter keeping a Segway inside its safe set, from Ames et al. Source: [Control Barrier Functions: Theory and Applications](https://arxiv.org/abs/1903.11199), license unknown.*\n\n## What you will learn\n\n- **Safe set:** The states you allow, written as `h(x) ≥ 0`; for one round obstacle, `h` can be squared distance minus squared safe radius.\n- **Control barrier function (CBF):** A rule on `ḣ` that stops the robot approaching the edge of the safe set too fast.\n- **CBF-QP:** A small quadratic program (QP) that finds the command closest to the nominal one while obeying the CBF rule.\n- **Minimally invasive:** Far from obstacles the filter leaves the nominal command untouched.\n\n> **Key idea:** Solve `min ½‖u - k(x)‖²` subject to `ḣ(x, u) ≥ -α(h(x))`; the filter edits commands, it does not plan.\n\n## What you need\n\n- **Software:** Python, NumPy, Matplotlib and OSQP (`pip install osqp`).\n- **Robot model:** A single integrator, where the command is the 2D velocity; it keeps `ḣ` linear in `u`.\n- **Reference code:** The Robotarium Python simulator, whose barrier certificates solve the same QP.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Simulate the robot** as `ẋ = u` and write a naive proportional controller toward a goal behind an obstacle.\n2. **Define `h`** for each circular obstacle and compute its gradient.\n3. **Build the QP** in OSQP's form `min ½ uᵀPu + qᵀu` with `l ≤ Au ≤ u`, using one row per obstacle.\n4. **Filter every step:** Solve the QP, apply the safe command, and log how far it moved from the nominal one.\n5. **Sweep the gain α:** Small values brake early; large values let the robot approach closely.\n6. **Animate** naive versus filtered runs over a fixed set of start positions and count collisions.\n\n```mermaid\nflowchart LR\n  G[\"Goal\"] --> N[\"Naive controller k(x)\"]\n  N --> Q[\"CBF-QP in OSQP\"]\n  O[\"Obstacles h(x)\"] --> Q\n  Q --> R[\"Safe velocity u\"]\n  R --> X[\"2D robot\"]\n  X --> N\n```\n\n## Common pitfalls\n\n- **Infeasible QP:** With conflicting constraints there may be no solution; the Robotarium code commands zero velocity when that happens.\n- **Deadlock:** A robot heading straight at an obstacle can stop in front of it; the filter guarantees safety, not progress.\n- **Unicycle robots:** For differential-drive models, map between single-integrator and unicycle commands, as the Robotarium utilities do.\n\n## When it's done\n\n- **Side-by-side animation:** Naive controller crashing versus filtered robot sliding around obstacles.\n- **Collision count:** Collisions and goal reaches over the fixed start set, for several α values.\n- **Next step:** Apply the same filter to a real arm in Keep-out zone for the real SO-101.",
+      "resources": [
+        {
+          "title": "Barrier Certificate with Plotting",
+          "url": "https://www.youtube.com/watch?v=blEHEdf-2mU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Robotarium demo of barrier certificates keeping 2D robots apart."
+        },
+        {
+          "title": "ICRA 2022 Workshop on Safe Autonomy: Aaron Ames (Control Barrier Functions for Safe Robot Autonomy)",
+          "url": "https://www.youtube.com/watch?v=EU3fciGisDc",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk by a CBF pioneer on why and how safety filters work."
+        },
+        {
+          "title": "robotarium/robotarium_python_simulator",
+          "url": "https://github.com/robotarium/robotarium_python_simulator",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Working barrier-certificate code and examples for 2D robots."
+        },
+        {
+          "title": "Python — OSQP documentation",
+          "url": "https://osqp.org/docs/get_started/python.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How to install OSQP and set up the QP you solve every step."
+        },
+        {
+          "title": "Control Barrier Functions: Theory and Applications",
+          "url": "https://arxiv.org/abs/1903.11199",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The survey that defines the CBF-QP used in this project."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1903.11199",
+        "https://osqp.org/",
+        "https://osqp.org/docs/index.html",
+        "https://raw.githubusercontent.com/robotarium/robotarium_python_simulator/master/rps/utilities/barrier_certificates.py"
+      ]
+    },
+    {
+      "node_id": "p:computed-torque-vs-pd-tracking-benchmark",
+      "type": "project",
+      "name": "Computed-torque vs PD tracking benchmark",
+      "summary": "Track the same fast trajectories on a simulated arm with PD control and with computed-torque control, then repeat with a deliberately wrong payload model.",
+      "lesson_md": "## In one sentence\n\nTrack the same fast trajectories on a simulated arm with PD control and with computed-torque control, then repeat with a deliberately wrong payload model.\n\n![Render of the Franka Emika Panda arm model from MuJoCo Menagerie](/img/lessons/projects_control_1-computed-torque.webp)\n*Franka Emika Panda model, a ready-made arm for this benchmark. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/franka_emika_panda), Apache-2.0.*\n\n## What you will learn\n\n- **Computed torque:** `τ = M(θ)(θ̈_d - K_v ė - K_p e) + C(θ, θ̇)θ̇ + N(θ, θ̇)`, which cancels the arm's nonlinear dynamics.\n- **Feedforward and feedback:** The model supplies most torque (`τ_ff`); the gains only correct errors (`τ_fb`).\n- **Linear error dynamics:** With a perfect model the error obeys `ë + K_v ė + K_p e = 0`, whatever the pose.\n- **Model sensitivity:** A wrong payload breaks the cancellation, so you measure how gracefully each controller degrades.\n\n> **Key idea:** PD reacts after an error appears; computed torque predicts the torque the motion needs.\n\n## What you need\n\n- **Software:** MuJoCo and Pinocchio, which computes `M`, `C` and gravity terms from the same robot model.\n- **Warm-up:** Gravity compensation for a simulated arm.\n- **Math:** Matrix–vector products; the book derivation is optional.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Pick trajectories:** Generate slow and fast joint sine waves within joint limits.\n2. **Tune PD** on the slow trajectory and freeze the gains.\n3. **Implement computed torque** with Pinocchio's dynamics and the same `K_p`, `K_v` values.\n4. **Run the benchmark:** Record RMS and peak joint error for both controllers at each speed.\n5. **Add a payload** in simulation only, then rerun without telling either controller.\n6. **Record videos** of the fastest trajectory side by side.\n\n```mermaid\nflowchart LR\n  T[\"Desired θ_d, θ̇_d, θ̈_d\"] --> FF[\"Model torque τ_ff\"]\n  T --> FB[\"Error feedback τ_fb\"]\n  FF --> S[\"τ\"]\n  FB --> S\n  S --> A[\"Simulated arm\"]\n  A -->|\"θ, θ̇\"| FB\n```\n\n## Common pitfalls\n\n- **Unfair gains:** Use the same gains for both, or report how you tuned each.\n- **Torque saturation:** Fast trajectories can exceed motor limits and make both controllers look bad.\n- **Model copy:** Load Pinocchio and MuJoCo from the same description, or the \"perfect model\" case is already wrong.\n\n## When it's done\n\n- **Error table:** RMS and peak error per controller, speed and payload case.\n- **Videos:** Side-by-side tracking at the fastest speed.\n- **Next steps:** Feedback linearization of a two-link arm and Adaptive control with an unknown payload.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 11.4:  Motion Control with Torque or Force Inputs (Part 3 of 3)",
+          "url": "https://www.youtube.com/watch?v=MV-xBPP3H2k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Seven-minute lecture introducing computed-torque control."
+        },
+        {
+          "title": "Chapter 11 – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/chapters/chapter11/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "The full robot-control video series around that lecture."
+        },
+        {
+          "title": "stack-of-tasks/pinocchio",
+          "url": "https://github.com/stack-of-tasks/pinocchio",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Computes the mass matrix, Coriolis and gravity terms you need."
+        },
+        {
+          "title": "A Mathematical Introduction to Robotic Manipulation",
+          "url": "https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Section 5.2 derives the computed-torque law and its error dynamics."
+        }
+      ],
+      "sources": [
+        "https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf",
+        "https://modernrobotics.northwestern.edu/chapters/chapter11/",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/franka_emika_panda"
+      ]
+    },
+    {
+      "node_id": "p:energy-shaping-pendulum-swing-up",
+      "type": "project",
+      "name": "Energy-shaping pendulum swing-up",
+      "summary": "Swing a torque-limited simulated pendulum up by pumping in exactly the right amount of energy, then switch to a balancing controller at the top.",
+      "lesson_md": "## In one sentence\n\nSwing a torque-limited simulated pendulum up by pumping in exactly the right amount of energy, then switch to a balancing controller at the top.\n\n![Phase plot of a cart-pole pendulum spiralling out under energy shaping until it reaches the upright point](/img/lessons/projects_control_1-energy-shaping.webp)\n*Phase portrait of an energy-shaping swing-up followed by LQR balancing. Source: [Underactuated Robotics, Ch. 3](https://underactuated.csail.mit.edu/acrobot.html), license unknown.*\n\n## What you will learn\n\n- **Energy shaping:** Controlling the pendulum's total energy instead of its angle, so gravity does most of the work.\n- **Homoclinic orbit:** The swing whose energy equals `mgl`, the energy of standing still upright; reaching it carries the pendulum to the top.\n- **Torque limits:** Why a weak motor must pump energy over several swings instead of lifting directly.\n- **Hybrid control:** Switching from swing-up to a balancing controller near upright.\n\n> **Key idea:** Push in the direction of motion when energy is too low and against it when too high; the swing grows until it just reaches the top.\n\n## What you need\n\n- **Software:** Python with NumPy and an ODE integrator, or the Drake pendulum examples from Underactuated Robotics.\n- **Model values:** Mass `m`, length `l` and gravity `g` for your simulated pendulum.\n- **Warm-up:** Balance a cart-pole with LQR, which gives you the balancing stage.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Write the energy** `E = ½ m l² θ̇² - m g l cos θ`, with θ measured from hanging down, and the target `E_d = m g l`.\n2. **Implement the law** `u = -k θ̇ (E - E_d)` with `k > 0`, then clip `u` to your torque limit.\n3. **Nudge the start:** At rest the law outputs zero, so give a tiny initial velocity.\n4. **Add the catch:** Switch to an LQR or PD balancer when the angle and speed are close to upright.\n5. **Test robustness:** Use wrong values of `m` or `l` in the controller and count successful swing-ups over a fixed trial set.\n\n```mermaid\nflowchart LR\n  S[\"Pendulum state\"] --> E[\"Compute E - E_d\"]\n  E --> U[\"u = -k θ̇ (E - E_d)\"]\n  U --> C{\"Near upright?\"}\n  C -->|\"no\"| P[\"Apply clipped torque\"]\n  C -->|\"yes\"| B[\"Balancing controller\"]\n```\n\n## Common pitfalls\n\n- **Stuck at rest:** Starting exactly at θ̇ = 0 never swings; the book points this out.\n- **Sign errors:** With θ measured from a different reference, the energy formula changes; check it upright.\n- **Arbitrary switching:** The book calls its switch threshold somewhat arbitrary; tune and report yours.\n\n## When it's done\n\n- **Swing-up plot:** Energy converging to `E_d` and angle reaching upright under a torque limit.\n- **Robustness table:** Success counts with correct and deliberately wrong model parameters.\n- **Next step:** Apply the same pumping idea on hardware in Build a reaction-wheel inverted pendulum.",
+      "resources": [
+        {
+          "title": "Torque-limited simple pendulum: A toolkit for getting started with underactuated robotics",
+          "url": "https://www.youtube.com/watch?v=JVvwMGYiH3A",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "DFKI's real torque-limited pendulum, a physical version of this project."
+        },
+        {
+          "title": "Inverted pendulum on a cart, energy based swing up and balance with LQR control",
+          "url": "https://www.youtube.com/watch?v=hghaIoHLJYs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the energy swing-up followed by an LQR catch on a cart-pole."
+        },
+        {
+          "title": "Ch. 2 - The Simple Pendulum",
+          "url": "https://underactuated.csail.mit.edu/pend.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Derives the energy-shaping law, its convergence and why it is robust to model errors."
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.csail.mit.edu/acrobot.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Extends energy shaping to the cart-pole and acrobot with an LQR switch."
+        }
+      ],
+      "sources": [
+        "https://underactuated.csail.mit.edu/pend.html",
+        "https://underactuated.csail.mit.edu/acrobot.html"
+      ]
+    },
+    {
+      "node_id": "p:feedback-linearization-of-a-two-link-arm",
+      "type": "project",
+      "name": "Feedback linearization of a two-link arm",
+      "summary": "Use feedback linearization to make a simulated two-link arm trace a circle, then give the controller a 30% model error and measure what breaks.",
+      "lesson_md": "## In one sentence\n\nUse feedback linearization to make a simulated two-link arm trace a circle, then give the controller a 30% model error and measure what breaks.\n\n![Two-link pendulum diagram with link lengths and joint angles labelled](/img/lessons/projects_control_1-feedback-lin.webp)\n*A two-link chain, the same geometry as a planar two-link arm. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Double_pendulum_with_angles.svg), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **Feedback linearization:** Using full-state nonlinear feedback so a nonlinear system behaves like a linear one.\n- **Manipulator equations:** Torque equals inertia times acceleration plus Coriolis and gravity terms; for two links you can write them by hand.\n- **Outer-loop design:** After cancellation, each joint behaves like a double integrator you control with simple PD gains.\n- **Robustness:** What happens when the cancelled model is 30% wrong.\n\n> **Key idea:** Cancel the nonlinear physics with a model, then solve an easy linear control problem.\n\n## What you need\n\n- **Software:** Python with NumPy, plus Drake or Pinocchio if you prefer not to derive the equations by hand.\n- **Model:** Two link lengths, masses and inertias; any consistent values work.\n- **Warm-up:** PID tuning playground in simulation.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Derive or load** the two-link dynamics `M(θ)θ̈ + C(θ, θ̇)θ̇ + N(θ) = τ`.\n2. **Plan the circle** in the hand's workspace and convert it to joint angles with inverse kinematics.\n3. **Linearize by feedback:** Command `τ = M(θ)v + Cθ̇ + N`, where `v = θ̈_d - K_v ė - K_p e`.\n4. **Choose gains** so each joint error decays without overshoot, then track the circle.\n5. **Break the model:** Scale masses in the controller by 30% while the simulator keeps the true values.\n6. **Compare** hand-path error with the exact and wrong models.\n\n```mermaid\nflowchart LR\n  C[\"Circle path\"] --> IK[\"Inverse kinematics\"]\n  IK --> V[\"Linear PD outer loop v\"]\n  V --> L[\"Cancel: M v + C θ̇ + N\"]\n  L --> A[\"Two-link arm sim\"]\n  A -->|\"θ, θ̇\"| V\n```\n\n## Common pitfalls\n\n- **Singular poses:** Near a fully stretched arm, inverse kinematics jumps; keep the circle inside the workspace.\n- **Large torques:** The book notes global feedback linearization can demand big inputs; clip and report saturation.\n- **Testing only the perfect case:** The 30% error run is the interesting result.\n\n## When it's done\n\n- **Circle plot:** Desired versus actual hand path for exact and wrong models.\n- **Error numbers:** RMS path error for each case over a fixed set of circle speeds.\n- **Next step:** Adaptive control with an unknown payload learns the wrong parameters online.",
+      "resources": [
+        {
+          "title": "Easy Introduction to Feedback Linearization - Control Engineering Tutorials",
+          "url": "https://www.youtube.com/watch?v=UwuPH4lpOwI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Step-by-step idea of feedback linearization on a simple system."
+        },
+        {
+          "title": "Feedback Linearization control of 2DOF Robotic Arm",
+          "url": "https://www.youtube.com/watch?v=hOBHOR490zE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Applies the method to a two-link arm, as in this project."
+        },
+        {
+          "title": "Ch. 23 - Multi-Body",
+          "url": "https://underactuated.mit.edu/multibody.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Derives the manipulator equations used in step 1."
+        },
+        {
+          "title": "A Mathematical Introduction to Robotic Manipulation",
+          "url": "https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Section 5.2 links computed torque to feedback linearization."
+        }
+      ],
+      "sources": [
+        "https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf",
+        "https://underactuated.mit.edu/multibody.html",
+        "https://commons.wikimedia.org/wiki/File:Double_pendulum_with_angles.svg"
+      ]
+    },
+    {
+      "node_id": "p:first-mpc-with-do-mpc",
+      "type": "project",
+      "name": "First MPC with do-mpc",
+      "summary": "Follow the do-mpc getting-started example to build your first model predictive controller in a notebook and watch it bring a simulated system to rest within input limits.",
+      "lesson_md": "## In one sentence\n\nFollow the do-mpc getting-started example to build your first model predictive controller in a notebook and watch it bring a simulated system to rest within input limits.\n\n![Schematic of three rotating discs linked by springs, the outer two driven by stepper motors](/img/lessons/projects_control_1-do-mpc.webp)\n*The oscillating-masses system from the do-mpc getting-started guide. Source: [do-mpc documentation](https://www.do-mpc.com/en/latest/getting_started.html), license unknown.*\n\n## What you will learn\n\n- **MPC (Model Predictive Control):** At every step, solve a short optimization over the future, apply only the first input, then repeat.\n- **Prediction horizon:** How many future steps the optimizer looks ahead; the example uses `n_horizon = 20` with `t_step = 0.1` s.\n- **Objective terms:** A running cost `lterm`, a final cost `mterm`, and `set_rterm` to penalize changing the inputs.\n- **Constraints:** Hard limits on states and inputs, the main reason to pick MPC over PID or LQR.\n\n> **Key idea:** MPC is a planner that replans every time step, so limits are part of the problem instead of an afterthought.\n\n## What you need\n\n- **Software:** Python with do-mpc, which builds on CasADi for symbolic models and solvers.\n- **Warm-up:** PID tuning playground in simulation, so you know what plain feedback can and cannot do.\n- **Skills:** NumPy, Jupyter, and reading a state-space model.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Define the model:** Declare states, inputs and equations for the three discs and springs, as in the guide.\n2. **Configure the optimizer:** Set `n_horizon = 20` and `t_step = 0.1`, and set the objective to the sum of squared disc angles.\n3. **Add limits:** Bound every disc angle and motor input between `-2π` and `2π` with `mpc.bounds`.\n4. **Run the loop:** Simulate with `do_mpc.simulator`, feeding each measured state back to `mpc.make_step`.\n5. **Animate and vary:** Plot predictions versus reality, then shrink the horizon or input bounds and compare settling.\n\n```mermaid\nflowchart LR\n  X[\"Measured state\"] --> O[\"Optimize next 20 steps\"]\n  O --> U[\"Apply first input\"]\n  U --> P[\"Simulated plant\"]\n  P --> X\n```\n\n## Common pitfalls\n\n- **Missing initial guess:** Call `set_initial_guess` before the first step or the solver may start badly.\n- **Poor scaling:** States with very different magnitudes can stall the solver; the guide shows `mpc.scaling`.\n- **Too short a horizon:** The controller cannot foresee hitting a limit it does not look far enough to see.\n\n## When it's done\n\n- **Notebook animation:** The system brought to rest while inputs stay within bounds.\n- **Comparison plot:** At least two horizon or bound settings and their settling behaviour.\n- **Next steps:** MPC for a differential-drive robot with obstacles or Real-time MPC on a reaction-wheel or ballbot-style balancer.",
+      "resources": [
+        {
+          "title": "Why Use Model Predictive Control? | Understanding MPC, Part 1",
+          "url": "https://www.youtube.com/watch?v=8U0xiOkDcmw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Five-minute MATLAB intro to what MPC adds over classic control."
+        },
+        {
+          "title": "Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=YwodGM2eoy4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Steve Brunton explains the receding-horizon loop."
+        },
+        {
+          "title": "Getting started: MPC",
+          "url": "https://www.do-mpc.com/en/latest/getting_started.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The exact example this project follows, step by step."
+        },
+        {
+          "title": "CasADi",
+          "url": "https://web.casadi.org/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The optimization toolkit do-mpc uses under the hood."
+        }
+      ],
+      "sources": [
+        "https://www.do-mpc.com/en/latest/getting_started.html",
+        "https://web.casadi.org/"
+      ]
+    },
+    {
+      "node_id": "p:gravity-compensation-for-a-simulated-arm",
+      "type": "project",
+      "name": "Gravity compensation for a simulated arm",
+      "summary": "Cancel gravity on a simulated arm so it floats where you leave it, then add PD control and show it tracks a trajectory without sagging.",
+      "lesson_md": "## In one sentence\n\nCancel gravity on a simulated arm so it floats where you leave it, then add PD control and show it tracks a trajectory without sagging.\n\n![KUKA LBR iiwa, a torque-controlled collaborative robot arm](/img/lessons/projects_control_1-gravity-comp.webp)\n*KUKA LBR iiwa, a torque-controlled arm. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:KUKA_LBR_iiwa.jpg), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **Gravity torque:** Each joint must hold up the links beyond it; this torque `τ_g` changes with the arm's pose.\n- **Steady-state error:** Plain PD control sags under gravity; for a point mass the error is `mg / k_p`.\n- **Gravity compensation:** Adding the model's gravity torque to the command, `u = -τ_g + K_p (q_d - q) + K_d (q̇_d - q̇)`.\n- **Rigid-body dynamics library:** Pinocchio computes `τ_g` from the robot model for any pose.\n\n> **Key idea:** Cancel the predictable part of the physics with a model, and let feedback handle only what is left.\n\n## What you need\n\n- **Software:** MuJoCo for simulation and Pinocchio (`pip install pin`) for dynamics, both free.\n- **Model:** Any arm model with masses and inertias, for example one from MuJoCo Menagerie.\n- **Warm-up:** PID tuning playground in simulation.\n- **Cost:** €0, simulation only.\n\n## Steps\n\n1. **Run zero torque** and watch the arm fall, to see the problem.\n2. **Compute gravity** with Pinocchio at the current joint angles and send exactly that torque; the arm should float.\n3. **Push the arm** with a simulated force and check it stays where you leave it.\n4. **Try PD alone:** Run it and track a slow trajectory; measure the sag as a joint error.\n5. **Add compensation** to the PD controller and repeat the same trajectory.\n6. **Perturb the model** by changing a link mass in Pinocchio only and record how the error returns.\n\n```mermaid\nflowchart LR\n  Q[\"Joint angles q\"] --> G[\"Pinocchio gravity torque\"]\n  Q --> P[\"PD on error\"]\n  G --> S[\"Sum torques\"]\n  P --> S\n  S --> A[\"Simulated arm\"]\n  A --> Q\n```\n\n## Common pitfalls\n\n- **Sign conventions:** Check whether your library returns the torque that gravity applies or the torque needed to resist it.\n- **Model mismatch:** Masses in Pinocchio and in MuJoCo must come from the same file, or the arm drifts.\n- **Position actuators:** MuJoCo position actuators already contain a PD loop; use torque (motor) actuators here.\n\n## When it's done\n\n- **Float demo:** Video of the arm staying put after a push with compensation only.\n- **Error plot:** Tracking error with PD versus PD plus gravity compensation on the same trajectory.\n- **Next step:** Computed-torque vs PD tracking benchmark adds the inertia and Coriolis terms too.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 11.4:  Motion Control with Torque or Force Inputs (Part 2 of 3)",
+          "url": "https://www.youtube.com/watch?v=992hdsGgVlE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short lecture on PD versus PID control of a joint moving in gravity."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Shows the gravity sag of PD control and the gravity-compensation fix."
+        },
+        {
+          "title": "stack-of-tasks/pinocchio",
+          "url": "https://github.com/stack-of-tasks/pinocchio",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install instructions and examples for computing dynamics terms."
+        },
+        {
+          "title": "Ch. 23 - Multi-Body",
+          "url": "https://underactuated.mit.edu/multibody.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Derives the manipulator equations, including the gravity vector."
+        }
+      ],
+      "sources": [
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://github.com/stack-of-tasks/pinocchio",
+        "https://underactuated.mit.edu/multibody.html"
+      ]
+    }
+  ]
+}
