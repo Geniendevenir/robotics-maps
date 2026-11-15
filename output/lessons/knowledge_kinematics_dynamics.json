@@ -514,6 +514,190 @@
         "https://raw.githubusercontent.com/YanjieZe/GMR/master/DOC.md",
         "https://arxiv.org/abs/2510.02252"
       ]
+    },
+    {
+      "node_id": "k:contact-dynamics-differentiable-simulation",
+      "type": "knowledge",
+      "name": "Contact dynamics & differentiable simulation",
+      "summary": "Contact dynamics predicts what happens when bodies touch, while differentiable simulation estimates how changing inputs changes the outcome.",
+      "lesson_md": "## In one sentence\n\nContact dynamics predicts what happens when bodies touch, while differentiable simulation estimates how changing inputs changes the outcome.\n\n![DiffMJX figure comparing simulated box and capsule tosses with gradients of their landing distance](/img/lessons/knowledge_kinematics_dynamics-contact-dynamics.webp)\n*Thrown objects expose unreliable contact gradients; compare the lower DiffMJX curves with the upper MJX curves. Source: [DiffMJX paper](https://arxiv.org/html/2506.14186v2), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Touch changes motion:** a gripper pushing an object or a foot landing needs contact forces, not just collision-free joint trajectories.\n- **Optimization needs direction:** a useful gradient tells a program how to adjust an action or physical parameter to reduce an error.\n- **Contact complicates gradients:** an apparently reasonable simulated bounce does not guarantee a useful derivative through that bounce.\n\n> **Key idea:** Trusting a simulated motion and trusting its gradients are two different checks.\n\n## How it works\n\n- **Detect contact:** identify touching bodies and their geometry before calculating normal forces and friction.\n- **Choose a contact model:** rigid constraints prevent overlap; compliant models permit deformation or penetration to generate restoring forces.\n- **Differentiate the rollout:** follow how a sequence of simulation steps changes when an input changes, then use that sensitivity to update it.\n- **Think automatic differentiation:** as in a neural-network training loop, simulation supplies a loss and a backward calculation, but contact adds difficult switches.\n- **Watch separate bodies:** gradients between non-contacting objects can vanish, leaving optimization without a direction toward making contact.\n- **Handle hard impacts:** the DiffMJX paper shows that numerical integration can corrupt gradients for stiff contacts; adaptive integration improves agreement with numerical checks.\n- **Separate forward and backward models:** its contacts-from-distance technique supplies pre-contact guidance during differentiation without adding those artificial forces to the forward motion.\n- **Worked toy wall:** assume a wall at position 1 and normalized spring force `max(0, x-1)`; request force 1 and square the error.\n- **Interpret the plateau:** at position 0, force is 0 and loss is 1; at position 1.5, force is 0.5 and loss is 0.25.\n\n```mermaid\nflowchart LR\n  A[\"Action or parameters\"] --> S[\"Contact simulation\"]\n  S --> L[\"Outcome error\"]\n  L --> G[\"Compute gradient\"]\n  G --> U[\"Update inputs\"]\n  U --> A\n```\n\n## Key terms\n\n- **Normal force**: contact force perpendicular to a surface.\n- **Friction**: resistance to relative sliding at a contact.\n- **Gradient**: sensitivity of an error to changes in its inputs.\n- **Stiff contact**: contact with strong restoring forces for small penetration.\n\n## Before / after\n\n- **Before:** Learn Rigid-body dynamics (equations of motion) and basic automatic differentiation.\n- **After:** Explore Contact gradient breakage gallery or Differentiable system-ID versus black-box search.\n\n## Try it in an afternoon\n\n1. **Watch the contact simulation video** and identify one collision whose outcome depends on the initial motion.\n2. **Implement the toy wall loss** from above in Python; sample positions on both sides of the wall.\n3. **Estimate slopes numerically:** subtract losses at nearby positions and divide by their separation; observe the flat region before contact.\n4. **Inspect the published toss figure:** explain why comparing gradients with numerical differences matters before trusting an optimizer.",
+      "resources": [
+        {
+          "title": "Single-Level Differentiable Contact Simulation",
+          "url": "https://www.youtube.com/watch?v=oaGLTR13iF8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See contact forces, collision geometry, and differentiable contact simulation in the author's presentation."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html#contact",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read MuJoCo's soft-contact formulation and its distinction from rigid complementarity models."
+        },
+        {
+          "title": "diffmjx: MuJoCo XLA with informative contact gradients",
+          "url": "https://github.com/martius-lab/diffmjx",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect adaptive integration and contacts-from-distance, including current implementation limitations."
+        },
+        {
+          "title": "Differentiable Simulation of Hard Contacts with Soft Gradients for Learning and Control",
+          "url": "https://arxiv.org/abs/2506.14186",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand why hard-contact gradients fail and how the authors test and improve them."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=oaGLTR13iF8",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html#contact",
+        "https://github.com/martius-lab/diffmjx",
+        "https://arxiv.org/abs/2506.14186",
+        "https://arxiv.org/html/2506.14186v2"
+      ]
+    },
+    {
+      "node_id": "k:dynamic-parameter-identification-actuator-models",
+      "type": "knowledge",
+      "name": "Dynamic parameter identification & actuator models",
+      "summary": "Dynamic identification fits a robot's physical parameters to measured behavior, while actuator models describe how motor commands become joint motion.",
+      "lesson_md": "## In one sentence\n\nDynamic identification fits a robot's physical parameters to measured behavior, while actuator models describe how motor commands become joint motion.\n\n![BAM Dynamixel XL-330 actuator secured in a vise with a weighted pendulum arm and communication interface](/img/lessons/knowledge_kinematics_dynamics-actuator-identification.webp)\n*BAM's weighted pendulum makes actuator behavior measurable. Source: [BAM Hardware Setup](https://bam.readthedocs.io/en/latest/identification/setup.html), license unknown.*\n\n## Why it matters for us\n\n- **Simulation needs parameters:** masses, inertia, and friction determine how a robot responds, not just its visible geometry.\n- **Commands are not motion:** a servo's controller, motor, and friction influence what actually happens after a position command.\n- **Measured behavior can improve models:** BAM compares simulated and recorded movements to identify actuator parameters rather than treating the motor as ideal.\n\n> **Key idea:** A model that fits its training movements must still predict movements excluded from the fit.\n\n## How it works\n\n- **Think implementation testing:** a model is an executable prediction; recorded commands and measurements provide test cases against which its parameters are adjusted.\n- **Separate known quantities:** BAM's pendulum setup requires measured arm lengths and masses; these describe the load while actuator parameters are fitted.\n- **Collect varied motion:** record position, velocity, and control signals across trajectories and loads; BAM resamples logs to a fixed timestep before fitting.\n- **Predict joint behavior:** combine the motor model, gravity, inertia, and friction to simulate the recorded experiment.\n- **Represent friction:** a baseline combines constant sliding resistance with velocity-dependent resistance; richer BAM models include low-speed, load-dependent, and directional effects.\n- **Minimize mismatch:** BAM optimizes mean absolute joint-position error across logs, not a visual judgment that two animations look close.\n- **Worked scoring example:** hypothetical measured angles are 0 and 0.2 radians; predictions of 0.1 and 0.3 give absolute errors of 0.1 each.\n- **Average those errors:** the mean absolute error is therefore 0.1 radians; smaller scores mean closer position predictions for these samples.\n- **Validate separately:** BAM can exclude one controller-gain setting from fitting and report its error separately; compare simpler and richer models on that held-out data.\n\n```mermaid\nflowchart LR\n  C[\"Commands and loads\"] --> R[\"Record motion\"]\n  R --> F[\"Fit model parameters\"]\n  F --> S[\"Simulate held-out logs\"]\n  S --> E[\"Compare errors\"]\n  E --> M[\"Select model\"]\n```\n\n## Key terms\n\n- **Inertia**: resistance to angular acceleration, depending on mass distribution.\n- **Actuator**: the component that converts a control input into physical effort.\n- **Stribeck effect**: friction decreasing as very slow motion becomes sliding.\n- **Overfitting**: matching training data without predicting new data well.\n\n## Before / after\n\n- **Before:** Learn Rigid-body dynamics (equations of motion) and basic least-squares fitting.\n- **After:** Try Identify friction and inertia of one joint or STS3215 actuator model for sim-to-real.\n\n## Try it in an afternoon\n\n1. **Watch BAM's comparison video:** note where the baseline and extended friction models move differently.\n2. **Implement the scoring example** in Python using paired measured and predicted angles.\n3. **Add hypothetical held-out angles:** compare two candidate prediction lists, keeping their training and validation errors separate.\n4. **Inspect BAM's fitting command:** locate the model selection, log directory, and validation-gain options; explain how your toy scorer relates to them.",
+      "resources": [
+        {
+          "title": "Better Actuator Models (BAM)",
+          "url": "https://bam.readthedocs.io/en/latest/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator-hosted comparison of baseline and identified extended-friction actuator simulations."
+        },
+        {
+          "title": "Hardware Setup",
+          "url": "https://bam.readthedocs.io/en/latest/identification/setup.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See the weighted pendulum and the measurements needed for actuator identification."
+        },
+        {
+          "title": "Fitting",
+          "url": "https://bam.readthedocs.io/en/latest/identification/fitting.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow parameter fitting, position-error scoring, and held-out validation."
+        },
+        {
+          "title": "Friction Models",
+          "url": "https://bam.readthedocs.io/en/latest/theory/models.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare the six friction-model variants and their physical interpretations."
+        },
+        {
+          "title": "System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Book",
+          "level": "Advanced",
+          "why": "Connect actuator fitting to inertial identification, lumped parameters, and least-squares estimation."
+        }
+      ],
+      "sources": [
+        "https://bam.readthedocs.io/en/latest/",
+        "https://bam.readthedocs.io/en/latest/identification/setup.html",
+        "https://bam.readthedocs.io/en/latest/identification/acquisition.html",
+        "https://bam.readthedocs.io/en/latest/identification/fitting.html",
+        "https://bam.readthedocs.io/en/latest/theory/models.html",
+        "https://underactuated.mit.edu/sysid.html"
+      ]
+    },
+    {
+      "node_id": "k:efficient-dynamics-algorithms-analytical-derivatives",
+      "type": "knowledge",
+      "name": "Efficient dynamics algorithms & analytical derivatives",
+      "summary": "Recursive dynamics algorithms efficiently compute robot forces or accelerations, and analytical derivatives describe how those results change when inputs change.",
+      "lesson_md": "## In one sentence\n\nRecursive dynamics algorithms efficiently compute robot forces or accelerations, and analytical derivatives describe how those results change when inputs change.\n\n![Modern Robotics lecturer alongside the backward Newton-Euler pass and a serial robot-chain diagram](/img/lessons/knowledge_kinematics_dynamics-efficient-dynamics.webp)\n*The backward pass accumulates forces along the robot chain. Source: [Modern Robotics](https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-3-newton-euler-inverse-dynamics/), license unknown.*\n\n## Why it matters for us\n\n- **Repeated calculations add up:** trajectory optimization evaluates dynamics repeatedly while searching for a movement, so efficient routines are useful building blocks.\n- **Two questions need different routines:** predicting acceleration from torque is not the same task as finding torque for a desired acceleration.\n- **Optimization needs sensitivities:** analytical derivatives tell a solver how its predicted forces or accelerations respond to small changes.\n\n> **Key idea:** Choose the dynamics question first, then choose the algorithm and derivatives that answer it.\n\n## How it works\n\n- **Think tree traversal:** robot links form a connected structure; recursive algorithms reuse neighboring-link results rather than starting a fresh whole-robot calculation at every joint.\n- **Use RNEA for inverse dynamics:** the recursive Newton–Euler algorithm takes configuration, velocity, and desired acceleration and returns the required joint efforts.\n- **Pass outward, then inward:** compute link motion from the base outward; accumulate transmitted forces backward and extract joint efforts.\n- **Use ABA for forward dynamics:** the articulated-body algorithm takes configuration, velocity, applied efforts, and external forces, then computes unconstrained accelerations.\n- **Handle constraints separately:** unconstrained ABA alone does not enforce a planted foot or another closed contact constraint.\n- **Differentiate the calculation:** Pinocchio provides analytical derivatives of its dynamics routines for numerical optimal control and whole-body trajectory optimization.\n- **Read derivative outputs:** `dtau_dq` describes changes in required effort with configuration; `dtau_dv` describes changes with velocity.\n- **Worked library example:** Pinocchio's sample humanoid supplies a model without requiring your own robot file; the code below inspects the velocity-derivative matrix.\n\n```python\nimport numpy as np\nimport pinocchio as pin\nmodel = pin.buildSampleModelHumanoidRandom()\ndata = model.createData()\nq = pin.neutral(model)\nv = np.zeros(model.nv)\na = np.zeros(model.nv)\npin.computeRNEADerivatives(model, data, q, v, a)\nprint(data.dtau_dv.shape)\n```\n\n```mermaid\nflowchart LR\n  Q[\"State and desired acceleration\"] --> R[\"RNEA\"]\n  R --> T[\"Required efforts\"]\n  Q --> D[\"RNEA derivatives\"]\n  D --> O[\"Optimizer update\"]\n  T --> O\n```\n\n## Key terms\n\n- **Configuration**: joint positions together with any floating-base pose.\n- **Joint effort**: a joint's applied torque or force.\n- **Inverse dynamics**: computing efforts for specified motion.\n- **Forward dynamics**: computing acceleration from applied efforts.\n- **Analytical derivative**: sensitivity calculated from the algorithm's mathematical structure rather than repeated perturbed evaluations.\n\n## Before / after\n\n- **Before:** Learn Rigid-body dynamics (equations of motion) and Velocity kinematics, Jacobians & singularities.\n- **After:** Try RNEA vs ABA timing notebook or Gradient-based trajectory optimization of a throw.\n\n## Try it in an afternoon\n\n1. **Watch the Newton–Euler video:** sketch which quantities travel outward and which travel backward.\n2. **Run the sample** in a Python environment with Pinocchio installed, following its derivative example.\n3. **Inspect one velocity column:** perturb that velocity slightly and compare the corresponding change in `pin.rnea(model, data, q, v, a)`.\n4. **Repeat with smaller perturbations:** compare numerical slopes with the saved analytical column; keep the original state and desired acceleration unchanged.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.3:  Newton-Euler Inverse Dynamics",
+          "url": "https://www.youtube.com/watch?v=ZASVKAlegfQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow the outward motion pass and backward force pass on an open robot chain."
+        },
+        {
+          "title": "Dynamics algorithms",
+          "url": "https://gepetto.github.io/doc/pinocchio/doxygen-html/md_doc_a-features_g-dynamic.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish the inputs and outputs of RNEA, ABA, and constrained dynamics."
+        },
+        {
+          "title": "inverse-dynamics-derivatives.py",
+          "url": "https://raw.githubusercontent.com/stack-of-tasks/pinocchio/devel/examples/inverse-dynamics-derivatives.py",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Run the official derivative example and inspect dtau_dq, dtau_dv, and the inertia matrix."
+        },
+        {
+          "title": "Analytical derivatives",
+          "url": "https://gepetto.github.io/doc/pinocchio/doxygen-html/md_doc_a-features_j-analytical-derivatives.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand why built-in dynamics derivatives matter for numerical optimal control."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ZASVKAlegfQ",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-3-newton-euler-inverse-dynamics/",
+        "https://gepetto.github.io/doc/pinocchio/doxygen-html/md_doc_a-features_g-dynamic.html",
+        "https://gepetto.github.io/doc/pinocchio/doxygen-html/md_doc_a-features_j-analytical-derivatives.html",
+        "https://raw.githubusercontent.com/stack-of-tasks/pinocchio/devel/examples/inverse-dynamics-derivatives.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/pinocchio/devel/examples/inverse-dynamics.py"
+      ]
+    },
+    {
+      "node_id": "k:floating-base-centroidal-dynamics-legged-humanoid",
+      "type": "knowledge",
+      "name": "Floating-base & centroidal dynamics (legged/humanoid)",
+      "summary": "Floating-base dynamics includes a robot's freely moving body, while centroidal dynamics summarizes how external forces change whole-body momentum around its center of mass.",
+      "lesson_md": "## In one sentence\n\nFloating-base dynamics includes a robot's freely moving body, while centroidal dynamics summarizes how external forces change whole-body momentum around its center of mass.\n\n![Simplified legged body with mass and inertia labels, two feet, and external ground-force arrows](/img/lessons/knowledge_kinematics_dynamics-centroidal-dynamics.webp)\n*A simplified body makes the external contact forces visible. Source: [Underactuated Robotics](https://underactuated.mit.edu/humanoids.html), license unknown.*\n\n## Why it matters for us\n\n- **Walking is not fixed-base motion:** a humanoid's torso can translate and rotate instead of remaining bolted to a workbench.\n- **Feet supply external support:** motor torques alone do not make a robot hover; its interaction with the ground matters.\n- **Whole-body planning needs structure:** center-of-mass and momentum equations expose balance requirements without immediately solving every joint trajectory.\n\n> **Key idea:** A feasible center-of-mass plan still needs joints and motors capable of realizing its contact forces.\n\n## How it works\n\n- **Add the floating base:** include three translation and three rotation freedoms alongside the articulated joints.\n- **Separate actuation from support:** joint motors move connected links; ground contacts provide external forces that can accelerate the whole robot.\n- **Locate the center of mass:** average link-center positions using link masses as weights; its location changes with posture.\n- **Track whole-body momentum:** combine translational momentum with angular momentum measured about that center of mass.\n- **Apply force balance:** external forces determine momentum's rate of change; gravity contributes alongside contact forces.\n- **Think a summary API:** centroidal quantities expose whole-system behavior, but hide individual joint details that another layer must still check.\n- **Keep the distinction:** centroidal momentum equations are exact; ignoring joint reach, effort limits, or other constraints can still produce unrealizable plans.\n- **Worked support example:** for a hypothetical 10 kg robot, choose gravity as 10 m/s² for arithmetic; two upward foot forces of 50 N balance weight.\n- **Increase both forces:** 60 N per foot gives 120 N upward against 100 N weight, producing 2 m/s² upward center-of-mass acceleration.\n- **Respect contacts:** a foot cannot pull on an ordinary floor, and friction limits sideways force; losing contact changes the available support.\n\n```mermaid\nflowchart LR\n  P[\"Contact locations and timing\"] --> F[\"Plan external forces\"]\n  F --> C[\"Center of mass and momentum\"]\n  C --> W[\"Whole-body joint motion\"]\n  W --> V[\"Check limits and contacts\"]\n  V --> P\n```\n\n## Key terms\n\n- **Floating base**: an unanchored body whose pose belongs to the robot state.\n- **Center of mass**: the mass-weighted average position of the robot's material.\n- **Angular momentum**: the rotational component of momentum.\n- **Centroidal dynamics**: whole-body momentum dynamics expressed about the center of mass.\n- **Contact force**: force exchanged between the robot and its surroundings at a touching surface.\n\n## Before / after\n\n- **Before:** Learn Rigid-body dynamics (equations of motion) and Efficient dynamics algorithms & analytical derivatives.\n- **After:** Explore Centroidal momentum viewer or Humanoid jump with Crocoddyl.\n\n## Try it in an afternoon\n\n1. **Watch the centroidal-planner video:** identify moments when different feet provide support.\n2. **Implement vertical force balance** for the hypothetical robot; print acceleration for 50 N and 60 N per foot.\n3. **Remove one supporting force:** recompute acceleration without silently increasing the remaining force.\n4. **List missing checks:** explain why correct vertical force balance alone does not verify joint reach, motor effort, or sideways friction.",
+      "resources": [
+        {
+          "title": "Learning Coordinated Terrain-Adaptive Locomotion by Imitating a Centroidal Dynamics Planner",
+          "url": "https://www.youtube.com/watch?v=dvFwkvef2Ww",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See legged motions generated using a centroidal planner and learned tracking policies."
+        },
+        {
+          "title": "Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Study external support forces, center-of-mass planning, and exact centroidal momentum equations."
+        },
+        {
+          "title": "Centroidal Dynamics Model Comparison",
+          "url": "https://slides.com/alexanderwinkler/centroidal",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Compare floating-base, centroidal, single-rigid-body, and inverted-pendulum models and their assumptions."
+        },
+        {
+          "title": "Learning Coordinated Terrain-Adaptive Locomotion by Imitating a Centroidal Dynamics Planner",
+          "url": "https://arxiv.org/abs/2111.00262",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how centroidal trajectory optimization supplies reference motions for terrain-adaptive locomotion."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=dvFwkvef2Ww",
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://slides.com/alexanderwinkler/centroidal",
+        "https://arxiv.org/abs/2111.00262"
+      ]
     }
   ]
 }
