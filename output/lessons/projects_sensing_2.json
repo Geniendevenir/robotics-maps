@@ -1,0 +1,347 @@
+{
+  "batch": "projects_sensing_2",
+  "lessons": [
+    {
+      "node_id": "p:planar-lidar-scan-geometry-and-blind-zone-bench",
+      "type": "project",
+      "name": "Planar LiDAR scan geometry and blind-zone bench",
+      "summary": "Surround a fixed RPLIDAR A1 with measured cardboard targets and check each raw scan angle and range against a tape measure, including the blind zone.",
+      "lesson_md": "## In one sentence\n\nSurround a fixed RPLIDAR A1 with measured cardboard targets and check each raw scan angle and range against a tape measure, including the blind zone.\n\n![RPLIDAR A1 2D laser scanner](/img/lessons/projects_sensing_2-lidar-blind-zone.webp)\n*The SLAMTEC RPLIDAR A1, a low-cost spinning 2D LiDAR. Source: [slamtec.com](https://www.slamtec.com/en/Lidar/A1), license unknown.*\n\n## What you will learn\n\n- **Polar geometry:** A 2D LiDAR returns a list of distances, one per angle. You convert each (angle, range) pair to x, y yourself.\n- **Blind zone:** The A1 spec says 0.15 m to 12 m. Anything closer than 15 cm is not measured, so a robot can be \"blind\" right next to itself.\n- **Invalid returns:** The ROS `LaserScan` message says values below `range_min` or above `range_max` must be discarded, not trusted.\n- **Error grows with distance:** The A1 accuracy is 1% of range up to 3 m and 2% from 3 to 5 m.\n\n> **Key idea:** A scan is only as good as your check against known geometry: measure the room first, then trust the sensor.\n\n## What you need\n\n- **Sensor:** RPLIDAR A1 (5 V, 0.5 W, UART over a micro-USB adapter, 8000 samples per second, about 5.5 Hz rotation, angular resolution of 1° or better).\n- **Targets:** Cardboard boxes, a tape measure, masking tape on the floor to mark angles.\n- **Software:** Python with numpy and matplotlib, or ROS 2 with the official `rplidar_ros` driver.\n- **Cost:** Under €500 in the project plan; the A1 itself is the main item.\n\n## Steps\n\n1. **Mount the scanner** flat and fixed on a table, following the manufacturer setup and mark its zero angle on the floor.\n2. **Place targets** at measured angles and distances, for example 0.10 m, 0.5 m, 1 m and 3 m.\n3. **Record raw scans** and convert every ray with x = r·cos(θ), y = r·sin(θ).\n4. **Plot a polar scan** and overlay the tape-measure positions of each target.\n5. **Mark invalid rays** (zero, below 0.15 m or above 12 m) in a separate colour.\n6. **Test failures:** an empty room, a target inside 15 cm, and an unplugged cable; log what the software reports.\n7. **Film the demo** with the live polar plot next to the physical layout.\n\n```mermaid\nflowchart LR\n  A[\"Measure targets\"] --> B[\"Record raw scan\"]\n  B --> C[\"Angle, range to x, y\"]\n  C --> D[\"Overlay ground truth\"]\n  D --> E[\"Mark invalid returns\"]\n  E --> F[\"Report errors\"]\n```\n\n## Common pitfalls\n\n- **Wrong angle convention:** ROS measures angles counter-clockwise around +Z with zero forward along x; the raw device may differ. Check with one target at a known angle.\n- **Keeping zeros:** A 0 m value is below `range_min`; plotting it as real creates fake obstacles at the sensor centre.\n- **Scope creep:** Do not build a map; this bench only characterises the sensor.\n\n## When it's done\n\n- **Residual table:** Measured versus tape distance and angle per target, error in cm and percent.\n- **Blind-zone evidence:** A video where a target moved inside 15 cm visibly drops out of the scan.\n- **Failure log:** Empty-room, too-close and disconnected cases recorded with what the software showed.\n",
+      "resources": [
+        {
+          "title": "How do we add LIDAR to a ROS robot?",
+          "url": "https://www.youtube.com/watch?v=eJZXRncGaGM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Articulated Robotics explains how a spinning 2D LiDAR produces a scan and how it shows up in ROS and RViz."
+        },
+        {
+          "title": "RPLIDAR-A1 Laser Range Scanner Parameters",
+          "url": "https://www.slamtec.com/en/Lidar/A1Spec",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official A1 spec table: 0.15-12 m range, 8K samples per second, 5.5 Hz rotation and accuracy per distance band."
+        },
+        {
+          "title": "Slamtec/rplidar_ros",
+          "url": "https://github.com/Slamtec/rplidar_ros",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official driver that turns the A1 serial stream into ROS scan messages, with launch files per model."
+        },
+        {
+          "title": "sensor_msgs/LaserScan.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/LaserScan.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The message definition: angle_min, angle_increment, range_min/max and the rule to discard out-of-range values."
+        }
+      ],
+      "sources": [
+        "https://www.slamtec.com/en/Lidar/A1",
+        "https://www.slamtec.com/en/Lidar/A1Spec",
+        "https://github.com/Slamtec/rplidar_ros",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/LaserScan.msg"
+      ]
+    },
+    {
+      "node_id": "p:ptp-clock-alignment-under-sensor-network-load",
+      "type": "project",
+      "name": "PTP clock alignment under sensor-network load",
+      "summary": "Synchronize two machines with LinuxPTP, then add network load and check whether clock offset, packet delay and a shared physical event still agree.",
+      "lesson_md": "## In one sentence\n\nSynchronize two machines with LinuxPTP, then add network load and check whether clock offset, packet delay and a shared physical event still agree.\n\n![PTP timing message exchange diagram](/img/lessons/projects_sensing_2-ptp-clock.webp)\n*Basic PTP timing message exchange between a master clock and a slave clock. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Basic_PTP_timing_message_exchange.png), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **PTP (Precision Time Protocol, IEEE 1588):** Machines exchange timestamped messages so each local clock can follow the most accurate \"master\" clock on the network.\n- **Two daemons:** `ptp4l` disciplines the network card's PTP hardware clock (PHC); `phc2sys` then copies that time to the system clock.\n- **Hardware versus software timestamps:** `ptp4l -H` uses timestamps made by the network card, `-S` uses the kernel; the manual notes extra filtering helps with larger network jitter.\n- **Offset is not acquisition:** A small software-reported offset does not prove two sensors captured at the same instant.\n\n> **Key idea:** PTP is like NTP for your sensors with stopwatches built into the network card; measure it against a real event before trusting it.\n\n## What you need\n\n- **Network:** Two Linux hosts with PTP-capable network cards or devices, and a switch. Document timestamp support for each card.\n- **Software:** LinuxPTP (`ptp4l`, `phc2sys`, `pmc`) and `tc netem` to add delay, jitter and packet loss.\n- **Reference event:** An independent shared event, for example one LED flash seen by two cameras, if available.\n- **Budget:** €500-5k planning estimate, 2-4 weeks.\n\n## Steps\n\n1. **Check timestamp support** on each interface and write it down; the kernel lists hardware receive timestamps as `SOF_TIMESTAMPING_RX_HARDWARE`.\n2. **Start `ptp4l`** on both hosts, then `phc2sys` to follow the PHC; log offset and path delay.\n3. **Read summary statistics:** `ptp4l` can report offset RMS, maximum absolute offset and path delay mean and standard deviation, in nanoseconds.\n4. **Add load** with `tc qdisc ... netem delay`, jitter and `loss` settings, step by step, and plot offset over time.\n5. **Record the reference event** on both machines and compare its timestamps with the reported offset.\n6. **Inject failures:** unplug the cable, stop the master, and log how long recovery takes.\n\n```mermaid\nflowchart LR\n  A[\"Master clock\"] -->|\"Sync / Delay msgs\"| B[\"ptp4l on PHC\"]\n  B --> C[\"phc2sys to system clock\"]\n  D[\"netem load\"] --> B\n  C --> E[\"Dashboard: offset, delay\"]\n  F[\"Shared LED flash\"] --> E\n```\n\n## Common pitfalls\n\n- **Two daemons fighting:** The TSN guide warns to run only one instance of `ptp4l` or `phc2sys` per clock.\n- **Trusting one number:** Basler suggests waiting until the offset from master stays under your threshold, for example 1 ms, before acquisition.\n- **Time scale surprise:** PTP time does not apply leap seconds, so it is shifted from UTC by tens of seconds.\n\n## When it's done\n\n- **Dashboard video:** Offset and path delay plotted live while load is switched on and off.\n- **Evidence table:** Reported offset versus the measured shared-event difference for each load level.\n- **Failure log:** Cable-out and master-loss trials with recovery times, including runs that never converged.\n",
+      "resources": [
+        {
+          "title": "Precision Time Protocol (gPTP) Explained in 5 minutes",
+          "url": "https://www.youtube.com/watch?v=3vsO4Ndv-9M",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short animated explanation of how PTP messages measure link delay and clock offset."
+        },
+        {
+          "title": "ptp4l(8): PTP Boundary/Ordinary/Transparent Clock",
+          "url": "https://linuxptp.org/documentation/ptp4l/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Manual for the LinuxPTP daemon: hardware versus software time stamping, summary statistics and delay request intervals."
+        },
+        {
+          "title": "Synchronizing Time with Linux* PTP — TSN Documentation Project for Linux",
+          "url": "https://tsn.readthedocs.io/timesync.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Step-by-step walkthrough of ptp4l, phc2sys and pmc on two machines, with the exact commands."
+        },
+        {
+          "title": "Precision Time Protocol | Basler Product Documentation",
+          "url": "https://docs.baslerweb.com/precision-time-protocol",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Camera-vendor view of PTP: master clock election and checking offset from master before trusting timestamps."
+        },
+        {
+          "title": "richardcochran/linuxptp",
+          "url": "https://github.com/richardcochran/linuxptp",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Source code of the LinuxPTP stack used in this project."
+        }
+      ],
+      "sources": [
+        "https://www.linuxptp.org/",
+        "https://linuxptp.org/documentation/ptp4l/",
+        "https://linuxptp.org/documentation/phc2sys/",
+        "https://tsn.readthedocs.io/timesync.html",
+        "https://docs.baslerweb.com/precision-time-protocol",
+        "https://docs.kernel.org/networking/timestamping.html",
+        "https://man7.org/linux/man-pages/man8/tc-netem.8.html"
+      ]
+    },
+    {
+      "node_id": "p:quick-release-wrist-camera-remount-calibration-fixture",
+      "type": "project",
+      "name": "Quick-release wrist-camera remount calibration fixture",
+      "summary": "Design a keyed quick-release wrist-camera mount, remount it many times on a stationary arm, and measure how much the calibration really moves.",
+      "lesson_md": "## In one sentence\n\nDesign a keyed quick-release wrist-camera mount, remount it many times on a stationary arm, and measure how much the calibration really moves.\n\n![UMI hand-held gripper with a wrist-mounted GoPro](/img/lessons/projects_sensing_2-wrist-camera-remount.webp)\n*The UMI data-collection gripper carries its camera at the wrist. Source: [umi-gripper.github.io](https://umi-gripper.github.io/), license unknown.*\n\n## What you will learn\n\n- **Intrinsic calibration:** OpenCV estimates focal lengths, principal point and **distortion** from chessboard views; the tutorial asks for at least 10 test patterns.\n- **CameraInfo:** ROS publishes the result as a 3x3 `K` matrix and distortion parameters, for example the five `plumb_bob` values (k1, k2, t1, t2, k3).\n- **Calibration identity:** Each calibration file should name the exact camera, lens and mount it was measured on.\n- **Re-projection error:** Project known target corners with your calibration and measure the pixel gap to what the camera saw.\n\n> **Key idea:** A calibration is a cache keyed by the physical setup; a remount may invalidate it, so you need a test that says when.\n\n## What you need\n\n- **Arm:** A supported, stationary SO-101 or similar arm; no gripper redesign or arm assembly is part of this project.\n- **Camera and mount:** A wrist camera, a 3D-printed keyed quick-release plate, and a printed chessboard on a rigid board.\n- **Software:** Python with OpenCV camera calibration tools; optionally ROS 2 to publish `CameraInfo`.\n- **Budget:** €500-5k planning estimate, 2-4 weeks.\n\n## Steps\n\n1. **Calibrate once** with many chessboard views covering the whole image, and save `K`, distortion and a calibration ID.\n2. **Fix a held-out target** at a measured position that is never used for calibration.\n3. **Remount repeatedly:** detach and reattach the camera 10-20 times, capturing the held-out target each time.\n4. **Overlay predictions:** project the held-out target corners and plot re-projection error after every remount.\n5. **Track coverage:** log which image regions the calibration views covered, since distortion grows towards the edges.\n6. **Test failures:** an empty view with no target, a deliberately loose mount, and a wrong calibration file.\n\n```mermaid\nflowchart LR\n  A[\"Calibrate once + ID\"] --> B[\"Remount camera\"]\n  B --> C[\"Capture held-out target\"]\n  C --> D[\"Re-projection error\"]\n  D -->|\"below threshold\"| B\n  D -->|\"above threshold\"| E[\"Flag: recalibrate\"]\n```\n\n## Common pitfalls\n\n- **Testing on training data:** Errors measured on the calibration images look better than reality; always use a held-out target.\n- **Edge-blind calibration:** OpenCV notes radial distortion grows farther from the centre, so centre-only views hide edge errors.\n- **Wrong claim:** UMI's own page calls its wrist-only setup calibration-free; do not say UMI requires robot hand-eye calibration.\n\n## When it's done\n\n- **Remount video:** The arm, the quick-release action and the held-out overlay after each remount.\n- **Repeatability plot:** Re-projection error per remount, with the threshold that triggers recalibration.\n- **Manifest:** Camera ID, calibration ID and mount ID stored with each capture, plus the failure trials.\n",
+      "resources": [
+        {
+          "title": "3 -  MoveIt -  Easy Hand Eye Calibration with MoveIt",
+          "url": "https://www.youtube.com/watch?v=xQ79ysnrzUk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "PickNik shows how a camera's pose relative to a robot is estimated from target views, the transform a remount can disturb."
+        },
+        {
+          "title": "OpenCV: Camera Calibration",
+          "url": "https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "The standard chessboard tutorial: distortion, intrinsics, at least 10 views and re-projection error."
+        },
+        {
+          "title": "sensor_msgs/CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The ROS message that carries the calibration (K matrix, distortion model) next to every image stream."
+        },
+        {
+          "title": "Universal Manipulation Interface: In-The-Wild Robot Teaching Without In-The-Wild Robots",
+          "url": "https://umi-gripper.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Project page of a wrist-camera data-collection gripper, useful to see why wrist views matter."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://umi-gripper.github.io/"
+      ]
+    },
+    {
+      "node_id": "p:radar-adc-capture-throughput-and-packet-loss-characterization",
+      "type": "project",
+      "name": "Radar ADC capture throughput and packet-loss characterization",
+      "summary": "Stream raw radar ADC samples through a TI DCA1000EVM to a Windows host and measure throughput, packet loss and failures under deliberate host load.",
+      "lesson_md": "## In one sentence\n\nStream raw radar ADC samples through a TI DCA1000EVM to a Windows host and measure throughput, packet loss and failures under deliberate host load.\n\n![TI DCA1000EVM data capture board](/img/lessons/projects_sensing_2-radar-adc-capture.webp)\n*The DCA1000EVM board that streams raw radar data over Ethernet. Source: [ti.com](https://www.ti.com/tool/DCA1000EVM), license unknown.*\n\n## What you will learn\n\n- **ADC data:** The radar's analog-to-digital converter output, the rawest samples before any detection. **mmWave Studio** collects it \"for offline analysis\".\n- **LVDS to Ethernet:** The DCA1000EVM captures two- or four-lane LVDS (low-voltage differential signaling) traffic and streams it over 1-Gbps Ethernet.\n- **UDP has no retries:** The board sends data over UDP; the user guide says the host may miss packets or receive them jumbled.\n- **Throughput trade-off:** Packet delay is configurable from 5 to 500 µs; lower delay gives more bandwidth but more UDP drops.\n\n> **Key idea:** Treat the capture card like a firehose into a UDP socket: if your host can't drink fast enough, data disappears silently unless you count it.\n\n## What you need\n\n- **Hardware:** An IWR6843ISK radar board (it interfaces directly with the DCA1000), a DCA1000EVM, and an Ethernet cable. Check exact board, adapter and tool-version compatibility before buying.\n- **Host:** A Windows PC, because mmWave Studio is a stand-alone Windows GUI; do not assume a Linux install.\n- **Software:** mmWave Studio (free, the IWR6843 is listed among supported parts), and Python for parsing logs.\n- **Budget:** €500-5k planning estimate, 1-2 months.\n\n## Steps\n\n1. **Connect and configure** the radar and DCA1000 through mmWave Studio following TI's guides; record every tool and firmware version.\n2. **Capture a baseline** at the default 25 µs packet delay, which the guide lists at about 325 Mbps.\n3. **Sweep packet delay** (5, 10, 25, 50 µs; the theoretical throughput table gives roughly 706, 545, 325 and 193 Mbps).\n4. **Count losses:** compare expected file size from chirp settings with actual recording size, and log out-of-sequence errors.\n5. **Load the host** with CPU and disk stress and repeat; note when losses start.\n6. **Trigger failures:** an unplugged cable, and a data rate high enough to light the FPGA_ERR_LED buffer-overflow indicator.\n\n```mermaid\nflowchart LR\n  A[\"IWR6843ISK ADC\"] -->|\"LVDS\"| B[\"DCA1000EVM\"]\n  B -->|\"UDP, 1 Gbps\"| C[\"Windows host\"]\n  C --> D[\"Recording file\"]\n  D --> E[\"Size and sequence check\"]\n  F[\"Host stress\"] --> C\n```\n\n## Common pitfalls\n\n- **Scope creep:** This project characterises transport; do not implement radar perception.\n- **Reset forgotten:** After changing the LVDS data rate, the guide says the DCA1000 needs a hardware or software reset.\n- **Overflow misread:** FPGA_ERR_LED means LVDS data arrives faster than Ethernet can send it, not a radar fault.\n\n## When it's done\n\n- **Capture video:** The board setup, packet counters and recording size shown live.\n- **Throughput table:** Measured versus theoretical Mbps and loss rate for each packet delay and host-load level.\n- **Failure log:** Cable-out, overflow and stressed-host trials, including captures that failed outright.\n",
+      "resources": [
+        {
+          "title": "DCA1000 Training Video - 4",
+          "url": "https://www.youtube.com/watch?v=z06C2W6qMc8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Walkthrough of a DCA1000 capture setup in mmWave Studio, useful before touching your own board."
+        },
+        {
+          "title": "DCA1000EVM Data Capture Card User's Guide",
+          "url": "https://www.ti.com/lit/pdf/spruij4",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Official guide: UDP ports, packet-delay setting, throughput table and the out-of-sequence and buffer-overflow errors."
+        },
+        {
+          "title": "DCA1000EVM Evaluation board | TI.com",
+          "url": "https://www.ti.com/tool/DCA1000EVM",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Product page: LVDS capture from AWR/IWR boards streamed over 1-Gbps Ethernet."
+        },
+        {
+          "title": "MMWAVE-STUDIO IDE, configuration, compiler or debugger | TI.com",
+          "url": "https://www.ti.com/tool/MMWAVE-STUDIO",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The Windows GUI that configures the radar and drives raw ADC capture through the DCA1000."
+        }
+      ],
+      "sources": [
+        "https://www.ti.com/tool/DCA1000EVM",
+        "https://www.ti.com/lit/pdf/spruij4",
+        "https://www.ti.com/tool/MMWAVE-STUDIO",
+        "https://www.ti.com/tool/IWR6843ISK"
+      ]
+    },
+    {
+      "node_id": "p:radar-point-cloud-capture-and-no-target-baseline",
+      "type": "project",
+      "name": "Radar point-cloud capture and no-target baseline",
+      "summary": "Point a TI IWR6843ISK radar at a measured static target, then at an empty fixture, and log the board's own detections to learn what \"nothing\" looks like.",
+      "lesson_md": "## In one sentence\n\nPoint a TI IWR6843ISK radar at a measured static target, then at an empty fixture, and log the board's own detections to learn what \"nothing\" looks like.\n\n![TI IWR6843ISK radar evaluation board](/img/lessons/projects_sensing_2-radar-point-cloud.webp)\n*The IWR6843ISK 60 GHz mmWave radar evaluation board. Source: [ti.com](https://www.ti.com/tool/IWR6843ISK), license unknown.*\n\n## What you will learn\n\n- **Millimetre-wave radar:** The IWR6843ISK works at 60-64 GHz with 3 transmit and 4 receive antennas, covering 120° azimuth and 30° elevation.\n- **Point cloud:** The board \"enables access to point-cloud data\": a list of detected points computed on the chip, not raw samples.\n- **No-target baseline:** An empty scene still produces some detections. Measuring them first tells you which points are real.\n- **Host framing:** The board's output arrives as a byte stream over the micro-USB XDS110 UART interface; you must find units and message boundaries.\n\n> **Key idea:** Before trusting a sensor's \"something is there\", record what it says when nothing is there; that baseline is your false-positive rate.\n\n## What you need\n\n- **Board:** IWR6843ISK, powered over USB; check whether your setup needs the MMWAVEICBOOST carrier for extra features.\n- **Software:** TI's mmWave SDK out-of-box demo, which represents a \"point cloud\", plus Python with `pyserial` to log bytes.\n- **Fixture:** A fixed board mount, a corner-reflector or metal plate target, a tape measure, and an empty, unchanging area.\n- **Budget:** €500-5k planning estimate, 1 week.\n\n## Steps\n\n1. **Flash and run** the supported out-of-box demo using TI's documented configuration; save the exact configuration file.\n2. **Log raw bytes** from the board to disk with host timestamps, then decode messages using TI's documented format.\n3. **Measured target:** place the target at known distances and angles; compare reported point positions with the tape measure.\n4. **Empty fixture:** remove the target and record the same duration; count and map the remaining detections.\n5. **Explicit failure:** unplug USB mid-stream and send a broken configuration; log how your parser reacts.\n\n```mermaid\nflowchart LR\n  A[\"Config file\"] --> B[\"IWR6843ISK demo\"]\n  B -->|\"UART bytes\"| C[\"Host logger\"]\n  C --> D[\"Decode points\"]\n  D --> E[\"Target vs tape\"]\n  D --> F[\"Empty-scene baseline\"]\n```\n\n## Common pitfalls\n\n- **Claiming raw data:** This board output is processed detections. Raw ADC capture needs extra hardware, covered in Radar ADC capture throughput and packet-loss characterization.\n- **Moving background:** People or fans in the field of view pollute the empty baseline.\n- **Undocumented units:** Write down the unit of every field before plotting it.\n\n## When it's done\n\n- **Video:** The board facing the measured target, then the empty fixture, with detections plotted live.\n- **Baseline table:** Detections per second with and without the target, and position errors versus the tape.\n- **Failure log:** USB-loss and bad-configuration trials, with what the logger recorded.\n",
+      "resources": [
+        {
+          "title": "Short range radar demonstration using TI’s mmWave sensors",
+          "url": "https://www.youtube.com/watch?v=ziQjbVXcSts",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Official TI demo showing what a radar point cloud looks like on screen."
+        },
+        {
+          "title": "Introduction to mmwave sensing : FMCW Radars",
+          "url": "https://www.youtube.com/watch?v=8cHACNNDWD8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains how an FMCW radar turns chirps into range and velocity, the basis of every detected point."
+        },
+        {
+          "title": "IWR6843ISK Evaluation board | TI.com",
+          "url": "https://www.ti.com/tool/IWR6843ISK",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The board used here: 60-64 GHz, 3 TX / 4 RX antennas, field of view and supported software."
+        },
+        {
+          "title": "MMWAVE-SDK Software development kit (SDK) | TI.com",
+          "url": "https://www.ti.com/tool/MMWAVE-SDK",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "The SDK with the out-of-box demo that outputs point clouds."
+        },
+        {
+          "title": "mmWave radar sensors | TI.com",
+          "url": "https://www.ti.com/video/series/mmwave-training-series.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "TI's mmWave training curriculum, from radar basics to configuration."
+        }
+      ],
+      "sources": [
+        "https://www.ti.com/tool/IWR6843ISK",
+        "https://www.ti.com/tool/MMWAVE-SDK",
+        "https://www.ti.com/lit/pdf/swru546",
+        "https://www.ti.com/video/series/mmwave-training-series.html"
+      ]
+    },
+    {
+      "node_id": "p:recorded-event-stream-polarity-and-time-microscope",
+      "type": "project",
+      "name": "Recorded event-stream polarity and time microscope",
+      "summary": "Load a published event-camera recording and build a viewer that shows each event's pixel, polarity and timestamp, with a live accumulation-time slider.",
+      "lesson_md": "## In one sentence\n\nLoad a published event-camera recording and build a viewer that shows each event's pixel, polarity and timestamp, with a live accumulation-time slider.\n\n![Visualization of asynchronous events from a DAVIS event camera](/img/lessons/projects_sensing_2-event-stream.webp)\n*Events from a DAVIS event camera, from the RPG event-camera dataset. Source: [rpg.ifi.uzh.ch](https://rpg.ifi.uzh.ch/davis_data.html), license unknown.*\n\n## What you will learn\n\n- **Events, not frames:** An event camera's pixels fire only when brightness changes. The stream is a sequence of (X, Y, P, T) tuples.\n- **Polarity:** P = 1 is an ON event (darker to lighter); P = 0 is an OFF event (lighter to darker).\n- **Microsecond time:** Each timestamp T is in µs. The survey cites microsecond resolution and 140 dB dynamic range versus 60 dB for normal cameras.\n- **Accumulation time:** To draw a picture you collect events from T-dt to T; dt is the accumulation time.\n\n> **Key idea:** An event stream is a log file of pixel changes, not a video; a \"frame\" is just a query over a time window you choose.\n\n## What you need\n\n- **No camera:** Use Prophesee's free sample recordings, offered as RAW (EVT2 or EVT3), DAT and HDF5 files.\n- **Software:** OpenEB, the open-source SDK with Python tutorials, or plain Python and numpy reading HDF5.\n- **Time:** 1 week, €0 (sim only) planning estimate.\n\n## Steps\n\n1. **Download** a small sample, for example the 5 s `hand_spinner` recording, and read the RAW header (format, width, height).\n2. **Decode events** into arrays x, y, p, t and check that timestamps never go backwards.\n3. **Render frames:** paint ON and OFF events in two colours for each accumulation window.\n4. **Add a slider** for accumulation time, from tens of microseconds to 33 ms, and watch blur and sparsity change.\n5. **Zoom in time:** plot one pixel's events as ticks on a µs timeline.\n6. **Test failures:** an empty window with no events, and a truncated or corrupted copy of the file.\n\n```mermaid\nflowchart LR\n  A[\"Sample RAW / HDF5\"] --> B[\"Decode x, y, p, t\"]\n  B --> C[\"Order check\"]\n  C --> D[\"Accumulate over dt\"]\n  D --> E[\"ON / OFF image\"]\n  E --> F[\"Slider changes dt\"]\n```\n\n## Common pitfalls\n\n- **Assuming sorted data:** Verify ordering yourself and report any out-of-order timestamps.\n- **Empty means broken:** A window with zero events can be a static scene, not a bug; show it explicitly.\n- **Scope creep:** No object recognition or learned model; the goal is to see the raw data clearly.\n\n## When it's done\n\n- **Screen recording:** The viewer with polarity colours and the accumulation slider moving live.\n- **Data report:** Event count, event rate and ordering check for each file.\n- **Failure log:** Empty-window and damaged-file cases, with the error your loader printed.\n\nThis prepares you for Reusable event-RGB calibration target and coverage protocol.\n",
+      "resources": [
+        {
+          "title": "What is Event-Based Vision | Metavision by Prophesee",
+          "url": "https://www.youtube.com/watch?v=MjX3z-6n3iA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short official explainer of how event pixels fire only on brightness change."
+        },
+        {
+          "title": "Event Cameras: a New Way of Sensing - Davide Scaramuzza - ICCP 2024 Keynote",
+          "url": "https://www.youtube.com/watch?v=0wGBpgIrd9M",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Keynote by a leading event-vision lab covering why and where event cameras help."
+        },
+        {
+          "title": "Event-Based Concepts — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Defines CD events, polarity, microsecond timestamps and accumulation time with pictures."
+        },
+        {
+          "title": "Recordings and Datasets — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/datasets.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Free sample recordings in RAW, DAT and HDF5 with sizes and event rates."
+        },
+        {
+          "title": "prophesee-ai/openeb",
+          "url": "https://github.com/prophesee-ai/openeb",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Open source SDK to read and display event files from C++ or Python."
+        },
+        {
+          "title": "[1904.08405] Event-based Vision: A Survey",
+          "url": "https://arxiv.org/abs/1904.08405",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The standard survey of event cameras and algorithms."
+        }
+      ],
+      "sources": [
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://docs.prophesee.ai/stable/datasets.html",
+        "https://docs.prophesee.ai/stable/data/file_formats/raw.html",
+        "https://github.com/prophesee-ai/openeb",
+        "https://rpg.ifi.uzh.ch/research_dvs.html",
+        "https://arxiv.org/abs/1904.08405"
+      ]
+    },
+    {
+      "node_id": "p:recording-archive-recovery-and-calibration-manifest-integrity",
+      "type": "project",
+      "name": "Recording archive recovery and calibration-manifest integrity",
+      "summary": "Build an archive checker that uses checksums and calibration manifests to catch truncated recordings, changed calibration files and missing entries.",
+      "lesson_md": "## In one sentence\n\nBuild an archive checker that uses checksums and calibration manifests to catch truncated recordings, changed calibration files and missing entries.\n\n![LeRobot dataset visualizer with camera views and joint charts](/img/lessons/projects_sensing_2-archive-manifest.webp)\n*The LeRobot dataset visualizer showing synchronized recordings and joint curves. Source: [huggingface.co](https://huggingface.co/docs/lerobot/using_dataset_tools), license unknown.*\n\n## What you will learn\n\n- **Bag anatomy:** A rosbag2 recording is a directory with a `metadata.yaml` plus storage files such as `.mcap` or `.db3`.\n- **Metadata is written at the end:** Stopping the recorder \"will finalize the current bag file and write metadata\"; a crash can skip that.\n- **Recovery tools:** `ros2 bag info` shows size, duration and message counts; `ros2 bag reindex` exists to rebuild metadata.\n- **Checksums:** Python's `hashlib.file_digest` computes a SHA-256 of a whole file; any changed byte changes the hash.\n- **Calibration as data:** `CameraInfo` carries `K` and distortion values; LeRobot datasets keep schema, FPS and stats in `meta/` files.\n\n> **Key idea:** Treat a recording like a software release: a lockfile of hashes plus a manifest of which calibration and device produced it.\n\n## What you need\n\n- **Data:** A few rosbag2 or LeRobotDataset recordings, real or simulated; €0 (sim only), 2-4 weeks planning estimate.\n- **Software:** ROS 2 with `ros2 bag`, Python with `hashlib` and `pyyaml`.\n- **Discipline:** Work only on copies; never damage original captures.\n\n## Steps\n\n1. **Write a manifest format:** per file, path, size and SHA-256; per recording, device IDs, calibration file hash and recording ID.\n2. **Generate manifests** for healthy recordings and check `ros2 bag info` duration and counts.\n3. **Damage copies:** truncate a storage file, edit one calibration value, delete a manifest line.\n4. **Run the checker** and require a clear, specific message for each damage type.\n5. **Try recovery** on the truncated copy with `ros2 bag reindex` and document what survives.\n6. **Test edge cases:** an empty recording, and a missing `metadata.yaml`.\n\n```mermaid\nflowchart LR\n  A[\"Recording dir\"] --> B[\"Hash every file\"]\n  C[\"Calibration files\"] --> B\n  B --> D[\"Manifest\"]\n  E[\"Damaged copy\"] --> F[\"Checker\"]\n  D --> F\n  F --> G[\"Pass / precise error\"]\n```\n\n## Common pitfalls\n\n- **Hashing originals in place:** Always copy first; one bad command can destroy the only capture.\n- **Silent calibration drift:** A calibration file edited after recording looks valid unless its hash is in the manifest.\n- **Scope creep:** Focus on integrity and reproducibility, not action timing or firmware CI.\n\n## When it's done\n\n- **Screen recording:** The checker flagging a truncated recording, a changed calibration file and a missing manifest entry.\n- **Recovery notes:** What `reindex` restored and what was lost.\n- **Report:** Every test case, including false alarms and missed damage.\n\nBuilds on VLA-ready sensing rig with verifiable calibration provenance.\n",
+      "resources": [
+        {
+          "title": "ROS2 - Create and Replay a ROS2 Bag",
+          "url": "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Robotics Back-End records and replays a bag step by step, so you know what a healthy recording looks like."
+        },
+        {
+          "title": "Recording and playing back data — ROS 2 Documentation: Jazzy documentation",
+          "url": "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Official tutorial for ros2 bag record, info and play."
+        },
+        {
+          "title": "ros2/rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The recorder source and README: storage plugins, metadata.yaml and the reindex verb."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How robot-learning datasets store schema, stats and episode offsets in meta files."
+        },
+        {
+          "title": "hashlib — Secure hashes and message digests",
+          "url": "https://docs.python.org/3/library/hashlib.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Python's SHA-256 and file_digest, the building blocks of your checksum manifest."
+        }
+      ],
+      "sources": [
+        "https://github.com/ros2/rosbag2",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://docs.python.org/3/library/hashlib.html",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg"
+      ]
+    }
+  ]
+}
