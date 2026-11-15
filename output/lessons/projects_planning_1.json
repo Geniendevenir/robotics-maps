@@ -772,6 +772,391 @@
         "https://ompl.kavrakilab.org/core/stateValidation.html",
         "https://moveit.picknik.ai/main/doc/examples/visualizing_collisions/visualizing_collisions_tutorial.html"
       ]
+    },
+    {
+      "node_id": "p:planning-lab-combine-global-search-with-receding-horizon-trajectory-optimization",
+      "type": "project",
+      "name": "Planning lab: combine global search with receding-horizon trajectory optimization",
+      "summary": "Pair a slow global search that finds a coarse route with a fast receding-horizon optimizer that follows it, and replan globally only when the local optimizer gets stuck.",
+      "lesson_md": "## In one sentence\n\nPair a slow global search that finds a coarse route with a fast receding-horizon optimizer that follows it, and replan globally only when the local optimizer gets stuck.\n\n![MoveIt Hybrid Planning architecture diagram with a Hybrid Planning Manager, a global planner and a local planner](/img/lessons/projects_planning_1-receding.webp)\n*MoveIt's Hybrid Planning architecture: a manager coordinates a slower global planner and a fast local planner. Source: [MoveIt Hybrid Planning](https://moveit.picknik.ai/main/doc/concepts/hybrid_planning/hybrid_planning.html), license unknown.*\n\n## What you will learn\n\n- **Global search** (for example A* on a grid) scans the whole map and returns coarse waypoints; it is too slow to rerun every tick.\n- **Receding-horizon optimization** (the idea behind **MPC**, model predictive control) optimizes only the next few seconds, executes the first command, shifts the window and repeats.\n- **Hybrid planning:** MoveIt describes a global planner solving the large problem slowly while a local planner reacts continuously to sensor feedback and local constraints.\n- **Software analogy:** It resembles a build system that computes the full dependency graph once, while a fast file watcher handles small edits and requests a full rebuild only when stuck.\n\n> **Key idea:** The global search decides where to go; the local optimizer decides how to move for the next few steps; a stuck signal connects them.\n\n## What you need\n\n- **Simulation-only setup:** Python, NumPy and matplotlib, a two-dimensional occupancy grid and a point or unicycle robot; no hardware is required.\n- **Worked example:** Nav2's MPPI controller defaults to 56 time steps of 0.05 s, so its look-ahead is 56 × 0.05 = 2.8 s; use similar numbers for your horizon.\n- **Background reading:** The A* section of PythonRobotics and MoveIt's motion planning concepts page.\n\n## Steps\n\n1. **Global route:** Run A* on the grid, convert the cell path into waypoints, and log its runtime.\n2. **Local optimizer:** Each tick, choose controls over a short horizon that minimize distance to upcoming waypoints plus an obstacle cost; execute only the first control.\n3. **Fixed-rate loop:** Run the local optimizer at a fixed rate, with fixed random seeds, and record every planned horizon for replay.\n4. **Stuck detection:** If progress stays below a threshold for several ticks, request a new global route; cap retries, for example at three, then report failure.\n5. **Comparison runs:** Add an obstacle mid-run and compare global-only, local-only and combined planners on success rate, time and number of replans.\n\n```mermaid\nflowchart LR\n  M[\"Grid map\"] --> G[\"Global search\"]\n  G --> W[\"Waypoints\"]\n  W --> L[\"Receding-horizon optimizer\"]\n  L --> C[\"First control\"]\n  C --> S[\"Simulator\"]\n  S --> L\n  L -->|\"stuck\"| G\n```\n\n## Common pitfalls\n\n- **Local minima:** MoveIt notes local planners can get stuck; a local-only optimizer facing a U-shaped wall is the classic case.\n- **Endless replanning:** Without a retry cap, a blocked goal turns into an infinite loop instead of a clear failure.\n- **Mismatched clocks:** The optimizer's time step must match the simulator step, or predicted and real motion drift apart.\n\n## When it's done\n\n- **Reproducible table:** Fixed seeds reproduce the same success rates, runtimes and replan counts for all three planner variants.\n- **Visible replay:** An animation shows the global path, each local horizon and the moment a replan is triggered.\n",
+      "resources": [
+        {
+          "title": "Why Use Model Predictive Control? | Understanding MPC, Part 1",
+          "url": "https://www.youtube.com/watch?v=8U0xiOkDcmw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Gentle introduction to predicting ahead, optimizing, and applying only the first command."
+        },
+        {
+          "title": "Hybrid Planning — MoveIt Documentation: Rolling documentation",
+          "url": "https://moveit.picknik.ai/main/doc/concepts/hybrid_planning/hybrid_planning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Explains why a slow global planner and a fast local planner run together."
+        },
+        {
+          "title": "Grid based search — PythonRobotics documentation",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Readable A* code to use as the global search layer."
+        },
+        {
+          "title": "Motion Planning — MoveIt Documentation: Rolling documentation",
+          "url": "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows how planners plug into a real framework through a common interface."
+        },
+        {
+          "title": "Model Predictive Path Integral Control using Covariance Variable Importance Sampling",
+          "url": "https://arxiv.org/abs/1509.01149",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Original MPPI paper, a sampling-based receding-horizon optimizer you can implement locally."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=8U0xiOkDcmw",
+        "https://moveit.picknik.ai/main/doc/concepts/hybrid_planning/hybrid_planning.html",
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+        "https://moveit.picknik.ai/main/doc/concepts/motion_planning.html",
+        "https://arxiv.org/abs/1509.01149",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/mppi_controller/configuring_mppic/"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-a-learned-sampler-with-uniform-rrt-on-held-out-maps",
+      "type": "project",
+      "name": "Planning lab: compare a learned sampler with uniform RRT on held-out maps",
+      "summary": "Train a sampler on solved maps, plug it into RRT, and test on maps it never saw whether it beats uniform sampling on success and planning time.",
+      "lesson_md": "## In one sentence\n\nTrain a sampler on solved maps, plug it into RRT, and test on maps it never saw whether it beats uniform sampling on success and planning time.\n\n![Overview of cascaded diffusion models: a high-level model proposes coarse sub-goals and a lower-level model refines a local plan](/img/lessons/projects_planning_1-sampler.webp)\n*Learned planning example: a high-level model proposes sub-goals and a lower model refines the plan. Source: [Cascaded Diffusion Models for Neural Motion Planning](https://arxiv.org/abs/2505.15157), CC BY 4.0.*\n\n## What you will learn\n\n- **RRT** (rapidly-exploring random tree) grows a tree toward random sample points; by default those samples are **uniform**, so every free spot is equally likely.\n- **Learned sampler:** Ichter, Harrison and Pavone train a conditional variational autoencoder on demonstrations so samples concentrate where solutions usually pass, such as narrow passages.\n- **Held-out maps** are test maps excluded from training; only they show whether the sampler generalizes instead of memorizing.\n- **Software analogy:** A learned sampler is like a fuzzer seeded with inputs that previously found bugs, instead of purely random bytes.\n\n> **Key idea:** A learned sampler only counts as better if it wins on maps it never saw, measured with the same planner and seeds.\n\n## What you need\n\n- **Simulation-only setup:** Python with NumPy and PyTorch, or OMPL's Python bindings; a generator for random two-dimensional maps with narrow doorways.\n- **Data split:** For example 200 training maps and 50 held-out maps; these are suggested sizes, not values from a paper.\n- **Reference code:** The StanfordASL notebook learns a sampling distribution for a narrow-passage problem; read it before writing your own.\n\n## Steps\n\n1. **Map generator:** Produce random maps with seeded walls and doorways, then save the train and test split to disk.\n2. **Training data:** Solve each training map with a slow planner and store states along the solution paths.\n3. **Model training:** Fit a simple generative model, such as a conditional variational autoencoder, that outputs states given the map, start and goal.\n4. **Mixed sampler:** In RRT, draw a learned sample most of the time and a uniform sample otherwise, so coverage never collapses.\n5. **Benchmark:** Run uniform and learned RRT on every held-out map with the same seeds and time limit; report success rate, time and tree size.\n\n```mermaid\nflowchart LR\n  A[\"Training maps\"] --> B[\"Solved paths\"]\n  B --> C[\"Train sampler\"]\n  C --> D[\"Mixed sampler\"]\n  D --> E[\"RRT on held-out maps\"]\n  U[\"Uniform sampler\"] --> E\n  E --> F[\"Success and time table\"]\n```\n\n## Common pitfalls\n\n- **Data leakage:** Generating test maps with the same seeds as training maps silently inflates results.\n- **Zero uniform fallback:** A sampler that never proposes uniform states can fail completely on unfamiliar layouts.\n- **Invalid samples:** OMPL separates state samplers from valid-state samplers; reject samples inside obstacles before counting them.\n\n## When it's done\n\n- **Fair comparison:** Both samplers share the planner, seeds, time limits and held-out maps, and results include failures.\n- **Visual evidence:** Side-by-side plots show sample clouds and trees for one easy and one narrow-passage test map.\n",
+      "resources": [
+        {
+          "title": "Learning Sampling Distributions for Robot Motion Planning, ICRA 2018 Pitch Video",
+          "url": "https://www.youtube.com/watch?v=eNZQw2QZQwE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short visual summary of why learned samples beat uniform ones in narrow passages."
+        },
+        {
+          "title": "ompl: Available State Samplers",
+          "url": "https://ompl.kavrakilab.org/samplers.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Lists uniform, obstacle-based, Gaussian and maximize-clearance samplers to compare against."
+        },
+        {
+          "title": "GitHub - StanfordASL/LearnedSamplingDistributions · GitHub",
+          "url": "https://github.com/StanfordASL/LearnedSamplingDistributions",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Notebook reproducing the learned sampler on a narrow-passage problem."
+        },
+        {
+          "title": "Learning Sampling Distributions for Robot Motion Planning",
+          "url": "https://arxiv.org/abs/1709.05448",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Original method: a conditional variational autoencoder trained on demonstrations biases RRT-style sampling."
+        },
+        {
+          "title": "Cascaded Diffusion Models for Neural Motion Planning",
+          "url": "https://arxiv.org/abs/2505.15157",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Recent learned planner showing how modern generative models plan in cluttered scenes."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=eNZQw2QZQwE",
+        "https://ompl.kavrakilab.org/samplers.html",
+        "https://github.com/StanfordASL/LearnedSamplingDistributions",
+        "https://arxiv.org/abs/1709.05448",
+        "https://arxiv.org/abs/2505.15157"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-cem-and-random-shooting-under-dynamics-mismatch",
+      "type": "project",
+      "name": "Planning lab: compare CEM and random shooting under dynamics mismatch",
+      "summary": "Plan a simulated robot's actions with random shooting and with the cross-entropy method, then measure how each degrades when the planner's dynamics model is deliberately wrong.",
+      "lesson_md": "## In one sentence\n\nPlan a simulated robot's actions with random shooting and with the cross-entropy method, then measure how each degrades when the planner's dynamics model is deliberately wrong.\n\n![Figure comparing shooting methods that collapse toward a mean trajectory with tree search, plus receding-horizon execution drift](/img/lessons/projects_planning_1-cem.webp)\n*Panel (a) shows CEM collapsing trajectories toward a mean near obstacles; panel (c) shows execution drift. Source: [Sampling-based Kinodynamic Planning with World Models](https://arxiv.org/abs/2610.12910), arXiv non-exclusive license to distribute.*\n\n## What you will learn\n\n- **Dynamics model:** A function predicting the next state from the current state and action; the planner simulates candidate action sequences with it.\n- **Random shooting** samples many action sequences, simulates each, and executes the first action of the cheapest one.\n- **CEM** (cross-entropy method) repeats sampling, keeps the best \"elite\" sequences, refits a Gaussian to them, and samples again from that narrower distribution.\n- **Dynamics mismatch:** The planner's model differs from the simulator, for example a wrong mass or friction, like real robots versus their models.\n- **Software analogy:** Random shooting is a one-shot random search; CEM is iterative hyperparameter search that narrows around the best configurations each round.\n\n> **Key idea:** A smarter optimizer only helps if its model is trustworthy; mismatch tests reveal which planner fails more gracefully.\n\n## What you need\n\n- **Simulation-only setup:** Python and NumPy with a point mass or cart-pole you write yourself, so you control the true and modeled parameters.\n- **Worked example:** Suggested starting values: 500 sampled sequences, horizon 20 steps, 10% elites, and three CEM iterations; true mass 1.3 kg against a model mass of 1.0 kg.\n- **Background reading:** PETS uses CEM for planning with learned models; iCEM improves CEM's sample efficiency for real-time planning.\n\n## Steps\n\n1. **True simulator:** Implement the environment step function with explicit parameters such as mass and friction.\n2. **Planner model:** Copy the step function with its own parameters, so you can scale them to create mismatch.\n3. **Two planners:** Implement random shooting and CEM with the same sample budget, cost function and horizon, in a receding-horizon loop.\n4. **Mismatch sweep:** Run both planners at several model errors, such as 0%, 15% and 30%, over fixed seeds.\n5. **Results:** Plot task cost, success and computation time against mismatch, and animate one failing episode for each planner.\n\n```mermaid\nflowchart LR\n  A[\"Planner model\"] --> B[\"Sample action sequences\"]\n  B --> C{\"Method\"}\n  C -->|\"Random shooting\"| D[\"Pick best\"]\n  C -->|\"CEM\"| E[\"Refit to elites and resample\"]\n  E --> D\n  D --> F[\"Execute first action in true simulator\"]\n  F --> A\n```\n\n## Common pitfalls\n\n- **Unequal budgets:** Compare at equal total simulated rollouts, otherwise CEM simply gets more compute.\n- **Premature collapse:** The world-model paper notes shooting methods can collapse toward a mean and get trapped near non-convex obstacles.\n- **Single seed:** One lucky run proves nothing; report spread over several seeds.\n\n## When it's done\n\n- **Degradation curves:** One plot per metric shows both planners across mismatch levels with error bars.\n- **Honest conclusion:** You state where CEM helped, where it did not, and how much compute each method used.\n",
+      "resources": [
+        {
+          "title": "CoRL 2020, Spotlight Talk 217: Sample-efficient Cross-Entropy Method for Real-time Planning",
+          "url": "https://www.youtube.com/watch?v=wuOOIuC1_h4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short talk showing how CEM plans in real time and what makes it sample-hungry."
+        },
+        {
+          "title": "Deep Reinforcement Learning in a Handful of Trials using Probabilistic Dynamics Models",
+          "url": "https://arxiv.org/abs/1805.12114",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "PETS: planning with CEM through learned dynamics models, including model uncertainty."
+        },
+        {
+          "title": "Sample-efficient Cross-Entropy Method for Real-time Planning",
+          "url": "https://arxiv.org/abs/2008.06389",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "iCEM improvements such as temporally correlated actions and keeping elites between steps."
+        },
+        {
+          "title": "GitHub - martius-lab/iCEM: improved Cross Entropy Method for trajectory optimization · GitHub",
+          "url": "https://github.com/martius-lab/iCEM",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reference implementation to compare against your own CEM code."
+        },
+        {
+          "title": "Sampling-based Kinodynamic Planning with World Models",
+          "url": "https://arxiv.org/abs/2610.12910",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Discusses why shooting methods get stuck and how drift appears during receding-horizon execution."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=wuOOIuC1_h4",
+        "https://arxiv.org/abs/1805.12114",
+        "https://arxiv.org/abs/2008.06389",
+        "https://github.com/martius-lab/iCEM",
+        "https://arxiv.org/abs/2610.12910"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-discrete-and-swept-collision-tests-on-thin-walls",
+      "type": "project",
+      "name": "Planning lab: compare discrete and swept collision tests on thin walls",
+      "summary": "Show that checking a robot only at sampled positions can miss thin walls, then add a swept check that tests the whole motion and compare missed collisions and runtime.",
+      "lesson_md": "## In one sentence\n\nShow that checking a robot only at sampled positions can miss thin walls, then add a swept check that tests the whole motion and compare missed collisions and runtime.\n\n![Unity diagram of sweep-based collision detection showing a start position, the swept area and the position after one timestep](/img/lessons/projects_planning_1-swept.webp)\n*A: start position, B: area swept during one timestep, C: new position. Source: [Unity sweep-based CCD](https://docs.unity.com/en-us/engine/6000.6/manual/physics-section/physics-overview/collision-section/collision-detection/continuous/sweep-based-ccd), license unknown.*\n\n## What you will learn\n\n- **Discrete collision test:** Check the robot shape only at sampled positions along a motion; anything between samples is invisible.\n- **Tunneling:** Box2D's documentation calls it tunneling when a fast body passes through a thin obstacle between two checks.\n- **Swept test** (continuous collision detection, CCD): Sweep the shape from old to new position and compute the **time of impact**, the first contact moment.\n- **Software analogy:** Discrete checks are like sampling a log every minute; a short error burst between samples never appears in your dashboard.\n\n> **Key idea:** Valid start and end positions do not prove the motion between them is collision-free.\n\n## What you need\n\n- **Simulation-only setup:** Python with Shapely or your own geometry code; a disc robot and walls drawn as thin rectangles.\n- **Worked example:** A robot at 2 m/s checked every 0.1 s jumps 0.2 m per check, so a 0.05 m wall can fall between samples.\n- **Optional library:** FCL supports continuous collision checking, returning whether objects overlap during a motion and the time of contact.\n\n## Steps\n\n1. **Test scenes:** Build maps with walls of several thicknesses and robot motions at several speeds, saved as fixed test cases.\n2. **Discrete checker:** Check the disc at evenly spaced points along each motion, with the spacing as a parameter.\n3. **Swept checker:** Represent the disc's motion as a capsule, a rectangle with round ends, and intersect it with the walls; report the first contact.\n4. **Ground truth:** Compute exact answers with a very fine discrete spacing or an analytic test, then label every case.\n5. **Comparison:** Plot missed collisions and runtime for both checkers against spacing, wall thickness and speed; animate one tunneling case.\n\n```mermaid\nflowchart LR\n  A[\"Motion start to end\"] --> B[\"Discrete samples\"]\n  A --> C[\"Swept shape\"]\n  B --> D{\"Hit?\"}\n  C --> D\n  D --> E[\"Compare with ground truth\"]\n  E --> F[\"Missed collisions and runtime\"]\n```\n\n## Common pitfalls\n\n- **Rotation ignored:** Unity documents that its sweep-based CCD sweeps linearly, so rotations alone can still cause missed contacts.\n- **Hidden resolution:** OMPL motion checks depend on a resolution setting; always report the spacing you used.\n- **Wrong ground truth:** Validate your reference answers on hand-checked cases before trusting the comparison.\n\n## When it's done\n\n- **Clear table:** For each wall thickness and speed, miss rates and timing for both checkers are shown side by side.\n- **Tunneling replay:** An animation highlights a wall the discrete check missed and the swept check caught.\n",
+      "resources": [
+        {
+          "title": "Discrete vs. Continuous Collision Detection",
+          "url": "https://www.youtube.com/watch?v=hKAYDg9Rswk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Visual demo of objects tunneling with discrete checks and stopping with continuous ones."
+        },
+        {
+          "title": "Unity Collision Cheat-Sheet – Discrete vs Continuous",
+          "url": "https://www.youtube.com/watch?v=6h5FoPi3SY0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the trade-off between collision modes in a game engine."
+        },
+        {
+          "title": "Box2D: Simulation",
+          "url": "https://box2d.org/documentation/md_simulation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains tunneling, sweeping shapes and time of impact in a real physics engine."
+        },
+        {
+          "title": "State Validity Checking",
+          "url": "https://ompl.kavrakilab.org/core/stateValidation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How OMPL checks states and motions with a resolution parameter."
+        },
+        {
+          "title": "GitHub - flexible-collision-library/fcl: Flexible Collision Library · GitHub",
+          "url": "https://github.com/flexible-collision-library/fcl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Library with continuous collision queries used by robotics planners."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hKAYDg9Rswk",
+        "https://www.youtube.com/watch?v=6h5FoPi3SY0",
+        "https://box2d.org/documentation/md_simulation.html",
+        "https://ompl.kavrakilab.org/core/stateValidation.html",
+        "https://github.com/flexible-collision-library/fcl"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-dwb-and-mppi-on-identical-simulated-routes",
+      "type": "project",
+      "name": "Planning lab: compare DWB and MPPI on identical simulated routes",
+      "summary": "Run Nav2's DWB and MPPI controllers on the same simulated routes and compare success, path quality, smoothness and CPU use with identical maps and goals.",
+      "lesson_md": "## In one sentence\n\nRun Nav2's DWB and MPPI controllers on the same simulated routes and compare success, path quality, smoothness and CPU use with identical maps and goals.\n\n![Nav2 MPPI demo animation showing a simulated Turtlebot3 following a path with sampled trajectories](/img/lessons/projects_planning_1-dwb-mppi.webp)\n*Nav2's MPPI controller demo on a simulated Turtlebot3. Source: [Nav2 MPPI documentation](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/mppi_controller/configuring_mppic/), license unknown.*\n\n## What you will learn\n\n- **Controller:** In Nav2, the controller turns a global path into velocity commands many times per second.\n- **DWB** samples velocity pairs, simulates each for a short time, and scores them with plugins called **critics**, such as path alignment and obstacle distance.\n- **MPPI** (model predictive path integral) samples noisy control sequences, simulates them over a horizon, scores them with critics, and blends them into a command.\n- **Software analogy:** It is an A/B test of two implementations behind the same interface, with identical traffic replayed to both.\n\n> **Key idea:** A fair controller comparison changes only the controller; map, routes, robot, seeds and goals stay identical.\n\n## What you need\n\n- **Simulation-only setup:** ROS 2, Nav2 and its simulated Turtlebot example; no robot purchase is required.\n- **Worked example:** Nav2's DWB example uses 20 x-velocity and 20 angular samples over 1.7 s; MPPI defaults to 1000 samples over 56 steps of 0.05 s.\n- **Route list:** Five to ten fixed start-goal pairs, including a narrow corridor and a sharp turn.\n\n## Steps\n\n1. **Baseline setup:** Launch the Nav2 simulation with DWB and confirm one goal succeeds.\n2. **Route script:** Use a script that sends each route in order, waits for the result and logs success, time and path length.\n3. **Controller swap:** Change only the controller plugin to MPPI, keeping the costmaps, planner and robot description.\n4. **Repeated trials:** Run every route several times per controller and record CPU use and velocity commands.\n5. **Analysis:** Compare success rate, time to goal, minimum obstacle distance and command smoothness; record one video per controller on the hardest route.\n\n```mermaid\nflowchart LR\n  R[\"Fixed routes\"] --> N[\"Nav2 stack\"]\n  N --> D[\"DWB controller\"]\n  N --> M[\"MPPI controller\"]\n  D --> L[\"Logs\"]\n  M --> L\n  L --> T[\"Comparison table\"]\n```\n\n## Common pitfalls\n\n- **Untuned defaults:** Results depend on critic weights; report every parameter file you used.\n- **CPU blind spot:** MPPI's sampling cost depends on batch size and rate; measure CPU instead of assuming.\n- **Changing two things:** Editing costmap inflation while switching controllers invalidates the comparison.\n\n## When it's done\n\n- **Comparison table:** Each route lists success, time, clearance, smoothness and CPU use for both controllers.\n- **Reproducible package:** Launch files, parameter files and the route script let someone else rerun the experiment.\n",
+      "resources": [
+        {
+          "title": "Nav2 Model Predictive Path Integral Control -- Testing Example",
+          "url": "https://www.youtube.com/watch?v=sr35n9D3jLs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See MPPI driving in simulation before you configure it."
+        },
+        {
+          "title": "DWB Controller - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/dwb_controller/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Parameter reference for velocity sampling, simulation time and critics."
+        },
+        {
+          "title": "Model Predictive Path Integral Controller - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/mppi_controller/configuring_mppic/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Parameter reference for batch size, horizon and critics in MPPI."
+        },
+        {
+          "title": "ROSCon 2023: MPPI In The Wild [Final Version]",
+          "url": "https://www.youtube.com/watch?v=AR4IpwDx8Is",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk on deploying Nav2's MPPI controller on robots."
+        },
+        {
+          "title": "Model Predictive Path Integral Control using Covariance Variable Importance Sampling",
+          "url": "https://arxiv.org/abs/1509.01149",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Original MPPI algorithm behind Nav2's controller."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=sr35n9D3jLs",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/dwb_controller/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/controller_plugins/mppi_controller/configuring_mppic/",
+        "https://www.youtube.com/watch?v=AR4IpwDx8Is",
+        "https://arxiv.org/abs/1509.01149"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-free-form-and-validated-language-to-room-plans",
+      "type": "project",
+      "name": "Planning lab: compare free-form and validated language-to-room plans",
+      "summary": "Turn spoken-style requests into room-visiting plans two ways, free-form language model output versus a checked formal plan, and count which produces fewer impossible or unsafe plans.",
+      "lesson_md": "## In one sentence\n\nTurn spoken-style requests into room-visiting plans two ways, free-form language model output versus a checked formal plan, and count which produces fewer impossible or unsafe plans.\n\n![LLM+P pipeline diagram: a language model writes a PDDL problem, a classical planner solves it, and the plan is translated back to language](/img/lessons/projects_planning_1-language.webp)\n*LLM+P: the language model writes the formal problem and a classical planner finds the plan. Source: [LLM+P paper](https://arxiv.org/abs/2304.11477), CC BY 4.0.*\n\n## What you will learn\n\n- **Free-form plan:** A language model directly lists steps like \"go to kitchen, then lab\"; nothing guarantees the rooms exist or the order is possible.\n- **PDDL** (Planning Domain Definition Language) describes states, actions and goals formally so a classical planner can search for a correct plan.\n- **Validated plan:** LLM+P lets the model translate the request into PDDL, then a classical planner solves it and the answer is translated back.\n- **Grounding:** SayCan scores each language-model suggestion by what the robot can actually do, called affordances.\n- **Software analogy:** Free-form output is untyped JSON from a user; the validated path is parsing it against a schema before execution.\n\n> **Key idea:** A language model is a good translator but an unreliable planner; let a checker or planner decide what is executable.\n\n## What you need\n\n- **Simulation-only setup:** Python, any language-model API or local model, and a classical planner such as Fast Downward used by the LLM+P code.\n- **Room world:** A small map file with rooms, doors and locked doors, plus robot actions like move and open.\n- **Worked example:** \"Check the lab, then bring the box to room 3, skipping the locked storage room\" should never produce a plan entering storage.\n\n## Steps\n\n1. **Domain file:** Write a PDDL domain with rooms, connections and actions, and test it on hand-written problems.\n2. **Request set:** Collect about 30 requests, including ambiguous, impossible and adversarial ones such as unknown rooms.\n3. **Free-form baseline:** Ask the model for step lists, then check each step against the map with a simple script.\n4. **Validated pipeline:** Ask the model for a PDDL problem, run the planner, validate the plan, and refuse when no valid plan exists.\n5. **Comparison:** Report valid, invalid and correctly refused plans for both methods, and replay a few in a two-dimensional viewer.\n\n```mermaid\nflowchart LR\n  Q[\"Request\"] --> F[\"Free-form steps\"]\n  Q --> P[\"PDDL problem\"]\n  P --> S[\"Classical planner\"]\n  S --> V[\"Plan validator\"]\n  F --> C[\"Map check\"]\n  V --> R[\"Results table\"]\n  C --> R\n```\n\n## Common pitfalls\n\n- **Silent invention:** Models may name rooms that are not on the map; check every symbol.\n- **Prompt drift:** Keep the prompt and model version fixed for every request.\n- **Refusal counted as failure:** Refusing an impossible request is the correct result.\n\n## When it's done\n\n- **Scored request set:** Every request has an expected outcome and both methods' outputs.\n- **Clear verdict:** A table shows invalid-plan rates and refusals for each method.\n",
+      "resources": [
+        {
+          "title": "SayCan presentations and demos at CoRL2022",
+          "url": "https://www.youtube.com/watch?v=GRKWrEAy9GI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a robot turning language requests into grounded skill sequences."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page explaining how affordance scores filter language-model suggestions."
+        },
+        {
+          "title": "LLM+P: Empowering Large Language Models with Optimal Planning Proficiency",
+          "url": "https://arxiv.org/abs/2304.11477",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The language to PDDL to classical planner pipeline used for the validated method."
+        },
+        {
+          "title": "GitHub - Cranial-XIX/llm-pddl · GitHub",
+          "url": "https://github.com/Cranial-XIX/llm-pddl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "LLM+P code with planner setup and plan validation scripts."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=GRKWrEAy9GI",
+        "https://say-can.github.io/",
+        "https://arxiv.org/abs/2304.11477",
+        "https://github.com/Cranial-XIX/llm-pddl"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-geometric-and-control-based-planners-for-a-simulated-vehicle",
+      "type": "project",
+      "name": "Planning lab: compare geometric and control-based planners for a simulated vehicle",
+      "summary": "Plan for a simulated car with a geometric planner that connects poses by straight lines and a control-based planner that simulates steering, then compare which paths are drivable.",
+      "lesson_md": "## In one sentence\n\nPlan for a simulated car with a geometric planner that connects poses by straight lines and a control-based planner that simulates steering, then compare which paths are drivable.\n\n![PythonRobotics animation of RRT-star with Reeds-Shepp curves planning car-like paths around circular obstacles](/img/lessons/projects_planning_1-vehicle.webp)\n*Car-like paths built from Reeds-Shepp curves instead of straight lines. Source: [PythonRobotics RRT page](https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/rrt/rrt.html), license unknown.*\n\n## What you will learn\n\n- **Geometric planner:** OMPL's geometric planners connect states by interpolation, which ignores how the vehicle can actually move.\n- **Control-based planner:** OMPL uses these when the system has differential constraints; they rely on **state propagation**, simulating controls forward in time.\n- **Car model:** OMPL's ODE solver tutorial uses state x, y, heading θ, speed v and steering angle φ, integrated numerically.\n- **Software analogy:** A geometric path is a design sketch; the control-based path is code that was actually compiled and run on the target.\n\n> **Key idea:** A collision-free path is not automatically drivable; a car cannot slide sideways, so its planner must respect steering.\n\n## What you need\n\n- **Simulation-only setup:** OMPL with Python bindings, or your own Python RRT; a two-dimensional map with obstacles.\n- **Worked example:** Use ẋ = v cos θ, ẏ = v sin θ and θ̇ = v tan φ, with suggested limits |φ| ≤ 0.5 rad and 0 ≤ v ≤ 1 m/s.\n- **Planners:** Geometric RRT and control-based RRT or KPIECE, OMPL's default when a projection is available.\n\n## Steps\n\n1. **Shared problem:** Define the same map, start pose, goal pose and time limit for both planners.\n2. **Geometric run:** Plan with geometric RRT over x, y and θ, then save the path.\n3. **Control-based run:** Plan with control-based RRT using the car model, propagating random controls for short durations.\n4. **Drivability check:** Replay each path through the car model and measure how far a real tracker deviates from it.\n5. **Comparison:** Over fixed seeds, report success rate, planning time, path length and tracking error, and animate both paths.\n\n```mermaid\nflowchart LR\n  P[\"Same map and poses\"] --> G[\"Geometric RRT\"]\n  P --> C[\"Control-based RRT\"]\n  G --> I[\"Interpolated path\"]\n  C --> S[\"Propagated path\"]\n  I --> T[\"Replay through car model\"]\n  S --> T\n  T --> R[\"Success, time, error\"]\n```\n\n## Common pitfalls\n\n- **Sideways moves:** Interpolating x, y and θ independently produces motions a car cannot follow.\n- **Long propagation steps:** Large steps skip obstacles; check collisions along each propagated segment.\n- **Unequal limits:** Give both planners the same time limit and goal tolerance.\n\n## When it's done\n\n- **Side-by-side animation:** Both paths are shown with the car footprint along the motion.\n- **Measured table:** Tracking error makes the drivability difference visible in numbers.\n",
+      "resources": [
+        {
+          "title": "6.8210 Spring 2024 Lecture 18: Sampling-based (kinodynamic) motion planning",
+          "url": "https://www.youtube.com/watch?v=ChiQgvVvgKM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "University lecture on sampling-based planning with dynamics."
+        },
+        {
+          "title": "Rapidly-Exploring Random Trees (RRT) — PythonRobotics documentation",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/rrt/rrt.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Readable RRT variants including Dubins and Reeds-Shepp car-like planners."
+        },
+        {
+          "title": "ompl: Available Planners",
+          "url": "https://ompl.kavrakilab.org/planners.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows which OMPL planners are geometric and which are control-based."
+        },
+        {
+          "title": "ompl: Using the ODESolver for Planning with Controls",
+          "url": "https://ompl.kavrakilab.org/odeint.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Tutorial implementing the car model for control-based planning."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ChiQgvVvgKM",
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/rrt/rrt.html",
+        "https://ompl.kavrakilab.org/planners.html",
+        "https://ompl.kavrakilab.org/odeint.html"
+      ]
+    },
+    {
+      "node_id": "p:planning-lab-compare-incremental-and-fresh-search-across-changing-warehouse-maps",
+      "type": "project",
+      "name": "Planning lab: compare incremental and fresh search across changing warehouse maps",
+      "summary": "Replan a warehouse robot's route as shelves and pallets appear, using A* from scratch each time versus D* Lite that reuses earlier work, and compare computation per replan.",
+      "lesson_md": "## In one sentence\n\nReplan a warehouse robot's route as shelves and pallets appear, using A* from scratch each time versus D* Lite that reuses earlier work, and compare computation per replan.\n\n![PythonRobotics D* Lite animation on a grid where new obstacles appear and the path is repaired](/img/lessons/projects_planning_1-incremental.webp)\n*D* Lite repairing a grid path as obstacles are discovered. Source: [PythonRobotics grid-based search](https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html), license unknown.*\n\n## What you will learn\n\n- **Fresh search:** Run A* again from scratch whenever the map changes, discarding all previous work.\n- **Incremental search:** D* Lite, by Koenig and Likhachev, keeps the previous search results and repairs only the parts affected by map changes.\n- **Fair metric:** Count expanded cells and wall-clock time per replan, since both depend on implementation details.\n- **Software analogy:** It is an incremental build versus a clean build: recompile only files affected by an edit.\n\n> **Key idea:** When maps change a little at a time, reusing previous search work can make replanning much cheaper than starting over.\n\n## What you need\n\n- **Simulation-only setup:** Python with NumPy and matplotlib; PythonRobotics contains A* and D* Lite code to start from.\n- **Warehouse grid:** An eight-connected grid with aisles; the D* Lite paper also uses eight-connected grids.\n- **Worked example:** A 100 × 100 grid where five random pallets appear near the route every ten moves; these numbers are suggestions to tune.\n\n## Steps\n\n1. **Map generator:** Create seeded warehouse grids and a scripted sequence of obstacle changes.\n2. **Fresh planner:** After each change, rerun A* from the robot's current cell and log expansions and time.\n3. **Incremental planner:** Feed the same changes to D* Lite and log the same metrics.\n4. **Correctness check:** Confirm both planners return paths of equal cost after every change.\n5. **Comparison:** Plot expansions and time per replan for small and large changes, and animate one run side by side.\n\n```mermaid\nflowchart LR\n  M[\"Warehouse map\"] --> C[\"Obstacle change\"]\n  C --> A[\"A* from scratch\"]\n  C --> D[\"D* Lite repair\"]\n  A --> K[\"Check equal cost\"]\n  D --> K\n  K --> P[\"Expansions and time\"]\n```\n\n## Common pitfalls\n\n- **Unequal costs:** Different tie-breaking can give different but equally cheap paths; compare cost, not exact cells.\n- **Large changes:** When much of the map changes, repairs may cost as much as a fresh search; test that case too.\n- **Timing noise:** Average several runs per seed and report expansions too.\n\n## When it's done\n\n- **Measured curves:** Plots show where incremental search wins and where it stops helping.\n- **Replay:** An animation shows both robots replanning through the same changing warehouse.\n",
+      "resources": [
+        {
+          "title": "Intro to Path Planning: D* Lite vs. A*",
+          "url": "https://www.youtube.com/watch?v=skK-3UfcXW0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short visual comparison of the two planners."
+        },
+        {
+          "title": "Grid based search — PythonRobotics documentation",
+          "url": "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Python implementations of A* and D* Lite with animations."
+        },
+        {
+          "title": "Advanced 1. Incremental Path Planning",
+          "url": "https://www.youtube.com/watch?v=_4u9W1xOuts",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "MIT lecture explaining how incremental planners reuse previous search."
+        },
+        {
+          "title": "Improved Fast Replanning for Robot Navigation in Unknown Terrain",
+          "url": "https://www.cs.cmu.edu/~maxim/files/dlite_icra02.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Original D* Lite paper with algorithm and experiments."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=skK-3UfcXW0",
+        "https://atsushisakai.github.io/PythonRobotics/modules/5_path_planning/grid_base_search/grid_base_search.html",
+        "https://www.youtube.com/watch?v=_4u9W1xOuts",
+        "https://www.cs.cmu.edu/~maxim/files/dlite_icra02.pdf"
+      ]
     }
   ]
 }
