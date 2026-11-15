@@ -216,6 +216,222 @@
         "https://github.com/simpler-env/SimplerEnv",
         "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html"
       ]
+    },
+    {
+      "node_id": "p:camera-latency-and-rolling-exposure-stress-set",
+      "type": "project",
+      "name": "Camera latency and rolling exposure stress set",
+      "summary": "Generate timestamped camera sequences with controlled delay and row-wise exposure effects, then measure how a fixed tracker degrades.",
+      "lesson_md": "## In one sentence\n\nGenerate timestamped camera sequences with controlled delay and row-wise exposure effects, then measure how a fixed tracker degrades.\n\n![Isaac Sim camera interface for inspecting rendered sensor output](/img/lessons/projects_simulation_1-camera-latency-and-rolling-exposure-stress-set.webp)\n*Isaac Sim camera interface for inspecting rendered sensor output. Source: [Official source](https://docs.isaacsim.omniverse.nvidia.com/latest/sensors/isaacsim_sensors_camera.html), license unknown.*\n\n## What you will learn\n\n- **Latency** is the delay between observing a scene and delivering its measurement; keep capture time distinct from arrival time in the exported sequence.\n- **Rolling exposure** samples image rows at different times. A synthetic approximation is a test perturbation, not proof that a real camera behaves identically.\n- **Think of a delayed message queue:** a perfectly decoded image can still describe an outdated state. This extends Sensor simulation, rendering & synthetic labels.\n\n> **Key idea:** Control image timing independently of image appearance so you can identify which perturbation breaks tracking.\n\n## What you need\n\n- **Use a rendered moving target**, a fixed tracker and a sequence exporter storing image identity, capture time, delivery time and target position.\n- **Start without hardware:** Isaac Sim camera documentation and Gazebo sensor examples supply reference workflows. Compute and storage cost are unknown; record the renderer settings.\n\n## Steps\n\n1. **Render a clean sequence** and save ground-truth target positions, meaning simulator-known positions used only to score tracking, never to guide the tracker.\n2. **Delay delivery without changing pixels**, then evaluate tracking against the correctly timestamped truth; keep the original frame identity attached.\n3. **Construct a row-wise timing approximation** from densely sampled rendered frames; document the row schedule and exposure assumptions instead of calling it calibrated sensor physics.\n4. **Sweep timing conditions separately**, then combine them using the same motion sequence and tracker configuration.\n5. **Test empty images and missing timestamps**, dropped frames and a failed sensor load; export explicit error records rather than interpolating away every failure.\n6. **Demo clean and perturbed views** beside tracking-error curves and capture/delivery timelines, with identical motion replayed in each panel.\n\n```mermaid\nflowchart LR\n  M[Fixed motion] --> I[Clean frames]\n  I --> P[Timing perturbations]\n  P --> T[Fixed tracker]\n  T --> E[Error by condition]\n```\n\n## Common pitfalls\n\n- **Shifting array indices** without changing timestamps does not test the full delayed-measurement pipeline; make the clock convention explicit.\n- **Motion blur and row timing** are different effects. Keep them as separate switches so an apparent improvement has an interpretable cause.\n\n## When it's done\n\n- **Proposed example:** deliver the previous frame while preserving its capture timestamp, then compare with an intentionally mislabeled timestamp case.\n- **Publish the stress set** with clean controls, timing metadata, tracker revision and per-condition failure counts; state that real-camera calibration remains outside this project.",
+      "resources": [
+        {
+          "title": "Sensors — Gazebo harmonic documentation",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Video",
+          "why": "Watch the official sensor tutorial to see how simulated measurements enter a robot pipeline.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Camera Sensors — Isaac Sim Documentation",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/sensors/isaacsim_sensors_camera.html",
+          "format": "Docs",
+          "why": "Inspect camera data acquisition and supported camera settings before defining perturbations.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Useful Snippets — Isaac Sim Documentation",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_isaac_snippets.html",
+          "format": "Docs",
+          "why": "Use synthetic-data snippets as a starting point for reproducible scene capture.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Domain Randomization — ManiSkill 3.0.1 documentation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+          "format": "Docs",
+          "why": "Separate camera appearance randomization from your timing perturbations.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/sensors/isaacsim_sensors_camera.html",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_isaac_snippets.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html"
+      ]
+    },
+    {
+      "node_id": "p:collision-hull-versus-visual-mesh-gallery",
+      "type": "project",
+      "name": "Collision hull versus visual mesh gallery",
+      "summary": "Overlay collision shapes on visible objects and document the gaps and false contacts produced by coarse geometry.",
+      "lesson_md": "## In one sentence\n\nOverlay collision shapes on visible objects and document the gaps and false contacts produced by coarse geometry.\n\n![MuJoCo mesh-fitting illustration comparing mesh geometry and fitted shapes](/img/lessons/projects_simulation_1-collision-hull-versus-visual-mesh-gallery.webp)\n*MuJoCo mesh-fitting illustration comparing mesh geometry and fitted shapes. Source: [Official source](https://mujoco.readthedocs.io/en/stable/XMLreference.html), license unknown.*\n\n## What you will learn\n\n- **A visual mesh** is the surface drawn on screen; **collision geometry** is the shape used to decide whether objects touch.\n- **A convex hull** is the smallest convex envelope around points; it can fill a concavity, making an empty-looking opening behave like a solid wall.\n- **Think of a UI hitbox:** an attractive icon and its clickable area need not match. Read Collision geometry & contact solver fidelity alongside this exercise.\n\n> **Key idea:** Contact accuracy starts with the shape the engine tests, before any solver parameter is tuned.\n\n## What you need\n\n- **Use MuJoCo**, a simple object with an opening, a probe object and access to collision-shape overlays; inspect the mesh settings in the XML reference.\n- **Keep this simulation-only:** use existing compute and licensed meshes or primitive shapes. No robot purchase is necessary; compute and asset costs are unknown.\n\n## Steps\n\n1. **Create a simple baseline** from primitives and verify scale, mass and starting pose before adding a detailed visual mesh.\n2. **Compare collision representations** while holding visible geometry, initial state and motion script fixed; document exactly which shapes are enabled for contact.\n3. **Drive a probe through an opening**, recording probe position and contact events rather than relying only on rendered overlap.\n4. **Overlay the collision shapes** with visible geometry and label early contact, missed contact and acceptable approximations in the video.\n5. **Test degenerate assets:** missing mesh, empty geometry and wrong scale should produce named validation errors rather than silent substitution.\n6. **Demo the gallery** with one reproducible scene per mismatch, including an improved representation and the cost of using it.\n\n```mermaid\nflowchart LR\n  V[Visible object] --> C[Collision representation]\n  C --> P[Probe motion]\n  P --> G[Overlay and contact log]\n```\n\n## Common pitfalls\n\n- **A hull may close a cavity** even when the renderer shows a hole. Inspect the actual compiled collision representation, not just the source mesh.\n- **Changing mass accidentally** while replacing geometry confounds the comparison; save inertial settings and verify them after compilation.\n\n## When it's done\n\n- **Proposed example:** push a small sphere toward a U-shaped opening; compare a single convex envelope with a multi-piece representation.\n- **Deliver an annotated gallery** and contact logs that another student can replay before attempting Friction and restitution identification arena.",
+      "resources": [
+        {
+          "title": "8.5. Forward Dynamics of Open Chains – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+          "format": "Video",
+          "why": "Visualize how forces lead to motion before interpreting a contact-induced trajectory change.",
+          "level": "Beginner"
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "why": "Read geom and mesh settings, including how collision shapes are constructed.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "why": "Separate visual, collision and inertial modeling choices.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Computation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "why": "Study collision detection and contact generation after reproducing a visible mismatch.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html"
+      ]
+    },
+    {
+      "node_id": "p:compositional-scene-generalization-split",
+      "type": "project",
+      "name": "Compositional scene generalization split",
+      "summary": "Create a fixed-task evaluation that separates unseen object-layout combinations from genuinely unseen object identities.",
+      "lesson_md": "## In one sentence\n\nCreate a fixed-task evaluation that separates unseen object-layout combinations from genuinely unseen object identities.\n\n![RoboCasa target kitchen with one-wall layout and industrial style](/img/lessons/projects_simulation_1-compositional-scene-generalization-split.webp)\n*RoboCasa target kitchen with one-wall layout and industrial style. Source: [Official source](https://robocasa.ai/docs/build/html/assets/scenes.html), license unknown.*\n\n## What you will learn\n\n- **Generalization** means succeeding beyond the training examples; here the question is whether familiar pieces still work when rearranged into new combinations.\n- **A compositional split** withholds combinations, not necessarily every ingredient. Think of testing a parser on new sentences made from already known tokens.\n- **RoboCasa scenes separate layout and style:** layout determines fixture arrangement, while style controls textures and fixture attributes. Keep those factors distinct from object identity.\n\n> **Key idea:** A random episode split does not prove compositional generalization if the same combinations appear on both sides.\n\n## What you need\n\n- **Use RoboCasa assets** with recorded licenses and a single task whose success rule remains unchanged across scenes; keep asset identifiers in a manifest.\n- **Build after** Procedural scene solvability filter so impossible placements are flagged. No physical robot is needed; storage, compute and third-party asset costs are unknown.\n\n## Steps\n\n1. **List the experimental factors:** object identity, placement, layout and style. Define which are familiar and which are withheld in each evaluation condition.\n2. **Create explicit manifests** for training, development and final testing; split by combination identifier rather than by individual video frame.\n3. **Check leakage automatically** using asset IDs and scene parameters; detect identical geometry exported under different filenames where practical.\n4. **Validate scene loading and reachability** without consulting policy success. Report empty manifests, missing assets and impossible starts separately.\n5. **Evaluate one frozen policy** on familiar combinations, unseen combinations and unseen objects with matched task definitions and recorded seeds.\n6. **Demo a scene matrix** showing which combinations were seen, then attach per-cell task outcomes and failure clips.\n\n```mermaid\nflowchart LR\n  A[Asset manifest] --> S[Combination split]\n  S --> L[Leakage checks]\n  L --> E[Fixed policy evaluation]\n```\n\n## Common pitfalls\n\n- **New textures are not new objects:** changing style alone cannot support a claim about object-identity generalization.\n- **Filtering by policy success** makes the test set easier and leaks the answer; use geometry checks or an independent task-validity procedure instead.\n\n## When it's done\n\n- **Proposed example:** train with cup/left and bowl/right, reserve cup/right, then evaluate a new object separately; these are illustrative split rules, not benchmark results.\n- **Ship manifests and a leakage audit** with licenses, exclusions and outcomes, so another student can reconstruct every scene and understand precisely what was held out.",
+      "resources": [
+        {
+          "title": "RoboCasa",
+          "url": "https://robocasa.ai/",
+          "format": "Video",
+          "why": "Watch the published scene and task videos to visualize the combinations being split.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Scenes — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/assets/scenes.html",
+          "format": "Docs",
+          "why": "Read the explicit layout/style distinction and supported scene splits.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Overview of Benchmarking — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/benchmarking/benchmarking_overview.html",
+          "format": "Docs",
+          "why": "Understand task sets and evaluation split conventions before creating a custom compositional test.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "robocasa/robocasa: RoboCasa: Large-Scale Simulation of Everyday Tasks for Generalist Robots",
+          "url": "https://github.com/robocasa/robocasa",
+          "format": "Repo",
+          "why": "Inspect scene and object identifiers to implement manifest-level leakage checks.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://robocasa.ai/",
+        "https://robocasa.ai/docs/build/html/assets/scenes.html",
+        "https://robocasa.ai/docs/build/html/benchmarking/benchmarking_overview.html",
+        "https://github.com/robocasa/robocasa"
+      ]
+    },
+    {
+      "node_id": "p:contact-gradient-breakage-gallery",
+      "type": "project",
+      "name": "Contact gradient breakage gallery",
+      "summary": "Optimize a toy bounce trajectory and show where contact changes make automatic gradients disagree with numerical checks or fail to improve the result.",
+      "lesson_md": "## In one sentence\n\nOptimize a toy bounce trajectory and show where contact changes make automatic gradients disagree with numerical checks or fail to improve the result.\n\n![Newton differentiable ball example used as a starting point for trajectory optimization](/img/lessons/projects_simulation_1-contact-gradient-breakage-gallery.webp)\n*Newton differentiable ball example used as a starting point for trajectory optimization. Source: [Official source](https://github.com/newton-physics/newton), license unknown.*\n\n## What you will learn\n\n- **A gradient** describes how a loss changes when a parameter changes slightly; automatic differentiation propagates those changes through the executed computation.\n- **A contact switch** changes whether objects touch. The resulting motion can change abruptly, so a derivative from one local regime may not describe another.\n- **Think of a branch boundary:** differentiating the executed branch does not explain what happens after an input switches branches. Start with Gradient versus finite-difference spotlight.\n\n> **Key idea:** A computed gradient needs an independent check, especially when a tiny change alters the contact sequence.\n\n## What you need\n\n- **Use a differentiable toy simulator** or a documented Newton differentiable ball example, a target trajectory and saved initial states.\n- **Keep the first task simulated:** no robot is needed. Record precision, timestep and contact settings; compute cost and compatible accelerator availability are unknown.\n\n## Steps\n\n1. **Validate free flight first**, comparing automatic derivatives with finite differences, meaning loss changes estimated by small positive and negative parameter perturbations.\n2. **Add a single bounce** and define a loss using the predicted trajectory and a fixed target; save contact times with each rollout.\n3. **Vary contact smoothing** only where the chosen solver supports it; record the actual parameter and do not assume different engines expose equivalent controls.\n4. **Sweep perturbation sizes** and show derivative agreement alongside contact sequence changes; keep failed and non-finite computations visible.\n5. **Run short optimization trials** from identical starts, logging whether each update reduces loss and whether it changes the bounce pattern.\n6. **Demo an annotated gallery** of smooth agreement, boundary disagreement and failed optimization, rather than presenting one successful animation as validation.\n\n```mermaid\nflowchart LR\n  P[Initial velocity] --> B[Bounce rollout]\n  B --> L[Trajectory loss]\n  L --> G[Gradient check]\n  G --> P\n```\n\n## Common pitfalls\n\n- **Finite differences also have errors:** a tiny perturbation can lose numerical precision, while a large one can cross several contact regimes.\n- **Warp records array operations:** overwritten intermediate values and reused gradients can invalidate a comparison; follow its differentiation limitations and clearing rules.\n\n## When it's done\n\n- **Proposed example:** compare loss just before and just after first contact while perturbing initial velocity; record whether the bounce occurred in each trace.\n- **Publish derivative and loss plots** with exact model settings, including an empty trajectory and a failed simulation, before attempting parameter identification.",
+      "resources": [
+        {
+          "title": "Warp: Advancing Simulation AI with Differentiable GPU Computing in Python S63345 | GTC San Jose 2024 | NVIDIA On-Demand",
+          "url": "https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345/",
+          "format": "Video",
+          "why": "Watch the creator explain differentiable simulation and optimization in Warp.",
+          "level": "Beginner"
+        },
+        {
+          "title": "The Autodiff Cookbook — JAX  documentation",
+          "url": "https://docs.jax.dev/en/latest/notebooks/autodiff_cookbook.html",
+          "format": "Docs",
+          "why": "Work through finite-difference gradient checks and automatic differentiation.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Differentiability — Warp 1.19.0",
+          "url": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+          "format": "Docs",
+          "why": "Read tape behavior and gradient-debugging limitations before trusting the implementation.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Ch. 17 - Planning and\nControl through Contact",
+          "url": "https://underactuated.mit.edu/contact.html",
+          "format": "Book",
+          "why": "Study contact events and hybrid dynamics to interpret derivative discontinuities.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345/",
+        "https://docs.jax.dev/en/latest/notebooks/autodiff_cookbook.html",
+        "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+        "https://underactuated.mit.edu/contact.html",
+        "https://github.com/newton-physics/newton"
+      ]
+    },
+    {
+      "node_id": "p:counterexample-guided-simulator-curriculum",
+      "type": "project",
+      "name": "Counterexample-guided simulator curriculum",
+      "summary": "Use development failures to revise a simulation training distribution while reserving an untouched final test set to detect regressions.",
+      "lesson_md": "## In one sentence\n\nUse development failures to revise a simulation training distribution while reserving an untouched final test set to detect regressions.\n\n![ManiSkill examples of randomized object colors and visual conditions](/img/lessons/projects_simulation_1-counterexample-guided-simulator-curriculum.webp)\n*ManiSkill examples of randomized object colors and visual conditions. Source: [Official source](https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html), license unknown.*\n\n## What you will learn\n\n- **A curriculum** changes the conditions presented during training; a counterexample is a recorded condition where the current policy fails.\n- **Domain randomization** samples scene or physics settings. Adjusting that sampling distribution is a training intervention, not a license to edit the final test.\n- **Think of regression-driven development:** a discovered bug becomes a reproducible development case, while an independent acceptance suite stays sealed.\n\n> **Key idea:** Once a failure influences the next training run, it belongs to development data rather than untouched evaluation evidence.\n\n## What you need\n\n- **Related project:** Held-out nuisance robustness tournament supplies a baseline; retain its task definition and expose lighting and friction distributions in your training pipeline.\n- **Use simulation first:** no robot is needed. Store distribution revisions, checkpoints and random seeds; compute cost is unknown and should be reported per training round.\n\n## Steps\n\n1. **Create three disjoint partitions:** training conditions, a development challenge set and a final sealed test set; document which combinations belong to each.\n2. **Train the baseline** under the original distribution, then inspect development failures with video and task-state logs rather than selecting by reward alone.\n3. **Choose a specific counterexample** and revise the training distribution to include its neighborhood; change one factor group so the intervention remains interpretable.\n4. **Retrain with a matched budget**, then measure both improvement on development failures and regressions on previously easy development conditions.\n5. **Validate the generator:** reject missing assets, invalid friction values and empty distributions; save error counts instead of silently resampling indefinitely.\n6. **Freeze the final checkpoint** and evaluate the sealed test once; demo the counterexample, revised sampling rule and before/after behavior beside all regressions.\n\n```mermaid\nflowchart LR\n  T[Train] --> D[Development failures]\n  D --> R[Revise distribution]\n  R --> T\n  T --> F[Sealed final test]\n```\n\n## Common pitfalls\n\n- **Adaptive difficulty is not this exact project:** published automatic randomization motivates distribution design but does not validate your failure-mining strategy.\n- **Repeated final-test inspection** turns the test into development data. If you use it to revise training, label that reuse explicitly.\n\n## When it's done\n\n- **Proposed example:** a dim, slippery development scene fails; expand training around that combination while keeping a separate final combination sealed.\n- **Deliver a curriculum changelog** with each counterexample, distribution update, matched budget and retained failure; gains without regression accounting are incomplete.",
+      "resources": [
+        {
+          "title": "Domain Randomization — ManiSkill 3.0.1 documentation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+          "format": "Video",
+          "why": "Watch the embedded lighting-randomization demo and inspect reset-time randomization examples.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World",
+          "url": "https://arxiv.org/abs/1703.06907",
+          "format": "Paper",
+          "why": "Understand the motivation for varying visual conditions during training.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Solving Rubik's Cube with a Robot Hand",
+          "url": "https://arxiv.org/abs/1910.07113",
+          "format": "Paper",
+          "why": "Contrast your failure-guided schedule with published automatic domain randomization.",
+          "level": "Advanced"
+        },
+        {
+          "title": "Useful Snippets — Isaac Sim Documentation",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_isaac_snippets.html",
+          "format": "Docs",
+          "why": "Inspect scene randomization snippets when implementing reproducible lighting interventions.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+        "https://arxiv.org/abs/1703.06907",
+        "https://arxiv.org/abs/1910.07113",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_isaac_snippets.html"
+      ]
     }
   ]
 }
