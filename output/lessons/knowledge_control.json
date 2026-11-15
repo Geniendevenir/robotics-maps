@@ -660,6 +660,138 @@
         "https://github.com/pantor/ruckig",
         "https://control.ros.org/lyrical/doc/ros2_controllers/joint_trajectory_controller/doc/trajectory.html"
       ]
+    },
+    {
+      "node_id": "k:trajectory-optimization",
+      "type": "knowledge",
+      "name": "Trajectory optimization",
+      "summary": "Trajectory optimization searches for a sequence of states and commands that achieves a goal while minimizing a cost and respecting the robot's physics.",
+      "lesson_md": "## In one sentence\n\nTrajectory optimization searches for a sequence of states and commands that achieves a goal while minimizing a cost and respecting the robot's physics.\n\n![Optimized pendulum swing-up trajectory under a tight torque limit](/img/lessons/knowledge_control-trajectory-optimization.webp)\n*Pendulum swing-up found by direct collocation with severe torque limits. Source: [Underactuated Robotics](https://underactuated.mit.edu/trajopt.html), license unknown.*\n\n## Why it matters for us\n\n- **A motion can require preparation:** A torque-limited pendulum may need to swing back and forth before it can reach the upright position.\n- **Goals become an objective:** Penalize unwanted motion or control effort, then let the optimizer search for a motion that balances those preferences.\n- **Physics stays in the problem:** A low-cost sequence is useless if the robot cannot produce the forces needed to execute it.\n\n> **Key idea:** Optimize an entire physically consistent motion, not just the next target position.\n\n## How it works\n\n- **Choose the unknowns:** Represent a continuous motion using finitely many numbers, such as states and commands at selected times.\n- **Score the motion:** Add costs along the trajectory and a terminal cost, which evaluates how the motion finishes.\n- **Enforce dynamics and limits:** Require successive states to agree with the motion model; include actuator bounds and other required constraints.\n- **Think of a compiler optimizer:** Many candidate implementations can produce an outcome; search for one that meets correctness constraints with a better performance score.\n- **Direct shooting simulates forward:** Optimize commands and obtain states by running the dynamics from the starting condition.\n- **Direct collocation adds state variables:** Optimize sampled states and commands together, constraining the interpolated motion to agree with the dynamics.\n- **Worked discretization:** Crocoddyl's cart-pole notebook uses 50 running steps of 0.05 seconds, giving a 2.5-second horizon for its model rollout.\n- **Keep feedback separate:** A planned trajectory starts from one initial condition. Tracking feedback handles deviations; repeatedly optimizing from measurements leads toward Model predictive control (MPC).\n\n```mermaid\nflowchart LR\n  M[Model and start] --> O[Optimize motion]\n  G[Goal and limits] --> O\n  O --> T[State and command sequence]\n  T --> V[Simulate and inspect]\n  V --> R[Revise guess or costs]\n  R --> O\n```\n\n## Key terms\n\n- **Decision variable**: a number the solver can change while searching for a solution.\n- **Cost**: a numerical score to minimize, not a guarantee that a requirement is met.\n- **Constraint**: a requirement the solution must satisfy.\n- **Horizon**: the time interval covered by the optimized motion.\n- **Local optimum**: a solution that cannot be improved by small nearby changes, but may not be globally best.\n\n## Before / after\n\n- **Before:** Study Optimal control & LQR and nonlinear optimization; distinguish Trajectory generation & motion profiles from searching over motions using dynamics.\n- **After:** Explore Drake and Crocoddyl, then Pendulum swing-up with direct collocation or Crocoddyl jump for a simulated quadruped.\n\n## Try it in an afternoon\n\n1. **Run Crocoddyl's cart-pole notebook** and compare its uncontrolled rollout with the optimized motion.\n2. **Inspect the solver log** alongside the trajectory; look at cost and feasibility rather than animation alone.\n3. **Change a cost weight** while keeping the starting state fixed, then compare cart motion, pole motion, and control effort.",
+      "resources": [
+        {
+          "title": "Lecture 9 | MIT 6.832 Underactuated Robotics, Spring 2009",
+          "url": "https://www.youtube.com/watch?v=g-VehRFsDcI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces trajectory optimization as a way to search for robot motions."
+        },
+        {
+          "title": "crocoddyl/notebooks/02_optimizing_a_cartpole_swingup.ipynb at devel · loco-3d/crocoddyl · GitHub",
+          "url": "https://github.com/loco-3d/crocoddyl/blob/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Builds a cart-pole model and optimizes its commands using feasibility-driven differential dynamic programming."
+        },
+        {
+          "title": "Trajectory Optimization",
+          "url": "https://underactuated.mit.edu/trajopt.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Explains direct shooting, direct collocation, costs, and dynamics constraints."
+        },
+        {
+          "title": "GitHub - loco-3d/crocoddyl: Crocoddyl is an optimal control library for robot control under contact sequence. Its solver is based on various efficient Differential Dynamic Programming (DDP)-like algorithms · GitHub",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Connects trajectory optimization and feedback gains to multi-contact robot examples."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=g-VehRFsDcI",
+        "https://github.com/loco-3d/crocoddyl/blob/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb",
+        "https://underactuated.mit.edu/trajopt.html",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://ocw.mit.edu/courses/6-832-underactuated-robotics-spring-2009/resources/lecture-9-trajectory-optimization/",
+        "https://raw.githubusercontent.com/loco-3d/crocoddyl/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb"
+      ]
+    },
+    {
+      "node_id": "k:underactuated-balancing-control",
+      "type": "knowledge",
+      "name": "Underactuated & balancing control",
+      "summary": "Underactuated control uses coupled motion to steer systems that cannot command every movement independently, including robots that must swing up and then balance.",
+      "lesson_md": "## In one sentence\n\nUnderactuated control uses coupled motion to steer systems that cannot command every movement independently, including robots that must swing up and then balance.\n\n![Cart-pole diagram labeling the cart, pole angle, and applied horizontal force](/img/lessons/knowledge_control-underactuated-balancing-control.webp)\n*The cart moves the pole without a motor at its hinge. Source: [Underactuated Robotics](https://underactuated.mit.edu/acrobot.html), license unknown.*\n\n## Why it matters for us\n\n- **Missing actuators change the problem:** On a cart-pole, the controller pushes the cart horizontally; it cannot directly command a torque at the pole's hinge.\n- **Motion can be useful:** Swing-up control deliberately builds motion to reach the upright position instead of trying to eliminate every deviation immediately.\n- **Balancing is a local skill:** A controller designed near the upright state is not automatically a controller that can recover from every starting configuration.\n\n> **Key idea:** Use the system's dynamics to reach the balancing region, then stabilize it with feedback.\n\n## How it works\n\n- **Track the full state:** Cart position, pole angle, cart velocity, and pole angular velocity all matter when choosing a cart force.\n- **Exploit coupling:** Accelerating the cart affects the pole's motion even though the pole hinge has no actuator.\n- **Shape energy for swing-up:** Compare current mechanical energy with the energy needed at the upright state, then choose motion that reduces that energy mismatch.\n- **Switch near the top:** The MIT cart-pole example changes from energy-shaping swing-up to an LQR balancing controller near the upright state.\n- **Think of a state machine:** One mode builds the conditions needed for another mode; neither mode alone solves the complete task.\n- **Worked target state:** In MIT's convention, angle zero hangs down. The balancing target is `[cart position, angle, cart speed, angular speed] = [0, pi, 0, 0]`.\n- **Test the local controller:** Start near that target, then increase the initial deviation to see where the chosen balancing controller stops recovering.\n\n```mermaid\nflowchart LR\n  S[Measured state] --> D[Near upright?]\n  D --> E[Energy swing-up]\n  D --> L[LQR balance]\n  E --> F[Cart force]\n  L --> F\n  F --> P[Cart and pole motion]\n  P --> S\n```\n\n## Key terms\n\n- **Underactuated**: unable to command acceleration independently in every configuration direction.\n- **Coupling**: motion or force in one part influences another part through the dynamics.\n- **Equilibrium**: a state that remains unchanged without a disturbance when the required input is applied.\n- **Energy shaping**: choosing inputs to drive mechanical energy toward a desired value.\n- **LQR**: linear quadratic regulator, a feedback controller trading state error against control effort in a local linear model.\n\n## Before / after\n\n- **Before:** Understand Dynamic system modeling & state-space and Optimal control & LQR; include velocities, not just positions, in your state.\n- **After:** Try Balance a cart-pole with LQR, then Energy-shaping pendulum swing-up or Acrobot swing-up then LQR catch.\n\n## Try it in an afternoon\n\n1. **Run the cart-pole stabilization example** in safe-control-gym and plot pole angle, cart position, and commanded force.\n2. **Vary the starting state** with the same controller; record successful recoveries and failures rather than assuming global stability.\n3. **Study MIT's swing-up example** and compare the energy-building phase with the small corrections used near the balancing target.",
+      "resources": [
+        {
+          "title": "Acrobot swing up and stabilization with nonlinear controller",
+          "url": "https://www.youtube.com/watch?v=FeCwtvrD76I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows an underactuated mechanism first building motion and then balancing."
+        },
+        {
+          "title": "GitHub - learnsyslab/safe-control-gym: PyBullet CartPole and Quadrotor environments—with CasADi symbolic a priori dynamics—for learning-based control and RL · GitHub",
+          "url": "https://github.com/utiasDSL/safe-control-gym",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Includes a runnable cart-pole stabilization experiment using LQR."
+        },
+        {
+          "title": "Lecture 7 | MIT 6.832 Underactuated Robotics, Spring 2009",
+          "url": "https://www.youtube.com/watch?v=9qnpQ1hVlqw",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Develops swing-up control for the acrobot and cart-pole."
+        },
+        {
+          "title": "Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.mit.edu/acrobot.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Derives coupled dynamics, local balancing, and energy-based swing-up."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=FeCwtvrD76I",
+        "https://github.com/utiasDSL/safe-control-gym",
+        "https://www.youtube.com/watch?v=9qnpQ1hVlqw",
+        "https://underactuated.mit.edu/acrobot.html",
+        "https://ocw.mit.edu/courses/6-832-underactuated-robotics-spring-2009/resources/lecture-7-swing-up-control-of-acrobot-and-cart-pole-systems/"
+      ]
+    },
+    {
+      "node_id": "k:visual-servoing",
+      "type": "knowledge",
+      "name": "Visual servoing",
+      "summary": "Visual servoing repeatedly turns camera measurements into motion commands so the robot reduces the difference between its current view and a desired visual target.",
+      "lesson_md": "## In one sentence\n\nVisual servoing repeatedly turns camera measurements into motion commands so the robot reduces the difference between its current view and a desired visual target.\n\n![ViSP plots showing visual-feature errors and camera velocities converging toward zero](/img/lessons/knowledge_control-visual-servoing.webp)\n*Feature errors and camera velocities during image-based control. Source: [ViSP tutorial](https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html), license unknown.*\n\n## Why it matters for us\n\n- **Images become feedback:** The camera is not just used to choose a destination once; new visual measurements influence the next motion command.\n- **The error is visible:** Plotting current and desired image features lets us inspect whether a movement actually improves alignment.\n- **Simulation gives a clear starting point:** ViSP's four-point example isolates the camera-control loop before adding real tracking and robot hardware.\n\n> **Key idea:** Keep measuring what the camera sees while moving, rather than trusting a single visual estimate.\n\n## How it works\n\n- **Choose visual features:** A feature is a measurable image quantity, such as the horizontal and vertical coordinates of a tracked point.\n- **Store the desired features:** These specify the image arrangement the controller should reach, rather than a separate target for every joint.\n- **Compute feature error:** Compare current features with desired features in the same coordinate convention.\n- **Map error into camera motion:** An interaction matrix describes how camera velocity changes the image features; the control law uses this relationship to reduce error.\n- **Think of a reconciliation loop:** Like a service repeatedly comparing actual and desired state, the controller measures again after each update instead of sending one blind command.\n- **Worked ViSP setup:** The tutorial tracks four corners of a 20-centimeter square, uses gain 0.5, and updates its simulated camera every 0.040 seconds.\n- **Count the feedback values:** Each corner supplies two image coordinates, giving eight feature-error components; the controller produces camera translation and rotation velocities.\n- **Do not discard geometry:** The tutorial uses camera intrinsic parameters to convert pixel measurements into normalized image features; image feedback does not mean calibration disappears.\n\n```mermaid\nflowchart LR\n  I[Camera image] --> F[Current features]\n  F --> E[Feature error]\n  T[Desired features] --> E\n  E --> C[Camera velocity command]\n  C --> R[Robot and camera move]\n  R --> I\n```\n\n## Key terms\n\n- **IBVS**: image-based visual servoing, using image features to define the feedback error.\n- **Eye-in-hand**: a camera mounted on the moving robot, so robot motion changes the camera viewpoint.\n- **Interaction matrix**: a local mapping between camera velocity and the rate of change of visual features.\n- **Gain**: a scale controlling the strength of the feedback response.\n\n## Before / after\n\n- **Before:** Learn Feedback control & PID, basic camera geometry, and Joint-space control of robot arms; distinguish camera-frame velocities from joint commands.\n- **After:** Start Image-based visual servoing in ViSP simulation, then consider Webcam visual servoing on the SO-101 using ViSP.\n\n## Try it in an afternoon\n\n1. **Run ViSP's four-point simulation** and identify where current features, desired features, and the camera velocity are updated.\n2. **Plot feature errors** and camera velocities together, matching the tutorial's convergence plots.\n3. **Change the simulated initial camera pose** while keeping the target fixed; compare feature paths and convergence before attempting the real-camera version.",
+      "resources": [
+        {
+          "title": "Internal camera view during an IBVS simulation",
+          "url": "https://www.youtube.com/watch?v=sPNkDfp3UeU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows image features moving toward their targets in ViSP's simulated camera view."
+        },
+        {
+          "title": "Tutorial: Image-based visual servo (IBVS)",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Walks through four-point camera control and its simulation loop."
+        },
+        {
+          "title": "tutorial-ibvs-4pts.cpp",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs-4pts_8cpp_source.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Provides the full small C++ example with feature updates and velocity commands."
+        },
+        {
+          "title": "Tutorial: How to boost your visual servo control law",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Compares constant gain, adaptive gain, and continuous command sequencing."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=sPNkDfp3UeU",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs.html",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs-4pts_8cpp_source.html",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html"
+      ]
     }
   ]
 }
