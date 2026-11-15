@@ -1,0 +1,231 @@
+{
+  "batch": "projects_simulation_2",
+  "lessons": [
+    {
+      "node_id": "p:parallel-simulation-throughput-truth-sheet",
+      "type": "project",
+      "name": "Parallel simulation throughput truth sheet",
+      "summary": "Compare parallel simulation batch sizes with honest timings, memory measurements, and rendering settings on your own machine.",
+      "lesson_md": "## In one sentence\n\nCompare parallel simulation batch sizes with honest timings, memory measurements, and rendering settings on your own machine.\n\n![Cartpole rendered with different simulator and lighting settings](/img/lessons/projects_simulation_2-parallel-throughput.webp)\n*Published Cartpole render comparisons illustrate why rendering settings belong in a throughput report. Source: [Published example](https://maniskill.readthedocs.io/en/latest/user_guide/additional_resources/performance_benchmarking.html), license unknown.*\n\n## What you will learn\n\n- **Throughput** means completed environment steps per real second; **latency** means how long one batch takes.\n- **Vectorized environments** run multiple independent worlds together, like processing requests in a batched server.\n- **Rendering** turns scene state into images; timing physics alone does not measure a camera-based learning pipeline.\n\n> **Key idea:** A speed number is useful only when its workload, synchronization, and hardware are visible.\n\n## What you need\n\n- **Start from Batch-reset correctness kaleidoscope:** Verify resets before making the same bug run faster.\n- **Use ManiSkill** on a supported GPU setup, Python, a timer, and a CSV writer; no robot purchase is needed.\n- **Record the machine:** GPU, processor, memory, simulator revision, task, camera settings, and driver belong beside every chart.\n\n## Steps\n\n1. **Freeze one workload:** Choose Cartpole or PickCube, fixed actions, episode lengths, and observation settings; save the complete configuration.\n2. **Sweep batch sizes:** Start with one world, then increase within available memory; repeat with camera observations disabled and enabled.\n3. **Separate startup:** Time loading, compilation where applicable, and warm-up separately from repeated steady-state stepping.\n4. **Wait for completed work:** Synchronize the accelerator before stopping the timer; JAX examples use `block_until_ready()`.\n5. **Measure the whole run:** Save peak GPU memory, resets, wall-clock duration, completed steps, and failures, including out-of-memory configurations.\n6. **Show the truth sheet:** Film the workload and display curves for both rendering modes, not just the fastest configuration.\n\n```mermaid\nflowchart LR\n  A[Fixed task] --> B[Choose batch]\n  B --> C[Warm up]\n  C --> D[Time completed steps]\n  D --> E[Save memory and errors]\n  E --> F[Compare rendering modes]\n```\n\nCompute the rate only after synchronization:\n\n```python\nworld_steps = num_envs * batch_steps\nsteps_per_second = world_steps / elapsed_seconds\n```\n\n## Common pitfalls\n\n- **Queued work is not finished work:** An unsynchronized timer may measure dispatch instead of simulation.\n- **Keep denominators explicit:** Use total completed world-steps, not API calls; exclude failed work from throughput and report failures separately.\n- **Reject an empty sweep:** Report no measurements rather than inventing a zero-speed machine.\n\n## When it's done\n\n- **Publish runnable code and raw CSV:** A teammate can regenerate the curves and locate every excluded or failed trial.\n- **Connect the result** to GPU-parallel simulation & vectorized environments; do not present your machine's winner as a universal simulator ranking.",
+      "resources": [
+        {
+          "title": "Quickstart",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run a parallel task and see how num_envs changes the simulation mode."
+        },
+        {
+          "title": "ManiSkill parallel PickCube demonstration",
+          "url": "https://raw.githubusercontent.com/mani-skill/ManiSkill/main/docs/source/_static/videos/mani_skill_gpu_sim-PickCube-v1-num_envs=16-obs_mode=state-render_mode=sensors.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The creator's embedded demo shows the parallel-world workload whose throughput you will measure."
+        },
+        {
+          "title": "Performance Benchmarking",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/additional_resources/performance_benchmarking.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare workload definitions, rendering differences, raw results, and GPU memory reporting."
+        },
+        {
+          "title": "Benchmarking JAX code",
+          "url": "https://jax.readthedocs.io/en/latest/benchmarking.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate compilation, device transfer, and synchronized execution when benchmarking MJX."
+        },
+        {
+          "title": "MuJoCo XLA (MJX)",
+          "url": "https://mujoco.readthedocs.io/en/stable/mjx.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand an alternative accelerator backend without assuming its speed transfers to your task."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+        "https://raw.githubusercontent.com/mani-skill/ManiSkill/main/docs/source/_static/videos/mani_skill_gpu_sim-PickCube-v1-num_envs=16-obs_mode=state-render_mode=sensors.mp4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/additional_resources/performance_benchmarking.html",
+        "https://jax.readthedocs.io/en/latest/benchmarking.html",
+        "https://mujoco.readthedocs.io/en/stable/mjx.html"
+      ]
+    },
+    {
+      "node_id": "p:pendulum-energy-drift-cinema",
+      "type": "project",
+      "name": "Pendulum energy-drift cinema",
+      "summary": "Film the same simulated pendulum with different integration settings and overlay how its energy changes over time.",
+      "lesson_md": "## In one sentence\n\nFilm the same simulated pendulum with different integration settings and overlay how its energy changes over time.\n\n![Red simulated pendulum rotating about a black pivot](/img/lessons/projects_simulation_2-energy-drift.webp)\n*Gymnasium's pendulum illustrates the single-joint setup; the conservation experiment uses an unforced, undamped model. Source: [Published example](https://gymnasium.farama.org/environments/classic_control/pendulum/), license unknown.*\n\n## What you will learn\n\n- **An integrator** advances position and velocity through small time intervals rather than solving an entire motion at once.\n- **Energy drift** is unwanted change in total mechanical energy; an unforced, undamped ideal pendulum should conserve it.\n- **Think of regression testing:** Every integrator receives the same initial state, and a plot exposes differences invisible in a short animation.\n\n> **Key idea:** A pendulum can look plausible while its numerical solver quietly changes the motion's energy.\n\n## What you need\n\n- **Use MuJoCo** with a single hinged pendulum, Python plotting, and video capture; this experiment needs no physical hardware.\n- **Know the model:** Record mass, center of mass, inertia, gravity, angle convention, and time step.\n- **Begin after Intro: robot anatomy & coordinate frames in sim:** Identify which angle and velocity the simulator actually returns.\n\n## Steps\n\n1. **Remove intended losses:** Disable damping, friction, contact, and motor input; release the pendulum from a nonzero angle with zero initial velocity.\n2. **Log energy:** Record kinetic plus potential energy at each simulated timestamp; subtract the initial total to display drift.\n3. **Make a reference:** Reduce the time step and check whether another reduction changes the trajectory appreciably.\n4. **Compare solvers:** Repeat identical releases with MuJoCo's Euler and RK4 settings, changing only the solver or time step per comparison.\n5. **Align playback:** Plot by simulated time and render matching timestamps so the clips do not confuse playback speed with physical behavior.\n6. **Screen the cinema:** Show synchronized clips beside energy traces, the reference, and a table of settings and runtime.\n\n```mermaid\nflowchart LR\n  A[Same release] --> B[Choose solver and step]\n  B --> C[Simulate]\n  C --> D[Log motion and energy]\n  D --> E[Align clips]\n  E --> F[Compare reference]\n```\n\nFor the point-mass model in the pendulum chapter, energy combines motion and height:\n\n```python\nenergy = 0.5 * mass * length**2 * omega**2 - mass * gravity * length * cos(theta)\ndrift = energy - initial_energy\n```\n\n## Common pitfalls\n\n- **Damping is not drift:** Physical energy loss must be removed before testing numerical conservation.\n- **MuJoCo's Euler is semi-implicit:** Do not label it explicit Euler; the computation docs explain the distinction.\n- **Zero initial energy** makes relative error awkward; use absolute energy differences, and reject empty or non-finite traces explicitly.\n\n## When it's done\n\n- **Deliver the video and logs:** A viewer can identify each solver, time step, initial state, and failed simulation without guessing.\n- **Explain Time stepping & numerical fidelity** using your measurements, then carry the comparison into Simulation speed versus fidelity dashboard.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.5:  Forward Dynamics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why forward dynamics needs numerical integration and how time steps enter a simulation."
+        },
+        {
+          "title": "The Simple Pendulum",
+          "url": "https://underactuated.mit.edu/pend.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "The undamped-pendulum section derives kinetic, potential, and conserved total energy."
+        },
+        {
+          "title": "Pendulum",
+          "url": "https://gymnasium.farama.org/environments/classic_control/pendulum/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See a concrete pendulum environment, its observations, and angle convention before building the energy test."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html#numerical-integration",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Compare the actual MuJoCo integrators rather than inferring their behavior from their names."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+        "https://underactuated.mit.edu/pend.html",
+        "https://gymnasium.farama.org/environments/classic_control/pendulum/",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html#numerical-integration",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html"
+      ]
+    },
+    {
+      "node_id": "p:procedural-scene-solvability-filter",
+      "type": "project",
+      "name": "Procedural scene solvability filter",
+      "summary": "Generate cluttered robot scenes, reject clearly invalid tasks, and film accepted and rejected examples with explicit reasons.",
+      "lesson_md": "## In one sentence\n\nGenerate cluttered robot scenes, reject clearly invalid tasks, and film accepted and rejected examples with explicit reasons.\n\n![RoboCasa montage of kitchen layouts, tabletop objects, and robot tasks](/img/lessons/projects_simulation_2-solvability.webp)\n*RoboCasa's published overview shows varied kitchens, objects, and manipulation tasks to motivate scene validation. Source: [Published example](https://robocasa.ai/docs/build/html/introduction/overview.html), license unknown.*\n\n## What you will learn\n\n- **Procedural generation** means constructing scenes from code and sampled choices instead of placing every object manually.\n- **Workspace** is the set of positions a robot's tool can reach; reachability alone does not guarantee a collision-free motion.\n- **Treat the filter like input validation:** Reject malformed scenes before using them to judge a controller.\n\n> **Key idea:** A failed controller run is not proof that a generated task was solvable.\n\n## What you need\n\n- **Begin with Seeded tabletop scene generator:** Keep its saved seeds, object identities, and placement configuration.\n- **Choose one simulator:** Use a small arm-and-cube task first; RoboCasa supplies richer kitchen layouts for a later extension.\n- **Budget for computation, not hardware:** Use an existing computer, Python, collision queries, and a scripted planner; cloud costs remain setup-dependent.\n\n## Steps\n\n1. **Define a valid task:** Require a target object, a goal region, and an initial robot state without forbidden intersections.\n2. **Generate candidates:** Save each seed and scene description before validation so rejected examples can also be replayed.\n3. **Run cheap checks:** Detect empty object lists, missing assets, targets outside the intended workspace, and blocked starting configurations.\n4. **Attempt a solution:** Use inverse kinematics, which finds joint angles for a tool pose, then plan and execute a collision-checked trajectory.\n5. **Separate outcomes:** Label scenes accepted, invalid, or unresolved; a planner timeout is unresolved, not proof of physical impossibility.\n6. **Demonstrate the filter:** Film matched accepted and rejected scenes with reason labels, plus an unresolved case and its diagnostic log.\n\n```mermaid\nflowchart LR\n  A[Seeded scene] --> B[Check task and assets]\n  B --> C[Check start and target]\n  C --> D[Plan and execute]\n  D --> E[Accept]\n  B --> F[Reject with reason]\n  C --> F\n  D --> G[Unresolved]\n```\n\nA minimal rejection rule should return a reason, not silently discard a scene:\n\n```python\ndef check_target(scene):\n    if scene.target is None:\n        return \"invalid: missing target\"\n    return \"continue to collision and planning checks\"\n```\n\n## Common pitfalls\n\n- **A reachable point may be blocked:** Checking distance from the robot base is not equivalent to checking a path.\n- **A collision-free path may miss success:** Execute it and evaluate the actual task goal.\n- **Do not hide loading failures:** Keep them separate from task rejection so broken asset paths do not look like difficult clutter.\n\n## When it's done\n\n- **Ship the scene manifest and replay command:** Every decision includes the seed, tested checks, and a video or error record.\n- **Audit both directions:** Manually inspect accepted and rejected examples before using the filter for Compositional scene generalization split.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 2.5:  Task Space and Workspace",
+          "url": "https://www.youtube.com/watch?v=hTuW51CpUg4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Distinguish a desired tool position from the positions the robot can reach."
+        },
+        {
+          "title": "Motion Planning",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/data_collection/motionplanning.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run a scripted pick-and-place planner and understand its limits as a solvability witness."
+        },
+        {
+          "title": "Introduction to Task Building",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/custom_tasks/intro.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Define initialization and success checks for the scene-validation task."
+        },
+        {
+          "title": "Scenes",
+          "url": "https://robocasa.ai/docs/build/html/assets/scenes.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand RoboCasa's separation of scene layout and appearance before extending the filter to kitchens."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hTuW51CpUg4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/data_collection/motionplanning.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/custom_tasks/intro.html",
+        "https://robocasa.ai/docs/build/html/assets/scenes.html",
+        "https://robocasa.ai/docs/build/html/introduction/overview.html"
+      ]
+    },
+    {
+      "node_id": "p:randomization-coverage-heatmap",
+      "type": "project",
+      "name": "Randomization coverage heatmap",
+      "summary": "Audit sampled visual and physical simulation parameters with plots that expose missing variation and invalid combinations.",
+      "lesson_md": "## In one sentence\n\nAudit sampled visual and physical simulation parameters with plots that expose missing variation and invalid combinations.\n\n![Four simulated arm scenes with differently colored tabletop objects](/img/lessons/projects_simulation_2-randomization-coverage.webp)\n*ManiSkill's published examples vary object colors in a tabletop scene. Source: [Published example](https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html), license unknown.*\n\n## What you will learn\n\n- **Domain randomization** changes simulator properties, such as lighting or object appearance, to expose a learner to varied conditions.\n- **Coverage** asks which intended conditions were actually sampled; a **heatmap** colors bins according to their sample counts.\n- **Think of property-based testing:** Declaring a generator is not enough; inspect what its outputs really contain.\n\n> **Key idea:** A broad configuration range does not prove that the running simulator ever uses that range.\n\n## What you need\n\n- **Use ManiSkill** with a simple tabletop scene, Python plotting, and saved random seeds; no robot is required.\n- **Start after Intro: robot anatomy & coordinate frames in sim:** Identify the objects, lights, and physical properties you intend to vary.\n- **Keep a parameter manifest:** Specify units, allowed ranges, sampling rules, and invalid combinations before generating trials.\n\n## Steps\n\n1. **Select a small audit:** Vary light settings, object color, and one physical parameter; keep all other settings fixed initially.\n2. **Log realized values:** Save requested values and values actually applied after scene creation or reset, together with seed and environment index.\n3. **Plot individual distributions:** Show counts across each allowed range and flag constant, missing, or out-of-range values.\n4. **Plot pairs:** Use two-dimensional count grids to expose missing combinations that separate histograms would hide.\n5. **Inject known defects:** Freeze one parameter, supply an empty batch, and request an invalid range; make the report identify each condition.\n6. **Present the coverage wall:** Pair heatmaps with rendered scene examples and a table of accepted, rejected, and failed resets.\n\n```mermaid\nflowchart LR\n  A[Parameter rules] --> B[Sample seeds]\n  B --> C[Apply to simulator]\n  C --> D[Log actual values]\n  D --> E[Histograms and heatmaps]\n  E --> F[Inspect gaps and failures]\n```\n\nA tiny audit can expose an accidentally constant sampled parameter:\n\n```python\nvalues = [row[\"friction\"] for row in records]\nstatus = \"empty\" if not values else \"constant\" if len(set(values)) == 1 else \"varied\"\n```\n\n## Common pitfalls\n\n- **Reset is not always reconfiguration:** ManiSkill distinguishes episode initialization from rebuilding a scene; some camera properties cannot change at every reset.\n- **Seeds alone are not a complete experiment:** Save simulator settings and per-environment seeds, especially when changing parallel batch size.\n- **Color changes are not physics changes:** Show separate evidence for visual and physical variation; a pretty montage cannot validate friction sampling.\n\n## When it's done\n\n- **Deliver an executable audit:** A teammate can replay a suspicious seed and see why a bin is empty or a value stayed constant.\n- **State what coverage cannot prove:** Sampling many conditions does not establish real-world robustness; use the report to prepare Held-out nuisance robustness tournament.",
+      "resources": [
+        {
+          "title": "Domain Randomization",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Apply camera, color, physical-property, and lighting randomizations at the documented lifecycle stages."
+        },
+        {
+          "title": "Lighting randomization demonstration",
+          "url": "https://maniskill.readthedocs.io/en/latest/_static/videos/dr_lighting.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The creator's embedded clip shows the visual lighting changes that the numeric audit should accompany."
+        },
+        {
+          "title": "Reproducibility and Random Number Generation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/rng.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Save per-environment seeds and distinguish seeded scene construction from restoring dynamic state."
+        },
+        {
+          "title": "Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World",
+          "url": "https://arxiv.org/abs/1703.06907",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original visual randomization motivation without confusing sampled diversity with guaranteed transfer."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+        "https://maniskill.readthedocs.io/en/latest/_static/videos/dr_lighting.mp4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/rng.html",
+        "https://arxiv.org/abs/1703.06907"
+      ]
+    },
+    {
+      "node_id": "p:recover-hidden-simulated-pendulum-damping",
+      "type": "project",
+      "name": "Recover hidden simulated pendulum damping",
+      "summary": "Estimate a hidden damping parameter from simulated pendulum motion, then test predictions on a different release.",
+      "lesson_md": "## In one sentence\n\nEstimate a hidden damping parameter from simulated pendulum motion, then test predictions on a different release.\n\n![A simulated pendulum with a red link and black pivot](/img/lessons/projects_simulation_2-hidden-damping.webp)\n*Gymnasium's pendulum is a visual reference; add the documented damping model explicitly for this identification experiment. Source: [Published example](https://gymnasium.farama.org/environments/classic_control/pendulum/), license unknown.*\n\n## What you will learn\n\n- **Damping** is resistance proportional to velocity in this model; it gradually removes motion without changing the pendulum's geometry.\n- **System identification** fits a model's unknown parameters from observed inputs and outputs.\n- **Use a black-box testing analogy:** One script generates traces with a secret configuration; another must predict new traces without reading it.\n\n> **Key idea:** A fitted parameter is convincing only when it predicts motion that was not used during fitting.\n\n## What you need\n\n- **Use a one-joint pendulum:** Python, MuJoCo or a small numerical model, plotting, and SciPy's least-squares fitter require no physical robot.\n- **Fix everything except damping:** Record mass, length, inertia, gravity, sampling interval, initial state, and input torque.\n- **Start after Intro: robot anatomy & coordinate frames in sim:** Agree on radians, seconds, and which direction counts as a positive angle.\n\n## Steps\n\n1. **Generate hidden truth:** Let a teammate choose a nonnegative damping coefficient, save its value separately, and export timestamped angle and input traces.\n2. **Make informative motion:** Release away from rest or apply a known input; also record an almost-motionless case deliberately.\n3. **Build a prediction function:** For each candidate damping value, simulate from the recorded initial state and return predicted angles at measurement timestamps.\n4. **Fit the coefficient:** Minimize squared prediction errors with a nonnegative bound; compare against the unfitted model and inspect residuals, meaning prediction differences.\n5. **Test another excitation:** Use a different release or input without refitting; overlay measured and predicted motion and report the error.\n6. **Reveal and demonstrate:** Compare the estimate with hidden truth, show the held-out overlay, and explain why low-motion data cannot identify damping reliably.\n\n```mermaid\nflowchart LR\n  A[Hidden damping] --> B[Generate trace]\n  B --> C[Fit candidate]\n  C --> D[Simulate prediction]\n  D --> C\n  C --> E[Test new release]\n  E --> F[Reveal truth]\n```\n\nFor angle traces sampled at matching timestamps, return the residual vector to the fitter:\n\n```python\ndef residual(candidate):\n    predicted = simulate(candidate, initial_state, inputs, times)\n    return predicted - observed_angles\n```\n\n## Common pitfalls\n\n- **Rest contains little information:** In the model, damping torque is minus the coefficient times angular velocity; zero velocity eliminates that contribution.\n- **Numerical losses can masquerade as damping:** Check time-step sensitivity before trusting the estimate.\n- **Reject unusable data explicitly:** Empty traces, failed simulation, missing timestamps, and non-finite states must not produce a confident parameter.\n\n## When it's done\n\n- **Ship generator, fitter, and held-out plots:** Report low-motion ambiguity rather than silently selecting one plausible value.\n- **Connect System identification & simulator calibration** to the later STS3215 actuator model for sim-to-real without claiming this ideal pendulum already models a servo.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.5:  Forward Dynamics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the forward simulation used repeatedly inside the parameter-fitting loop."
+        },
+        {
+          "title": "The Simple Pendulum",
+          "url": "https://underactuated.mit.edu/pend.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Find the explicit viscous damping term and understand what motion reveals about it."
+        },
+        {
+          "title": "System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Compare equation-error and simulation-error fitting and the role of informative experiments."
+        },
+        {
+          "title": "least_squares",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement bounded least-squares fitting using a residual vector from simulated observations."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+        "https://underactuated.mit.edu/pend.html",
+        "https://underactuated.mit.edu/sysid.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html",
+        "https://gymnasium.farama.org/environments/classic_control/pendulum/"
+      ]
+    }
+  ]
+}
