@@ -902,6 +902,191 @@
         "https://raw.githubusercontent.com/octo-models/octo/main/examples/02_finetune_new_observation_action.py",
         "https://raw.githubusercontent.com/octo-models/octo/main/examples/03_eval_finetuned.py"
       ]
+    },
+    {
+      "node_id": "p:insert-a-peg-with-compliance",
+      "type": "project",
+      "name": "Insert a peg with compliance",
+      "summary": "Insert a simulated peg using a yielding contact controller, showing how stiffness and damping change motion and contact-force traces.",
+      "lesson_md": "## In one sentence\n\nInsert a simulated peg using a yielding contact controller, showing how stiffness and damping change motion and contact-force traces.\n\n![Peg and hole contact geometry from the manipulator-control notes](/img/lessons/projects_manipulation_1-peg-compliance.webp)\n*Peg and hole contact geometry from the manipulator-control notes. Source: [Published reference](https://manipulation.csail.mit.edu/force.html), license unknown.*\n\n## What you will learn\n\n- **Compliance** means yielding under load instead of rigidly enforcing a commanded position; here the yielding comes from a software controller.\n- **Stiffness** sets the restoring response to displacement; **damping** resists motion so the peg need not bounce repeatedly after contact.\n- **Impedance control** specifies a relationship between motion and force, rather than independently demanding arbitrary values of both.\n- **Think of feedback middleware:** each update corrects motion from measured state while a separate monitor decides whether the attempt may continue.\n\n> **Key idea:** Tune the response to contact before asking the system to cope with uncertain target poses.\n\n## What you need\n\n- **Complete Admittance hand-guiding in simulation** and review Force/compliant & contact-rich manipulation before implementing a contact controller.\n- **Use robosuite with MuJoCo**, a simple peg-and-hole scene, controller access, and synchronized motion and force logging; no purchased robot is required.\n- **Keep geometry and target estimates fixed:** Adapt insertion to pose error is the later uncertainty experiment, not this stiffness-and-damping comparison.\n- **Declare force-sensor conventions:** a MuJoCo force sensor reports interaction between its body and parent, expressed in the sensor's local coordinate frame.\n\n## Steps\n\n1. **Establish a slow approach**, fixed contact geometry, insertion-depth success condition, and explicit force, workspace, and time termination limits.\n2. **Implement compliant contact response**, with separate approach, contact, insertion, and retreat states; record every transition alongside the robot state.\n3. **Compare stiffness settings** on identical starts, keeping the nominal motion, geometry, and termination conditions unchanged.\n4. **Vary damping separately**, plotting displacement, insertion depth, and measured forces against the same time axis to expose oscillation and settling.\n5. **Exercise failure cases:** absent hole, unreachable target, missing force reading, jam, and excessive load must terminate with distinct reasons.\n6. **Replay the insertion comparison** with force and motion traces visible, including unsuccessful attempts and the saved controller configurations.\n\nWorked model from the control notes: a virtual spring-and-damper contributes `F = kp * (target - position) - kd * velocity` along one axis.\n\n**Read the signs physically:** the spring pulls toward the target and damping opposes velocity; this expression alone is not a complete gravity-compensated robot controller.\n\n```mermaid\nflowchart LR\n  S[Pose and force readings] --> C[Compliant controller]\n  C --> P[Simulated peg contact]\n  P --> S\n  S --> M[Termination monitor]\n  M --> L[Traces and outcome]\n```\n\n## Common pitfalls\n\n- **A wrist reading includes more than peg contact:** mounting frame, gravity, and other external loads affect its interpretation.\n- **Low stiffness is not automatic success:** insufficient support can prevent progress; low damping can turn yielding into oscillation.\n\n## When it's done\n\n- **Show actual insertion depth** together with force traces and success/failure counts; a small force alone could mean the peg never touched anything.\n- **Publish the fixed test conditions**, separating this controller demonstration from later claims about pose-error tolerance or physical hardware.",
+      "resources": [
+        {
+          "title": "Torque control for teaching peg-in-hole via physical human-robot interaction",
+          "url": "https://handbookofrobotics.org/view-chapter/69/videodetails/627",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch insertion with different translational and rotational stiffness, rather than treating compliance as vague softness."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the stiffness, impedance, and peg-in-hole sections before designing the contact response."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#sensor-force",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Interpret the force sensor frame and body-to-parent interaction before plotting its readings."
+        },
+        {
+          "title": "robosuite/robosuite/controllers/parts/arm/osc.py at master · ARISE-Initiative/robosuite · GitHub",
+          "url": "https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/controllers/parts/arm/osc.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect stiffness, damping, and supported impedance modes in the actual controller implementation."
+        }
+      ],
+      "sources": [
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://handbookofrobotics.org/view-chapter/69/videodetails/627",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#sensor-force",
+        "https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/controllers/parts/arm/osc.py"
+      ]
+    },
+    {
+      "node_id": "p:inspect-a-generalist-policy-action-output",
+      "type": "project",
+      "name": "Inspect a generalist policy action output",
+      "summary": "Inspect a pretrained policy on recorded images and instructions, decoding its action fields and normalization without connecting it to hardware.",
+      "lesson_md": "## In one sentence\n\nInspect a pretrained policy on recorded images and instructions, decoding its action fields and normalization without connecting it to hardware.\n\n![OpenVLA architecture showing image and language inputs and tokenized robot-action outputs](/img/lessons/projects_manipulation_1-policy-action-output.webp)\n*OpenVLA architecture showing image and language inputs and tokenized robot-action outputs. Source: [Published reference](https://openvla.github.io/), license unknown.*\n\n## What you will learn\n\n- **A policy** maps observations to action proposals; a generalist policy learns across multiple tasks.\n- **Action tokens** are discrete symbols decoded into numerical commands; readable numbers do not automatically identify their coordinate frame or physical units.\n- **Unnormalization** restores dataset-specific numerical scales; normalized values are dimensionless, not directly metres, radians, or motor commands.\n- **Think of deserializing an API response:** validate schema and units before consuming the payload.\n\n> **Key idea:** An action vector is meaningful only together with its checkpoint, dataset statistics, field definitions, and controller convention.\n\n## What you need\n\n- **Complete Intro: robot anatomy & coordinate frames in sim** and review Generalist manipulation policies / VLAs before interpreting motion commands.\n- **Use OpenVLA's documented inference interface** with recorded workspace images, instructions, a compatible checkpoint, and the corresponding dataset statistics.\n- **Keep this offline:** no robot purchase is needed, but GPU and storage costs remain separate.\n- **Treat Octo and π0 / π0.5 as alternatives**, not interchangeable action schemas; inspect one model and one dataset convention first.\n\n## Steps\n\n1. **Select a recorded episode**, displaying its image, preprocessing result, instruction, checkpoint, and dataset key beside each prediction.\n2. **Run inference without an execution adapter**, saving outputs and metadata to disk; never instantiate a hardware client just to inspect numbers.\n3. **Decode the schema:** show translation, rotation, and gripper fields separately, distinguishing normalized outputs from values restored with dataset statistics.\n4. **Audit units**, rotation representation, reference frame, delta-versus-absolute commands, and gripper meaning; display unknown for conventions not established by the selected adapter.\n5. **Test malformed and empty inputs:** missing image, blank instruction, wrong statistics key, and non-finite outputs must receive explicit statuses rather than plausible-looking plots.\n6. **Demo the offline inspector** on valid and missing-target scenes, showing decoded fields, units or unknowns, and validation outcomes without claiming task success.\n\nWorked OpenVLA example: `vla.predict_action(**inputs, unnorm_key=\"bridge_orig\", do_sample=False)` selects the BridgeData statistics for decoding.\n\n| Output field group | Model-card meaning |\n|---|---|\n| First three values | x, y, z end-effector deltas |\n| Next three values | roll, pitch, yaw deltas |\n| Final value | gripper command |\n\n```mermaid\nflowchart LR\n  I[Recorded image and instruction] --> P[Preprocessing]\n  P --> V[Policy inference]\n  V --> D[Decode and unnormalize]\n  D --> A[Schema and unit audit]\n  A --> L[Offline display only]\n```\n\n## Common pitfalls\n\n- **Different statistics can produce different decoded scales:** retain the dataset key with every saved prediction, not merely the checkpoint name.\n- **A missing target need not stop a policy proposing motion:** inspection is not a certified rejection or reachability system.\n\n## When it's done\n\n- **Show recorded observations and labelled outputs**, including unresolved conventions; normalized numbers must never masquerade as verified physical units.\n- **Export a reproducible log** before Fine-tune a policy on one tabletop task, which evaluates simulated outcomes.",
+      "resources": [
+        {
+          "title": "OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://openvla.github.io/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator-published policy videos, then inspect the architecture linking images and instructions to action tokens."
+        },
+        {
+          "title": "openvla/openvla-7b · Hugging Face",
+          "url": "https://huggingface.co/openvla/openvla-7b",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read the seven-field output schema and the need for dataset-specific unnormalization."
+        },
+        {
+          "title": "openvla/experiments/robot/bridge/bridgev2_utils.py at main · openvla/openvla",
+          "url": "https://github.com/openvla/openvla/blob/main/experiments/robot/bridge/bridgev2_utils.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect image preprocessing and saved observation/action records without invoking its hardware-creation functions."
+        },
+        {
+          "title": "GitHub - openvla/openvla: OpenVLA: An open-source vision-language-action model for robotic manipulation. · GitHub",
+          "url": "https://github.com/openvla/openvla",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use the Getting Started predict_action example, stopping before the robot.act execution call."
+        }
+      ],
+      "sources": [
+        "https://openvla.github.io/",
+        "https://huggingface.co/openvla/openvla-7b",
+        "https://github.com/openvla/openvla/blob/main/experiments/robot/bridge/bridgev2_utils.py",
+        "https://github.com/openvla/openvla"
+      ]
+    },
+    {
+      "node_id": "p:learn-a-mobile-cabinet-interaction",
+      "type": "project",
+      "name": "Learn a mobile cabinet interaction",
+      "summary": "Learn a simulated cabinet interaction that coordinates base and arm motion, then demonstrate labelled failures and repeatable resets.",
+      "lesson_md": "## In one sentence\n\nLearn a simulated cabinet interaction that coordinates base and arm motion, then demonstrate labelled failures and repeatable resets.\n\n![Mobile ALOHA cabinet interaction from the creators' published skill video](/img/lessons/projects_manipulation_1-mobile-cabinet.webp)\n*Mobile ALOHA cabinet interaction from the creators' published skill video. Source: [Published reference](https://mobile-aloha.github.io/), license unknown.*\n\n## What you will learn\n\n- **Mobile manipulation** combines locomotion with object interaction; moving a base changes the arm's reachable workspace and its relation to the cabinet.\n- **Whole-body coordination** treats base and arm commands as one task, including during handle contact.\n- **Behavior cloning** imitates recorded expert actions; it does not automatically teach recovery from unseen mistakes.\n- **Think of a distributed transaction:** keep observations and base/arm commands synchronized, and define a rollback procedure when an episode fails.\n\n> **Key idea:** A cabinet-opening replay is incomplete evidence unless the base contributes and failed attempts reset consistently.\n\n## What you need\n\n- **Complete Carry an object between stations in simulation** and review Mobile manipulation before adding learned contact with an articulated cabinet.\n- **Use RoboCasa, built on robosuite**, for simulated kitchens and demonstrations; Mobile ALOHA supplies the real-world reference, not a drop-in simulated cabinet policy.\n- **Budget compute and storage:** no purchased robot is required; GPU costs remain unknown until provisioned.\n- **Plan integration:** RoboCasa labels OpenCabinet non-mobile; extend its task/reset and collect whole-body demonstrations rather than claiming the stock task solves navigation.\n\n## Steps\n\n1. **Reproduce cabinet interaction locally**, then define a bounded approach-plus-open task with recorded base travel, cabinet opening, collision, and timeout criteria.\n2. **Add a mobile start distribution**, validating reachable handles, base motion, synchronized arm/base control, and consistent observations before collecting demonstrations.\n3. **Record whole-body demonstrations**, saving camera inputs, robot state, cabinet state, commands, and termination labels; reserve entire episodes for held-out evaluation.\n4. **Train one imitation policy**, preserving its action schema and normalization; compare with the same task using your demonstrated or scripted baseline.\n5. **Exercise failure and reset paths:** missing handle, blocked base, unreachable cabinet, stale observations, and lost contact must stop the episode and restore documented initial conditions.\n6. **Show successful and failed rollouts**, plotting base trajectory and cabinet opening, followed by a fresh reset and the complete held-out outcome counts.\n\nWorked starting command from RoboCasa's Basic Usage: `python -m robocasa.demos.demo_tasks` replays a selected recorded demonstration.\n\n**Distinguish playback from learning:** your extended task, policy rollout, and reset checks are separate deliverables.\n\n```mermaid\nflowchart LR\n  D[Whole-body demonstrations] --> T[Policy training]\n  T --> P[Base and arm policy]\n  O[Simulated observations] --> P\n  P --> E[Cabinet interaction]\n  E --> O\n  E --> R[Outcome and reset]\n  R --> O\n```\n\n## Common pitfalls\n\n- **Starting within arm reach can hide immobility:** report base displacement and test starts that genuinely require the base to move.\n- **A reset must restore cabinet joints too:** resetting only the robot leaves later attempts with an already-open target.\n\n## When it's done\n\n- **Deliver a learned simulated interaction**, visible base contribution, failure labels, and repeatable full-scene resets across the declared test set.\n- **Separate platforms and claims:** simulation evidence is not reproduction of Mobile ALOHA's physical cabinet result or proof of hardware robustness.",
+      "resources": [
+        {
+          "title": "Mobile ALOHA: Your Housekeeping Robot",
+          "url": "https://www.youtube.com/watch?v=HaaZ8ss-HP4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the real-world whole-body manipulation reference, including household interactions."
+        },
+        {
+          "title": "Basic Usage — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/introduction/basic_usage.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Replay task demonstrations and explore the simulator before adding mobile resets."
+        },
+        {
+          "title": "Creating Datasets — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/use_cases/creating_datasets.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Collect demonstrations and extract image observations for policy learning."
+        },
+        {
+          "title": "Atomic Tasks — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/tasks/atomic_tasks.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the cabinet task and its mobile attribute so the proposed extension remains explicit."
+        },
+        {
+          "title": "Policy Learning Algorithms — RoboCasa 1.0.1 documentation",
+          "url": "https://robocasa.ai/docs/build/html/benchmarking/policy_learning_algorithms.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Select a supported training/evaluation workflow and check its compute requirements."
+        }
+      ],
+      "sources": [
+        "https://mobile-aloha.github.io/",
+        "https://www.youtube.com/watch?v=HaaZ8ss-HP4",
+        "https://robocasa.ai/docs/build/html/introduction/basic_usage.html",
+        "https://robocasa.ai/docs/build/html/use_cases/creating_datasets.html",
+        "https://robocasa.ai/docs/build/html/tasks/atomic_tasks.html",
+        "https://robocasa.ai/docs/build/html/benchmarking/policy_learning_algorithms.html",
+        "https://robocasa.ai/docs/build/html/static/atomic_task_attributes.js",
+        "https://raw.githubusercontent.com/robocasa/robocasa/main/robocasa/environments/kitchen/atomic/kitchen_doors.py"
+      ]
+    },
+    {
+      "node_id": "p:learn-coordinated-box-opening",
+      "type": "project",
+      "name": "Learn coordinated box opening",
+      "summary": "Train a two-arm imitation policy to stabilize and open a soft box, then show successful openings alongside coordinated-motion failures.",
+      "lesson_md": "## In one sentence\n\nTrain a two-arm imitation policy to stabilize and open a soft box, then show successful openings alongside coordinated-motion failures.\n\n![ALOHA 2 workcell and two-arm manipulation setup](/img/lessons/projects_manipulation_1-box-opening.webp)\n*ALOHA 2 workcell and two-arm manipulation setup. Source: [Published reference](https://aloha-2.github.io/), license unknown.*\n\n## What you will learn\n\n- **Bimanual manipulation** uses two arms together: one stabilizes the box while the other lifts its lid.\n- **Teleoperation** provides human-controlled behavior; **imitation learning** trains a policy to predict actions from those demonstrations.\n- **Action chunking** predicts future command sequences, helping preserve coordinated maneuvers rather than treating each arm independently.\n- **Think of a shared-state protocol:** premature release by one arm can invalidate the other's command.\n\n> **Key idea:** Learn the timing between stabilization and opening, not just two independent arm trajectories.\n\n## What you need\n\n- **Complete Teleoperate a two-arm handover** and review Bimanual manipulation before collecting coordinated contact demonstrations.\n- **Use ALOHA 2 or another available two-arm platform**, synchronized cameras, robot-state recording, and a resettable soft box without cutting tools.\n- **Use ACT as a learning reference:** its released simulation tasks are cube transfer and insertion; box opening needs your own task configuration and demonstrations.\n- **Budget hardware separately:** obtain quotes for arms, fixtures, cameras, and grippers; planning bands are not vendor prices.\n\n> **Watch out:** Use low speed, bounded workspaces, soft props, and a tested stop; keep hands outside both arms' swept workspaces during learned execution.\n\n## Steps\n\n1. **Define observable success**, requiring the lid or flap to reach a declared open state while the box remains stabilized; record collision and timeout conditions.\n2. **Collect synchronized demonstrations**, saving both arms, grippers, camera frames, timestamps, and failed contacts; include the transition from grasping to opening.\n3. **Split complete episodes**, preserving held-out box starts and avoiding adjacent-frame leakage between training and evaluation.\n4. **Train a joint two-arm policy**, checking action order, normalization, camera alignment, and execution timing against replayed demonstrations before enabling motion.\n5. **Test bounded failures:** absent box, missing camera, unreachable flap, dropped grasp, and inter-arm interference must stop or label the attempt explicitly.\n6. **Demo learned openings and failures**, showing both arms and the box, followed by reset, held-out outcome counts, and representative unsuccessful attempts.\n\nWorked ACT example from the paper: an action chunk has shape **k × 14**, where k is the number of future steps and 14 covers both arms' commands.\n\n**Preserve vector order:** verify arm and gripper fields against the hardware adapter before replay.\n\n```mermaid\nflowchart LR\n  D[Two-arm demonstrations] --> T[Joint policy training]\n  T --> P[Coordinated action chunk]\n  O[Cameras and joint state] --> P\n  P --> B[Stabilize then open box]\n  B --> O\n  B --> E[Outcome and reset]\n```\n\n## Common pitfalls\n\n- **Cup opening is related, not identical:** the cited ALOHA demonstration opens a condiment cup; it does not establish performance on your box geometry.\n- **A scripted success is not a learned result:** distinguish human demonstrations, policy-controlled attempts, and operator interventions in every saved video.\n\n## When it's done\n\n- **Show policy-controlled physical opening** and failed attempts, keeping every declared test case in the reported denominator.\n- **Publish the task configuration**, checkpoint, split, synchronized recordings, reset procedure, and failure labels; a simulator-only rehearsal remains an intermediate milestone.",
+      "resources": [
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://tonyzhaozh.github.io/aloha/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creators' cup-opening policy and failure videos as a coordination reference, not a published box-opening benchmark."
+        },
+        {
+          "title": "GitHub - tonyzhaozh/act · GitHub",
+          "url": "https://github.com/tonyzhaozh/act",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect ACT training, episode visualization, and the distinction between supplied simulation tasks and your new physical task."
+        },
+        {
+          "title": "aloha/aloha2 at main · tonyzhaozh/aloha · GitHub",
+          "url": "https://github.com/tonyzhaozh/aloha/tree/main/aloha2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the ALOHA 2 hardware release before adapting the teleoperation and recording setup."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand joint two-arm action chunks and why learned timing matters in contact-rich manipulation."
+        }
+      ],
+      "sources": [
+        "https://aloha-2.github.io/",
+        "https://tonyzhaozh.github.io/aloha/",
+        "https://github.com/tonyzhaozh/act",
+        "https://github.com/tonyzhaozh/aloha/tree/main/aloha2",
+        "https://arxiv.org/abs/2304.13705",
+        "https://arxiv.org/html/2304.13705"
+      ]
     }
   ]
 }
