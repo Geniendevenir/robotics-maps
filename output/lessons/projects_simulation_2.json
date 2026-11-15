@@ -608,6 +608,181 @@
         "https://mujoco.readthedocs.io/en/stable/computation/index.html",
         "https://mujoco.readthedocs.io/en/stable/models.html"
       ]
+    },
+    {
+      "node_id": "p:simulator-to-real-ranking-credibility-study",
+      "type": "project",
+      "name": "Simulator-to-real ranking credibility study",
+      "summary": "Audit whether SimplerEnv ranks frozen robot policies like published real-world evaluations, comparing visual matching with variant aggregation on one task.",
+      "lesson_md": "## In one sentence\n\nAudit whether SimplerEnv ranks frozen robot policies like published real-world evaluations, comparing visual matching with variant aggregation on one task.\n\n![SIMPLER figure comparing real robot manipulation scenes with simulated counterparts](/img/lessons/projects_simulation_2-ranking-credibility.webp)\n*SIMPLER pairs real and simulated setups; this study audits the reported agreement rather than assuming it. Source: [Official source](https://simpler-env.github.io/), license unknown.*\n\n## What you will learn\n\n- **A policy** maps observations to robot actions; ranking asks which frozen policy performs better, not whether one attractive rollout succeeds.\n- **Visual matching** aligns simulated appearance with real scenes; **Variant aggregation** averages results across changed backgrounds, lighting, and other scene variants.\n- **Think of a staging benchmark:** Its usefulness depends on predicting production ordering, not merely producing repeatable scores.\n\n> **Key idea:** Reproducing published arithmetic is different from independently reproducing the real-robot evidence behind it.\n\n## What you need\n\n- **Build on Seeded simulation leaderboard in a box:** Preserve trial records, seeds, failure labels, and the scoring contract.\n- **Use SimplerEnv**, its evaluation scripts, available policy checkpoints, and published real-performance tables; the documented simulation workflow needs an NVIDIA GPU.\n- **Keep the scope simulation-only:** Existing compute is required; cloud cost is unknown, and independently repeating real trials needs additional hardware.\n\n## Steps\n\n1. **Choose one task:** Start with `google_robot_move_near`; inventory which policy checkpoints, variant scripts, and published real results are actually available.\n2. **Recompute published metrics:** Use the supplied tables and metric functions before attempting new rollouts; label these results as arithmetic reproduction.\n3. **Freeze the comparison:** Save checkpoint revisions, policy order, task settings, seeds, and variant weights for both evaluation modes.\n4. **Run both modes:** Keep per-trial outcomes and videos; distinguish task failures from reset, inference, and asset-loading errors.\n5. **Compare policy orderings:** Report Pearson correlation and mean maximum rank violation, which penalizes reversed rankings using real-performance margins; lower violation is better.\n6. **Present the audit:** Replay matched rollouts, show both rankings, and list unavailable policies, missing real trials, and deviations from the published setup.\n\n```mermaid\nflowchart LR\n  A[Frozen policies] --> B[Visual matching]\n  A --> C[Variant aggregation]\n  B --> D[Simulated rankings]\n  C --> D\n  E[Published real results] --> F[Agreement audit]\n  D --> F\n```\n\n**Inspect a published example:** For `google_robot_move_near`, the repository lists real success fractions of 0.450 for RT-1-X and 0.350 for Octo-Base.\n\n```python\nfrom simpler_env.utils.metrics import REAL_PERF\nscores = REAL_PERF[\"google_robot_move_near\"]\nprint(scores[\"rt-1-x\"] > scores[\"octo-base\"])\n```\n\n## Common pitfalls\n\n- **Published real results are not your measurements:** Missing checkpoints mean partial reproduction, not permission to substitute another model silently.\n- **Reject empty or constant comparisons:** Missing policy pairs and undefined correlations must be labelled, not converted to perfect agreement.\n- **Avoid tuning on the answer:** Choosing variants after inspecting real rankings undermines the audit.\n\n## When it's done\n\n- **Deliver reproducible tables and clips:** A teammate can distinguish recomputed published numbers, new simulated evidence, and real-world claims that remain unverified.",
+      "resources": [
+        {
+          "title": "SIMPLER: Simulated Manipulation Policy Evaluation for Real Robot Setups",
+          "url": "https://www.youtube.com/watch?v=SIcPxapIgBI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors explain paired real/sim evaluation and the gaps that can change policy rankings."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://simpler-env.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect visual matching, ranking metrics, and paired rollout evidence."
+        },
+        {
+          "title": "SimplerEnv: Simulated Manipulation Policy Evaluation Environments for Real Robot Setups",
+          "url": "https://github.com/simpler-env/SimplerEnv",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow the visual-matching and variant-aggregation workflows and supplied metric reproduction instructions."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://arxiv.org/abs/2405.05941",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original evaluation claim and delimit what your narrower reproduction actually tests."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=SIcPxapIgBI",
+        "https://simpler-env.github.io/",
+        "https://github.com/simpler-env/SimplerEnv",
+        "https://arxiv.org/abs/2405.05941",
+        "https://raw.githubusercontent.com/simpler-env/SimplerEnv/main/simpler_env/utils/metrics.py"
+      ]
+    },
+    {
+      "node_id": "p:so-101-calibration-uncertainty-challenge",
+      "type": "project",
+      "name": "SO-101 calibration uncertainty challenge",
+      "summary": "Fit several SO-101 actuator and friction models to the same motion logs, then compare their held-out prediction errors and uncertainty coverage.",
+      "lesson_md": "## In one sentence\n\nFit several SO-101 actuator and friction models to the same motion logs, then compare their held-out prediction errors and uncertainty coverage.\n\n![SO-101 follower arm pictured in the official LeRobot setup guide](/img/lessons/projects_simulation_2-calibration-uncertainty.webp)\n*The SO-101 follower supplies the real motion logs; an attractive simulated copy is not a calibrated dynamics model. Source: [Official source](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **System identification** means fitting a motion model from recorded inputs and outputs; several parameter choices may explain the same training log.\n- **Friction** resists motion, while **Damping** models velocity-dependent resistance; MuJoCo exposes separate joint friction-loss and damping parameters.\n- **Think of competing implementations:** Passing the same unit tests does not mean they will agree on unseen inputs.\n\n> **Key idea:** A useful calibration predicts unseen motion and honestly shows where plausible models disagree.\n\n## What you need\n\n- **Start from STS3215 actuator model for sim-to-real:** Reuse its logging interface and bounded commands rather than training a manipulation policy.\n- **Prepare the SO-101:** Complete LeRobot's midpoint and range calibration; preserve the calibration file, joint names, timestamps, and command units.\n- **Use MuJoCo and Python fitting tools:** Save candidate actuator, damping, and friction settings; a complete arm, power, and compute quote is unknown.\n- **Keep hands outside powered motion:** Use bounded commands, a clear workspace, and a tested stop procedure; do not execute unvalidated policies.\n\n## Steps\n\n1. **Collect controlled logs:** Record commanded and measured joint positions during slow motions, reversals, and holds; preserve failures and timestamps.\n2. **Split by whole motion:** Reserve different trajectories for testing before fitting; do not randomly scatter adjacent samples across training and test sets.\n3. **Fit competing candidates:** Compare actuator response with damping alone, friction loss alone, and both; keep initial states and other model settings fixed.\n4. **Make prediction bands:** Replay each held-out command through all retained models; use their minimum and maximum predictions as an explicitly heuristic envelope.\n5. **Score unseen motion:** Report position error, envelope width, and coverage, meaning the fraction of valid measurements inside that envelope.\n6. **Demo disagreement:** Overlay real motion, candidate predictions, and the envelope; show a reversal where similar training fits make different predictions.\n\n```mermaid\nflowchart LR\n  A[Calibrated arm logs] --> B[Training motions]\n  A --> C[Held-out motions]\n  B --> D[Candidate model fits]\n  D --> E[Predictions and envelope]\n  C --> F[Error and coverage]\n  E --> F\n```\n\n**Compute coverage from aligned samples:** Here `measured`, `lower`, and `upper` are equal-length arrays in the same joint units, not invented robot specifications.\n\n```python\nif len(measured) == 0:\n    raise ValueError(\"No held-out measurements\")\ninside = (lower <= measured) & (measured <= upper)\ncoverage = inside.mean()\nwidth = (upper - lower).mean()\n```\n\n## Common pitfalls\n\n- **An envelope is not a confidence guarantee:** Wide bands can cover everything while predicting little; always report width alongside coverage.\n- **Encoder calibration is not dynamics identification:** A correct joint range does not establish the correct friction or actuator response.\n- **Reject invalid logs:** Empty motion, missing stamps, non-finite values, failed resets, and disconnected sensors need explicit failure records.\n\n## When it's done\n\n- **Publish logs, model settings, and held-out plots:** Feed evidence into Calibrated SO-101 digital twin that predicts real policy success without claiming that policy success was tested.",
+      "resources": [
+        {
+          "title": "Calibration video",
+          "url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/lerobot/calibrate_so101_2.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official midpoint/range calibration before collecting dynamics logs."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Set up and calibrate the actual arm, preserving the supported joint conventions."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-joint",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Look up joint damping and frictionloss for the competing resistance models."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html#actuation-model",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand actuator dynamics and passive forces before interpreting fitted parameters."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/lerobot/calibrate_so101_2.mp4",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-joint",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html#actuation-model"
+      ]
+    },
+    {
+      "node_id": "p:soft-material-parameter-observability-lab",
+      "type": "project",
+      "name": "Soft material parameter observability lab",
+      "summary": "Fit stiffness and damping from simulated compression and release, retain competing fits, and test their predictions under a held-out load.",
+      "lesson_md": "## In one sentence\n\nFit stiffness and damping from simulated compression and release, retain competing fits, and test their predictions under a held-out load.\n\n![Genesis demonstration of deformable objects with hard and soft constraints](/img/lessons/projects_simulation_2-soft-observability.webp)\n*Genesis publishes this deformable-body constraint example; the proposed fitting experiment adds controlled loading and measured traces. Source: [Official source](https://github.com/Genesis-Embodied-AI/Genesis), license unknown.*\n\n## What you will learn\n\n- **Observability** asks whether the measurements distinguish the unknown model settings; a convincing animation alone cannot answer that question.\n- **Stiffness** controls resistance to deformation; **Damping** controls dissipation in the simulated motion rather than how realistic the surface looks.\n- **Think of an under-tested function:** Different implementations can return the same output for one input, then disagree on another.\n\n> **Key idea:** Keep several good fits and design a new loading test that makes them disagree.\n\n## What you need\n\n- **Build on Rigid-versus-soft drop comparison reel:** Keep its scene setup, reset checks, and deformation logging, then add controlled compression and release.\n- **Use Genesis with a deformable mesh:** Its finite element method, or FEM, represents the soft body using small tetrahedral elements.\n- **Choose explicit parameters:** Fit material Young's modulus, the stiffness parameter `E`, and FEM solver damping; keep mesh, density, contact, and time settings fixed.\n- **Use existing compute:** This is a simulation-only study; extra cloud cost is unknown, and it does not measure a real material.\n\n## Steps\n\n1. **Create a reference specimen:** Save hidden reference parameters and implement a scripted compression plate; measure specimen height throughout compression and release.\n2. **Freeze training and test loads:** Reserve a different loading magnitude or speed before fitting; retain identical measurement definitions across both.\n3. **Sweep candidate settings:** Run stiffness/damping combinations from the same reset and score their height traces against the training reference.\n4. **Retain multiple fits:** Show the error surface and several low-error candidates instead of declaring one optimizer result physically unique.\n5. **Test without refitting:** Replay the held-out load; compare deformation error and recovery traces, including unstable or failed runs.\n6. **Demo the ambiguity:** Play competing fits side by side under both loads, with aligned time plots and visible parameter labels.\n\n```mermaid\nflowchart LR\n  A[Reference specimen] --> B[Compression and release]\n  B --> C[Training height trace]\n  C --> D[Competing fits]\n  D --> E[Held-out load]\n  E --> F[Compare predictions]\n```\n\n**Read a real configuration:** The official soft-robot tutorial exposes FEM damping separately from the material's `E`; these are example settings, not fitted material measurements.\n\n```python\nfem_options = gs.options.FEMOptions(dt=5e-4, damping=45.0)\n```\n\n## Common pitfalls\n\n- **Solver damping is not automatically material viscosity:** Report the exact simulator parameter and model instead of claiming a universal physical property.\n- **Numerics can imitate material changes:** Check smaller time steps and mesh sensitivity before interpreting a better fit as better physics.\n- **No signal means no identification:** Empty traces, constant compression, missing height samples, failed mesh loads, and failed resets need explicit labels.\n\n## When it's done\n\n- **Deliver the parameter landscape and held-out film:** Explain which settings remain indistinguishable and which new measurement could separate them.\n- **Carry numerical sensitivity into Coupled solver stability frontier map**, rather than hiding instability behind a successful clip.",
+      "resources": [
+        {
+          "title": "Soft robots: muscle demonstration",
+          "url": "https://genesis-world.readthedocs.io/en/latest/_static/videos/muscle.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the official MPM/FEM deformable spheres contract and release before building passive loading tests."
+        },
+        {
+          "title": "Beyond rigid bodies",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/beyond_rigid_bodies.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Choose the deformable solver and understand substeps, material choice, and scene bounds."
+        },
+        {
+          "title": "Soft robots",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/soft_robots.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the FEM material and damping configuration; adapt the setup to passive compression rather than muscle control."
+        },
+        {
+          "title": "Soft solvers",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/theory/soft_solvers.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand Young's modulus, density, and constitutive-model choices before interpreting fitted stiffness."
+        }
+      ],
+      "sources": [
+        "https://genesis-world.readthedocs.io/en/latest/_static/videos/muscle.mp4",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/beyond_rigid_bodies.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/soft_robots.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/theory/soft_solvers.html",
+        "https://github.com/Genesis-Embodied-AI/Genesis"
+      ]
+    },
+    {
+      "node_id": "p:success-checker-loophole-film-festival",
+      "type": "project",
+      "name": "Success-checker loophole film festival",
+      "summary": "Film scripted near-misses that fool a robot task evaluator, repair the success contract, and preserve each counterexample as a regression test.",
+      "lesson_md": "## In one sentence\n\nFilm scripted near-misses that fool a robot task evaluator, repair the success contract, and preserve each counterexample as a regression test.\n\n![Panda gripper above the red cube in the ManiSkill PickCube scene](/img/lessons/projects_simulation_2-checker-loopholes.webp)\n*ManiSkill PickCube provides a small, visible scene for testing what a success flag actually means. Source: [Official source](https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html), license unknown.*\n\n## What you will learn\n\n- **An evaluator** converts robot state into a success flag; a **False positive** declares success when the agreed task was not completed.\n- **A near-miss** satisfies part of a task but violates another requirement, such as reaching the target without stopping there.\n- **Think of adversarial unit tests:** A green test suite is useful only if its assertions express the behavior you actually want.\n\n> **Key idea:** Repair the written success contract and its tests together, not merely the clip that embarrassed the checker.\n\n## What you need\n\n- **Start with Intro: robot anatomy & coordinate frames in sim:** Know which object position and robot velocities your checker reads.\n- **Use ManiSkill PickCube-v1**, a scripted controller, state logging, and the RecordEpisode wrapper; this project needs no physical robot beyond existing compute.\n- **Read the actual implementation:** PickCube combines object-at-goal with robot-static; grasping is reported separately, not required by that success expression.\n\n## Steps\n\n1. **Write the contract:** Decide whether reaching is enough or whether your local task requires release and stable placement; distinguish local changes from upstream bugs.\n2. **Build a weak checker:** Deliberately score only object-at-goal, then create a normal completion and a moving-through-target near-miss.\n3. **Expand the scripts:** Test holding at goal, dropping through it, and finishing just outside it; inspect flags frame by frame instead of assuming exploitation.\n4. **Record evidence:** Save videos, state traces, script revisions, seeds, and both checker outputs for every attempted trajectory.\n5. **Repair the local evaluator:** Add only conditions justified by your written contract; preserve successful trajectories so stricter checks do not reject valid completions.\n6. **Host the film festival:** Replay each candidate, identify actual false positives, and rerun the saved cases against the repaired checker.\n\n```mermaid\nflowchart LR\n  A[Written contract] --> B[Scripted trajectories]\n  B --> C[Record states and clips]\n  C --> D[Inspect checker flags]\n  D --> E[Repair local checker]\n  E --> F[Regression replay]\n```\n\n**Inspect the source-level distinction:** The upstream implementation computes grasping information but uses this conjunction for success; do not claim every held cube is an upstream bug.\n\n```python\nsuccess = is_obj_placed & is_robot_static\n```\n\n## Common pitfalls\n\n- **Reward is not success:** A high shaping reward can encourage progress without satisfying the final Boolean condition.\n- **Missing data is not failure evidence:** Reject empty trajectories, non-finite positions, failed loads, reset errors, and missing state fields before scoring.\n- **Do not patch the simulator state secretly:** Mark direct state injection separately from trajectories produced by legal controller actions.\n\n## When it's done\n\n- **Publish a labelled clip gallery and regression suite:** Show valid success, ordinary failure, confirmed false positives, and candidates that did not fool the checker.\n- **Reuse the repaired contract in Seeded simulation leaderboard in a box**, keeping old and new evaluator revisions visible.",
+      "resources": [
+        {
+          "title": "PickCube-v1 demonstration",
+          "url": "https://github.com/mani-skill/ManiSkill/raw/main/figures/environment_demos/PickCube-v1_rt.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official task completion before scripting near-miss trajectories."
+        },
+        {
+          "title": "Introduction to Task Building",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/custom_tasks/intro.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Locate the success/failure function that runs at every environment step."
+        },
+        {
+          "title": "Recording Episodes",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/wrappers/record.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Save videos and trajectories as evidence for regression replay."
+        },
+        {
+          "title": "pick_cube.py",
+          "url": "https://github.com/haosulab/ManiSkill/blob/main/mani_skill/envs/tasks/tabletop/pick_cube.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Audit the exact success conjunction and separate grasp status from the actual success condition."
+        }
+      ],
+      "sources": [
+        "https://github.com/mani-skill/ManiSkill/raw/main/figures/environment_demos/PickCube-v1_rt.mp4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/custom_tasks/intro.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/wrappers/record.html",
+        "https://github.com/haosulab/ManiSkill/blob/main/mani_skill/envs/tasks/tabletop/pick_cube.py",
+        "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html"
+      ]
     }
   ]
 }
