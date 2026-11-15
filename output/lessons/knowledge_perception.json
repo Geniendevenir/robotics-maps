@@ -446,6 +446,479 @@
         "https://www.matthewtancik.com/nerf",
         "https://arxiv.org/abs/2308.04079"
       ]
+    },
+    {
+      "node_id": "k:open-vocabulary-3d-scene-graphs-semantic-maps",
+      "type": "knowledge",
+      "name": "Open-vocabulary 3D scene graphs & semantic maps",
+      "summary": "An open-vocabulary 3D scene graph stores the objects in a space, where they are and how they relate, with language descriptions a robot can search by text.",
+      "lesson_md": "## In one sentence\n\nAn open-vocabulary 3D scene graph stores the objects in a space, where they are and how they relate, with language descriptions a robot can search by text.\n\n![ConceptGraphs pipeline from RGB-D frames to an object graph](/img/lessons/knowledge_perception-scene-graphs.webp)\n*ConceptGraphs turns posed RGB-D images into 3D objects with captions and relations. Source: [ConceptGraphs project](https://concept-graphs.github.io/), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Fetch by name:** A robot asked for \"the blue moisturizer\" must first remember where that object is in 3D.\n- **Real results exist:** OK-Robot reached a **58.5% success rate** on 171 pick-and-drop tasks in 10 New York homes, and 82% in cleaner homes.\n- **Planning with LLMs:** A graph can be written out as text, so a language model can plan over it.\n\n## How it works\n\n- **Input:** A sequence of **posed RGB-D images**: colour plus depth frames whose camera position is known.\n- **Segment in 2D:** A generic instance segmentation model cuts each frame into object regions.\n- **Lift to 3D:** Each region's depth pixels become a small point cloud, carrying a semantic feature vector such as a **CLIP embedding**.\n- **Fuse views:** Regions seen from several frames are associated and merged into one 3D object.\n- **Add edges:** Vision-language models caption each object and propose relations, such as \"cup on table\".\n- **Software analogy:** It is a database index for a room. Objects are rows, relations are foreign keys, and text search runs against embedding columns.\n\n```mermaid\nflowchart LR\nA[Posed RGB-D frames] --> B[2D segments]\nB --> C[3D object clouds]\nC --> D[Merge across views]\nD --> E[Captions and relations]\nE --> F[Text query or LLM plan]\n```\n\n> **Key idea:** Keep one compact node per object instead of a feature on every point, and the map stays small enough to query and plan over.\n\n> **Watch out:** In OK-Robot, the top failure cause was retrieving the wrong object from semantic memory (9.3% of trials).\n\n## Key terms\n\n- **Open vocabulary**: The labels are free text, not a fixed list of classes chosen before training.\n- **Scene graph**: Nodes are objects; edges are relations between them.\n- **Semantic map**: A 3D map whose parts carry meaning, such as object names or embeddings.\n- **CLIP embedding**: A vector placing images and text in one space, so similar meanings get similar vectors.\n- **Posed image**: A frame stored with the camera position and orientation it was taken from.\n\n## Before / after\n\n- **Before:** Learn Open-vocabulary detection & grounding, Point cloud processing and Stereo & RGB-D depth sensing.\n- **After:** Build Open-vocabulary 3D map of a room, then Fetch-by-name with a mobile manipulator or Scene graph change detection: what moved?\n\n## Try it in an afternoon\n\n1. **Watch** the ConceptGraphs explainer video and note each pipeline stage.\n2. **Clone** the ConceptGraphs code linked from the project page and read its setup notes.\n3. **Record** a short RGB-D walk around a desk, or use a public sequence the repo supports.\n4. **Query** the resulting map with three text prompts and check whether the right object comes back.\n",
+      "resources": [
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://www.youtube.com/watch?v=mRhNkQwRYnc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explainer video embedded on the official project page, showing mapping, queries and re-localisation."
+        },
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://concept-graphs.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with the pipeline figure, text-query demos and links to code."
+        },
+        {
+          "title": "OK-Robot: What Really Matters in Integrating Open-Knowledge Models for Robotics",
+          "url": "https://ok-robot.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Shows a semantic memory driving real home pick-and-drop, with a failure breakdown."
+        },
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://arxiv.org/abs/2309.16650",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original paper describing graph construction and planning experiments."
+        },
+        {
+          "title": "OK-Robot: What Really Matters in Integrating Open-Knowledge Models for Robotics",
+          "url": "https://arxiv.org/abs/2401.12202",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Paper detailing how open-vocabulary memory, navigation and grasping were combined and evaluated."
+        }
+      ],
+      "sources": [
+        "https://concept-graphs.github.io/",
+        "https://arxiv.org/abs/2309.16650",
+        "https://ok-robot.github.io/",
+        "https://arxiv.org/abs/2401.12202",
+        "https://www.youtube.com/watch?v=mRhNkQwRYnc"
+      ]
+    },
+    {
+      "node_id": "k:open-vocabulary-detection-grounding",
+      "type": "knowledge",
+      "name": "Open-vocabulary detection & grounding",
+      "summary": "Open-vocabulary detectors draw boxes around whatever you describe in text, such as \"the red mug\", without retraining on a fixed list of classes.",
+      "lesson_md": "## In one sentence\n\nOpen-vocabulary detectors draw boxes around whatever you describe in text, such as \"the red mug\", without retraining on a fixed list of classes.\n\n![Grounding DINO detecting objects named in a text prompt](/img/lessons/knowledge_perception-grounding.webp)\n*Grounding DINO matches phrases in a prompt to boxes in the image. Source: [Grounding DINO repository](https://github.com/IDEA-Research/GroundingDINO), license unknown.*\n\n## Why it matters for us\n\n- **Talk to the robot:** \"Pick up the stapler\" only works if vision can find a stapler it was never trained on.\n- **No labelling first:** You can test a new object in minutes instead of collecting and annotating a dataset.\n- **Building block:** It feeds segmentation, tracking and 3D maps in the rest of the Perception branch.\n\n## How it works\n\n- **Classic detector limit:** Real-time 2D object detection models such as YOLO output only the classes in their training set, like COCO's 80.\n- **Add language:** The detector also reads a text prompt and scores how well each image region matches each phrase.\n- **Grounding:** Linking a phrase, such as \"mug on the left\", to the exact image region it refers to.\n- **Grounding DINO:** Fuses text and image features inside a transformer detector. It scores **52.5 AP** on COCO without any COCO training data.\n- **OWLv2:** Google's detector scales training with **self-training**: an existing detector writes pseudo-boxes on web image-text pairs.\n- **Software analogy:** A classic detector is a `switch` over fixed enum values; an open-vocabulary detector is a full-text search over the image.\n\n```mermaid\nflowchart LR\nA[Camera image] --> C[Fuse image and text]\nB[Text prompt] --> C\nC --> D[Boxes with scores]\nD --> E[Keep above threshold]\nE --> F[Segment or grasp]\n```\n\n- **Worked example:** The Hugging Face OWLv2 docs load a model in two lines.\n\n```python\nfrom transformers import Owlv2Processor, Owlv2ForObjectDetection\nprocessor = Owlv2Processor.from_pretrained(\"google/owlv2-base-patch16-ensemble\")\nmodel = Owlv2ForObjectDetection.from_pretrained(\"google/owlv2-base-patch16-ensemble\")\ntext_labels = [[\"a photo of a cat\", \"a photo of a dog\"]]\n```\n\n> **Key idea:** The class list becomes an input string, so changing what the robot looks for is a prompt change, not a training run.\n\n> **Watch out:** Scores depend on wording; test several phrasings of each object before trusting a threshold.\n\n## Key terms\n\n- **Open set**: The detector may face object types absent from its training labels.\n- **Prompt**: The text listing what to find, such as category names or a referring expression.\n- **Referring expression**: A phrase pointing to one specific object, like \"the mug left of the laptop\".\n- **AP (average precision)**: The standard detection accuracy score, combining box precision and recall.\n- **Pseudo-label**: A label produced automatically by another model rather than by a human.\n\n## Before / after\n\n- **Before:** Learn Real-time 2D object detection and basic transformers.\n- **After:** Build Language-pointing arm with open-vocabulary detection, Open-vocabulary detector shoot-out on lab objects or Edge open-vocabulary detection on Jetson.\n\n## Try it in an afternoon\n\n1. **Watch** the Roboflow Grounding DINO tutorial linked from the official README.\n2. **Photograph** ten lab objects on a table.\n3. **Run** the OWLv2 example from the Hugging Face docs with your own prompts.\n4. **Compare** Grounding DINO on the same photos and record which prompts each model misses.\n",
+      "resources": [
+        {
+          "title": "Detect Anything You Want with Grounding DINO | Zero Shot Object Detection SOTA",
+          "url": "https://www.youtube.com/watch?v=cMa77r3YrDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Step-by-step tutorial linked from the Grounding DINO README, running text-prompted detection."
+        },
+        {
+          "title": "OWLv2",
+          "url": "https://huggingface.co/docs/transformers/model_doc/owlv2",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official Transformers page with a runnable OWLv2 text-query detection example."
+        },
+        {
+          "title": "Grounding DINO",
+          "url": "https://github.com/IDEA-Research/GroundingDINO",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official code, demos and benchmark numbers for Grounding DINO."
+        },
+        {
+          "title": "Grounded SAM 2: Ground and Track Anything in Videos",
+          "url": "https://github.com/IDEA-Research/Grounded-SAM-2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Shows grounding chained with SAM 2 segmentation and video tracking."
+        },
+        {
+          "title": "Grounding DINO: Marrying DINO with Grounded Pre-Training for Open-Set Object Detection",
+          "url": "https://arxiv.org/abs/2303.05499",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original paper on fusing language into a transformer detector."
+        }
+      ],
+      "sources": [
+        "https://github.com/IDEA-Research/GroundingDINO",
+        "https://arxiv.org/abs/2303.05499",
+        "https://huggingface.co/docs/transformers/model_doc/owlv2",
+        "https://github.com/IDEA-Research/Grounded-SAM-2",
+        "https://www.youtube.com/watch?v=cMa77r3YrDk"
+      ]
+    },
+    {
+      "node_id": "k:point-cloud-processing",
+      "type": "knowledge",
+      "name": "Point cloud processing",
+      "summary": "Point cloud processing cleans and analyses the 3D points from a depth camera or LiDAR: downsampling, finding planes, clustering objects and aligning scans.",
+      "lesson_md": "## In one sentence\n\nPoint cloud processing cleans and analyses the 3D points from a depth camera or LiDAR: downsampling, finding planes, clustering objects and aligning scans.\n\n![Open3D point cloud of a room rendered from a depth scan](/img/lessons/knowledge_perception-point-clouds.webp)\n*A point cloud loaded and displayed with Open3D. Source: [Open3D point cloud tutorial](https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html), license unknown.*\n\n## Why it matters for us\n\n- **Grasping needs 3D:** To pick an object, the arm needs its position in metres, not in pixels.\n- **Cheap first wins:** Classic steps like removing the table plane find objects with no neural network.\n- **Standard tools:** **Open3D** (Python) and **PCL** (C++, BSD licence) are free and well documented.\n\n## How it works\n\n- **A point cloud** is an array of N rows `(x, y, z)`, often with colour, in the sensor's frame.\n- **Voxel downsampling:** Open3D buckets points into cubes and keeps one averaged point per occupied cube.\n- **Normals:** For each point, fit the local surface from neighbours and store which way it faces.\n- **Plane segmentation:** RANSAC repeatedly fits a plane to random points and keeps the one with most inliers: usually the table.\n- **Clustering:** **DBSCAN** groups points closer than `eps` with at least `min_points` neighbours; each group is a candidate object.\n- **Registration (ICP):** Align two scans by repeatedly matching closest points and updating the rigid transform.\n- **Software analogy:** It is a data-cleaning pipeline, like pandas: filter, deduplicate, group by, then join two tables.\n\n```mermaid\nflowchart LR\nA[Depth frame] --> B[Point cloud]\nB --> C[Voxel downsample]\nC --> D[Remove table plane]\nD --> E[DBSCAN clusters]\nE --> F[Object positions]\n```\n\n- **Worked example:** Open3D's tutorial downsamples with a 0.05 m voxel; the other calls follow its API.\n\n```python\nimport open3d as o3d\npcd = o3d.io.read_point_cloud(\"scene.ply\")\ndown = pcd.voxel_down_sample(voxel_size=0.05)\nplane, inliers = down.segment_plane(0.01, 3, 1000)\nobjects = down.select_by_index(inliers, invert=True)\nlabels = objects.cluster_dbscan(eps=0.02, min_points=10)\n```\n\n> **Key idea:** Most robot 3D perception is geometry plus thresholds; tune voxel size and distances in metres for your scene.\n\n## Key terms\n\n- **Voxel**: A small 3D cube, the 3D cousin of a pixel.\n- **Normal**: The direction a surface faces at a point.\n- **RANSAC**: Fit a model to random samples many times and keep the one most points agree with.\n- **ICP (Iterative Closest Point)**: Aligns two clouds by alternating point matching and transform updates.\n- **Fitness**: Open3D's ICP score, the share of points with a match; higher is better.\n\n## Before / after\n\n- **Before:** Learn Stereo & RGB-D depth sensing and rigid transforms.\n- **After:** Build Tabletop segmentation: find objects on a table in 3D, Multi-view object scanning with ICP or Point-cloud grasp targets for the SO-101.\n\n## Try it in an afternoon\n\n1. **Watch** Cyrill Stachniss's five-minute ICP video.\n2. **Install** Open3D with pip and load the demo cloud from its point cloud tutorial.\n3. **Remove** the largest plane and colour each DBSCAN cluster differently.\n4. **Align** the two demo clouds from the ICP tutorial and print fitness before and after.\n",
+      "resources": [
+        {
+          "title": "Iterative Closest Point (ICP) - 5 Minutes with Cyrill",
+          "url": "https://www.youtube.com/watch?v=QWDM4cFdKrE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short lecture explaining how ICP aligns two point clouds."
+        },
+        {
+          "title": "Point cloud - Open3D documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Hands-on tutorial covering downsampling, normals, plane segmentation and DBSCAN."
+        },
+        {
+          "title": "ICP registration - Open3D documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Runnable point-to-point and point-to-plane ICP with fitness and RMSE metrics."
+        },
+        {
+          "title": "Iterative Closest Point (ICP) - Computerphile",
+          "url": "https://www.youtube.com/watch?v=4uWSo8v3iQA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A longer intuitive walkthrough of the matching and alignment loop."
+        },
+        {
+          "title": "Point Cloud Library",
+          "url": "https://pointclouds.org/",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Entry point to the C++ PCL modules used in many ROS perception stacks."
+        }
+      ],
+      "sources": [
+        "https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html",
+        "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+        "https://pointclouds.org/",
+        "https://www.youtube.com/watch?v=QWDM4cFdKrE",
+        "https://www.youtube.com/watch?v=4uWSo8v3iQA"
+      ]
+    },
+    {
+      "node_id": "k:point-tracking-track-any-point",
+      "type": "knowledge",
+      "name": "Point tracking (track-any-point)",
+      "summary": "Point trackers follow any pixel you choose through a video, even when it is briefly hidden, giving a motion trajectory for each point.",
+      "lesson_md": "## In one sentence\n\nPoint trackers follow any pixel you choose through a video, even when it is briefly hidden, giving a motion trajectory for each point.\n\n![TAPIR tracking chosen points across video frames](/img/lessons/knowledge_perception-point-tracking.webp)\n*TAPIR first matches a query point in every frame, then refines the track over time. Source: [TAPIR project page](https://deepmind-tapir.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Learn from videos:** Tracks on a human's hand or a moved object turn ordinary video into motion data for robot learning.\n- **Robot use exists:** DeepMind's **RoboTAP** uses point tracking for very low-shot imitation of robot behaviours.\n- **Easy to start:** CoTracker3 loads from `torch.hub` in one line.\n\n## How it works\n\n- **Query:** You pick a pixel `(x, y)` in one frame, e.g. a corner of a box.\n- **Output:** For every frame, the tracker returns the point's new position and a **visibility** flag.\n- **TAPIR's two stages:** A matching stage finds a candidate location independently in each frame; a refinement stage smooths the trajectory using local features.\n- **CoTracker3:** Tracks many points jointly, and was trained on real videos labelled by other trackers (**pseudo-labelling**) with 1000x less data than previous top models.\n- **Software analogy:** It is like `git blame` for pixels: for each line of the final frame, you know where it came from.\n\n```mermaid\nflowchart LR\nA[Video frames] --> C[Match in each frame]\nB[Query points] --> C\nC --> D[Refine over time]\nD --> E[Tracks and visibility]\nE --> F[Robot learning data]\n```\n\n- **Worked example:** From the CoTracker README, tracking a 10x10 grid of points.\n\n```python\nimport torch\ncotracker = torch.hub.load(\"facebookresearch/co-tracker\", \"cotracker3_offline\")\npred_tracks, pred_visibility = cotracker(video, grid_size=10)  # video: B T C H W\n```\n\n> **Key idea:** Point tracking follows physical surface points, not whole objects, so it captures how things deform, rotate and move.\n\n> **Watch out:** A point leaving the frame or hidden for long can be re-attached to the wrong surface; always check the visibility output.\n\n## Key terms\n\n- **Query point**: The pixel you ask the tracker to follow.\n- **Trajectory (track)**: The list of positions of one point across all frames.\n- **Occlusion**: When something hides the point for some frames.\n- **Visibility flag**: The tracker's estimate of whether the point is visible in a frame.\n- **Pseudo-labelling**: Training on labels produced by other models instead of human annotations.\n\n## Before / after\n\n- **Before:** Learn deep learning basics and how video is stored as frames; Classical image processing & feature matching helps.\n- **After:** Build Turn human videos into motion tracks or Point-track keypoints as policy inputs.\n\n## Try it in an afternoon\n\n1. **Watch** the TAPIR conference video to see query points and tracks.\n2. **Run** the CoTracker3 offline example from its README on the bundled apple video.\n3. **Film** a 10-second clip of your hand moving a cup.\n4. **Track** points on the cup and plot one trajectory; note frames where visibility drops.\n",
+      "resources": [
+        {
+          "title": "TAPIR: Tracking Any Point with Per-Frame Initialization and Temporal Refinement",
+          "url": "https://www.youtube.com/watch?v=yp7cbJfaoeU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Conference presentation of TAPIR showing what track-any-point outputs look like."
+        },
+        {
+          "title": "TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement",
+          "url": "https://deepmind-tapir.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with demos, Colab link and pointers to RoboTAP."
+        },
+        {
+          "title": "CoTracker",
+          "url": "https://github.com/facebookresearch/co-tracker",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official code with the torch.hub quick start for CoTracker3."
+        },
+        {
+          "title": "How We Built CoTracker3: Simpler and Better Point Tracking by Pseudo-Labeling Real Videos",
+          "url": "https://www.youtube.com/watch?v=yTtT_Qy8nwg",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk on how CoTracker3 was trained on pseudo-labelled real videos."
+        },
+        {
+          "title": "CoTracker3: Simpler and Better Point Tracking by Pseudo-Labelling Real Videos",
+          "url": "https://arxiv.org/abs/2410.11831",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The CoTracker3 paper with architecture and training details."
+        }
+      ],
+      "sources": [
+        "https://deepmind-tapir.github.io/",
+        "https://cotracker3.github.io/",
+        "https://github.com/facebookresearch/co-tracker",
+        "https://arxiv.org/abs/2410.11831",
+        "https://www.youtube.com/watch?v=yp7cbJfaoeU",
+        "https://www.youtube.com/watch?v=yTtT_Qy8nwg"
+      ]
+    },
+    {
+      "node_id": "k:promptable-image-video-segmentation-sam-family",
+      "type": "knowledge",
+      "name": "Promptable image & video segmentation (SAM family)",
+      "summary": "Meta's Segment Anything models cut out an object's exact pixels from a click, a box or, with SAM 3, a short text phrase, and follow it through video.",
+      "lesson_md": "## In one sentence\n\nMeta's Segment Anything models cut out an object's exact pixels from a click, a box or, with SAM 3, a short text phrase, and follow it through video.\n\n![SAM 2 architecture with image encoder, memory and mask decoder](/img/lessons/knowledge_perception-segmentation.webp)\n*SAM 2 adds a memory so masks from earlier frames guide later ones. Source: [SAM 2 repository](https://github.com/facebookresearch/sam2), license unknown.*\n\n## Why it matters for us\n\n- **Pixels, not boxes:** A grasp planner needs the object's exact outline, which a detection box does not give.\n- **Fast dataset cleanup:** One click per object can mask every frame of a robot demonstration video.\n- **Open models:** SAM 2 and SAM 3 code and checkpoints are public on GitHub.\n\n## How it works\n\n- **Segmentation** assigns each pixel to an object or background; a **mask** is the result for one object.\n- **Prompt:** You say which object with points, a box or an existing mask.\n- **SAM 2:** A transformer with **streaming memory** treats an image as a one-frame video, so a mask can be carried through a whole clip.\n- **SAM 3:** Adds **concept prompts**: give a short noun phrase like \"yellow block\" and it segments every matching instance.\n- **Scale:** SAM 3's SA-Co benchmark has 270K unique concepts; its data engine annotated over 4 million.\n- **Software analogy:** It is a `querySelectorAll` for images: a selector goes in, matching elements come out.\n\n```mermaid\nflowchart LR\nA[Video frame] --> B[Image encoder]\nP[Click, box or text] --> C[Mask decoder]\nB --> C\nC --> D[Object mask]\nD --> M[Memory]\nM --> C\n```\n\n- **Worked example:** SAM 3's README shows text-prompted segmentation in a few lines.\n\n```python\nfrom sam3.model_builder import build_sam3_image_model\nfrom sam3.model.sam3_image_processor import Sam3Processor\nprocessor = Sam3Processor(build_sam3_image_model())\nstate = processor.set_image(image)\noutput = processor.set_text_prompt(state=state, prompt=\"red cup\")\n```\n\n> **Key idea:** The prompt decides which object; the model only has to find its boundary, which is why one model works on almost any object.\n\n## Key terms\n\n- **Mask**: A per-pixel yes/no map of one object.\n- **Instance**: One individual object, such as one of three cups.\n- **Promptable segmentation**: Segmentation guided by user input like points, boxes or text.\n- **Video object segmentation (VOS)**: Following an object's mask through every frame.\n- **Concept prompt**: A short phrase or example image naming a category to segment.\n\n## Before / after\n\n- **Before:** Learn Real-time 2D object detection basics and PyTorch.\n- **After:** Build Click-to-mask object cutout for robot datasets, Text-prompted segmentation of every instance with SAM 3, or Masked observations to make imitation policies robust.\n\n## Try it in an afternoon\n\n1. **Watch** Meta's short SAM 3 introduction video.\n2. **Install** SAM 2 from its repo and download the `sam2.1_hiera_tiny.pt` checkpoint.\n3. **Click** one object in the first frame of a short desk video and propagate the mask.\n4. **Prompt** SAM 3 with a text prompt on the same clip and compare the masks.\n",
+      "resources": [
+        {
+          "title": "Introducing Meta Segment Anything Model 3 (SAM 3): Unified Detection, Segmentation & Tracking",
+          "url": "https://www.youtube.com/watch?v=G4OLPDjwncw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Meta's official short demo of text- and click-prompted segmentation and tracking."
+        },
+        {
+          "title": "SAM 2: Segment Anything in Images and Videos",
+          "url": "https://github.com/facebookresearch/sam2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Official install steps, checkpoints and image/video predictor examples."
+        },
+        {
+          "title": "SAM 3: Segment Anything with Concepts",
+          "url": "https://github.com/facebookresearch/sam3",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official code showing text-prompted concept segmentation."
+        },
+        {
+          "title": "SAM 2: Segment Anything in Images and Videos",
+          "url": "https://arxiv.org/abs/2408.00714",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Paper explaining streaming memory and the SA-V video dataset."
+        },
+        {
+          "title": "SAM 3: Segment Anything with Concepts",
+          "url": "https://arxiv.org/abs/2511.16719",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Paper defining promptable concept segmentation and the SA-Co benchmark."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/sam2",
+        "https://github.com/facebookresearch/sam3",
+        "https://arxiv.org/abs/2408.00714",
+        "https://arxiv.org/abs/2511.16719",
+        "https://www.youtube.com/watch?v=G4OLPDjwncw"
+      ]
+    },
+    {
+      "node_id": "k:real-time-2d-object-detection",
+      "type": "knowledge",
+      "name": "Real-time 2D object detection",
+      "summary": "A real-time object detector draws a box, a class label and a confidence score around each object in every camera frame, fast enough to steer a robot.",
+      "lesson_md": "## In one sentence\n\nA real-time object detector draws a box, a class label and a confidence score around each object in every camera frame, fast enough to steer a robot.\n\n![Ultralytics YOLO detection boxes with labels on a street image](/img/lessons/knowledge_perception-detection.webp)\n*Detection output: one box, label and score per object. Source: [Ultralytics detect docs](https://docs.ultralytics.com/tasks/detect/), license unknown.*\n\n## Why it matters for us\n\n- **First perception skill:** Sorting, following and picking all start with \"where is the object in the image?\"\n- **Runs on cheap hardware:** The smallest YOLO models take about 1.5-1.7 ms per image on an NVIDIA T4 GPU.\n- **Fine-tune quickly:** One `model.train()` call adapts a pretrained model to your own objects.\n\n## How it works\n\n- **Input:** One image, resized to e.g. 640 px.\n- **Output:** A list of **bounding boxes**, each with a class label and a confidence score.\n- **Pretrained on COCO:** Ultralytics models ship trained on COCO's 80 classes.\n- **Current models:** **YOLO11** (September 2024) and **YOLO26**, which adds end-to-end NMS-free inference.\n- **NMS:** Older detectors propose many overlapping boxes, then non-maximum suppression keeps the best one per object.\n- **Software analogy:** The detector is a pure function `image -> [Box]`; fine-tuning is changing its config, not rewriting it.\n\n| Model | mAP 50-95 (COCO) | T4 TensorRT (ms) | Params (M) |\n|---|---|---|---|\n| YOLO11n | 39.5 | 1.5 | 2.6 |\n| YOLO26n | 40.9 | 1.7 | 2.4 |\n\n```mermaid\nflowchart LR\nA[Camera frame] --> B[Resize to 640]\nB --> C[YOLO network]\nC --> D[Boxes and scores]\nD --> E[Confidence filter]\nE --> F[Robot action]\n```\n\n- **Worked example:** From the Ultralytics detect docs.\n\n```python\nfrom ultralytics import YOLO\nmodel = YOLO(\"yolo26n.pt\")  # pretrained on COCO\nmodel.train(data=\"my_custom_dataset.yaml\", epochs=100, imgsz=640)\nresults = model(\"desk.jpg\")\n```\n\n> **Key idea:** Start from a pretrained model and fine-tune on your own photos; training from scratch is rarely needed.\n\n## Key terms\n\n- **Bounding box**: The rectangle `(x, y, width, height)` around an object.\n- **Confidence score**: The model's probability that a box contains the stated class.\n- **Mean average precision (mAP 50-95)**: Detection accuracy averaged over box-overlap thresholds from 50% to 95%.\n- **COCO**: A public dataset whose 80 classes are the standard pretraining set.\n- **Fine-tuning**: Continuing training of a pretrained model on your own labelled data.\n\n## Before / after\n\n- **Before:** Learn Python and basic deep learning with PyTorch.\n- **After:** Build First YOLO detector on custom objects, Pan-tilt camera that follows a chosen object or Edge YOLO on a Jetson with ROS 2.\n\n## Try it in an afternoon\n\n1. **Install** Ultralytics with `pip install ultralytics`.\n2. **Run** `yolo26n.pt` on your webcam and note which COCO classes it finds.\n3. **Label** about 100 photos of two lab objects, following the Edje Electronics Colab tutorial.\n4. **Fine-tune** for 100 epochs and compare detections before and after.\n",
+      "resources": [
+        {
+          "title": "How to Use Ultralytics YOLO11 for Object Detection and Tracking| How to Benchmark | YOLO11 RELEASED🚀",
+          "url": "https://www.youtube.com/watch?v=-JXwa-WlkU8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Ultralytics' own video running YOLO11 detection and tracking."
+        },
+        {
+          "title": "How to Train YOLO Object Detection Models in Google Colab (YOLO26, YOLO11, YOLOv8)",
+          "url": "https://www.youtube.com/watch?v=r0RspiLG260",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hands-on walkthrough of labelling and fine-tuning a YOLO model on custom objects."
+        },
+        {
+          "title": "Object Detection - Ultralytics YOLO Docs",
+          "url": "https://docs.ultralytics.com/tasks/detect/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official detection task docs with model table, training and prediction code."
+        },
+        {
+          "title": "Ultralytics YOLO11",
+          "url": "https://docs.ultralytics.com/models/yolo11/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Model page with YOLO11 sizes, speeds and supported tasks."
+        },
+        {
+          "title": "Ultralytics",
+          "url": "https://github.com/ultralytics/ultralytics",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Source code of the YOLO training and inference library."
+        }
+      ],
+      "sources": [
+        "https://docs.ultralytics.com/tasks/detect/",
+        "https://docs.ultralytics.com/models/yolo11/",
+        "https://docs.ultralytics.com/quickstart/",
+        "https://github.com/ultralytics/ultralytics",
+        "https://www.youtube.com/watch?v=-JXwa-WlkU8",
+        "https://www.youtube.com/watch?v=r0RspiLG260"
+      ]
+    },
+    {
+      "node_id": "k:self-supervised-visual-features-dinov2-style-backbones",
+      "type": "knowledge",
+      "name": "Self-supervised visual features (DINOv2-style backbones)",
+      "summary": "Self-supervised backbones like DINOv2 learn general image features from huge photo collections without labels, so small add-on heads can reuse them for many tasks.",
+      "lesson_md": "## In one sentence\n\nSelf-supervised backbones like DINOv2 learn general image features from huge photo collections without labels, so small add-on heads can reuse them for many tasks.\n\n![DINOv2 demo showing semantic segmentation from frozen features](/img/lessons/knowledge_perception-visual-features.webp)\n*A small head on frozen DINOv2 features segments a scene. Source: [DINOv2 demo by Meta AI](https://dinov2.metademolab.com/), license unknown.*\n\n## Why it matters for us\n\n- **Robot eyes for free:** Many robot policies use a pretrained backbone instead of training vision from scratch on a few demos.\n- **Little data needed:** The DINOv2 README says its features work with classifiers as simple as linear layers.\n- **Reused widely:** Depth Anything 3 builds on a plain transformer backbone instead of a custom design.\n\n## How it works\n\n- **Backbone:** The big network that turns an image into feature vectors; task-specific **heads** sit on top.\n- **Self-supervised:** The training signal comes from the images themselves, not human labels.\n- **Patch features:** DINOv2 is a Vision Transformer: it splits the image into small patches and outputs one feature vector per patch.\n- **Frozen use:** Keep the backbone fixed and train only a small head for depth, segmentation or matching.\n- **Software analogy:** It is a shared library: compile it once, link many small programs against it.\n\n| Model | Params | ImageNet linear accuracy |\n|---|---|---|\n| ViT-S/14 | 21 M | 81.1% |\n| ViT-B/14 | 86 M | 84.5% |\n| ViT-L/14 | 300 M | 86.3% |\n\n```mermaid\nflowchart LR\nA[Robot camera image] --> B[DINOv2 backbone]\nB --> C[Patch features]\nC --> D[Linear head]\nC --> E[Nearest-neighbour match]\nD --> F[Labels or depth]\n```\n\n- **Worked example:** The README loads models through `torch.hub`.\n\n```python\nimport torch\nmodel = torch.hub.load(\"facebookresearch/dinov2\", \"dinov2_vits14\")\nfeatures = model(images)  # one embedding per image\n```\n\n> **Key idea:** A good frozen backbone moves most of the learning to pretraining, so your robot task needs far fewer labelled examples.\n\n## Key terms\n\n- **Backbone**: The pretrained feature extractor shared by several tasks.\n- **Head**: A small network trained on top of backbone features for one task.\n- **Self-supervised learning**: Training without human labels, using the data itself as the target.\n- **Patch**: A small square of the image a Vision Transformer handles as one token.\n- **Linear probe**: Testing features by training only a linear layer on them.\n\n## Before / after\n\n- **Before:** Learn deep learning and transformers basics.\n- **After:** Build Few-shot object re-identification with DINOv2 features, Robot-camera feature atlas or Frozen-encoder low-data race.\n\n## Try it in an afternoon\n\n1. **Watch** the AI Bites DINOv2 explainer.\n2. **Load** `dinov2_vits14` with `torch.hub` and embed 20 photos of three lab objects.\n3. **Classify** new photos by nearest neighbour on the embeddings.\n4. **Plot** the first three PCA components of patch features as RGB, as the README shows.\n",
+      "resources": [
+        {
+          "title": "DINOv2 from Meta AI: Data pipeline, model training and results explained",
+          "url": "https://www.youtube.com/watch?v=RZEkdOc3szU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains how DINOv2 was trained and what its features can do."
+        },
+        {
+          "title": "DinoV2 AI Feature Detection and Feature Matching from Meta AI",
+          "url": "https://www.youtube.com/watch?v=MC6q48cNQPU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Code demo using DINOv2 features for matching, from a robotics creator."
+        },
+        {
+          "title": "DINOv2: Learning Robust Visual Features without Supervision",
+          "url": "https://github.com/facebookresearch/dinov2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official models, torch.hub loading and pretrained model table."
+        },
+        {
+          "title": "DINOv2: Learning Robust Visual Features without Supervision",
+          "url": "https://arxiv.org/abs/2304.07193",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original paper on data curation and self-supervised training at scale."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/dinov2",
+        "https://arxiv.org/abs/2304.07193",
+        "https://dinov2.metademolab.com/",
+        "https://arxiv.org/abs/2511.10647",
+        "https://www.youtube.com/watch?v=RZEkdOc3szU",
+        "https://www.youtube.com/watch?v=MC6q48cNQPU"
+      ]
+    },
+    {
+      "node_id": "k:stereo-rgb-d-depth-sensing",
+      "type": "knowledge",
+      "name": "Stereo & RGB-D depth sensing",
+      "summary": "Depth cameras give a distance for every pixel, either by comparing two views like human eyes or by projecting infrared light and measuring it.",
+      "lesson_md": "## In one sentence\n\nDepth cameras give a distance for every pixel, either by comparing two views like human eyes or by projecting infrared light and measuring it.\n\n![Disparity map computed from a stereo pair with OpenCV](/img/lessons/knowledge_perception-stereo-depth.webp)\n*A disparity map: brighter pixels are closer to the camera. Source: [OpenCV depth map tutorial](https://docs.opencv.org/4.x/dd/d53/tutorial_py_depthmap.html), license unknown.*\n\n## Why it matters for us\n\n- **Metres, not pixels:** Grasping and obstacle avoidance need distances, which a single colour image does not measure.\n- **Affordable:** The Luxonis **OAK-D Pro** costs US $429 and includes stereo, an IR dot projector and an IMU.\n- **Know the failures:** Shiny, transparent and dark surfaces break depth, so test before trusting it.\n\n## How it works\n\n- **Stereo:** Two cameras a known distance apart, the **baseline**, see the same point at slightly different image positions.\n- **Disparity:** That position shift `x - x'`; nearby objects shift more.\n- **Triangulation:** OpenCV's formula is `disparity = B * f / Z`, so depth is `Z = B * f / disparity`.\n- **Worked example:** Using the OAK-D Pro's real 7.5 cm baseline and an assumed 800 px focal length, a 30 px disparity means `Z = 0.075 * 800 / 30 = 2 m`.\n- **Active stereo:** An **IR dot projector** paints texture on blank walls so matching still works.\n- **RGB-D:** A colour image plus an aligned depth image, one distance per pixel.\n- **Software analogy:** Stereo matching is a diff between two files: find each line's new position, and the offset tells you the depth.\n\n```mermaid\nflowchart LR\nA[Left image] --> C[Match pixels]\nB[Right image] --> C\nC --> D[Disparity map]\nD --> E[Depth Z = Bf/d]\nE --> F[Point cloud]\n```\n\n| OAK-D Pro spec (Luxonis docs) | Value |\n|---|---|\n| Baseline | 7.5 cm |\n| Ideal range | ~80 cm - 12 m |\n| Depth error below 4 m | below 2% |\n| Price | US $429 |\n\n> **Key idea:** Depth error grows with distance, because far objects produce tiny disparities where one pixel of error matters a lot.\n\n## Key terms\n\n- **Baseline**: The distance between the two stereo cameras.\n- **Disparity**: The horizontal pixel shift of a point between left and right images.\n- **Rectification**: Warping both images so matching points lie on the same row.\n- **Active stereo**: Stereo helped by a projected IR pattern.\n- **Time-of-flight**: Measuring depth from how long emitted light takes to return.\n\n## Before / after\n\n- **Before:** Learn Camera models & image formation and Camera calibration (intrinsic, extrinsic & hand-eye).\n- **After:** Learn Point cloud processing, then build Depth camera failure atlas, DIY stereo camera from two webcams or Learned stereo vs. on-board stereo.\n\n## Try it in an afternoon\n\n1. **Watch** Shree Nayar's \"Simple Stereo\" lecture.\n2. **Run** the OpenCV `StereoBM` tutorial on its sample pair.\n3. **Change** `numDisparities` and `blockSize` and see how the map changes.\n4. **Point** a depth camera, if available, at glass, a mirror and black fabric, and note the holes.\n",
+      "resources": [
+        {
+          "title": "Simple Stereo | Camera Calibration",
+          "url": "https://www.youtube.com/watch?v=hUVyDabn1Mg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shree Nayar derives stereo triangulation step by step."
+        },
+        {
+          "title": "Depth Camera - Computerphile",
+          "url": "https://www.youtube.com/watch?v=bRkUGqsz6SI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Intuitive tour of how depth cameras sense distance."
+        },
+        {
+          "title": "Depth Map from Stereo Images",
+          "url": "https://docs.opencv.org/4.x/dd/d53/tutorial_py_depthmap.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "OpenCV 4.x tutorial with the disparity formula and StereoBM code."
+        },
+        {
+          "title": "OAK-D Pro",
+          "url": "https://docs.luxonis.com/hardware/products/OAK-D%20Pro",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Real depth-camera specs: baseline, range, accuracy and IR projector."
+        },
+        {
+          "title": "FoundationStereo: A Foundation Model for Zero-Shot Stereo Depth Estimation | NVIDIA Research",
+          "url": "https://www.youtube.com/watch?v=R7RgHxEXB3o",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "NVIDIA's video on a learned stereo model that generalises without fine-tuning."
+        },
+        {
+          "title": "FoundationStereo: Zero-Shot Stereo Matching",
+          "url": "https://arxiv.org/abs/2501.09898",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The CVPR 2025 paper behind learned zero-shot stereo matching."
+        }
+      ],
+      "sources": [
+        "https://docs.opencv.org/4.x/dd/d53/tutorial_py_depthmap.html",
+        "https://docs.luxonis.com/hardware/products/OAK-D%20Pro",
+        "https://shop.luxonis.com/products/oak-d-pro",
+        "https://nvlabs.github.io/FoundationStereo/",
+        "https://arxiv.org/abs/2501.09898",
+        "https://www.youtube.com/watch?v=hUVyDabn1Mg",
+        "https://www.youtube.com/watch?v=bRkUGqsz6SI",
+        "https://www.youtube.com/watch?v=R7RgHxEXB3o"
+      ]
+    },
+    {
+      "node_id": "k:vision-language-models-for-embodied-perception",
+      "type": "knowledge",
+      "name": "Vision-language models for embodied perception",
+      "summary": "Vision-language models take a camera image plus a sentence and answer with text, plans or pixel coordinates, acting as a robot's high-level reasoning layer.",
+      "lesson_md": "## In one sentence\n\nVision-language models take a camera image plus a sentence and answer with text, plans or pixel coordinates, acting as a robot's high-level reasoning layer.\n\n![Gemini Robotics 1.5 announcement image from Google DeepMind](/img/lessons/knowledge_perception-vlm.webp)\n*Gemini Robotics-ER plans and points; a separate model executes actions. Source: [Google DeepMind blog](https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/), license unknown.*\n\n## Why it matters for us\n\n- **API access:** Google's Gemini Robotics-ER models are available to developers through the Gemini API.\n- **SO-101 sample:** Google publishes an official pointing demo for our arm.\n- **Beyond detection:** These models also judge progress and success in robot videos.\n\n## How it works\n\n- **VLM:** A language model that also reads images, so prompts can mix pictures and text.\n- **Embodied reasoning:** Spatial understanding for a body in the world: pointing, planning steps and checking success.\n- **Pointing output:** The Gemini docs ask for JSON like `[{\"point\": [y, x], \"label\": \"cup\"}]`, with coordinates normalised to 0-1000.\n- **Pixels to robot:** Scale the point to pixels, add depth, then use Camera calibration (intrinsic, extrinsic & hand-eye) to get a 3D target.\n- **Orchestration:** DeepMind pairs Gemini Robotics-ER 1.5 as the \"high-level brain\" with Gemini Robotics 1.5, which turns each step into motor commands.\n- **Software analogy:** The VLM is a planner service returning JSON; your robot code is the client that validates and executes it.\n\n```mermaid\nflowchart LR\nA[Camera image] --> C[VLM]\nB[Instruction] --> C\nC --> D[Point JSON 0-1000]\nD --> E[Pixel plus depth]\nE --> F[Arm target]\n```\n\n- **Worked example:** Image 640x480 px, returned point `[500, 250]`. Pixel x = 250/1000 x 640 = 160; pixel y = 500/1000 x 480 = 240.\n\n> **Key idea:** Ask the VLM for structured outputs such as points or JSON plans, then let deterministic code handle geometry and motion.\n\n> **Watch out:** Model names change fast: current docs list `gemini-robotics-er-2-preview` and say ER 1.6 was deprecated on 31 August 2026.\n\n## Key terms\n\n- **Vision-language model (VLM)**: A model taking images and text as input and producing text.\n- **Embodied reasoning**: Reasoning about space, objects and actions for a physical robot.\n- **Pointing**: Returning image coordinates of a named object.\n- **Success detection**: Judging from images or video whether a task was completed.\n- **Normalised coordinates**: Positions scaled to a fixed range, here 0-1000, independent of image size.\n\n## Before / after\n\n- **Before:** Learn Open-vocabulary detection & grounding and Camera calibration (intrinsic, extrinsic & hand-eye) for pixel-to-robot mapping.\n- **After:** Build Gemini-ER pointing on the SO-101, VLM success detector for robot episodes or Open VLM vs. API VLM for robot pointing.\n\n## Try it in an afternoon\n\n1. **Watch** DeepMind's Gemini Robotics 1.5 video.\n2. **Get** a Gemini API key in Google AI Studio.\n3. **Run** the pointing example from the robotics docs on a photo of your desk.\n4. **Draw** the returned points on the image and check each label.\n",
+      "resources": [
+        {
+          "title": "Gemini Robotics 1.5: Enabling robots to plan, think and use tools to solve complex tasks",
+          "url": "https://www.youtube.com/watch?v=UObzWjPb6XM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Google DeepMind's video of the reasoning model planning and the action model executing."
+        },
+        {
+          "title": "New Gemini Robotics-ER 1.5 for Object Detection",
+          "url": "https://www.youtube.com/watch?v=Rveer-93ql0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hands-on demo calling the embodied-reasoning model for detection."
+        },
+        {
+          "title": "Gemini Robotics 1.5 brings AI agents into the physical world",
+          "url": "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Official announcement explaining the planner and executor split."
+        },
+        {
+          "title": "Gemini Robotics ER",
+          "url": "https://ai.google.dev/gemini-api/docs/robotics-overview",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Current API docs with the pointing prompt, output format and model names."
+        },
+        {
+          "title": "Vision-Guided Manipulation with Gemini & Robot Arms",
+          "url": "https://github.com/google-gemini/robotics-pointing-sample",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official SO-101 sample turning Gemini points into joint angles."
+        },
+        {
+          "title": "Gemini Robotics: Bringing AI into the Physical World",
+          "url": "https://arxiv.org/abs/2503.20020",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Technical report on Gemini Robotics and its embodied-reasoning model."
+        }
+      ],
+      "sources": [
+        "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+        "https://ai.google.dev/gemini-api/docs/robotics-overview",
+        "https://github.com/google-gemini/robotics-pointing-sample",
+        "https://arxiv.org/abs/2503.20020",
+        "https://www.youtube.com/watch?v=UObzWjPb6XM",
+        "https://www.youtube.com/watch?v=Rveer-93ql0"
+      ]
     }
   ]
 }
