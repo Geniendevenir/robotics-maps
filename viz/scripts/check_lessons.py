@@ -457,7 +457,7 @@ def _check_visuals(markdown: object, label: str, kind: str,
             f"{label}: has {prose_count} prose paragraphs; maximum is {paragraph_limit}"
         )
 
-    if kind == "knowledge":
+    if kind == "knowledge" and re.search(r"(?m)^## Before / after[ \t]*$", markdown):
         before_after = [line.strip() for line in _section_lines(markdown, "## Before / after")
                         if line.strip()]
         bullets = [line for line in before_after if line.startswith("- ")]
