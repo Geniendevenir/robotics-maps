@@ -1,0 +1,797 @@
+{
+  "batch": "knowledge_mechanisms_actuation",
+  "lessons": [
+    {
+      "node_id": "k:actuator-sizing-torque-inertia-and-thermal-duty",
+      "type": "knowledge",
+      "name": "Actuator sizing: torque, inertia and thermal duty",
+      "summary": "Actuator sizing checks whether a motor and transmission can move a load at the required speed, repeatedly, without exceeding their limits.",
+      "lesson_md": "## In one sentence\n\nActuator sizing checks whether a motor and transmission can move a load at the required speed, repeatedly, without exceeding their limits.\n\n![A force gauge pulls at a measured radius to determine shaft torque](/img/lessons/knowledge_mechanisms_actuation-sizing.webp)\n*Measure force and lever arm to estimate starting torque. Source: [Oriental Motor](https://www.orientalmotor.com/technology/motor-sizing-calculations.html), license unknown.*\n\n## Why it matters for us\n\n- **A moving arm needs more than holding torque:** acceleration adds demand beyond gravity and friction.\n- **Repeated demonstrations are a workload:** size for the complete motion pattern, not just the most impressive movement.\n- **A catalogue value has conditions:** maxon explains that temperature, installation and control settings affect motor behaviour.\n\n> **Key idea:** Treat the full motion cycle as the specification, not a single torque number.\n\n## How it works\n\n- **Start at the load:** list masses, dimensions, friction, movement time and speed before picking a motor.\n- **Think of server capacity planning:** one successful request does not prove sustained throughput; one successful lift does not prove repeated operation.\n- **Calculate twisting demand:** force acting perpendicular to a lever produces torque; add the torque needed to accelerate the rotating parts.\n- **Account for gearing:** reduction trades speed for torque, but the motor's spinning rotor also contributes inertia at the joint.\n- **Check heat separately:** effective load torque weights the changing torque demand across the cycle; compare it with continuous-operation limits, not just peak capability.\n- **Read the conditions:** a warm motor differs from a cold motor; simulation does not replace physical testing.\n\n```mermaid\nflowchart LR\n  L[\"Load and motion\"] --> T[\"Torque and speed\"]\n  T --> G[\"Motor and gearing\"]\n  G --> C[\"Cycle and heat checks\"]\n  C --> V[\"Physical validation\"]\n```\n\n## Key terms\n\n- **Torque**: twisting effort, measured in newton-metres.\n- **Inertia**: resistance to changing rotational speed; it exists even when the object is stationary.\n- **Duty cycle**: the pattern of movement, holding and rest over time.\n- **Continuous rating**: an operating limit intended for sustained operation under stated conditions.\n\n## Before / after\n\n- **Before:** Read Electric actuator architectures: mechanical trade-offs and separate motor-side quantities from joint-side quantities.\n- **After:** Build Torque-speed envelope from a load case, then Joint duty-cycle thermal estimator before considering hardware.\n\n## Try it in an afternoon\n\n1. **Create a hypothetical load:** a perpendicular 10 N force at 0.10 m needs 1 N·m of holding torque, using Oriental Motor's force-times-radius relation.\n2. **Add movement phases:** label acceleration, constant speed, deceleration and holding; identify where extra acceleration torque appears.\n3. **Compare repeated cycles:** use the effective-torque method in the sizing reference, keeping all units consistent.\n4. **Reject missing inputs:** if thermal or continuous-rating data are absent, mark sustained operation unknown rather than accepting a peak number.",
+      "resources": [
+        {
+          "title": "maxon motor data 1: The operation range limits",
+          "url": "https://www.youtube.com/watch?v=3XcvjC2anM8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how motor operating ranges constrain a sizing decision."
+        },
+        {
+          "title": "Motor Sizing Calculations",
+          "url": "https://www.orientalmotor.com/technology/motor-sizing-calculations.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Work from load force through acceleration torque to effective load torque."
+        },
+        {
+          "title": "8.9. Actuation, Gearing, and Friction",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-9-actuation-gearing-and-friction/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Include the motor rotor and gear ratio in the joint's dynamics."
+        },
+        {
+          "title": "Motor data and simulation",
+          "url": "https://support.maxongroup.com/hc/en-us/articles/360013761160-Motor-data-and-simulation",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand temperature, installation and simulation limitations."
+        }
+      ],
+      "sources": [
+        "https://www.orientalmotor.com/technology/motor-sizing-calculations.html",
+        "https://support.maxongroup.com/hc/en-us/articles/360013761160-Motor-data-and-simulation",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-9-actuation-gearing-and-friction/",
+        "https://www.youtube.com/watch?v=3XcvjC2anM8"
+      ]
+    },
+    {
+      "node_id": "k:backdrivability-friction-and-mechanical-transparency",
+      "type": "knowledge",
+      "name": "Backdrivability, friction and mechanical transparency",
+      "summary": "Backdrivability lets a load turn a motor through its transmission; mechanical transparency means feeling little added resistance from the mechanism.",
+      "lesson_md": "## In one sentence\n\nBackdrivability lets a load turn a motor through its transmission; mechanical transparency means feeling little added resistance from the mechanism.\n\n![ODRI actuator module with motor, belts and output pulley visible](/img/lessons/knowledge_mechanisms_actuation-backdrivability.webp)\n*ODRI's documented actuator uses two belt-reduction stages. Source: [ODRI actuator documentation](https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/README.md), BSD 3-Clause License.*\n\n## Why it matters for us\n\n- **Contact runs both ways:** the motor pushes the world, but the world can also push the robot.\n- **A heavy-feeling joint hides interaction:** the person or environment must accelerate the mechanism as well as the robot link.\n- **Legged robots need this distinction:** MIT Cheetah research explicitly connects backdrivability with impact mitigation.\n\n> **Key idea:** Torque amplification also amplifies the rotor inertia felt from the output side.\n\n## How it works\n\n- **Follow the reverse path:** turning the output makes the motor rotor spin through the transmission, if the mechanism permits it.\n- **Use a middleware analogy:** the payload is the intended interaction; friction and added inertia are overhead between the user and that interaction.\n- **Separate two obstacles:** friction resists motion, while inertia resists changes in speed; reducing one does not erase the other.\n- **Square the reduction:** Modern Robotics gives apparent rotor inertia as gear ratio squared times rotor inertia, measured at the joint.\n- **Work the comparison:** increasing reduction from 10 to 100 multiplies this rotor contribution by 100, for the same motor; it does not merely multiply it by ten.\n- **Look at real hardware:** ODRI documents two 3:1 belt stages giving 9:1 overall reduction; the architecture paper evaluates the resulting interaction behaviour.\n\n```mermaid\nflowchart LR\n  W[\"External push\"] --> O[\"Joint output\"]\n  O --> T[\"Transmission\"]\n  T --> R[\"Motor rotor\"]\n  R --> F[\"Added inertia and friction\"]\n```\n\n## Key terms\n\n- **Backdrivability**: ability to move the actuator from its output side.\n- **Transparency**: how little the mechanism's own resistance obscures the intended mechanical interaction.\n- **Reflected inertia**: inertia expressed as it is felt through a transmission at another shaft.\n- **Friction**: resistance that dissipates mechanical energy; bearings and transmission contacts contribute.\n\n## Before / after\n\n- **Before:** Read Actuator sizing: torque, inertia and thermal duty and Spur and planetary gear trains.\n- **After:** Try Reflected inertia gear-ratio dashboard before Low-impedance joint architecture comparison.\n\n## Try it in an afternoon\n\n1. **Normalize rotor inertia:** set it to one arbitrary unit and calculate the apparent contribution for reductions 10 and 100.\n2. **Plot the results:** obtain 100 and 10,000 units respectively; label these model values, not measurements of a real actuator.\n3. **Add a friction slider:** compare zero friction with nonzero resistance, keeping rotor inertia unchanged.\n4. **Explain the limits:** the plot predicts a trend, not the friction or contact safety of an actual robot.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.9:  Actuation, Gearing, and Friction",
+          "url": "https://www.youtube.com/watch?v=w1kYLT3pETc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch why a small rotor can feel much heavier through a high-ratio transmission."
+        },
+        {
+          "title": "Brushless Actuator Module Core v1",
+          "url": "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/README.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect a concrete low-ratio, two-stage actuator rather than an abstract motor."
+        },
+        {
+          "title": "An Open Torque-Controlled Modular Robot Architecture for Legged Locomotion Research",
+          "url": "https://arxiv.org/abs/1910.00093",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Connect low-ratio actuator design to measured interaction behaviour."
+        },
+        {
+          "title": "Proprioceptive Actuator Design in the MIT Cheetah: Impact Mitigation and High-Bandwidth Physical Interaction for Dynamic Legged Robots",
+          "url": "https://dspace.mit.edu/entities/publication/8b15bcc8-c288-43aa-b923-69ce3c13b818",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the open manuscript's backdrivability and impact-mitigation argument."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-9-actuation-gearing-and-friction/",
+        "https://support.maxongroup.com/hc/en-us/articles/360013761160-Motor-data-and-simulation",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/README.md",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/README.md",
+        "https://arxiv.org/abs/1910.00093",
+        "https://dspace.mit.edu/entities/publication/8b15bcc8-c288-43aa-b923-69ce3c13b818",
+        "https://www.youtube.com/watch?v=w1kYLT3pETc"
+      ]
+    },
+    {
+      "node_id": "k:spur-and-planetary-gear-trains",
+      "type": "knowledge",
+      "name": "Spur and planetary gear trains",
+      "summary": "Gear trains use meshing teeth to exchange speed for torque; planetary trains arrange moving planet gears around a central sun gear.",
+      "lesson_md": "## In one sentence\n\nGear trains use meshing teeth to exchange speed for torque; planetary trains arrange moving planet gears around a central sun gear.\n\n![Labelled planetary gear showing sun, planet gears, carrier and ring gear](/img/lessons/knowledge_mechanisms_actuation-gears.webp)\n*Identify which part is fixed before calculating a ratio. Source: [tec-science](https://www.tec-science.com/mechanical-power-transmission/planetary-gear/epicyclic-planetary-gear/), license unknown.*\n\n## Why it matters for us\n\n- **Motors and joints want different motion:** a gear reduction slows the output while increasing available torque.\n- **Packaging changes the design:** planetary arrangements can keep input and output on the same axis.\n- **A teaching model answers limited questions:** counting rotations explains reduction; it does not establish a gearbox's load capacity.\n\n> **Key idea:** Tooth counts alone are not enough for a planetary ratio; identify the fixed part, input and output.\n\n## How it works\n\n- **Start with two spur gears:** these toothed wheels mesh directly; external gears rotate in opposite directions.\n- **Count teeth passing contact:** Woodgears' 7-tooth driver turns three times for one turn of its 21-tooth partner.\n- **Think of composed functions:** successive reduction stages multiply their ratios, just as composed scaling functions multiply their scale factors.\n- **Recognize the planetary parts:** a sun sits centrally, planets turn around it, a carrier supports their shafts, and an internally toothed ring surrounds them.\n- **Choose the constraint:** fixing the ring while driving the sun makes the carrier the slower output; fixing another part changes the result.\n- **Work a published example:** tec-science uses a 12-tooth sun, 18-tooth planets and 48-tooth ring; fixed-ring operation gives five sun turns per carrier turn.\n\n```mermaid\nflowchart LR\n  I[\"Sun input\"] --> P[\"Meshing planets\"]\n  R[\"Fixed ring\"] --> P\n  P --> C[\"Carrier output\"]\n```\n\n## Key terms\n\n- **Reduction ratio**: input turns divided by output turns; state this convention because some references use its reciprocal.\n- **Carrier**: the moving support for planet shafts, not another toothed wheel.\n- **Pitch**: tooth spacing; meshing gears need compatible tooth spacing.\n- **Backlash**: clearance that allows some motion on reversal before the opposite tooth surfaces engage.\n\n## Before / after\n\n- **Before:** Review Electric actuator architectures: mechanical trade-offs and basic ratios.\n- **After:** Build Planetary tooth-count explorer, then Hand-cranked printed planetary cutaway using FreeCAD.\n\n## Try it in an afternoon\n\n1. **Sketch the published set:** label sun 12, planet 18 and ring 48; check that sun plus twice planet equals ring.\n2. **Fix the ring:** animate five sun rotations and predict one carrier rotation in the same direction.\n3. **Change the fixed member:** fix the carrier instead and compare the ring's direction and turn count with tec-science's table.\n4. **Document the boundary:** report the kinematic ratio, leaving strength, friction and backlash unknown until separately evaluated.",
+      "resources": [
+        {
+          "title": "How does a planetary gear work? | Design and operating principle simply explained",
+          "url": "https://www.youtube.com/watch?v=oSFZvBm4HFA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the sun, planets, ring and carrier move in different operating modes."
+        },
+        {
+          "title": "Gear ratios and compound gear ratios",
+          "url": "https://woodgears.ca/gear/ratio.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Start with two gears, then multiply ratios across several stages."
+        },
+        {
+          "title": "Planetary gear ratio calculations",
+          "url": "https://woodgears.ca/gear/planetary.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Check tooth-count compatibility and distinguish carrier motion from individual gear rotation."
+        },
+        {
+          "title": "How does a planetary gear work?",
+          "url": "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/epicyclic-planetary-gear/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Compare fixed-ring, fixed-carrier and fixed-sun configurations."
+        },
+        {
+          "title": "Transmissions and Guides | 865 Meche Design",
+          "url": "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Use the planetary-gearbox section to connect compact reduction with backlash."
+        }
+      ],
+      "sources": [
+        "https://woodgears.ca/gear/ratio.html",
+        "https://woodgears.ca/gear/planetary.html",
+        "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/epicyclic-planetary-gear/",
+        "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-9-actuation-gearing-and-friction/",
+        "https://www.youtube.com/watch?v=oSFZvBm4HFA"
+      ]
+    },
+    {
+      "node_id": "k:cycloidal-reducers-and-output-mechanisms",
+      "type": "knowledge",
+      "name": "Cycloidal reducers and output mechanisms",
+      "summary": "A cycloidal reducer turns an eccentric input into slow output rotation using a lobed disc, a ring of pins and an output mechanism.",
+      "lesson_md": "## In one sentence\n\nA cycloidal reducer turns an eccentric input into slow output rotation using a lobed disc, a ring of pins and an output mechanism.\n\n![Exploded cycloidal reducer with eccentric input, fixed pins, lobed disc and output pin disc](/img/lessons/knowledge_mechanisms_actuation-cycloidal.webp)\n*The output pins pass through holes in the moving disc. Source: [tec-science](https://www.tec-science.com/mechanical-power-transmission/planetary-gear/how-does-a-cycloidal-gear-drive-work/), license unknown.*\n\n## Why it matters for us\n\n- **Follow the complete transmission:** watching the disc wobble is not enough; a robot joint needs rotation about a supported output axis.\n- **Ratio is only one requirement:** the disc profile, eccentric motion and output clearances must also fit together.\n- **Commercial designs add structure:** Nabtesco's RV mechanism combines two reduction stages, balancing and support bearings rather than relying on a single printed disc.\n\n> **Key idea:** The output mechanism must transmit the disc's slow rotation without copying its sideways wobble.\n\n## How it works\n\n- **Start off-centre:** the input shaft carries an eccentric, whose rotation moves the disc's centre around a small circle.\n- **Constrain the disc:** its lobes engage fixed surrounding pins, so it slowly rotates while its centre orbits.\n- **Extract useful rotation:** rollers on an output pin disc engage the moving disc's holes; the output shaft stays on the gearbox's central axis.\n- **Think of an adapter function:** the disc produces combined orbit and rotation; the output mechanism exposes only the rotation your joint needs.\n- **Count a published example:** tec-science uses 10 fixed pins and nine disc lobes; nine input turns produce one output turn in the opposite direction.\n- **Balance matters:** two discs offset by 180° can counter unbalanced forces; Nabtesco also uses two RV gears to balance forces.\n\n```mermaid\nflowchart LR\n  I[\"Input rotation\"] --> E[\"Eccentric motion\"]\n  E --> D[\"Orbiting lobed disc\"]\n  P[\"Fixed pins\"] --> D\n  D --> O[\"Output rollers\"]\n  O --> S[\"Slow output shaft\"]\n```\n\n## Key terms\n\n- **Eccentric**: a rotating feature whose centre is offset from the main shaft axis.\n- **Lobe**: a rounded protrusion on the disc's working profile.\n- **Output pin disc**: a plate carrying pins or rollers that collect the disc's rotation.\n- **Clearance**: space between mating parts that permits motion; it is not a substitute for a specified profile.\n\n## Before / after\n\n- **Before:** Inspect Nabtesco RV reducer family and use FreeCAD to identify input, fixed housing and output parts.\n- **After:** Start Cycloidal eccentric-to-output animation, then Hand-driven cycloidal tolerance experiment before Guarded dual-disc cycloidal joint prototype.\n\n## Try it in an afternoon\n\n1. **Reproduce the 10-pin example:** label the nine-lobed disc, eccentric and output rollers in an offline animation.\n2. **Track separate motions:** draw attention to the disc's moving centre and the output shaft's fixed centre.\n3. **Count nine input turns:** verify one reversed output turn; compare against the published animation.\n4. **Remove the output rollers virtually:** explain why the disc still moves but no longer drives that output shaft.",
+      "resources": [
+        {
+          "title": "How does a cycloidal gearbox work? | Structure and function simply explained | parametric equation",
+          "url": "https://www.youtube.com/watch?v=dv2URKU5YNU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Trace the eccentric, disc and output rollers in a moving cutaway."
+        },
+        {
+          "title": "How does a cycloidal drive work?",
+          "url": "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/how-does-a-cycloidal-gear-drive-work/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Work through the 10-pin, nine-lobe example and its output mechanism."
+        },
+        {
+          "title": "Construction of the cycloidal disc of a cycloidal drive",
+          "url": "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/construction-of-the-cycloidal-disc/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "See why a roller-compatible disc is more than a roughly lobed outline."
+        },
+        {
+          "title": "Cycloidal Gear Technology - Nabtesco Motion Control",
+          "url": "https://www.nabtescoprecision.com/engineering/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare the simple teaching mechanism with a two-stage RV reducer."
+        }
+      ],
+      "sources": [
+        "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/how-does-a-cycloidal-gear-drive-work/",
+        "https://www.tec-science.com/mechanical-power-transmission/planetary-gear/construction-of-the-cycloidal-disc/",
+        "https://www.nabtescoprecision.com/engineering/",
+        "https://www.youtube.com/watch?v=dv2URKU5YNU"
+      ]
+    },
+    {
+      "node_id": "k:strain-wave-gearing-and-flexspline-design",
+      "type": "knowledge",
+      "name": "Strain-wave gearing and flexspline design",
+      "summary": "Strain-wave gearing uses a rotating oval to flex a toothed sleeve against a rigid ring, creating a large reduction from a small tooth-count difference.",
+      "lesson_md": "## In one sentence\n\nStrain-wave gearing uses a rotating oval to flex a toothed sleeve against a rigid ring, creating a large reduction from a small tooth-count difference.\n\n![Separated wave generator, thin toothed flexspline cup and rigid circular spline](/img/lessons/knowledge_mechanisms_actuation-strain-wave.webp)\n*The three parts have different mechanical jobs. Source: [Harmonic Drive](https://www.harmonicdrive.net/technology), license unknown.*\n\n## Why it matters for us\n\n- **Compact reduction is attractive:** Harmonic Drive describes a three-element mechanism that puts a large reduction into a small package.\n- **Flexing is deliberate:** the flexible metal part is not a broken rigid gear; its shape change is essential to operation.\n- **Assembly affects performance:** the manufacturer specifies matched components, alignment tolerances and lubrication, not just tooth counts.\n\n> **Key idea:** The flexspline must change shape radially while still transmitting torque to the output.\n\n## How it works\n\n- **Insert the wave generator:** its elliptical hub and flexible bearing force the thin flexspline into an oval.\n- **Engage opposite regions:** external flexspline teeth mesh with the internally toothed circular spline near the oval's two ends.\n- **Rotate the oval:** the engagement zones move around the ring; the flexspline has two fewer teeth, so it progressively turns relative to the ring.\n- **Use a version-offset analogy:** two cyclic sequences almost align, but their small length difference creates a slowly shifting correspondence.\n- **Work a hypothetical tooth count:** a 200-tooth flexspline shifting two teeth per input turn gives 100:1 reduction with the circular spline fixed.\n- **Check the direction:** each full clockwise wave-generator turn shifts the flexspline two teeth counterclockwise relative to the fixed ring.\n- **Treat ratings as conditional:** Harmonic Drive's fatigue-life statement applies within catalogue ratings; it does not certify a different material or printed geometry.\n\n```mermaid\nflowchart LR\n  W[\"Rotating wave generator\"] --> F[\"Flexspline becomes oval\"]\n  C[\"Fixed circular spline\"] --> E[\"Two engagement zones\"]\n  F --> E\n  E --> O[\"Slow flexspline output\"]\n```\n\n## Key terms\n\n- **Wave generator**: the elliptical input hub and bearing that create the travelling deformation.\n- **Flexspline**: the thin, externally toothed flexible cup or sleeve.\n- **Circular spline**: the rigid internally toothed ring.\n- **Radial compliance**: ability to change shape across the radius.\n- **Torsional stiffness**: resistance to twisting under torque; different from the absence of backlash.\n\n## Before / after\n\n- **Before:** Inspect Harmonic Drive strain-wave gearing and identify its three parts in FreeCAD or a published cutaway.\n- **After:** Build Strain-wave tooth engagement explainer before Printed flexspline fit and compliance coupons.\n\n## Try it in an afternoon\n\n1. **Label the three components:** distinguish the bearing-containing input from the flexible toothed output.\n2. **Track one input turn:** mark the two-tooth reverse shift with the circular spline fixed.\n3. **Check the 200-tooth example:** divide 200 by two to recover 100 input turns per output turn.\n4. **List design constraints:** record alignment, lubrication and matched-set requirements; leave any proposed printed part's load rating unknown.",
+      "resources": [
+        {
+          "title": "Harmonic Drive® strain wave gear - zero backlash",
+          "url": "https://www.youtube.com/watch?v=3mWemlMEzFk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the manufacturer's three components deform and engage."
+        },
+        {
+          "title": "Strain Wave Gear Technology | Harmonic Drive",
+          "url": "https://www.harmonicdrive.net/technology/harmonicdrive",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the wave generator, flexspline and circular spline, then follow the two-teeth-per-turn reduction."
+        },
+        {
+          "title": "Installation Considerations for Harmonic Drive Gear Units",
+          "url": "https://www.harmonicdrive.net/technology/installation-considerations",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn why concentricity, matched components and lubrication constrain a working assembly."
+        },
+        {
+          "title": "Castable Bulk Metallic Glass Strain Wave Gears: Towards Decreasing the Cost of High-Performance Robotics",
+          "url": "https://www.nature.com/articles/srep37773",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the open-access study of flexspline materials, geometry and fatigue limits."
+        }
+      ],
+      "sources": [
+        "https://www.harmonicdrive.net/technology",
+        "https://www.harmonicdrive.net/technology/installation-considerations",
+        "https://www.youtube.com/watch?v=3mWemlMEzFk",
+        "https://www.harmonicdrive.net/technology/harmonicdrive",
+        "https://www.nature.com/articles/srep37773"
+      ]
+    },
+    {
+      "node_id": "k:timing-belt-and-capstan-transmissions",
+      "type": "knowledge",
+      "name": "Timing-belt and capstan transmissions",
+      "summary": "Timing belts transmit motion through meshing teeth; capstans transmit pull through friction between a wrapped cable and a drum.",
+      "lesson_md": "## In one sentence\n\nTiming belts transmit motion through meshing teeth; capstans transmit pull through friction between a wrapped cable and a drum.\n\n![ODRI actuator opened to show two toothed belts, pulleys and the output shaft](/img/lessons/knowledge_mechanisms_actuation-belt-capstan.webp)\n*A real two-stage timing-belt transmission, not a friction capstan. Source: [ODRI assembly guide](https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md), BSD 3-Clause License.*\n\n## Why it matters for us\n\n- **Motor location is a design choice:** a belt can transmit motion while the heavy motor stays elsewhere on the structure.\n- **Assembly sets behaviour:** MIT's design notes emphasize belt tension, secure clamps and pulley tracking, not merely a nominal reduction ratio.\n- **Cable drives have travel limits:** a helical cable wrap moves along the capstan during actuation, unlike an endlessly circulating belt.\n\n> **Key idea:** Teeth locate a timing belt; friction and maintained tension make a capstan transmit force.\n\n## How it works\n\n- **Follow the timing belt:** its teeth engage matching pulley teeth, carrying tension from the driving pulley to the driven pulley.\n- **Follow the capstan cable:** wrapping increases frictional grip, but the cable still needs positive tension and properly secured ends.\n- **Think of two API contracts:** a timing belt specifies geometric engagement; a capstan relies on a friction-and-tension condition that can fail through slipping.\n- **Inspect a documented reduction:** ODRI uses two 3:1 stages; multiplying them gives 9:1 overall, so nine motor turns produce one output turn.\n- **Separate the mechanisms:** that 9:1 belt example does not establish a capstan's load capacity; wrap, friction and preload require their own model.\n- **Check reversal:** ODRI's assembly guide asks you to turn the output back and forth; MIT also highlights tensioner stiffness and alignment.\n\n```mermaid\nflowchart LR\n  M[\"Motor rotation\"] --> B[\"Toothed belt and pulleys\"]\n  B --> O[\"Output motion\"]\n  M --> C[\"Wrapped cable and drum\"]\n  T[\"Positive cable tension\"] --> C\n  C --> O\n```\n\n## Key terms\n\n- **Timing belt**: a flexible toothed belt that indexes motion through matching pulley teeth.\n- **Capstan**: a drum that transmits cable force through wrapped contact and friction.\n- **Preload**: tension applied before the working load, helping keep cable contact.\n- **Tracking**: a belt's movement along the pulley axis.\n- **Pitch**: distance between neighbouring belt teeth.\n\n## Before / after\n\n- **Before:** Inspect ODRI actuator module and locate its motor, intermediate pulley and output pulley.\n- **After:** Use Belt and capstan preload explorer before Hand-driven belt tension reversal rig or Remote-drive elbow transmission fixture.\n\n## Try it in an afternoon\n\n1. **Trace the ODRI belt path:** label both 3:1 stages in the published assembly photographs.\n2. **Calculate total reduction:** predict one output revolution for nine motor revolutions, ignoring elastic stretch.\n3. **Compare a cable layout:** sketch its helical wrap and identify where cable travel would run out.\n4. **Model loss of preload:** set slack-side tension to zero in a friction model; explain why adding wraps cannot restore the missing contact force.",
+      "resources": [
+        {
+          "title": "Power transmission in belt drives: Basics and calculations",
+          "url": "https://www.youtube.com/watch?v=4iGE66r-KuI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand frictional wrapped contact; distinguish it from toothed-belt engagement."
+        },
+        {
+          "title": "Details Actuator Module Assembly",
+          "url": "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the timing-belt installation and reversal check in photographs."
+        },
+        {
+          "title": "Transmissions and Guides | 865 Meche Design",
+          "url": "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the Belt and Capstans sections for tension, tracking and finite cable travel."
+        },
+        {
+          "title": "Basics of power transmission in belt drives",
+          "url": "https://www.tec-science.com/mechanical-power-transmission/belt-drive/basics-of-power-transmission/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "See why a friction drive needs slack-side tension."
+        }
+      ],
+      "sources": [
+        "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/README.md",
+        "https://www.tec-science.com/mechanical-power-transmission/belt-drive/basics-of-power-transmission/",
+        "https://www.youtube.com/watch?v=4iGE66r-KuI"
+      ]
+    },
+    {
+      "node_id": "k:lead-screws-ball-screws-and-linear-joint-packaging",
+      "type": "knowledge",
+      "name": "Lead screws, ball screws and linear joint packaging",
+      "summary": "A screw drive converts rotation into straight-line travel; its screw, nut, bearings and guides must work together as one linear joint.",
+      "lesson_md": "## In one sentence\n\nA screw drive converts rotation into straight-line travel; its screw, nut, bearings and guides must work together as one linear joint.\n\n![Ball screw and nut beside a sliding lead screw with an anti-backlash nut](/img/lessons/knowledge_mechanisms_actuation-linear-screws.webp)\n*Rolling and sliding screw drives package their nuts differently. Source: [MIT design notes](https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/), license unknown.*\n\n## Why it matters for us\n\n- **Linear motion needs more than a motor:** a nut moves along the screw while guides constrain the carriage's unwanted motion.\n- **Contact changes the trade-off:** rolling balls reduce friction, but their recirculation mechanism makes the nut assembly bulkier.\n- **Alignment is part of the design:** MIT notes that a screw alongside two linear rails creates multiple constraints that must agree.\n\n> **Key idea:** Screw lead sets travel per turn; guide alignment determines whether the assembled axis can actually move freely.\n\n## How it works\n\n- **Rotate one part relative to the other:** the screw's helical thread advances the nut along its axis.\n- **Choose sliding or rolling contact:** a lead screw slides against its nut; a ball screw circulates balls between matching grooves.\n- **Think of a unit-conversion adapter:** the drive maps motor revolutions to carriage distance; the conversion factor is the screw's lead.\n- **Work the igus example:** a single-start 20-threads-per-inch screw advances one twentieth of an inch per turn, or 0.05 inches.\n- **Do not confuse lead and pitch:** they coincide for a single-start thread, but multiple thread starts increase travel per revolution.\n- **Package the supports:** reserve space for the nut, end supports, motor connection and guides; a ball-return assembly is not an empty sleeve.\n- **Inspect reversals:** sliding nuts need clearance to move; that clearance can appear as lost motion before reversed travel begins.\n\n```mermaid\nflowchart LR\n  M[\"Motor turns\"] --> S[\"Screw and nut\"]\n  S --> C[\"Carriage translation\"]\n  G[\"Aligned linear guides\"] --> C\n  C --> L[\"Load moves straight\"]\n```\n\n> **Watch out:** Ball screws can backdrive under gravity; do not rely on an unassessed screw to retain a vertical load.\n\n## Key terms\n\n- **Lead**: distance advanced per relative revolution of screw and nut.\n- **Pitch**: spacing between neighbouring threads.\n- **Start**: one continuous helical thread running along a screw.\n- **Backdriving**: an external linear load causing the screw mechanism to rotate.\n- **Backlash**: clearance taken up after reversing direction before output movement resumes.\n\n## Before / after\n\n- **Before:** Use FreeCAD to distinguish the screw, nut, carriage and guide constraints in a linear-axis model.\n- **After:** Build Screw lead force-speed visualizer, then Horizontal screw-guide alignment jig before Supported linear joint module.\n\n## Try it in an afternoon\n\n1. **Model the 20-TPI example:** display 0.05 inches of nut travel for each revolution.\n2. **Command ten turns:** predict 0.50 inches of travel and label this ideal geometry, not positioning accuracy.\n3. **Introduce virtual misalignment:** offset a guide relative to the screw and identify the conflicting constraints.\n4. **Compare nut envelopes:** reserve different space for rolling-ball recirculation and a sliding nut; record unspecified dimensions as unknown.",
+      "resources": [
+        {
+          "title": "How to install Ball Screw and Support Units - NSK Installation Tutorial",
+          "url": "https://www.youtube.com/watch?v=mLCHT2ywk5A",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See actual supports, assembly order and alignment rather than just a thread animation."
+        },
+        {
+          "title": "How can you convert rotational to linear motion?",
+          "url": "https://toolbox.igus.com/tech-talks/convert-rotational-to-linear-motion/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Learn lead versus pitch and reproduce the 20-TPI travel example."
+        },
+        {
+          "title": "Ball Screw vs Lead Screw: How To Choose The Right One",
+          "url": "https://toolbox.igus.com/motion-plastics-blog/ball-screw-vs-lead-screw/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare rolling contact, sliding contact, nut size and backdriving."
+        },
+        {
+          "title": "Transmissions and Guides | 865 Meche Design",
+          "url": "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Use Screw Transmission and Guides to understand overconstraint and support layout."
+        }
+      ],
+      "sources": [
+        "https://fab.cba.mit.edu/classes/865.24/topics/mechanical_design/mechanical_design/transmissions/",
+        "https://toolbox.igus.com/tech-talks/convert-rotational-to-linear-motion/",
+        "https://toolbox.igus.com/motion-plastics-blog/ball-screw-vs-lead-screw/",
+        "https://www.youtube.com/watch?v=mLCHT2ywk5A"
+      ]
+    },
+    {
+      "node_id": "k:electric-actuator-architectures-mechanical-trade-offs",
+      "type": "knowledge",
+      "name": "Electric actuator architectures: mechanical trade-offs",
+      "summary": "An electric actuator combines a motor with the transmission, bearings and structure needed to turn electrical effort into useful joint motion.",
+      "lesson_md": "## In one sentence\n\nAn electric actuator combines a motor with the transmission, bearings and structure needed to turn electrical effort into useful joint motion.\n\n![ODRI module subassemblies including motor rotor, stator, encoder, pulleys and bearing-equipped shells](/img/lessons/knowledge_mechanisms_actuation-electric-architectures.webp)\n*The motor is only one part of the joint assembly. Source: [ODRI assembly guide](https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md), BSD 3-Clause License.*\n\n## Why it matters for us\n\n- **A command protocol is not a mechanism:** choosing a motor family does not decide how its shaft supports or moves a robot link.\n- **Packaging carries the load:** ODRI's assembly includes bearing-equipped shells, a motor, transmission and encoder.\n- **Compare operating points:** motor torque and speed must suit the load through the selected transmission, not merely look impressive separately.\n\n> **Key idea:** Choose the complete motor-to-load architecture, not a motor name or a single torque specification.\n\n## How it works\n\n- **Begin with the rotating parts:** a rotor turns relative to a stator; electromagnetic forces produce the motor's torque.\n- **Compare brushed and brushless layouts:** brushed motors switch winding current mechanically through brushes; brushless motors require electronic switching.\n- **Consider steppers separately:** successive electrical excitations move their rotor in discrete steps; available torque depends on speed and the driver.\n- **Use a software dependency analogy:** selecting a motor is selecting a library, while the actuator also needs the adapter, runtime and interfaces that make it usable.\n- **Add a transmission when needed:** gearing or belts exchange motor speed for joint torque; direct drive connects the load without a reduction stage.\n- **Work a concrete stepper example:** Oriental Motor describes a 1.8° full step, giving 360 divided by 1.8, or 200 full steps per revolution.\n- **Avoid a false guarantee:** counting commanded steps is not proof of achieved motion; the same reference explains loss of synchronism under unsuitable loads.\n\n```mermaid\nflowchart LR\n  D[\"Electrical drive\"] --> M[\"Motor\"]\n  M --> T[\"Transmission or direct drive\"]\n  T --> J[\"Joint motion\"]\n  B[\"Bearings and housing\"] --> J\n  E[\"Encoder measurement\"] --> D\n  J --> E\n```\n\n## Key terms\n\n- **Rotor**: the motor part that rotates.\n- **Stator**: the motor part treated as stationary relative to its housing.\n- **Transmission**: mechanism that transfers or transforms motor motion.\n- **Encoder**: sensor measuring rotation.\n- **Operating point**: the torque and speed requested together, rather than independent catalogue maxima.\n\n## Before / after\n\n- **Before:** Use FreeCAD to inspect a proposed joint's mounting faces, bearing locations and motor clearance.\n- **After:** Start Motor architecture decision notebook, then Interchangeable motor mounting plate study before Modular rotary joint cartridge.\n\n## Try it in an afternoon\n\n1. **Make a comparison table:** list a brushed motor, brushless motor and stepper; separate motor properties from transmission and support choices.\n2. **Reproduce the step count:** compute 200 full steps per revolution for the documented 1.8° example.\n3. **Annotate ODRI's subassemblies:** trace how the motor, belts, bearings, shell and encoder connect.\n4. **Record missing specifications:** leave mass, torque-speed limits and thermal data unknown unless a specific motor's documentation supplies them.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.9:  Actuation, Gearing, and Friction",
+          "url": "https://www.youtube.com/watch?v=w1kYLT3pETc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See motor anatomy and why robotic joints often add a transmission."
+        },
+        {
+          "title": "Stepper Motor Basics",
+          "url": "https://www.orientalmotor.com/stepper-motors/technology/stepper-motor-basics.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the mechanical step angle, speed-torque curve and missed-step limitation."
+        },
+        {
+          "title": "Details Actuator Module Assembly",
+          "url": "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the complete mechanical packaging of a brushless joint actuator."
+        },
+        {
+          "title": "Actuators and Drive Systems",
+          "url": "https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/9158f91fc935aae58345446fc110f6e7_chapter2.pdf",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Read Chapter 2 for DC motor torque-speed behaviour and single-axis drive architecture."
+        }
+      ],
+      "sources": [
+        "https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/9158f91fc935aae58345446fc110f6e7_chapter2.pdf",
+        "https://www.orientalmotor.com/stepper-motors/technology/stepper-motor-basics.html",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md",
+        "https://support.maxongroup.com/hc/en-us/articles/360013761160-Motor-data-and-simulation",
+        "https://www.youtube.com/watch?v=w1kYLT3pETc"
+      ]
+    },
+    {
+      "node_id": "k:linkages-cams-and-parallel-mechanism-design",
+      "type": "knowledge",
+      "name": "Linkages, cams and parallel mechanism design",
+      "summary": "Linkages and cams turn a chosen input motion into a constrained output path, using connected bars or a shaped contact surface.",
+      "lesson_md": "## In one sentence\n\nLinkages and cams turn a chosen input motion into a constrained output path, using connected bars or a shaped contact surface.\n\n![Two branches of a planar parallel linkage meet at a shared endpoint in an Onshape assembly](/img/lessons/knowledge_mechanisms_actuation-linkages.webp)\n*Two mechanical paths connect the base to the same moving point. Source: [onshape-to-robot](https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html), license unknown.*\n\n## Why it matters for us\n\n- **Geometry can do work for your code:** connected bars can coordinate motion without a separate motor at every hinge.\n- **Remote actuation changes packaging:** a parallelogram can transmit movement while keeping a motor away from the moving endpoint.\n- **A valid pose is not every pose:** closed chains constrain which combinations of joint angles are physically possible.\n\n> **Key idea:** A mechanism is a physical constraint solver; choose the permitted motion before choosing the motor.\n\n## How it works\n\n- **Picture a four-bar:** four rigid bars form a loop, including the fixed base; turning one bar determines the others' compatible positions.\n- **Think of database constraints:** a closed loop must satisfy all connections simultaneously, just as related records must satisfy their shared keys.\n- **Try a parallelogram:** in the ideal geometry, opposite bars stay parallel; the output bar follows the input bar's rotation.\n- **Compare a cam:** a rotating shaped surface pushes a contacting follower, converting the profile into a prescribed movement.\n- **Add parallel branches:** several chains meet at one platform; the chains must agree on the same endpoint position.\n- **Export carefully:** onshape-to-robot breaks a closed chain into a tree, then adds constraints to reconnect it in supported simulation formats.\n\n```mermaid\nflowchart LR\n  I[\"Input rotation\"] --> G[\"Bars or cam profile\"]\n  G --> C[\"Geometric constraints\"]\n  C --> P[\"Output path\"]\n```\n\n## Key terms\n\n- **Link**: one body treated as rigid when describing the mechanism.\n- **Revolute joint**: a hinge allowing rotation about one axis.\n- **Prismatic joint**: a connection allowing sliding along one axis.\n- **Closed chain**: connected links that form a loop rather than a branching tree.\n- **Follower**: the part whose motion is imposed by contact with a cam.\n\n## Before / after\n\n- **Before:** Know basic geometry; use CAD and design for manufacture of robot joints to distinguish a rigid part from an assembly connection.\n- **After:** Explore Four-bar path sketchbook, then Cardboard cam and follower comparison and Parallel-link remote-actuated joint prototype.\n\n## Try it in an afternoon\n\n1. **Draw a hypothetical parallelogram:** use opposite lengths of 100 mm and 50 mm, with the 100 mm base fixed.\n2. **Rotate the input in CAD:** record several compatible poses; compare the input and output bar orientations.\n3. **Change one length:** replace one 50 mm bar with 60 mm; observe why the output no longer follows the same parallelogram rule.\n4. **Watch the cam animation:** identify the driving bar, cam and follower, then describe which part encodes the output motion.",
+      "resources": [
+        {
+          "title": "Cam Mechanism Driven by a Four-Bar Linkage_CAD_model",
+          "url": "https://www.dmg-lib.org/dmglib/handler?video=1160053",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a four-bar linkage drive a cam and identify the moving parts."
+        },
+        {
+          "title": "Handling kinematic loops",
+          "url": "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow a parallel linkage from CAD loop closure to simulation constraints."
+        },
+        {
+          "title": "Robot Mechanisms",
+          "url": "https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/5c238d7e3445337ed40d4af83d9d2239_chapter3.pdf",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Learn joint primitives and serial, closed-loop and parallel mechanisms in MIT chapter 3."
+        },
+        {
+          "title": "Mechatronics of David",
+          "url": "https://www.dlr.de/en/rm/research/robotic-systems/humanoids/david/mechatronics-of-david",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "See asymmetric cams used inside a real variable-stiffness wrist mechanism."
+        }
+      ],
+      "sources": [
+        "https://www.dmg-lib.org/dmglib/handler?video=1160053",
+        "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html",
+        "https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/5c238d7e3445337ed40d4af83d9d2239_chapter3.pdf",
+        "https://www.dlr.de/en/rm/research/robotic-systems/humanoids/david/mechatronics-of-david"
+      ]
+    },
+    {
+      "node_id": "k:tendon-routing-antagonism-and-underactuated-mechanisms",
+      "type": "knowledge",
+      "name": "Tendon routing, antagonism and underactuated mechanisms",
+      "summary": "Tendon mechanisms transmit pulling forces through cables, while routing, opposing springs and shared actuation determine how their joints move.",
+      "lesson_md": "## In one sentence\n\nTendon mechanisms transmit pulling forces through cables, while routing, opposing springs and shared actuation determine how their joints move.\n\n![RUKA finger assembly showing linked printed finger segments and extension springs](/img/lessons/knowledge_mechanisms_actuation-tendons.webp)\n*RUKA uses routed string and extension springs in its printed fingers. Source: [RUKA project](https://ruka-hand.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Motors need not sit in fingers:** tendons carry motion from a remote motor to lightweight moving links.\n- **One motor can coordinate several joints:** this reduces independent commands but makes motion depend on mechanical coupling and contact.\n- **Routing is part of the model:** RUKA documents tube placement and string routing, not just the hand's visible outer shape.\n\n> **Key idea:** A motor command specifies tendon motion, not a guaranteed angle at every joint it crosses.\n\n## How it works\n\n- **Picture a string over a pulley:** shortening the string pulls a joint; a slack string cannot transmit a pushing force.\n- **Provide the return path:** an extension spring can reopen a finger, or an opposing tendon can pull in the other direction.\n- **Think of a shared event handler:** one input triggers several linked responses; you cannot set each response independently without changing the architecture.\n- **Read a real assembly:** RUKA's finger instructions connect three printed joint parts with two dowels, then install two extension springs.\n- **Track the route:** RUKA guides tendons through PTFE tubes, a plastic tubing material; its guide specifies their order through the wrist.\n- **Distinguish control and measurement:** RUKA lacks joint encoders, meaning angle sensors; learned models predict actuator commands from target joint or fingertip positions.\n\n```mermaid\nflowchart LR\n  M[\"Motor pulley\"] --> T[\"Tendon route\"]\n  T --> J[\"Coupled joints\"]\n  J --> S[\"Return springs\"]\n  S --> T\n```\n\n## Key terms\n\n- **Tendon**: a flexible cable or string transmitting tension, meaning pulling force.\n- **Antagonism**: opposing pulls acting on the same mechanism.\n- **Underactuation**: fewer independently controlled actuator inputs than mechanical degrees of freedom.\n- **Slack**: loose tendon length that must be taken up before tension can move the joint.\n- **Degree of freedom**: an independent coordinate describing possible motion.\n\n## Before / after\n\n- **Before:** Read Timing-belt and capstan transmissions and Linkages, cams and parallel mechanism design to understand pulleys and coupled movement.\n- **After:** Start Tendon routing and slack simulator, then compare Antagonistic tendon hinge board with Underactuated tendon differential demonstrator.\n\n## Try it in an afternoon\n\n1. **Copy the documented finger layout:** sketch three joint parts, two connecting dowels and the two return springs; no powered hardware is needed.\n2. **Trace each tendon:** mark every bend and guide from finger attachment to motor pulley; distinguish tendon length from joint angle.\n3. **Model two hypothetical cases:** assign zero slack, then 5 mm slack; the first 5 mm of take-up produces no tension in the second model.\n4. **Compare against RUKA's video:** explain why predicting motor commands for a target fingertip position differs from measuring every joint directly.",
+      "resources": [
+        {
+          "title": "RUKA: Rethinking the Design of Humanoid Hands with Learning",
+          "url": "https://www.youtube.com/watch?v=RXzUEl60vWg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the creators demonstrate a tendon-driven hand and its coupled finger motions."
+        },
+        {
+          "title": "Finger Assembly",
+          "url": "https://ruka.gitbook.io/instructions/hardware/finger-assembly",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Trace string attachments, dowel joints and extension springs in one finger."
+        },
+        {
+          "title": "PTFE Tubes",
+          "url": "https://ruka.gitbook.io/instructions/hardware/ptfe-tubes",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the actual wrist routing schema and current tube-placement video."
+        },
+        {
+          "title": "RUKA: Rethinking the Design of Humanoid Hands with Learning",
+          "url": "https://arxiv.org/abs/2504.13165",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand underactuation and the learned relationship between motor commands and hand configuration."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RXzUEl60vWg",
+        "https://ruka.gitbook.io/instructions/hardware/finger-assembly",
+        "https://ruka.gitbook.io/instructions/hardware/ptfe-tubes",
+        "https://arxiv.org/abs/2504.13165",
+        "https://arxiv.org/html/2504.13165v1",
+        "https://ruka-hand.github.io/"
+      ]
+    },
+    {
+      "node_id": "k:series-elastic-actuator-mechanics",
+      "type": "knowledge",
+      "name": "Series-elastic actuator mechanics",
+      "summary": "A series-elastic actuator places a deliberate spring between the drive and the load, using spring deflection to estimate transmitted force or torque.",
+      "lesson_md": "## In one sentence\n\nA series-elastic actuator places a deliberate spring between the drive and the load, using spring deflection to estimate transmitted force or torque.\n\n![MIT Cog diagram placing a spring between a geared motor and the actuator load](/img/lessons/knowledge_mechanisms_actuation-series-elastic.webp)\n*The spring sits in the force-transmission path, not beside it. Source: [MIT Cog Project](http://www.ai.mit.edu/projects/cog/MotorSystem/actuators.html), license unknown.*\n\n## Why it matters for us\n\n- **Contact changes the problem:** a motor that reaches an angle accurately does not automatically apply a gentle force to an object.\n- **A spring makes load visible:** measuring how far it bends gives information about transmitted effort after the drive.\n- **Compliance has a cost:** MIT's Cog documentation identifies reduced overall bandwidth, meaning limited ability to follow fast changes.\n\n> **Key idea:** Measure both ends of the spring; motor motion alone is no longer the output motion.\n\n## How it works\n\n- **Picture motor, spring, then load:** the motor can move while the load stays still, compressing or twisting the spring between them.\n- **Think of a bounded buffer:** input and output can temporarily differ; the spring stores mechanical energy rather than messages.\n- **Calibrate the relationship:** for an ideal linear spring, doubling its displacement doubles the transmitted force.\n- **Use a toy calculation:** a hypothetical 100 N/m spring compressed by 0.01 m transmits 1 N; these are exercise inputs, not a robot specification.\n- **Close the force loop:** compare measured spring displacement with the displacement corresponding to the desired force, then adjust the drive.\n- **Keep geometry in view:** a rotary spring relates twist to torque; a linear spring relates displacement to force, so their stiffness units differ.\n\n```mermaid\nflowchart LR\n  D[\"Drive\"] --> S[\"Series spring\"]\n  S --> L[\"Load\"]\n  S --> E[\"Deflection measurement\"]\n  E --> C[\"Force controller\"]\n  C --> D\n```\n\n## Key terms\n\n- **Compliance**: willingness to deform under an applied force or torque.\n- **Stiffness**: change in force per displacement, or torque per angular displacement.\n- **Deflection**: the spring's displacement from its unloaded configuration.\n- **Bandwidth**: the range of changing commands an actuator can follow effectively.\n- **Series**: arranged so transmitted effort passes through the spring on its way to the load.\n\n## Before / after\n\n- **Before:** Read Actuator sizing: torque, inertia and thermal duty and Backdrivability, friction and mechanical transparency; distinguish the motor from the joint output.\n- **After:** Explore Spring-in-series resonance notebook and Passive series-spring calibration board before Guarded series-elastic rotary joint.\n\n## Try it in an afternoon\n\n1. **Create a spreadsheet:** enter the hypothetical 100 N/m stiffness and displacements of 0, 0.005 and 0.01 m.\n2. **Calculate force:** obtain 0, 0.5 and 1 N; plot force against displacement to see the calibration slope.\n3. **Separate drive and load:** draw their positions independently and label their difference as spring deflection.\n4. **Inspect the real mechanism:** use IHMC's assembly animation to identify the motor, screw, carriage and spring-related measurement path.",
+      "resources": [
+        {
+          "title": "SEA with motor",
+          "url": "https://www.ihmc.us/series-elastic-actuators/sea-videos/sea-with-motor/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Open the institute-hosted assembly animation to see the complete linear actuator."
+        },
+        {
+          "title": "Actuators",
+          "url": "http://www.ai.mit.edu/projects/cog/MotorSystem/actuators.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand why MIT put a measured spring after the motor and gearbox."
+        },
+        {
+          "title": "Assembly Guide",
+          "url": "https://www.ihmc.us/series-elastic-actuators/assembly-guide/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the SEA 23-23 assembly PDFs and the physical components behind the concept."
+        },
+        {
+          "title": "Soft robotics with Variable Stiffness Actuators: Tough robots for soft human robot interaction",
+          "url": "https://elib.dlr.de/101509/1/Soft%20robotics%20with%20VSA%20-%20Tough%20robots%20for%20soft%20HRI.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the author-hosted explanation of spring deflection, energy storage and compliant drivetrain mechanics."
+        }
+      ],
+      "sources": [
+        "https://www.ihmc.us/series-elastic-actuators/sea-videos/sea-with-motor/",
+        "http://www.ai.mit.edu/projects/cog/MotorSystem/actuators.html",
+        "https://www.ihmc.us/series-elastic-actuators/assembly-guide/",
+        "https://elib.dlr.de/101509/1/Soft%20robotics%20with%20VSA%20-%20Tough%20robots%20for%20soft%20HRI.pdf"
+      ]
+    },
+    {
+      "node_id": "k:variable-stiffness-and-antagonistic-spring-mechanisms",
+      "type": "knowledge",
+      "name": "Variable-stiffness and antagonistic spring mechanisms",
+      "summary": "Variable-stiffness mechanisms physically adjust how strongly a joint resists displacement, using springs, shaped cams or opposing drives rather than only controller gains.",
+      "lesson_md": "## In one sentence\n\nVariable-stiffness mechanisms physically adjust how strongly a joint resists displacement, using springs, shaped cams or opposing drives rather than only controller gains.\n\n![DLR Floating Spring Joint diagram identifying its position motor, stiffness motor, cam disks and rollers](/img/lessons/knowledge_mechanisms_actuation-variable-stiffness.webp)\n*DLR separates joint positioning from adjustment of the spring mechanism. Source: [DLR](https://www.dlr.de/en/rm/research/robotic-systems/humanoids/david/mechatronics-of-david), CC BY-NC-ND 3.0.*\n\n## Why it matters for us\n\n- **Position and softness are separate choices:** the same target angle can have different physical resistance to an unexpected push.\n- **Energy can be stored deliberately:** DLR demonstrates a spring-assisted throwing motion, rather than treating all deformation as an error.\n- **More adjustability needs more mechanism:** DLR uses different actuator arrangements in the hand, wrist and upper arm.\n\n> **Key idea:** Check the passive force–displacement curve, not just the controller's requested stiffness value.\n\n## How it works\n\n- **Start with a series spring:** DLR's Floating Spring Joint places a nonlinear spring mechanism between its main gear and output.\n- **Add a second adjustment:** a large motor sets joint position; a smaller motor changes the stiffness preset of a single spring mechanism.\n- **Shape the conversion:** cams and rollers turn joint twist into compression of a linear spring; the cam profile changes the torque response.\n- **Compare antagonism:** DLR's hand uses two equivalent motors and progressive tendon springs to adjust joint position and stiffness.\n- **Think of changing buffer capacity:** altering physical storage changes what the system can absorb; changing a software gain changes its response policy instead.\n- **Keep damping separate:** stiffness resists displacement; damping resists motion and removes energy, so an elastic joint can still need active vibration control.\n\n```mermaid\nflowchart LR\n  P[\"Position motor\"] --> O[\"Joint equilibrium\"]\n  S[\"Stiffness motor\"] --> C[\"Cam and spring preset\"]\n  O --> F[\"Force versus deflection\"]\n  C --> F\n```\n\n## Key terms\n\n- **Passive stiffness**: mechanical resistance produced by the mechanism itself, rather than feedback corrections alone.\n- **Equilibrium**: the configuration where opposing effects balance.\n- **Progressive spring**: a spring mechanism whose resistance increases more steeply as it deforms.\n- **Cam**: a shaped contact surface that determines another part's movement.\n- **Damping**: an effect that dissipates motion energy rather than storing and returning it.\n- **Radian (rad)**: a unit measuring rotation; rotational stiffness describes torque change per radian.\n\n## Before / after\n\n- **Before:** Study Series-elastic actuator mechanics and Linkages, cams and parallel mechanism design to separate spring behaviour from geometric conversion.\n- **After:** Inspect DLR David variable-stiffness joints and compare how its hand antagonism and Floating Spring Joint achieve adjustability.\n\n## Try it in an afternoon\n\n1. **Read DLR's comparison:** list the positioning motors, stiffness-adjustment motors and spring arrangement for the hand and upper arm.\n2. **Model two hypothetical linear presets:** at 0.1 radian twist, stiffnesses of 10 and 20 N·m/rad produce 1 and 2 N·m; real cam curves can be nonlinear.\n3. **Make one worked distinction:** the documented Floating Spring Joint uses one large motor, one small motor and one spring; it is not two identical antagonistic drives.\n4. **Watch the throwing demonstration:** identify where spring energy is stored and released; distinguish that sequence from merely increasing a position-control gain.",
+      "resources": [
+        {
+          "title": "Video: neoDavid – A humanoid robot with variable stiffness actuation and dexterous manipulation skills",
+          "url": "https://www.dlr.de/en/rm/media/videos/video-neodavid-a-humanoid-robot-with-variable-stiffness-actuation-and-dexterous-manipulation-skills",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See DLR connect variable stiffness to impacts, tool use and energetic motion."
+        },
+        {
+          "title": "Throwing a ball with the DLR VS-Joint",
+          "url": "https://handbookofrobotics.org/view-chapter/21/videodetails/549",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compare stiff and flexible throwing and the timing of spring-energy release."
+        },
+        {
+          "title": "Mechatronics of David",
+          "url": "https://www.dlr.de/en/rm/research/robotic-systems/humanoids/david/mechatronics-of-david",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare antagonistic hand drives, the cam-based wrist and Floating Spring Joint."
+        },
+        {
+          "title": "Soft robotics with Variable Stiffness Actuators: Tough robots for soft human robot interaction",
+          "url": "https://elib.dlr.de/101509/1/Soft%20robotics%20with%20VSA%20-%20Tough%20robots%20for%20soft%20HRI.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Follow the cam, roller and spring mechanics and separate passive stiffness from active damping."
+        }
+      ],
+      "sources": [
+        "https://www.dlr.de/en/rm/media/videos/video-neodavid-a-humanoid-robot-with-variable-stiffness-actuation-and-dexterous-manipulation-skills",
+        "https://handbookofrobotics.org/view-chapter/21/videodetails/549",
+        "https://www.dlr.de/en/rm/research/robotic-systems/humanoids/david/mechatronics-of-david",
+        "https://elib.dlr.de/101509/1/Soft%20robotics%20with%20VSA%20-%20Tough%20robots%20for%20soft%20HRI.pdf"
+      ]
+    },
+    {
+      "node_id": "k:bearings-structures-and-printed-load-paths",
+      "type": "knowledge",
+      "name": "Bearings, structures and printed load paths",
+      "summary": "Bearings guide motion while shafts, housings and fasteners carry loads into the robot frame; printed-part geometry and orientation affect that support.",
+      "lesson_md": "## In one sentence\n\nBearings guide motion while shafts, housings and fasteners carry loads into the robot frame; printed-part geometry and orientation affect that support.\n\n![SKF cross-sections comparing contact angles and load directions in several rolling bearing types](/img/lessons/knowledge_mechanisms_actuation-bearings.webp)\n*Bearing contact geometry determines which load directions it can support. Source: [SKF](https://www.skf.com/us/products/rolling-bearings/principles-of-rolling-bearing-selection/bearing-selection-process/bearing-type-and-arrangement/selection-criteria), license unknown.*\n\n## Why it matters for us\n\n- **The motor is not the whole joint:** force must pass from the moving link through its supports to the robot's base.\n- **Loads have directions:** a bearing suited to sideways force is not automatically suitable for force along the shaft.\n- **Printing adds another design decision:** Prusa explains that orientation and geometry affect the integrity of layer-by-layer printed parts.\n\n> **Key idea:** Trace a continuous load path through every supporting part before increasing the motor's torque.\n\n## How it works\n\n- **Picture a shaft inside bearing rings:** rolling elements allow relative rotation while transmitting load between the shaft and housing.\n- **Follow the reaction:** a loaded link pushes on the shaft; the bearing, housing and mounting connection must react to that force.\n- **Think of an API dependency chain:** a robust service still fails if its downstream dependency fails; a strong motor still needs a suitable support structure.\n- **Choose by load and geometry:** SKF distinguishes radial, axial and combined loads, and explains how contact angle changes axial load capability.\n- **Check real assembly details:** ODRI's module instructions show bearings seated in shells and pulleys rather than floating in empty CAD space.\n- **Prototype the fit:** Prusa warns there is no universal printed clearance; geometry, orientation, calibration and material all affect how parts fit together.\n\n```mermaid\nflowchart LR\n  L[\"Loaded link\"] --> S[\"Shaft\"]\n  S --> B[\"Bearing\"]\n  B --> H[\"Printed housing\"]\n  H --> F[\"Fasteners and frame\"]\n```\n\n## Key terms\n\n- **Radial load**: force acting perpendicular to the shaft axis.\n- **Axial load**: force acting along the shaft axis.\n- **Housing**: the structure supporting a bearing's outer ring.\n- **Contact angle**: the angle describing the load-transmitting contact direction inside a bearing.\n- **Clearance**: deliberately allowed space between mating features.\n\n## Before / after\n\n- **Before:** Know basic forces and dimensions; use FreeCAD to identify shafts, bearing seats and the fixed frame in an assembly.\n- **After:** Apply CAD and design for manufacture of robot joints, then Integrated legged and humanoid joint co-design.\n\n## Try it in an afternoon\n\n1. **Annotate an unpowered joint drawing:** trace one sideways load and one shaft-direction load all the way to the base.\n2. **Use a sourced design allowance:** Prusa suggests at least 0.3 mm initially for movable printed parts; this is not a universal bearing-seat fit.\n3. **Compare a hypothetical fit:** a 10.0 mm moving feature and 10.3 mm opening have 0.3 mm diametral clearance; actual fabrication still needs testing.\n4. **Review print orientation:** rotate the proposed housing in CAD and list which features and load directions change relative to its layers.",
+      "resources": [
+        {
+          "title": "SKFstronger – Bearing Selection Process.",
+          "url": "https://www.youtube.com/watch?v=3WHMEhyQo3Y",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch SKF explain application analysis before choosing a bearing."
+        },
+        {
+          "title": "Modeling with 3D printing in mind",
+          "url": "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand orientation, minimum features and why printed fits need iteration."
+        },
+        {
+          "title": "Selection criteria",
+          "url": "https://www.skf.com/us/products/rolling-bearings/principles-of-rolling-bearing-selection/bearing-selection-process/bearing-type-and-arrangement/selection-criteria",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Match load directions, available space and contact geometry to bearing type."
+        },
+        {
+          "title": "Details Actuator Module Assembly",
+          "url": "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Locate the bearings and supporting shells in an actual open robot joint."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=3WHMEhyQo3Y",
+        "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+        "https://www.skf.com/us/products/rolling-bearings/principles-of-rolling-bearing-selection/bearing-selection-process/bearing-type-and-arrangement/selection-criteria",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/actuator_module_v1/details/details_actuator_module_assembly.md"
+      ]
+    },
+    {
+      "node_id": "k:cad-and-design-for-manufacture-of-robot-joints",
+      "type": "knowledge",
+      "name": "CAD and design for manufacture of robot joints",
+      "summary": "Robot-joint CAD describes geometry and allowed movement, while design for manufacture makes that model buildable, assemblable and adjustable in the real world.",
+      "lesson_md": "## In one sentence\n\nRobot-joint CAD describes geometry and allowed movement, while design for manufacture makes that model buildable, assemblable and adjustable in the real world.\n\n![Onshape robot assembly screenshot marking the top-level assembly, links and joint naming conventions](/img/lessons/knowledge_mechanisms_actuation-cad.webp)\n*A robot assembly needs explicit links and joint conventions, not just attractive surfaces. Source: [onshape-to-robot](https://onshape-to-robot.readthedocs.io/en/latest/design.html), license unknown.*\n\n## Why it matters for us\n\n- **A mesh is not a mechanism:** a printable shape does not by itself specify which parts move together or where the rotation axis lies.\n- **Changes should propagate:** a parameter-driven model makes repeated dimensional changes easier than redrawing each related feature.\n- **Fabrication has constraints:** Prusa documents overhangs, thin walls, orientation and clearance as design decisions, not cosmetic finishing details.\n\n> **Key idea:** Treat the CAD assembly as an executable design specification, then test the assumptions fabrication cannot guarantee.\n\n## How it works\n\n- **Define geometry:** sketches and dimensions describe a part; an assembly combines those parts and specifies their connections.\n- **Think of a build system:** shared parameters are inputs, features are dependent build steps, and an export is an artifact rather than the editable source.\n- **Constrain movement explicitly:** a revolute connection allows rotation, while a fixed connection makes two components move together.\n- **Plan the physical process:** examine whether the chosen printing orientation needs supports and whether mating parts have deliberate clearance.\n- **Name robot joints for export:** onshape-to-robot interprets a revolute mate named `dof_elbow` as a robot joint named `elbow`.\n- **Keep tool conventions separate:** that naming rule belongs to onshape-to-robot; it is not a universal rule imposed on every CAD application.\n- **Handle loops deliberately:** a closed linkage needs additional closing constraints, not just a tree-shaped robot description.\n\n```mermaid\nflowchart LR\n  P[\"Dimensions\"] --> G[\"Part geometry\"]\n  G --> A[\"Assembly joints\"]\n  A --> M[\"Manufacturing review\"]\n  M --> T[\"Fit test\"]\n  T --> P\n```\n\n## Key terms\n\n- **CAD**: computer-aided design, used to describe and inspect geometry.\n- **Parameter**: an editable value that drives dimensions or feature choices.\n- **Assembly**: connected components with specified relative positions and movement.\n- **Mate**: a CAD relationship constraining how components connect.\n- **Clearance**: intentional space that lets real manufactured components fit or move.\n\n## Before / after\n\n- **Before:** Read Bearings, structures and printed load paths and identify the moving shaft, supporting bearings and fixed housing.\n- **After:** Use Linkages, cams and parallel mechanism design and Integrated legged and humanoid joint co-design to design complete moving assemblies.\n\n## Try it in an afternoon\n\n1. **Build a minimal hinge assembly:** model a fixed bracket and moving bar, then give their connection one rotational degree of freedom.\n2. **Change a shared dimension:** verify that dependent geometry updates; keep the editable CAD file as well as the exported mesh.\n3. **Work through the exporter example:** rename a hypothetical revolute mate `dof_elbow`; predict the exported joint name `elbow` and check the documented axis convention.\n4. **Review manufacturability:** identify supports, mating clearance and assembly access; write down which dimensions need a test piece rather than assuming perfect printing.",
+      "resources": [
+        {
+          "title": "FreeCAD 1.0 Assembly in 30 minutes Beginners Crash Course / Tutorial 2025",
+          "url": "https://www.youtube.com/watch?v=p2yDGlv5wI0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the assembly workflow using a fixed base, bracket and joints."
+        },
+        {
+          "title": "Modeling with 3D printing in mind",
+          "url": "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Translate geometry into printable features, suitable orientation and testable fits."
+        },
+        {
+          "title": "Design-time considerations",
+          "url": "https://onshape-to-robot.readthedocs.io/en/latest/design.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See how assembly structure, mate names, axes and limits become a robot model."
+        },
+        {
+          "title": "Handling kinematic loops",
+          "url": "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Learn why parallel mechanisms need loop-closing constraints after export."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=p2yDGlv5wI0",
+        "https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135",
+        "https://onshape-to-robot.readthedocs.io/en/latest/design.html",
+        "https://onshape-to-robot.readthedocs.io/en/latest/kinematic_loops.html"
+      ]
+    },
+    {
+      "node_id": "k:hydraulic-and-pneumatic-transmission-mechanics",
+      "type": "knowledge",
+      "name": "Hydraulic and pneumatic transmission mechanics",
+      "summary": "Hydraulic and pneumatic systems transmit power through pressurized liquid or gas, then turn pressure and flow into motion at an actuator.",
+      "lesson_md": "## In one sentence\n\nHydraulic and pneumatic systems transmit power through pressurized liquid or gas, then turn pressure and flow into motion at an actuator.\n\n![Hydraulic cylinders and their connecting hoses mounted on an excavator arm](/img/lessons/knowledge_mechanisms_actuation-fluid-power.webp)\n*Cylinders, hoses and the supply system form one power-transmission chain. Source: [National Fluid Power Association](https://www.nfpa.com/what-is-fluid-power-0/14333467044), license unknown.*\n\n## Why it matters for us\n\n- **Linear motion comes naturally:** a cylinder moves a piston directly rather than requiring a rotating motor and screw.\n- **The supply is part of the robot:** pumps or compressors, valves and hoses matter alongside the moving actuator.\n- **Fluid actuation includes muscles:** Festo's DMSP contracts when pressurized, unlike a rigid cylinder with a sliding piston.\n\n> **Key idea:** Pressure determines available effort, while displaced fluid and flow determine movement; neither quantity alone describes the system.\n\n## How it works\n\n- **Picture two connected syringes:** pushing one plunger moves liquid into the other; the National Fluid Power Association uses this example to explain hydraulic transmission.\n- **Change the piston area:** a larger receiving piston can support more force at the same pressure, but moves less distance for the same displaced volume.\n- **Follow a valve:** it routes fluid toward an actuator chamber or away from it, changing the movement direction.\n- **Think of network traffic:** pressure resembles a driving difference and flow resembles throughput; a command still needs a complete transport path.\n- **Distinguish the fluids:** hydraulics commonly uses oil; pneumatics commonly uses compressed air and has more cushioning because the gas compresses.\n- **Compare a pneumatic muscle:** Festo describes flexible tubing reinforced with diamond-pattern fibres, which contracts under pressure and pulls in one direction.\n\n```mermaid\nflowchart LR\n  P[\"Pump or compressor\"] --> V[\"Valve\"]\n  V --> H[\"Hose and chamber\"]\n  H --> A[\"Piston or muscle\"]\n  A --> L[\"Mechanical load\"]\n```\n\n## Key terms\n\n- **Pressure**: force distributed over an area.\n- **Flow rate**: fluid volume passing a point per unit time.\n- **Piston**: a moving surface inside a cylinder that separates chambers and receives fluid force.\n- **Double-acting cylinder**: a cylinder driven by pressure on either side of its piston.\n- **Compressibility**: how much a material's volume changes under pressure.\n\n## Before / after\n\n- **Before:** Read Actuator sizing: torque, inertia and thermal duty; identify the load, required motion and complete operating cycle.\n- **After:** Explore Soft pneumatic actuators and compliant-body fabrication and Tendon routing, antagonism and underactuated mechanisms.\n\n## Try it in an afternoon\n\n1. **Reproduce NFPA's syringe calculation:** a 1 square-inch piston supporting 10 pounds-force needs 10 psi of pressure to balance that load.\n2. **Double the receiving diameter:** the area becomes four times larger; balancing the same load needs 2.5 psi, with one-quarter the travel per input stroke.\n3. **Sketch the complete system:** include the pressure source, valve, hoses, actuator and return or exhaust path.\n4. **Compare the robot paper:** identify why its authors combine remote tendons with pneumatic muscles rather than mounting motors directly in each moving joint.\n\n> **Watch out:** Keep this exercise on paper; stored pressure can move an actuator unexpectedly even after an electrical command stops.",
+      "resources": [
+        {
+          "title": "Pneumatic Cylinder Working explained - with Animation",
+          "url": "https://www.youtube.com/watch?v=R-OBtVCPjMc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See piston chambers, directional valves and single- versus double-acting motion."
+        },
+        {
+          "title": "What is Fluid Power?",
+          "url": "https://www.nfpa.com/what-is-fluid-power-0/14333467044",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Work through the association’s connected-syringe example and compare liquid and air power."
+        },
+        {
+          "title": "Fluidic muscle DMSP",
+          "url": "https://www.festo.com/us/en/p/fluidic-muscle-id_DMSP",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect a real reinforced pneumatic muscle and its single-acting pulling principle."
+        },
+        {
+          "title": "Safe & Accurate at Speed with Tendons: A Robot Arm for Exploring Dynamic Motion",
+          "url": "https://www.roboticsproceedings.org/rss20/p099.html",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study a four-degree-of-freedom arm combining tendons and pneumatic muscles."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=R-OBtVCPjMc",
+        "https://www.nfpa.com/what-is-fluid-power-0/14333467044",
+        "https://www.festo.com/us/en/p/fluidic-muscle-id_DMSP",
+        "https://www.roboticsproceedings.org/rss20/p099.html"
+      ]
+    },
+    {
+      "node_id": "k:soft-pneumatic-actuators-and-compliant-body-fabrication",
+      "type": "knowledge",
+      "name": "Soft pneumatic actuators and compliant-body fabrication",
+      "summary": "Soft pneumatic actuators turn chamber inflation into bending or extension by combining elastic walls, carefully chosen geometry and constraints on stretching.",
+      "lesson_md": "## In one sentence\n\nSoft pneumatic actuators turn chamber inflation into bending or extension by combining elastic walls, carefully chosen geometry and constraints on stretching.\n\n![Soft Robotics Toolkit exploded diagram showing a row of PneuNet chambers above elastomer layers and an embedded paper layer](/img/lessons/knowledge_mechanisms_actuation-soft-pneumatic.webp)\n*The chambered body bends above a paper-reinforced, strain-limiting base. Source: [Soft Robotics Toolkit](https://softroboticstoolkit.com/book/pneunets-design), license unknown.*\n\n## Why it matters for us\n\n- **The body is the mechanism:** wall thickness and material behaviour replace much of the rigid linkage and gearbox design.\n- **A gripping shape can emerge from inflation:** Harvard's PneuNet gripper video shows soft fingers bending around an object.\n- **Fabrication affects behaviour:** a convincing CAD shape is not enough; the chambers and bonded base must form a usable sealed actuator.\n\n> **Key idea:** Design the constraint on expansion, not just the empty space that holds air.\n\n## How it works\n\n- **Picture connected air chambers:** the PneuNets design places them in a row inside an elastic material, with thin walls between neighbouring chambers.\n- **Inflate unevenly:** thin, compliant regions expand more readily than regions that resist stretching.\n- **Restrict the base:** the documented design embeds paper in an elastomer base; this strain-limiting layer prevents equal lengthening on both sides.\n- **Produce bending:** the expanding chamber side grows longer than the restricted base, curving the actuator rather than simply stretching it straight.\n- **Think of configuration-driven software:** changing the chamber layout or material changes the response to the same pressure input, even with identical control code.\n- **Cast and bond:** the toolkit molds the main body and base separately, then uses uncured elastomer to join them.\n- **Measure the result:** the testing guide records tip trajectories and separately measures delivered force; those are different performance questions.\n\n```mermaid\nflowchart LR\n  P[\"Air pressure\"] --> C[\"Chamber expansion\"]\n  C --> D[\"Unequal stretching\"]\n  D --> B[\"Bending\"]\n  B --> T[\"Tip and force tests\"]\n```\n\n## Key terms\n\n- **Elastomer**: a rubber-like material capable of substantial elastic deformation.\n- **PneuNet**: a pneumatic network of connected chambers that deforms when pressurized.\n- **Strain**: change in length relative to the starting length.\n- **Strain-limiting layer**: a layer that restricts stretching on one side of the actuator.\n- **Curing**: the process by which the cast material sets into its usable solid form.\n\n## Before / after\n\n- **Before:** Study Hydraulic and pneumatic transmission mechanics and CAD and design for manufacture of robot joints.\n- **After:** Explore PneuNet chamber geometry sketch study, Soft actuator mold and seal coupon kit and Artificial muscles: electrohydraulic and smart-material actuation.\n\n## Try it in an afternoon\n\n1. **Trace the documented cross-section:** label one chamber, the thin wall beside it and the paper-reinforced base.\n2. **Compare two paper designs:** keep chamber height fixed in one; make the separating walls thinner in the other and predict the easier-expanding region.\n3. **Replicate the test plan:** the toolkit records three inflation–deflation cycles to estimate a tip trajectory; specify how you would compare those three traces.\n4. **Write fabrication checkpoints:** separate mold preparation, casting, bonding and curing; use the published testing method to define what a successful specimen must demonstrate.",
+      "resources": [
+        {
+          "title": "Soft Robotic Gripper",
+          "url": "https://www.youtube.com/watch?v=csFR52Z3T0I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the original Harvard group demonstrate pneumatic soft fingers gripping objects."
+        },
+        {
+          "title": "Design",
+          "url": "https://softroboticstoolkit.com/book/pneunets-design",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand chamber walls, a paper strain-limiting layer and the two molded parts."
+        },
+        {
+          "title": "Fabrication",
+          "url": "https://softroboticstoolkit.com/book/pneunets-fabrication",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow the actual casting, bonding and curing sequence."
+        },
+        {
+          "title": "Testing",
+          "url": "https://softroboticstoolkit.com/book/pneunets-testing",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish bending-trajectory measurements from force-capacity measurements."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=csFR52Z3T0I",
+        "https://softroboticstoolkit.com/book/pneunets-design",
+        "https://softroboticstoolkit.com/book/pneunets-fabrication",
+        "https://softroboticstoolkit.com/book/pneunets-testing"
+      ]
+    },
+    {
+      "node_id": "k:artificial-muscles-electrohydraulic-and-smart-material-actuation",
+      "type": "knowledge",
+      "name": "Artificial muscles: electrohydraulic and smart-material actuation",
+      "summary": "Artificial muscles create motion through deforming materials or fluid-filled structures, with different electrical, thermal and mechanical requirements from conventional rotary motors.",
+      "lesson_md": "## In one sentence\n\nArtificial muscles create motion through deforming materials or fluid-filled structures, with different electrical, thermal and mechanical requirements from conventional rotary motors.\n\n![ETH Zurich diagram showing the layered HALVE artificial muscle and its oil-filled pouch](/img/lessons/knowledge_mechanisms_actuation-artificial-muscles.webp)\n*HALVE separates the load-bearing shell, electrode and electrical-insulation layers. Source: [ETH Zurich Soft Robotics Lab](https://srl.ethz.ch/platforms/ems/halve.html), license unknown.*\n\n## Why it matters for us\n\n- **A joint need not start with rotation:** an actuator can contract, bend or fold directly, then connect to a larger mechanism.\n- **Actuator families are not interchangeable:** an electrohydraulic pouch and a heat-driven shape-memory element need different models and driving hardware.\n- **Published context matters:** HALVE's reduced voltage is relative to earlier electrohydraulic muscles, not an ordinary low-voltage electronics interface.\n\n> **Key idea:** Compare complete force, motion and energy-conversion mechanisms, not the shared label “artificial muscle.”\n\n## How it works\n\n- **Picture HALVE's layered pouch:** it contains oil, electrodes and an insulating material designed to store electrical energy.\n- **Apply electrical attraction:** opposite electrodes draw together, displacing the oil into the remaining pouch volume and changing the actuator's shape.\n- **Separate material roles:** ETH's design uses a structural shell for mechanical support and a high-permittivity layer for the electrical function.\n- **Think of hardware backends:** two implementations may expose a similar “contract” operation while needing completely different power sources and state models.\n- **Compare shape-memory actuation:** the 2025 microactuator paper uses temperature-driven bending of a shape-memory-alloy film combined with magnetic latching.\n- **Keep measurement conditions attached:** ETH reports HALVE operation at 1100 V; that number describes a particular research design, not every artificial muscle.\n\n```mermaid\nflowchart LR\n  E[\"Electrical input\"] --> A[\"Electrode attraction\"]\n  A --> F[\"Oil displacement\"]\n  F --> C[\"Pouch contraction\"]\n  C --> L[\"Load movement\"]\n```\n\n## Key terms\n\n- **Electrohydraulic**: combining an electrical effect with fluid movement to create mechanical motion.\n- **Dielectric**: an electrically insulating material used between conductive regions.\n- **Permittivity**: a property describing how a material responds to an electric field.\n- **Stroke**: the useful travel or change in length of an actuator.\n- **Shape-memory alloy**: a metal whose temperature-dependent material behaviour can produce a designed shape change.\n\n## Before / after\n\n- **Before:** Study Soft pneumatic actuators and compliant-body fabrication; distinguish deformation of a chamber from rotation of a rigid joint.\n- **After:** Build Artificial muscle force-stroke evidence atlas before Electrohydraulic pouch mechanics model or Thermal magnetic folding mechanism digital twin.\n\n## Try it in an afternoon\n\n1. **Build an evidence table:** compare HALVE with the shape-memory microactuator using input energy, moving material, output motion and reset mechanism.\n2. **Work one reported comparison:** 1100 V is 1.1 kV; label it as HALVE's published driving voltage rather than interpreting “low-voltage” as hobby-safe.\n3. **Trace the gripper video:** identify the deforming muscles, mechanical connection and lifted object; separate the actuator from its power supply.\n4. **Mark missing quantities unknown:** do not rank force or efficiency unless both sources report comparable loads, strokes and measurement conditions.\n\n> **Watch out:** Keep this exercise digital; 1100 V still requires specialist high-voltage engineering and is not a beginner breadboard experiment.",
+      "resources": [
+        {
+          "title": "Untethered gripper driven by HALVE actuators grasping a PLA block.",
+          "url": "https://www.youtube.com/watch?v=EmCRqflcPsM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See ETH’s actual electrohydraulic muscles contract to operate an untethered gripper."
+        },
+        {
+          "title": "Artificial muscles – lighter, safer, more robust",
+          "url": "https://ethz.ch/en/news-and-events/eth-news/news/2024/01/artificial-muscles-lighter-softer-more-robust.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the 2024 pouch design, layered shell and reason for reducing voltage."
+        },
+        {
+          "title": "Low-voltage electrohydraulic actuators for untethered robotics",
+          "url": "https://srl.ethz.ch/platforms/ems/halve.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the official layer diagram and the published 1100 V operating point."
+        },
+        {
+          "title": "Origami-inspired reprogrammable microactuator system",
+          "url": "https://www.nature.com/articles/s41378-025-01026-x",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Compare electrohydraulic contraction with temperature-driven shape-memory bending and magnetic latching."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=EmCRqflcPsM",
+        "https://ethz.ch/en/news-and-events/eth-news/news/2024/01/artificial-muscles-lighter-softer-more-robust.html",
+        "https://srl.ethz.ch/platforms/ems/halve.html",
+        "https://www.nature.com/articles/s41378-025-01026-x"
+      ]
+    },
+    {
+      "node_id": "k:integrated-legged-and-humanoid-joint-co-design",
+      "type": "knowledge",
+      "name": "Integrated legged and humanoid joint co-design",
+      "summary": "Joint co-design chooses the actuator, transmission, structure and packaging together so a leg or humanoid can deliver the intended motion as a complete machine.",
+      "lesson_md": "## In one sentence\n\nJoint co-design chooses the actuator, transmission, structure and packaging together so a leg or humanoid can deliver the intended motion as a complete machine.\n\n![ToddlerBot mechatronic design figure showing joint locations, body structure and integrated electronics](/img/lessons/knowledge_mechanisms_actuation-joint-co-design.webp)\n*ToddlerBot documents active joints alongside the sensors, electronics and body they must fit. Source: [ToddlerBot project](https://toddlerbot.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **A good motor can make a poor leg:** it still needs supports, a usable range of motion and a transmission that fits the body.\n- **Repeated units need integration details:** ODRI reuses actuator cores across different structures rather than treating every joint as an unrelated mechanism.\n- **Assembly and maintenance are design inputs:** ToddlerBot publishes assembly resources alongside its learning and control software.\n\n> **Key idea:** Evaluate a candidate inside its complete joint envelope and task, not as an isolated catalogue component.\n\n## How it works\n\n- **Start from motion and load:** identify what the foot or hand must do before deciding where motors and supporting structures belong.\n- **Inspect a concrete leg:** ODRI's three-degree-of-freedom leg uses three actuator cores in hip and leg subassemblies.\n- **Follow packaging consequences:** its documentation includes an alternative hip shell specifically to simplify wire routing.\n- **Check travel limits:** the same leg documents optional mechanical stops to prevent repeated rotations from winding up wires.\n- **Think of full-stack performance:** optimizing one function cannot fix a bottleneck in another layer; motor, transmission, structure and control share a system budget.\n- **Compare complete platforms:** ToddlerBot's published design shows 30 active degrees of freedom, with six per leg, rather than only a standalone servo.\n- **Keep validation separate:** a model that fits together still needs load, motion and repeated-operation tests; a rendered walking pose is not endurance evidence.\n\n```mermaid\nflowchart LR\n  T[\"Task and motion\"] --> A[\"Actuator and ratio\"]\n  A --> S[\"Supports and structure\"]\n  S --> P[\"Cables and packaging\"]\n  P --> V[\"System tests\"]\n  V --> T\n```\n\n## Key terms\n\n- **Co-design**: choosing interacting subsystems together rather than independently.\n- **Joint envelope**: the space available for a joint and its moving components.\n- **Actuator core**: reusable internal components that can be integrated into different surrounding structures.\n- **Range of motion**: the joint positions mechanically available without collision or exceeding travel limits.\n- **Distal mass**: mass farther along a limb, away from the robot's body.\n\n## Before / after\n\n- **Before:** Study Actuator sizing: torque, inertia and thermal duty, Bearings, structures and printed load paths and Backdrivability, friction and mechanical transparency.\n- **After:** Try Humanoid knee packaging teardown in CAD, then Equal-envelope leg joint Pareto study before Captive single-leg actuator test stand.\n\n## Try it in an afternoon\n\n1. **Read ODRI's component table:** identify three repeated cores and separate them from hip shells, upper leg and lower leg parts.\n2. **Work a documented mass subtotal:** three 95 g cores total 285 g; the listed complete leg is 485 g, leaving 200 g for everything else.\n3. **List packaging checks:** include bearing support, wire routing, joint stops and assembly sequence for one hypothetical joint replacement.\n4. **Compare with ToddlerBot:** use its leg assembly and design figure to explain why a six-joint humanoid leg is more than six unrelated motor selections.",
+      "resources": [
+        {
+          "title": "ToddlerBot: Open-Source ML-Compatible Humanoid Platform for Loco-Manipulation",
+          "url": "https://www.youtube.com/watch?v=A43QxHSgLyM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See an integrated humanoid whose actuator and body design supports locomotion and manipulation."
+        },
+        {
+          "title": "Leg 3dof v1",
+          "url": "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/leg_3dof_v1/README.md",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect repeated cores, shell variants, component masses and cable-protecting travel stops."
+        },
+        {
+          "title": "Assembly",
+          "url": "https://hshi74.github.io/toddlerbot/hardware/04_assembly_manual.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow the humanoid’s leg assembly resources and version-specific integration guidance."
+        },
+        {
+          "title": "ToddlerBot: Open-Source ML-Compatible Humanoid Platform for Loco-Manipulation",
+          "url": "https://arxiv.org/abs/2502.00893",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how the creators connect mechatronic design, reproducibility and policy learning."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=A43QxHSgLyM",
+        "https://raw.githubusercontent.com/open-dynamic-robot-initiative/open_robot_actuator_hardware/master/mechanics/leg_3dof_v1/README.md",
+        "https://hshi74.github.io/toddlerbot/hardware/04_assembly_manual.html",
+        "https://arxiv.org/abs/2502.00893",
+        "https://toddlerbot.github.io/"
+      ]
+    }
+  ]
+}
