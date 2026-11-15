@@ -783,6 +783,187 @@
         "https://github.com/haosulab/ManiSkill/blob/main/mani_skill/envs/tasks/tabletop/pick_cube.py",
         "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html"
       ]
+    },
+    {
+      "node_id": "p:synthetic-label-quality-auditor",
+      "type": "project",
+      "name": "Synthetic label quality auditor",
+      "summary": "Audit synthetic object annotations by overlaying segmentation and bounding boxes, then flag empty captures, mismatched labels, and occlusion mistakes.",
+      "lesson_md": "## In one sentence\n\nAudit synthetic object annotations by overlaying segmentation and bounding boxes, then flag empty captures, mismatched labels, and occlusion mistakes.\n\n![Isaac Sim Data Visualization Writer displaying synthetic annotation overlays](/img/lessons/projects_simulation_2-label-auditor.webp)\n*The official recorder includes a Data Visualization Writer for inspecting annotations; the auditor adds explicit pass/fail checks. Source: [Official source](https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_recorder.html), license unknown.*\n\n## What you will learn\n\n- **Synthetic labels** are annotations generated from a simulated scene rather than drawn by a person; they still need a correctness contract.\n- **Segmentation** assigns pixel labels; a **Bounding box** encloses an object's image region, and **Occlusion** means another surface hides part of it.\n- **Think of testing an API response:** Valid JSON does not prove that the returned IDs, coordinates, and image belong together.\n\n> **Key idea:** Audit the meaning and alignment of labels, not just whether annotation files exist.\n\n## What you need\n\n- **Complete Virtual sensor truth-versus-noise wall first:** Reuse its synchronized color images and label views before adding automated annotation checks.\n- **Use Isaac Sim Replicator:** Its Synthetic Data Recorder requires semantically labelled assets for annotation features; its Data Visualization Writer can draw inspection overlays.\n- **Prepare a small object scene:** Add a movable occluder, a fixed camera, and explicit object/class names; use existing rendering compute, with additional cost unknown.\n\n## Steps\n\n1. **Define annotation semantics:** Decide whether each box covers visible pixels or the complete object projection; document class labels, instance identity, and image-coordinate conventions.\n2. **Capture deliberate cases:** Record visible, partially hidden, fully hidden, and out-of-view objects, plus a genuinely empty scene and a failed capture.\n3. **Overlay the labels:** Display color, segmentation, and boxes for the same camera and frame; preserve raw arrays and identifier mappings.\n4. **Implement consistency checks:** Validate dimensions, file pairing, known labels, box bounds, and the expected relationship between each mask and its box convention.\n5. **Inject controlled mistakes:** Swap frame labels, remove a class mapping, or shift a box; check that the auditor reports each corruption without rejecting valid occlusion.\n6. **Demo the audit gallery:** Show accepted frames, rejected corruptions, legitimate empty scenes, and loading errors with separate reasons and reproducible capture settings.\n\n```mermaid\nflowchart LR\n  A[Labelled scene] --> B[Synchronized capture]\n  B --> C[Overlay masks and boxes]\n  B --> D[Consistency checks]\n  C --> E[Review gallery]\n  D --> E\n```\n\n**Derive a visible-pixel box:** With NumPy imported as `np`, this returns inclusive pixel endpoints for one object mask; an empty mask has no such box.\n\n```python\nys, xs = np.nonzero(object_mask)\nbox = None if xs.size == 0 else (\n    xs.min(), ys.min(), xs.max(), ys.max()\n)\n```\n\n## Common pitfalls\n\n- **Hidden is not missing:** No visible pixels can be correct for a fully occluded object; a full-projection box follows a different contract.\n- **Empty is not unreadable:** A valid background-only image differs from an absent file, failed reset, missing sensor output, or malformed annotation.\n- **Avoid rendering mismatches:** Replicator documents temporal artifacts after scene changes; preserve capture timing and rendering settings when diagnosing apparent label errors.\n\n## When it's done\n\n- **Ship a counterexample gallery and machine-readable report:** Every rejected frame has a reason; every accepted empty or occluded case has an explicit expectation.",
+      "resources": [
+        {
+          "title": "Synthetic Data Pipeline Part 3: Synthetic Data Recording in Omniverse Isaac Sim",
+          "url": "https://www.youtube.com/watch?v=V1lVSz9P9LI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See NVIDIA's historical synthetic-recording workflow; use the current recorder documentation for UI details."
+        },
+        {
+          "title": "Synthetic Data Recorder",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_recorder.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Configure recording and inspect the Data Visualization Writer overlays."
+        },
+        {
+          "title": "Getting Started Scripts",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_getting_started.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Control capture timing, label the scene, and wait for completed output before auditing."
+        },
+        {
+          "title": "Annotators Information",
+          "url": "https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator/annotators_details.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Identify the official annotation-reference entry point before choosing the box and mask contract."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=V1lVSz9P9LI",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_recorder.html",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_getting_started.html",
+        "https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator/annotators_details.html"
+      ]
+    },
+    {
+      "node_id": "p:twin-appearance-versus-physics-ablation",
+      "type": "project",
+      "name": "Twin appearance-versus-physics ablation",
+      "summary": "Compare mesh, photo-matched, and Gaussian-splat twins under identical scripted interactions, scoring image similarity, geometry alignment, and motion agreement separately.",
+      "lesson_md": "## In one sentence\n\nCompare mesh, photo-matched, and Gaussian-splat twins under identical scripted interactions, scoring image similarity, geometry alignment, and motion agreement separately.\n\n![Real-to-sim project figure showing reconstructed robot manipulation environments](/img/lessons/projects_simulation_2-twin-ablation.webp)\n*The published real-to-sim setup combines reconstructed appearance and dynamics; this project tests their contributions separately. Source: [Official source](https://real2sim-eval.github.io/), license unknown.*\n\n## What you will learn\n\n- **A digital twin** is a simulated counterpart of a real setup; matching its photograph does not establish matching motion or contact.\n- **Gaussian splatting** renders scenes using many small, soft-edged 3D elements; the collision representation still needs to be specified separately.\n- **An ablation** changes one component while holding others fixed, like disabling a compiler optimization to measure what it actually contributes.\n\n> **Key idea:** Score appearance, geometry, and interaction independently so prettier images cannot conceal worse physics.\n\n## What you need\n\n- **Build on Desk twin alignment before beauty contest:** Reuse aligned cameras, object poses, and reference measurements before comparing rendering methods.\n- **Prepare three appearance variants:** Use a conventional mesh, a photo-matched version, and a splat-rendered version of the same modest interaction scene.\n- **Use published artifacts as references:** The real2sim-eval project separates color alignment from physics optimization and releases reconstruction/evaluation workflows; adapting them remains project work.\n- **Keep the experiment offline:** Use recorded robot motion and existing compute; reconstruction effort and extra GPU costs are unknown.\n\n## Steps\n\n1. **Freeze the reference:** Select recorded images, object geometry measurements, initial state, and one robot command sequence; reserve another sequence for testing.\n2. **Align the variants:** Match camera calibration, scene scale, object poses, and timestamps; record unsupported rendering or collision features rather than silently substituting them.\n3. **Isolate appearance:** Replay identical commands with identical collision geometry and physical parameters while switching mesh, photo-matched, and splat rendering.\n4. **Isolate physics:** Keep rendering fixed while comparing initial and calibrated physical parameters; preserve mass, contact, and solver configuration changes explicitly.\n5. **Score separate axes:** Measure image error on valid aligned pixels, landmark-position error, and object-trajectory error against the reference; show held-out results separately.\n6. **Present synchronized replays:** Show all appearance variants, both physics settings, and their labelled plots; explain which improvements survive the held-out interaction.\n\n```mermaid\nflowchart LR\n  A[Aligned reference] --> B[Fixed command replay]\n  B --> C[Appearance variants]\n  B --> D[Physics variants]\n  C --> E[Separate error scores]\n  D --> E\n  E --> F[Held-out comparison]\n```\n\n**Keep trajectory error explicit:** Here both arrays contain matched object positions in the same coordinate frame; this computes mean position distance, not visual similarity.\n\n```python\nif len(predicted_xyz) == 0:\n    raise ValueError(\"No matched trajectory samples\")\ndelta = predicted_xyz - reference_xyz\nmean_position_error = np.linalg.norm(delta, axis=-1).mean()\n```\n\n## Common pitfalls\n\n- **Do not swap whole simulators casually:** Changing the renderer and physics engine together prevents attributing an improvement to either one.\n- **Distinguish replay from policy evaluation:** A fixed script isolates interaction differences; it does not measure a camera-driven policy's closed-loop success.\n- **Keep failures visible:** Empty views, missing references, failed asset loads, invalid coordinates, and unsuccessful resets are not zero-error results.\n\n## When it's done\n\n- **Publish the controlled comparison and limitations:** Feed independently measured appearance and motion evidence into Digital twin policy-ranking audit instead of choosing the prettiest twin.",
+      "resources": [
+        {
+          "title": "T-block pushing - w/o physics optimization vs. w/ physics optimization vs. real world",
+          "url": "https://real2sim-eval.github.io/files/phys-concat-T.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors compare physics variants under the same robot trajectory."
+        },
+        {
+          "title": "Real-to-Sim Robot Policy Evaluation with Gaussian Splatting Simulation of Soft-Body Interactions",
+          "url": "https://real2sim-eval.github.io/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Inspect reconstructed scenes and separate color-alignment and physics-optimization demonstrations."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://simpler-env.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand photo matching and control-gap calibration as distinct interventions."
+        },
+        {
+          "title": "Real-to-Sim Robot Policy Evaluation with Gaussian Splatting Simulation of Soft-Body Interactions",
+          "url": "https://github.com/kywind/real2sim-eval",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect mesh/splat alignment and the released replay workflow before attempting the ablation."
+        },
+        {
+          "title": "Real-to-Sim Robot Policy Evaluation with Gaussian Splatting Simulation of Soft-Body Interactions",
+          "url": "https://arxiv.org/abs/2511.04665",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original twin-evaluation claim without treating it as proof of your own variants."
+        }
+      ],
+      "sources": [
+        "https://real2sim-eval.github.io/files/phys-concat-T.mp4",
+        "https://real2sim-eval.github.io/",
+        "https://simpler-env.github.io/",
+        "https://github.com/kywind/real2sim-eval",
+        "https://arxiv.org/abs/2511.04665"
+      ]
+    },
+    {
+      "node_id": "p:versioned-portable-scene-package",
+      "type": "project",
+      "name": "Versioned portable scene package",
+      "summary": "Version a tabletop scene with assets, provenance, units, and engine adapters, then demonstrate repeatable loading in MuJoCo and Gazebo with explicit compatibility limits.",
+      "lesson_md": "## In one sentence\n\nVersion a tabletop scene with assets, provenance, units, and engine adapters, then demonstrate repeatable loading in MuJoCo and Gazebo with explicit compatibility limits.\n\n![Two Coke-can models positioned in the Gazebo SDF world tutorial](/img/lessons/projects_simulation_2-portable-scene.webp)\n*Gazebo's world tutorial demonstrates reusable props and explicit poses; the package extends that idea to a shared tabletop setup. Source: [Official source](https://gazebosim.org/docs/harmonic/sdf_worlds/), license unknown.*\n\n## What you will learn\n\n- **A scene package** contains more than a model file: it includes referenced assets, configuration, and enough metadata to recreate the intended setup.\n- **A manifest** is a machine-readable inventory; **Provenance** records where an asset came from and what reuse permissions were stated.\n- **Think of a lockfile plus integration tests:** A version tag identifies inputs, while a clean-machine load checks whether dependencies actually resolve.\n\n> **Key idea:** Portability means a tested, declared subset of shared behavior, not identical physics because both engines opened a file.\n\n## What you need\n\n- **Start from Round-trip robot description loss report:** Reuse its unsupported-property list instead of assuming every format preserves every setting.\n- **Use MuJoCo and Gazebo:** Prepare an MJCF description for MuJoCo and an SDF world for Gazebo from one declared scene specification.\n- **Keep the scene small:** Use a table, simple props, and a camera; bundle redistributable assets and retain source URLs and license text.\n- **Use existing compute:** No physical robot is required; third-party asset redistribution rights are unknown until checked individually.\n\n## Steps\n\n1. **Define the portable subset:** Declare object names, dimensions, poses, mass, collision shapes, camera settings, units, and the world's upward axis.\n2. **Build a manifest:** Record package revision, file checksums, source pages, licenses, engine versions, and the exact settings needed by each adapter.\n3. **Write both descriptions:** Translate the same scene into MJCF and SDF; mark unsupported materials, contact parameters, or plugins instead of pretending equivalent behavior.\n4. **Test isolated loading:** Unpack into a fresh directory and resolve bundled resources without the author's asset cache; record missing-file and permission failures.\n5. **Measure the loaded scene:** Compare dimensions and world poses with declared tolerances; reset repeatedly and replay the same simple drop in both engines.\n6. **Demo the release:** Load the tagged package in both engines, show the compatibility matrix, and explain differences in geometry, appearance, or trajectories.\n\n```mermaid\nflowchart LR\n  A[Scene specification] --> B[Manifest and assets]\n  B --> C[MJCF adapter]\n  B --> D[SDF adapter]\n  C --> E[Clean load tests]\n  D --> E\n  E --> F[Versioned compatibility report]\n```\n\n**Do not assume stage units:** OpenUSD documents an unauthored `metersPerUnit` fallback of 0.01; author the metric explicitly if USD is included in your package.\n\n```python\nfrom pxr import UsdGeom\nUsdGeom.SetStageMetersPerUnit(stage, 1.0)\n```\n\n## Common pitfalls\n\n- **Absolute paths hide dependencies:** Gazebo documents resource-path configuration for local models; test your launch environment rather than relying on a populated cache.\n- **File compatibility is not force equivalence:** Keep engine-specific solver and contact settings visible alongside their measured outcomes.\n- **Reject incomplete packages:** Empty manifests, missing meshes, unknown units, failed resets, and unavailable plugins need explicit errors, not invisible fallback geometry.\n\n## When it's done\n\n- **Ship a tagged archive and repeatable load commands:** A teammate can regenerate the checks on both engines and identify every unsupported or unverified property.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Creating worlds",
+          "url": "https://www.youtube.com/watch?v=48TX-XJ14Gs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See reusable scene models and poses before packaging a tabletop world."
+        },
+        {
+          "title": "SDF worlds",
+          "url": "https://gazebosim.org/docs/harmonic/sdf_worlds/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build the Gazebo world and configure local resource lookup without relying on cached models."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand MJCF model structure, local coordinate frames, and explicit model settings."
+        },
+        {
+          "title": "Encoding Stage Linear Units",
+          "url": "https://openusd.org/release/api/group___usd_geom_linear_units__group.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Check authored meters-per-unit metadata and the fallback when USD assets enter the package."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=48TX-XJ14Gs",
+        "https://gazebosim.org/docs/harmonic/sdf_worlds/",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://openusd.org/release/api/group___usd_geom_linear_units__group.html"
+      ]
+    },
+    {
+      "node_id": "p:virtual-sensor-truth-versus-noise-wall",
+      "type": "project",
+      "name": "Virtual sensor truth-versus-noise wall",
+      "summary": "Display synchronized color, depth, and label views from one simulated scene, then compare clean measurements with controlled noise, clipping, and dropout.",
+      "lesson_md": "## In one sentence\n\nDisplay synchronized color, depth, and label views from one simulated scene, then compare clean measurements with controlled noise, clipping, and dropout.\n\n![ManiSkill ReplicaCAD scene displayed as color images and depth maps](/img/lessons/projects_simulation_2-sensor-noise-wall.webp)\n*ManiSkill shows RGB and depth together; retain the clean capture when adding corrupted panels. Source: [Official source](https://maniskill.readthedocs.io/en/latest/user_guide/concepts/observation.html), license unknown.*\n\n## What you will learn\n\n- **RGB** stores red, green, and blue image channels; **Depth** stores distance information, while segmentation identifies which simulated object occupies each pixel.\n- **Noise** perturbs a value, **Clipping** limits the supported range, and **Dropout** removes measurements; these failures need different visual explanations.\n- **Think of fault injection at an API boundary:** Keep the original response and modify a copy, so the injected fault cannot contaminate your reference.\n\n> **Key idea:** Preserve clean simulator output and explicit validity masks before adding any corruption.\n\n## What you need\n\n- **Start with Intro: robot anatomy & coordinate frames in sim:** Know the camera view and object positions before interpreting image differences.\n- **Use ManiSkill and Python:** Request `rgb+depth+segmentation`, keep camera settings fixed, and map object IDs to class names for a semantic view.\n- **Read the units:** ManiSkill documents depth in millimeters, with zero indicating an invalid pixel beyond the camera's far range; RGB uses values from 0–255.\n- **Use existing compute:** These software corruptions do not validate any particular physical camera.\n\n## Steps\n\n1. **Build one static scene:** Include nearby and distant surfaces plus a foreground object; freeze the scene state before capturing all image channels.\n2. **Save the clean reference:** Store RGB, depth, segmentation IDs, camera parameters, and an object-to-class map with the same capture identifier.\n3. **Add separate corruptions:** Apply depth perturbation, range rejection, and a recorded dropout mask to copies; declare all magnitudes in the recorded units.\n4. **Assemble the wall:** Show clean and corrupted views, depth-error heatmaps, and valid-pixel masks; use the same display scale across comparable panels.\n5. **Check edge cases:** Try no visible foreground, an all-invalid depth frame, and missing camera output; distinguish valid empty scenes from pipeline failures.\n6. **Demo a controlled sweep:** Change one corruption at a time, replay identical captured inputs, and plot valid-pixel fraction and depth error on retained pixels.\n\n```mermaid\nflowchart LR\n  A[Frozen scene] --> B[RGB depth and IDs]\n  B --> C[Clean reference]\n  B --> D[Corrupted copies]\n  C --> E[Aligned comparison wall]\n  D --> E\n  E --> F[Validity and error plots]\n```\n\n**Convert before arithmetic:** With a NumPy depth array from ManiSkill, preserve validity and convert millimeters to floating-point meters before computing differences.\n\n```python\nvalid = depth_mm > 0\ndepth_m = depth_mm.astype(np.float32) / 1000.0\ndepth_m[~valid] = np.nan\n```\n\n## Common pitfalls\n\n- **Object IDs are not semantic classes:** Use the environment's segmentation mapping; do not assume a pixel integer means the same category across resets.\n- **Display scaling can hide errors:** Independently normalized depth panels can look identical despite different distances.\n- **Keep invalid data explicit:** Empty arrays, non-finite outputs, failed resets, and failed loads must not produce a reassuring zero-error average.\n\n## When it's done\n\n- **Publish the synchronized wall and raw captures:** Feed the preserved labels and failure cases into Synthetic label quality auditor, keeping corruption recipes reproducible.",
+      "resources": [
+        {
+          "title": "ManiSkill GPU simulation with sensor rendering",
+          "url": "https://github.com/mani-skill/ManiSkill/raw/main/docs/source/_static/videos/mani_skill_gpu_sim-PickCube-v1-num_envs=16-obs_mode=state-render_mode=sensors.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the official sensor-rendered simulation demo; the lesson adds controlled corruption and aligned comparison panels."
+        },
+        {
+          "title": "Observation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/observation.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Request RGB, depth, and segmentation and interpret invalid depth and object-ID mappings."
+        },
+        {
+          "title": "Sensors / Cameras",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/sensors.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Configure one camera consistently and check channel shapes, data types, and millimeter units."
+        },
+        {
+          "title": "numpy.random.Generator.normal",
+          "url": "https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.normal.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement a declared Gaussian perturbation using explicit mean, spread, and output shape."
+        }
+      ],
+      "sources": [
+        "https://github.com/mani-skill/ManiSkill/raw/main/docs/source/_static/videos/mani_skill_gpu_sim-PickCube-v1-num_envs=16-obs_mode=state-render_mode=sensors.mp4",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/observation.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/sensors.html",
+        "https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.normal.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html"
+      ]
     }
   ]
 }
