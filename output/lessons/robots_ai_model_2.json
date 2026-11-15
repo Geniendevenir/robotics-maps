@@ -1,0 +1,1014 @@
+{
+  "batch": "robots_ai_model_2",
+  "lessons": [
+    {
+      "node_id": "r:foundationpose",
+      "type": "robot",
+      "name": "FoundationPose",
+      "summary": "FoundationPose estimates and tracks a rigid object’s three-dimensional position and orientation using RGB-D observations and a CAD model or reference images.",
+      "lesson_md": "## In one sentence\n\nFoundationPose estimates and tracks a rigid object’s three-dimensional position and orientation using RGB-D observations and a CAD model or reference images.\n\n![FoundationPose object-pose demo](/img/lessons/robots_ai_model_2-foundationpose.webp)\n*FoundationPose object-pose demo. Source: [NVIDIA / FoundationPose authors](https://github.com/NVlabs/FoundationPose), license unknown.*\n\n## Why it matters for us\n\n- **Pose adds orientation:** A detector locates a bottle in an image; a grasp also needs its position and rotation so the gripper approaches from a useful direction.\n- **Software analogy:** Treat FoundationPose as a coordinate conversion service: observations and object references enter; an object-to-camera transform leaves. It does not choose a safe grasp.\n\n## What it is made of / how it works\n\n- **Reference paths:** The NVIDIA project supports a **model-based** path using a CAD mesh and a **model-free** path using reference images.\n- **Object geometry:** CAD means computer-aided design; a mesh describes an object's surface with small connected faces.\n\n| Specification | What to know |\n|---|---|\n| Task | Rigid-object pose estimation and tracking |\n| Developer | NVIDIA researchers |\n| Reference options | CAD mesh or a few reference images |\n| Live inputs | RGB-D, camera calibration, initial object mask |\n| Pose dimensions | 3 translation + 3 rotation |\n| Demo pose output | 4 × 4 object-to-camera matrix |\n| Training | Large-scale synthetic data |\n| Public demo | Estimate the first frame, then track subsequent frames |\n\n- **Candidate selection:** The framework renders candidate appearances, refines pose hypotheses, and selects a result.\n- **Image-based representation:** Its image-based route builds a neural object representation so these downstream stages can share the same interface.\n\n> **Key idea:** Recognizing an object and estimating its three-dimensional pose are separate jobs.\n\n```mermaid\nflowchart LR\n  A[\"RGB-D and object reference\"] --> B[\"Propose poses\"]\n  B --> C[\"Refine and score\"]\n  C --> D[\"Object pose\"]\n  D --> E[\"Track next frame\"]\n```\n\n## Key terms\n\n- **6D pose**: three translation coordinates plus three rotational degrees of freedom, regardless of the numerical representation used.\n- **RGB-D**: a color image plus a depth image measuring distance; the initial object mask marks which pixels belong to the target.\n- **Tracking**: updating an existing pose estimate across successive frames.\n- **Synthetic data**: training examples rendered by software rather than recorded entirely with cameras.\n\n## Getting started\n\n1. **Watch the demonstration** and identify the axes drawn on the tracked object.\n2. **Follow the repository setup**, download its weights and demo data, and build the documented extensions.\n3. **Run the supplied example:** `python run_demo.py`.\n4. **Compare frames 1 and 2:** The demo registers pose initially using the object mask, then tracks subsequent RGB-D frames.\n5. **Inspect the mustard bottle:** Record whether the displayed axes remain attached as it moves.\n\n## Used in\n\n- **First overlay:** Start with **Overlay tracked object axes**, then consider **Connect pose tracking to a grasp**.\n- **Occlusion experiment:** Use **Test recovery after occlusion** to investigate what happens when another object temporarily blocks the camera.",
+      "resources": [
+        {
+          "title": "[CVPR 2024 highlight] FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects",
+          "url": "https://www.youtube.com/watch?v=Ip_yWsGUF6c",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See pose tracking and robot applications before reading the method."
+        },
+        {
+          "title": "FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects",
+          "url": "https://nvlabs.github.io/FoundationPose/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare CAD-based and reference-image-based setups."
+        },
+        {
+          "title": "GitHub - NVlabs/FoundationPose: [CVPR 2024 Highlight] FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects · GitHub",
+          "url": "https://github.com/NVlabs/FoundationPose",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Install the official implementation and run its mustard-bottle demo."
+        },
+        {
+          "title": "[2312.08344] FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects",
+          "url": "https://arxiv.org/abs/2312.08344",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the unified pose-estimation and tracking method."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Ip_yWsGUF6c",
+        "https://nvlabs.github.io/FoundationPose/",
+        "https://github.com/NVlabs/FoundationPose",
+        "https://arxiv.org/abs/2312.08344",
+        "https://raw.githubusercontent.com/NVlabs/FoundationPose/main/run_demo.py"
+      ]
+    },
+    {
+      "node_id": "r:foundationstereo",
+      "type": "robot",
+      "name": "FoundationStereo",
+      "summary": "FoundationStereo turns a pair of stereo images into dense depth estimates, aiming to work on unfamiliar scenes without task-specific retraining.",
+      "lesson_md": "## In one sentence\n\nFoundationStereo turns a pair of stereo images into dense depth estimates, aiming to work on unfamiliar scenes without task-specific retraining.\n\n![FoundationStereo published method illustration](/img/lessons/robots_ai_model_2-foundationstereo.webp)\n*FoundationStereo published method illustration. Source: [NVIDIA / FoundationStereo authors](https://nvlabs.github.io/FoundationStereo/), license unknown.*\n\n## Why it matters for us\n\n- **Depth adds distance:** A flat camera image cannot directly tell your program whether an object is in front of the gripper or behind it.\n- **Software analogy:** FoundationStereo is a learned matching algorithm between two pixel arrays, searching for the same visible surface rather than matching strings.\n\n## What it is made of / how it works\n\n- **Stereo vision** uses two views from separated cameras.\n- **Learned correspondence:** FoundationStereo learns correspondence between them and refines a disparity estimate using information across the image.\n\n| Specification | What to know |\n|---|---|\n| Developer | NVIDIA researchers |\n| Research release | CVPR 2025 |\n| Input | Rectified, undistorted left/right stereo images |\n| Intermediate result | Disparity: matching pixels' horizontal displacement |\n| Goal | Zero-shot generalization to real scenes |\n| Training data | 1 million synthetic stereo pairs |\n\n- **Feature matching:** The project combines image features with mechanisms that compare potential matches across the views.\n- **Difficult surfaces:** Its official examples include difficult surfaces such as transparent and reflective objects, where correspondence is particularly challenging.\n\n> **Key idea:** Two images can provide distance information when you know how their cameras relate geometrically.\n\n```mermaid\nflowchart LR\n  A[\"Rectified stereo pair\"] --> B[\"Match image features\"]\n  B --> C[\"Refine disparity\"]\n  C --> D[\"Calibrated depth\"]\n```\n\n## Key terms\n\n- **Disparity**: the horizontal pixel difference between corresponding points in a rectified stereo pair.\n- **Rectification**: aligning the views so matching points lie on corresponding image rows.\n- **Zero-shot**: applying a trained model to a new setting without additional training there.\n\n## Getting started\n\n1. **Watch the project video** to see what its depth visualizations represent.\n2. **Follow the repository demo** using supplied stereo images before connecting a live camera.\n3. **Keep calibration information** alongside any images captured with your own stereo rig.\n4. **Compute hypothetical depth:** Multiply focal length by camera separation, then divide by disparity.\n5. **Work an example:** 600 pixels × 0.10 metres ÷ 30 pixels gives 2 metres; doubling disparity halves the estimate.\n6. **Separate illustration from measurement:** These hypothetical values are not FoundationStereo accuracy results.\n7. **Check calibration and units:** Disparity alone is not a distance in metres.\n\n## Used in\n\n- **Depth comparison:** The map’s **Learned stereo vs. on-board stereo** project offers a concrete comparison with a camera's built-in estimator.\n- **Stereo & RGB-D depth sensing** explains the geometry needed to interpret either result.",
+      "resources": [
+        {
+          "title": "FoundationStereo: A Foundation Model for Zero-Shot Stereo Depth Estimation | NVIDIA Research",
+          "url": "https://www.youtube.com/watch?v=R7RgHxEXB3o",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the stereo-depth results on real scenes."
+        },
+        {
+          "title": "FoundationStereo: Zero-Shot Stereo Matching",
+          "url": "https://nvlabs.github.io/FoundationStereo/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the method and inspect visual comparisons."
+        },
+        {
+          "title": "GitHub - NVlabs/FoundationStereo: [CVPR 2025 Best Paper Nomination] FoundationStereo: Zero-Shot Stereo Matching · GitHub",
+          "url": "https://github.com/NVlabs/FoundationStereo",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the official stereo-pair example."
+        },
+        {
+          "title": "[2501.09898] FoundationStereo: Zero-Shot Stereo Matching",
+          "url": "https://arxiv.org/abs/2501.09898",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the architecture and generalization evaluation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=R7RgHxEXB3o",
+        "https://nvlabs.github.io/FoundationStereo/",
+        "https://github.com/NVlabs/FoundationStereo",
+        "https://arxiv.org/abs/2501.09898"
+      ]
+    },
+    {
+      "node_id": "r:galaxea-g0-g0-5",
+      "type": "robot",
+      "name": "Galaxea G0 / G0.5",
+      "summary": "Galaxea G0 / G0.5 is a robot-model family whose G0.5 release combines language reasoning and robot actions in one autoregressive stream.",
+      "lesson_md": "## In one sentence\n\nGalaxea G0 / G0.5 is a robot-model family whose G0.5 release combines language reasoning and robot actions in one autoregressive stream.\n\n![G0.5 published architecture and robot-task examples](/img/lessons/robots_ai_model_2-galaxea-g0.webp)\n*G0.5 reasoning and action token template. Source: [Galaxea AI](https://opengalaxea.github.io/G05/), license unknown.*\n\n## Why it matters for us\n\n- **Instructions need actions:** “Put the cup beside the plate” must become movement commands using camera observations; G0.5 connects these representations in a vision-language-action model, or VLA.\n- **Software analogy:** Imagine a streaming interpreter with several token types: some describe reasoning, while others encode actions for a robot-specific execution interface.\n\n## What it is made of / how it works\n\n- **Public implementation:** The public GalaxeaVLA repository documents G0.5's checkpoints, data preparation, and training.\n- **Version boundary:** Treat these as G0.5 specifications rather than assuming that every earlier G0 release has identical internals.\n\n| Specification | What to know |\n|---|---|\n| Builder | Galaxea AI |\n| Model type | Autoregressive vision-language-action model |\n| Visual input | Multiple RGB (red, green, blue) camera views |\n| Other inputs | Language, embodiment identifier, and robot state |\n| Output representation | Reasoning tokens and action tokens |\n| Shared action space | 27 dimensions |\n| G0.5 access | Gated weights; non-commercial community license |\n\n- **Autoregressive** means generating the next token from the preceding context.\n- **Shared representation:** ActionCodec decodes action tokens into shared action slots; the embodiment identifier tells the model which robot body is acting.\n\n> **Key idea:** Sharing an action representation helps connect different robot bodies, but each body still needs the correct interface.\n\n```mermaid\nflowchart LR\n  A[\"Images, instruction, state\"] --> B[\"G0.5 token stream\"]\n  B --> C[\"Reasoning and action codes\"]\n  C --> D[\"ActionCodec\"]\n  D --> E[\"Robot actions\"]\n```\n\n## Key terms\n\n- **Token**: a discrete element the model reads or generates; it need not represent an ordinary word.\n- **Proprioception**: measurements of the robot's own configuration, such as joint positions.\n- **Embodiment**: the robot's physical arrangement of arms, joints, and sensors.\n\n## Getting started\n\n1. **Read the repository overview** before choosing a checkpoint; hardware and setup requirements are documented there.\n2. **Inspect the token template** to distinguish image, language, state, and action sections; review the non-commercial license before using the weights.\n3. **Compare supported datasets** with the observations available on your intended robot.\n4. **Inspect the 27-dimensional layout:** 9 left-arm + 1 left-gripper + 9 right-arm + 1 right-gripper + 7 lower-body slots = 27.\n5. **Distinguish padding from joints:** Shared slots include padding; 27 does not mean every supported robot has 27 physical joints.\n\n## Used in\n\n- **Builder connection:** This model connects to **Galaxea AI (Galaxea Dynamics)** in the map.\n- **Integration study:** Its public materials are useful for studying how a robot company connects training data, model checkpoints, and embodiment-specific execution.",
+      "resources": [
+        {
+          "title": "Introducing G0.5 — a video overview.",
+          "url": "https://opengalaxea.github.io/G05/videos/introduction_g05.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator’s overview of the unified reasoning-and-action model."
+        },
+        {
+          "title": "Galaxea G0.5: One Autoregressive Stream for Robot Reasoning and Action",
+          "url": "https://opengalaxea.github.io/G05/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "View the G0.5 project presentation and robot demonstrations."
+        },
+        {
+          "title": "GitHub - OpenGalaxea/GalaxeaVLA: Galaxea's open-source VLA repository · GitHub",
+          "url": "https://github.com/OpenGalaxea/GalaxeaVLA",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the token interface, checkpoints, and setup requirements."
+        },
+        {
+          "title": "OpenGalaxea/G05 · Hugging Face",
+          "url": "https://huggingface.co/OpenGalaxea/G05",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the released G0.5 checkpoint and model access information."
+        },
+        {
+          "title": "[2608.11739] G0.5: One Autoregressive Stream for Robot Reasoning and Action",
+          "url": "https://arxiv.org/abs/2608.11739",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the single-stream reasoning and action formulation."
+        }
+      ],
+      "sources": [
+        "https://opengalaxea.github.io/G05/",
+        "https://github.com/OpenGalaxea/GalaxeaVLA",
+        "https://huggingface.co/OpenGalaxea/G05",
+        "https://arxiv.org/abs/2608.11739",
+        "https://raw.githubusercontent.com/OpenGalaxea/GalaxeaVLA/main/LICENSE-G0.5",
+        "https://opengalaxea.github.io/G05/videos/introduction_g05.mp4"
+      ]
+    },
+    {
+      "node_id": "r:gemini-robotics-1-5",
+      "type": "robot",
+      "name": "Gemini Robotics 1.5",
+      "summary": "Gemini Robotics 1.5 is Google DeepMind’s vision-language-action model for turning visual observations and instructions into robot movements across multiple robot bodies.",
+      "lesson_md": "## In one sentence\n\nGemini Robotics 1.5 is Google DeepMind’s vision-language-action model for turning visual observations and instructions into robot movements across multiple robot bodies.\n\n![Gemini Robotics 1.5 robot demonstrations](/img/lessons/robots_ai_model_2-gemini-robotics-1-5.webp)\n*Gemini Robotics 1.5 robot demonstrations. Source: [Google DeepMind](https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/), license unknown.*\n\n## Why it matters for us\n\n- **Intent needs movement:** Gemini Robotics 1.5 connects visual understanding and language instructions to physical actions, rather than merely describing what appears in a picture.\n- **Software analogy:** Think of an orchestrator and executor: Gemini Robotics-ER 1.5 handles high-level reasoning, while Gemini Robotics 1.5 produces movements and interleaves its own reasoning with actions.\n\n## What it is made of / how it works\n\n- **Motion transfer:** The technical report introduces motion transfer across different robot bodies and reasoning interleaved with actions.\n- **Learned policy:** These are capabilities of a learned policy: a function that selects actions from observations and instructions.\n\n| Specification | What to know |\n|---|---|\n| Developer | Google DeepMind |\n| Release family | Gemini Robotics 1.5 |\n| Model role | Vision-language-action control |\n| Inputs | Visual information and language instructions |\n| Output | Robot motor commands |\n| Demonstrated embodiments | ALOHA 2, Apollo, bi-arm Franka |\n\n- **Companion reasoning:** The companion ER model can plan tasks and use tools, while the VLA executes physical steps.\n- **Multi-step cooperation:** The announcement shows applications such as sorting items, demonstrating how reasoning and movement cooperate over several steps.\n\n> **Key idea:** A task plan and the movements that implement it need different interfaces, even when both use learned models.\n\n```mermaid\nflowchart LR\n  A[\"Image and request\"] --> B[\"ER planning and tools\"]\n  B --> C[\"VLA reasoning and actions\"]\n  C --> D[\"Robot movement\"]\n```\n\n## Key terms\n\n- **VLA**: vision-language-action model, linking camera observations and instructions to actions.\n- **Motion transfer**: sharing learned movement knowledge across robot embodiments.\n- **Embodied reasoning**: reasoning about objects, space, and tasks in the physical world.\n\n## Getting started\n\n1. **Watch the official demonstration** and separate language-level planning from physical execution.\n2. **Read the model report** for the exact evaluation setup and supported research platforms.\n3. **Check current access information** rather than assuming a downloadable, unrestricted checkpoint exists.\n4. **Inspect waste sorting:** Identify the high-level decision about an item’s destination and the lower-level commands that move it.\n5. **Compare three bodies:** Find ALOHA 2, Apollo, and bi-arm Franka in the announcement; motion transfer does not mean arbitrary hardware works without integration.\n\n## Used in\n\n- **Human interaction:** Explore **Conversational & multimodal robot interfaces** for user interaction.\n- **Safety context:** Pair it with **Semantic safety & guardrails for LLM/VLA-controlled robots** before designing any system that turns flexible language instructions into real movement.",
+      "resources": [
+        {
+          "title": "Gemini Robotics 1.5: Using agentic capabilities",
+          "url": "https://www.youtube.com/watch?v=AMRxbIO04kQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the official introduction to the 1.5 robot-model family."
+        },
+        {
+          "title": "Gemini Robotics 1.5 brings AI agents into the physical world — Google DeepMind",
+          "url": "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand how the VLA and embodied-reasoning models cooperate."
+        },
+        {
+          "title": "[2510.03342] Gemini Robotics 1.5: Pushing the Frontier of Generalist Robots with Advanced Embodied Reasoning, Thinking, and Motion Transfer",
+          "url": "https://arxiv.org/abs/2510.03342",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the 1.5 architecture, motion transfer, and evaluation details."
+        },
+        {
+          "title": "[2503.20020] Gemini Robotics: Bringing AI into the Physical World",
+          "url": "https://arxiv.org/abs/2503.20020",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Compare the earlier Gemini Robotics family and terminology."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=AMRxbIO04kQ",
+        "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+        "https://arxiv.org/abs/2510.03342",
+        "https://arxiv.org/abs/2503.20020"
+      ]
+    },
+    {
+      "node_id": "r:gemini-robotics-2-5",
+      "type": "robot",
+      "name": "Gemini Robotics 2.5",
+      "summary": "Gemini Robotics 2.5 is Google DeepMind’s robot-model release aimed at transferring learned manipulation skills into more reliable real-world work.",
+      "lesson_md": "## In one sentence\n\nGemini Robotics 2.5 is Google DeepMind’s robot-model release aimed at transferring learned manipulation skills into more reliable real-world work.\n\n![Gemini Robotics 2.5 automotive demonstration](/img/lessons/robots_ai_model_2-gemini-robotics-2-5.webp)\n*Gemini Robotics 2.5 automotive demonstration. Source: [Google DeepMind](https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/), license unknown.*\n\n## Why it matters for us\n\n- **Demos need denominators:** A polished demonstration does not reveal how often a task succeeds when conditions change; ask what was tested and on which robot.\n- **Software analogy:** Read an announcement like a release benchmark report: a faster implementation matters only when its workload resembles your application.\n\n## What it is made of / how it works\n\n- **Published scope:** Google DeepMind presents Gemini Robotics 2.5 as a step toward physical intelligence that transfers across tasks and settings.\n- **Deployment limits:** Its announcement discusses practical evaluation and industrial demonstrations rather than providing a complete beginner deployment recipe.\n\n| Specification | What to know |\n|---|---|\n| Developer | Google DeepMind |\n| Announcement | 10 November 2026 |\n| Domain | General robot manipulation |\n| Reported evaluation | More than 200 tasks |\n| Industrial example | Apollo 2 at Mercedes-Benz; reported 96% success |\n| Public hardware price | Unknown; this node describes a model |\n\n- **Reported improvements:** The announcement reports improved task success and faster completion in its evaluations.\n- **Evaluation boundary:** Treat those figures as **Google-reported results**, tied to the tested tasks, rather than a universal guarantee for an unfamiliar lab robot.\n\n> **Key idea:** A robot model's reliability must be interpreted together with its task definitions and evaluation conditions.\n\n```mermaid\nflowchart LR\n  A[\"Vision and instruction\"] --> B[\"Gemini Robotics 2.5\"]\n  B --> C[\"Motor commands\"]\n  C --> D[\"Manipulation task\"]\n```\n\n## Key terms\n\n- **Generalization**: carrying useful learned behavior into situations beyond the training examples.\n- **Success rate**: successful trials divided by the total trials under a specified test procedure.\n- **Proof of concept**: a limited demonstration that an approach may work in a practical setting.\n\n## Getting started\n\n1. **Read the release announcement** and list the physical tasks actually shown.\n2. **Compare the model page** with independent reporting to separate access information from performance claims.\n3. **Write an evaluation checklist** covering starting state, objects, allowed retries, and the definition of success.\n4. **Interpret reported success:** Google reports 96% success in its Mercedes-Benz proof of concept.\n5. **Calculate the equivalent:** 96% means 96 successes per 100 trials mathematically, not that Google actually ran 100 trials or guarantees your result.\n\n## Used in\n\n- **Builder connection:** The map connects this model to **Google DeepMind**.\n- **Version comparison:** Compare its deployment claims with **Gemini Robotics 1.5** to understand why a new version needs its own evidence and access documentation.",
+      "resources": [
+        {
+          "title": "Apollo 2 using Gemini Robotics 2.5 to autonomously perform automotive kitting at a Mercedes-Benz factory.",
+          "url": "https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/pPHeHBnghKMv10yl/GR_Apptronik_x_Mercedes_v1_1000k.webm",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the industrial proof of concept described in the announcement."
+        },
+        {
+          "title": "Gemini Robotics 2.5: Accelerating Physical Intelligence — Google DeepMind",
+          "url": "https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Watch the release demonstrations and read the stated evaluation claims."
+        },
+        {
+          "title": "Gemini Robotics — Google DeepMind",
+          "url": "https://deepmind.google/models/gemini-robotics/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the current model-family capabilities and access information."
+        },
+        {
+          "title": "DeepMind reveals Gemini Robotics 2.5 and open safety benchmark \"ASIMOV-jailbreak\" - Ars Technica",
+          "url": "https://arstechnica.com/google/2026/11/deepmind-reveals-gemini-robotics-2-5-and-open-safety-benchmark-asimov-jailbreak/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read independent coverage of the 2.5 release."
+        }
+      ],
+      "sources": [
+        "https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/",
+        "https://deepmind.google/models/gemini-robotics/",
+        "https://arstechnica.com/google/2026/11/deepmind-reveals-gemini-robotics-2-5-and-open-safety-benchmark-asimov-jailbreak/",
+        "https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/pPHeHBnghKMv10yl/GR_Apptronik_x_Mercedes_v1_1000k.webm"
+      ]
+    },
+    {
+      "node_id": "r:gemini-robotics-on-device",
+      "type": "robot",
+      "name": "Gemini Robotics On-Device",
+      "summary": "Gemini Robotics On-Device runs a vision-language-action model locally on a robot, reducing dependence on a continuous network connection for physical tasks.",
+      "lesson_md": "## In one sentence\n\nGemini Robotics On-Device runs a vision-language-action model locally on a robot, reducing dependence on a continuous network connection for physical tasks.\n\n![Google-reported On-Device generalization benchmark](/img/lessons/robots_ai_model_2-gemini-robotics-on-device.webp)\n*Google-reported On-Device generalization benchmark. Source: [Google DeepMind](https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/), license unknown.*\n\n## Why it matters for us\n\n- **Local inference:** Running the model on the robot removes the model request’s network round trip from the observation-to-action path.\n- **Software analogy:** An offline-capable application changes latency and connectivity requirements, but still needs enough onboard compute and a compatible hardware interface.\n\n## What it is made of / how it works\n\n- **Adaptation target:** Google DeepMind introduced this model for dexterous tasks and adaptation to new robot embodiments.\n- **Developer access:** The announcement describes an SDK for running, evaluating, and adapting it through a trusted-tester access route.\n\n| Specification | What to know |\n|---|---|\n| Developer | Google DeepMind |\n| Model type | Vision-language-action model |\n| Execution | Local to the robotic device |\n| Motivation | Low latency and intermittent connectivity |\n| Adaptation claim | As few as 50–100 demonstrations for new tasks |\n| Announced access | Gemini Robotics SDK and trusted testers |\n| SDK support | On-Device available to trusted testers from v2.4.1 |\n\n- **Model interface:** The model uses visual observations and instructions to produce actions.\n- **Tested embodiments:** Google reports demonstrations on ALOHA and adaptation to Franka and Apollo platforms; this does not establish compatibility with every inexpensive desktop arm.\n\n> **Key idea:** On-device describes where the model runs; it does not remove the need for robot-specific integration and evaluation.\n\n```mermaid\nflowchart LR\n  A[\"Image and instruction\"] --> B[\"Local VLA inference\"]\n  B --> C[\"Robot actions\"]\n  C --> D[\"New observation\"]\n  D --> A\n```\n\n## Key terms\n\n- **Inference**: running an already-trained model to generate outputs.\n- **Latency**: elapsed time between receiving an observation and producing a response.\n- **Fine-tuning**: updating pretrained model weights using additional examples for a target task or robot.\n\n## Getting started\n\n1. **Read the SDK overview:** Most functionality needs trusted-tester access; public SDK code does not imply public model weights.\n2. **Watch the announcement's demonstrations** and note the robot embodiments involved.\n3. **Inspect the adaptation requirements**, including demonstrations and the supported observation/action interface.\n4. **Interpret adaptation data:** Google’s 50–100 demonstrations means 50 to 100 example task performances in the reported adaptation setting.\n5. **Check your robot’s interface:** That demonstration count does not guarantee that any robot learns any task from the same amount of data.\n\n## Used in\n\n- **Builder connection:** The model links to **Google DeepMind** in the map.\n- **Execution comparison:** Compare it with **Gemini Robotics 1.5** to separate the execution-location question from the separate question of model architecture and robot capability.",
+      "resources": [
+        {
+          "title": "Dexterity",
+          "url": "https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/media/Dexterity__General_Aloha_1.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the On-Device ALOHA demonstrations embedded in the creator’s announcement."
+        },
+        {
+          "title": "Gemini Robotics On-Device brings AI to local robotic devices — Google DeepMind",
+          "url": "https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Watch the local robot demonstrations and read the adaptation claims."
+        },
+        {
+          "title": "Gemini Robotics — Google DeepMind",
+          "url": "https://deepmind.google/models/gemini-robotics/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the model family and current On-Device access information."
+        },
+        {
+          "title": "GitHub - google-deepmind/gemini-robotics-sdk · GitHub",
+          "url": "https://github.com/google-deepmind/gemini-robotics-sdk",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the official SDK entry point and documented workflow."
+        }
+      ],
+      "sources": [
+        "https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/",
+        "https://deepmind.google/models/gemini-robotics/",
+        "https://github.com/google-deepmind/gemini-robotics-sdk",
+        "https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/media/Dexterity__General_Aloha_1.mp4"
+      ]
+    },
+    {
+      "node_id": "r:gemini-robotics-er-1-5",
+      "type": "robot",
+      "name": "Gemini Robotics-ER 1.5",
+      "summary": "Gemini Robotics-ER 1.5 reasons about images, spatial relationships, and task progress so a robot application can decide what to do next.",
+      "lesson_md": "## In one sentence\n\nGemini Robotics-ER 1.5 reasons about images, spatial relationships, and task progress so a robot application can decide what to do next.\n\n![Gemini Robotics-ER 1.5 orchestrating a waste-sorting task](/img/lessons/robots_ai_model_2-gemini-robotics-er-1-5.webp)\n*Gemini Robotics-ER 1.5 orchestrating a waste-sorting task. Source: [Google DeepMind](https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/), license unknown.*\n\n## Why it matters for us\n\n- **Reasoning chooses targets:** A robot application often needs to answer “which object?” or “did the task finish?” before it issues movement commands.\n- **Software analogy:** Treat the model as a planner with visual input; another component must turn its chosen targets into calibrated, controlled robot motion.\n\n## What it is made of / how it works\n\n- **Model family:** Google DeepMind released Robotics-ER 1.5 alongside Gemini Robotics 1.5.\n- **Distinct roles:** The former focuses on perception and reasoning, while the latter is the vision-language-action model responsible for producing physical actions in the published agent system.\n\n| Specification | What to know |\n|---|---|\n| Developer | Google DeepMind |\n| Model role | Embodied reasoning |\n| Pointing sample output | 2D object pixel coordinates |\n| Planning skills | Task decomposition and tool use |\n| Progress skills | Success estimation |\n| Public integration example | Gemini robot-pointing sample |\n\n- **Planning interface:** The announcement describes reasoning about space, planning, and calling external tools.\n- **Pointing integration:** The robot-pointing example provides a concrete integration path involving a camera, a calibrated robot arm, and model-produced target information.\n\n> **Key idea:** A point selected in an image is an interpretation of the scene; moving a real arm still requires a geometric and control pipeline.\n\n```mermaid\nflowchart LR\n  A[\"Camera image and query\"] --> B[\"ER target coordinates\"]\n  B --> C[\"Calibration\"]\n  C --> D[\"Joint-angle calculation\"]\n  D --> E[\"Arm pointing\"]\n```\n\n## Key terms\n\n- **Spatial grounding**: connecting a phrase such as “the red cup” to a location in an observation.\n- **Tool use**: requesting a separate program to perform a specific operation.\n- **Calibration**: measuring the relationship between camera observations and robot coordinates.\n\n## Getting started\n\n1. **Read the archived pointing sample:** It now defaults to Gemini 3 Flash Preview; select `gemini-robotics-er-1.5-preview` to investigate this model.\n2. **Trace the data path** from camera image to chosen target to arm command.\n3. **Read the 1.5 report** for the model's reasoning evaluations and limitations.\n4. **Inspect board-origin defaults:** The sample uses 0.29 metres forward and 0.0525 metres left for its calibration board’s anchor corner.\n5. **Measure your own setup:** Copying those offsets does not calibrate your robot; they locate that particular board relative to the arm.\n\n## Used in\n\n- **Pointing project:** Start with **Gemini-ER pointing on the SO-101**.\n- **Compare perception tasks:** Explore **VLM success detector for robot episodes** and **Open VLM vs. API VLM for robot pointing**.",
+      "resources": [
+        {
+          "title": "Gemini Robotics 1.5: Thinking while acting",
+          "url": "https://www.youtube.com/watch?v=eDyXEh8XqjM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See an official embodied-reasoning demonstration from the 1.5 announcement."
+        },
+        {
+          "title": "Gemini Robotics 1.5 brings AI agents into the physical world — Google DeepMind",
+          "url": "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Separate the roles of the ER reasoning model and the VLA."
+        },
+        {
+          "title": "GitHub - google-gemini/robotics-pointing-sample · GitHub",
+          "url": "https://github.com/google-gemini/robotics-pointing-sample",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Follow the concrete camera, calibration, and robot-pointing integration."
+        },
+        {
+          "title": "[2510.03342] Gemini Robotics 1.5: Pushing the Frontier of Generalist Robots with Advanced Embodied Reasoning, Thinking, and Motion Transfer",
+          "url": "https://arxiv.org/abs/2510.03342",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the embodied-reasoning benchmarks and combined agent system."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=eDyXEh8XqjM",
+        "https://deepmind.google/blog/gemini-robotics-15-brings-ai-agents-into-the-physical-world/",
+        "https://github.com/google-gemini/robotics-pointing-sample",
+        "https://arxiv.org/abs/2510.03342"
+      ]
+    },
+    {
+      "node_id": "r:gene-26-5",
+      "type": "robot",
+      "name": "GENE-26.5",
+      "summary": "GENE-26.5 is Genesis AI’s robot foundation model, introduced with a human-like robotic hand and a glove-based system for collecting demonstrations.",
+      "lesson_md": "## In one sentence\n\nGENE-26.5 is Genesis AI’s robot foundation model, introduced with a human-like robotic hand and a glove-based system for collecting demonstrations.\n\n![GENE-26.5 official demonstration thumbnail](/img/lessons/robots_ai_model_2-gene-26-5.webp)\n*GENE-26.5 official demonstration thumbnail. Source: [Genesis AI](https://www.youtube.com/watch?v=6K_bGH54ltI), license unknown.*\n\n## Why it matters for us\n\n- **Dexterity needs data:** Coordinating fine object contacts depends on training demonstrations and hand design as well as the neural network.\n- **Software analogy:** Designing compatible input schemas before training resembles matching human and robot hands so demonstrations translate more directly into robot actions.\n\n## What it is made of / how it works\n\n- **System components:** Genesis AI introduced GENE-26.5 with a robotic hand and a data engine.\n- **Collection glove:** The company describes a human-worn collection glove with tactile-sensing electronic skin and a close mapping between glove, human hand, and robot hand.\n\n| Specification | What to know |\n|---|---|\n| Builder | Genesis AI |\n| Announcement | 6 May 2026 |\n| Announced role | Robotics foundation model |\n| Companion hardware | Human-scale dexterous robotic hand |\n| Claimed training inputs | Language, vision, proprioception, touch, action |\n| Open checkpoint | Not established by the cited announcement |\n\n- **Published demonstrations:** The release lists meal preparation, pipetting, wire harnessing, and Rubik’s Cube manipulation; these are company demonstrations, not independent benchmarks.\n- **Company claim:** Its “human-level” language is a **company claim** about the announced capabilities, not an independent certification that the model matches people across every physical task.\n\n> **Key idea:** A robot-learning system includes the demonstration interface and physical hand, not just model weights.\n\n```mermaid\nflowchart LR\n  A[\"Human demonstrations\"] --> B[\"Data engine\"]\n  B --> C[\"Train GENE-26.5\"]\n  C --> D[\"Robot manipulation\"]\n```\n\n## Key terms\n\n- **Dexterity**: the ability to coordinate fine movements and object contacts.\n- **Proprioception**: measurements of the robot’s own configuration, such as joint positions.\n- **Tactile sensing**: measuring contact at a surface, such as the fingers of a glove or robotic hand.\n- **Long-horizon task**: a task needing several dependent actions rather than one isolated movement.\n\n## Getting started\n\n1. **Watch the official video** and list the tasks actually shown, without assuming unshown capabilities.\n2. **Read the announcement** to identify which claims concern the model, hand, or data engine.\n3. **Compare independent reporting** for context before treating the release as a reproducible research package.\n4. **Map the data path:** Draw human hand → collection glove → robot hand; the press release calls this a 1:1:1 correspondence.\n5. **Interpret the ratio:** Ask what each device measures or executes; 1:1:1 describes correspondence, not a measured success rate.\n\n## Used in\n\n- **Builder connection:** The map links this model to **Genesis AI**.\n- **Access investigation:** Use that connection to investigate the company’s complete learning stack and to distinguish a published demonstration from documented access to code, weights, and training data.",
+      "resources": [
+        {
+          "title": "GENE at work | Autonomous 1x speed",
+          "url": "https://www.youtube.com/watch?v=6K_bGH54ltI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Inspect the company’s published manipulation demonstrations."
+        },
+        {
+          "title": "Genesis AI Unveils GENE-26.5, the First AI Brain to Enable Robots with Human-Level Physical Manipulation Capabilities",
+          "url": "https://www.prnewswire.com/news-releases/genesis-ai-unveils-gene-26-5--the-first-ai-brain-to-enable-robots-with-human-level-physical-manipulation-capabilities-302763638.html",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read the first-party description of the model, hand, and data engine."
+        },
+        {
+          "title": "Genesis AI introduces GENE-26.5 model for more dexterous robot manipulation - The Robot Report",
+          "url": "https://www.therobotreport.com/genesis-ai-introduces-gene-foundation-model-more-dexterous-manipulation/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read robotics-industry reporting that distinguishes the company’s claims."
+        },
+        {
+          "title": "Introducing GENE-26.5, our first robotic brain that takes a major step toward human-level capability. For years, robotics has struggled to learn from the world’s largest and valuable data source:… | Genesis AI | 33 comments",
+          "url": "https://www.linkedin.com/posts/gs-ai_introducinggene-265ourfirstrobotic-activity-7457815169642156032-AUj0",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Read Genesis AI’s release post describing the training modalities."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=6K_bGH54ltI",
+        "https://www.prnewswire.com/news-releases/genesis-ai-unveils-gene-26-5--the-first-ai-brain-to-enable-robots-with-human-level-physical-manipulation-capabilities-302763638.html",
+        "https://www.therobotreport.com/genesis-ai-introduces-gene-foundation-model-more-dexterous-manipulation/",
+        "https://www.linkedin.com/posts/gs-ai_introducinggene-265ourfirstrobotic-activity-7457815169642156032-AUj0"
+      ]
+    },
+    {
+      "node_id": "r:go-1-genie-operator-1",
+      "type": "robot",
+      "name": "GO-1 (Genie Operator-1)",
+      "summary": "GO-1, or Genie Operator-1, is an open generalist robot model released through the AgiBot World project for learning manipulation from large-scale demonstrations.",
+      "lesson_md": "## In one sentence\n\nGO-1, or Genie Operator-1, is an open generalist robot model released through the AgiBot World project for learning manipulation from large-scale demonstrations.\n\n![GO-1 shirt-folding demonstration on an AgiBot G1 robot](/img/lessons/robots_ai_model_2-go-1.webp)\n*GO-1 shirt-folding demonstration on AgiBot G1; the published clip is labeled 4× speed. Source: [AgiBot World / OpenDriveLab](https://github.com/OpenDriveLab/AgiBot-World), license unknown.*\n\n## Why it matters for us\n\n- **The whole pipeline matters:** GO-1 connects data collection, model training, and execution; an apparently successful recording can still teach the wrong behavior.\n- **Software analogy:** Treat demonstrations like serialized API requests: producer and consumer must agree on units, timing, and command meaning.\n- **Open does not mean unrestricted:** The released GO-1 checkpoint uses CC BY-NC-SA 4.0, including a non-commercial restriction.\n\n## What it is made of / how it works\n\n- **A VLA predicts actions:** A vision-language-action policy turns visual observations and instructions into robot commands, not just text answers.\n- **Latent actions connect data sources:** The paper uses learned internal action representations to exploit diverse demonstrations before producing robot-specific actions.\n- **Deployment needs consistency:** OpenDriveLab explains how collection timing and action representations affect transfer between robot bodies.\n\n```mermaid\nflowchart LR\n  D[Demonstrations] --> T[Policy training]\n  T --> P[GO-1 policy]\n  O[Images and instruction] --> P\n  P --> A[Robot actions]\n  A --> R[Robot and scene]\n  R --> O\n```\n\n| Specification | What to know |\n|---|---|\n| Project | AgiBot World |\n| Model | GO-1, Genie Operator-1 |\n| Role | Generalist manipulation policy |\n| Public artifacts | Code, model releases, and dataset documentation |\n| Dataset scale | More than one million trajectories in AgiBot World |\n| Engineering focus | Consistent collection, training, and deployment |\n\n- **Idle frames can teach inaction:** The engineering report warns that recordings containing long pauses can teach the policy to remain still.\n- **Worked grasp example:** Its screw-on-bottle example reports 1–10 mm execution errors; a small position mismatch can prevent grasping.\n\n> **Key idea:** Demonstrations must replay consistently on the robot before their quantity becomes useful.\n\n## Key terms\n\n- **Trajectory**: a sequence of observations and actions recorded over time.\n- **Teleoperation**: a person controls the robot to demonstrate a behavior.\n- **Action space**: the defined set and representation of commands a policy may output.\n- **Cross-embodiment transfer**: adapting useful behavior from one robot body to another.\n\n## Getting started\n\n1. **Watch the project demonstrations** before choosing which model variant and checkpoint to inspect.\n2. **Read the engineering blog**, especially the collection-to-execution consistency discussion.\n3. **Inspect the released checkpoint**, license, and repository requirements before planning an experiment.\n4. **Start with the documented LIBERO simulation example:** Check observations and action representation before attempting hardware deployment.\n\n## Used in\n\n- **AgiBot (Zhiyuan Robotics)** is the connected builder node.\n- **Study the surrounding system:** The policy depends on data collection, robot controllers, and task-specific evaluation, not model weights alone.",
+      "resources": [
+        {
+          "title": "OpenGO1 | OpenDriveLab",
+          "url": "https://opendrivelab.com/OpenGO1/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch GO-1 demonstrations while learning the deployment lessons."
+        },
+        {
+          "title": "GitHub - OpenDriveLab/AgiBot-World: [IROS 2025 Best Paper Award Finalist & IEEE TRO 2026] The Large-scale Manipulation Platform for Scalable and Intelligent Embodied Systems · GitHub",
+          "url": "https://github.com/OpenDriveLab/AgiBot-World",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the released models, dataset tooling, and requirements."
+        },
+        {
+          "title": "agibot-world/GO-1 · Hugging Face",
+          "url": "https://huggingface.co/agibot-world/GO-1",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the GO-1 checkpoint release."
+        },
+        {
+          "title": "[2503.06669] AgiBot World Colosseo: A Large-scale Manipulation Platform for Scalable and Intelligent Embodied Systems",
+          "url": "https://arxiv.org/abs/2503.06669",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the AgiBot World data platform and model evaluation."
+        }
+      ],
+      "sources": [
+        "https://opendrivelab.com/OpenGO1/",
+        "https://github.com/OpenDriveLab/AgiBot-World",
+        "https://huggingface.co/agibot-world/GO-1",
+        "https://arxiv.org/abs/2503.06669"
+      ]
+    },
+    {
+      "node_id": "r:grounding-dino",
+      "type": "robot",
+      "name": "Grounding DINO",
+      "summary": "Grounding DINO finds objects in images using text prompts, returning candidate bounding boxes instead of robot movement commands.",
+      "lesson_md": "## In one sentence\n\nGrounding DINO finds objects in images using text prompts, returning candidate bounding boxes instead of robot movement commands.\n\n![Grounding DINO published detection example](/img/lessons/robots_ai_model_2-grounding-dino.webp)\n*Grounding DINO published detection example. Source: [IDEA Research / Grounding DINO authors](https://github.com/IDEA-Research/GroundingDINO), license unknown.*\n\n## Why it matters for us\n\n- **Describe the target:** Open-vocabulary detection lets you ask for “the red cup” instead of choosing only from a fixed list of object classes.\n- **Software analogy:** Treat text as a search query over an image: boxes and matching scores are results another component must interpret.\n\n## What it is made of / how it works\n\n- **Encode both inputs:** Image and text backbones turn pixels and words into numerical features.\n- **Fuse their features:** A feature enhancer, language-guided query selection, and cross-modality decoder connect image regions to the requested concepts.\n- **Filter candidate detections:** The inference example returns boxes, confidence information, and phrases; thresholds determine which matches remain.\n\n```mermaid\nflowchart LR\n  I[Image] --> V[Image features]\n  T[Text prompt] --> L[Text features]\n  V --> F[Cross-modal detection]\n  L --> F\n  F --> B[Boxes and matching scores]\n  B --> A[Application checks results]\n```\n\n| Specification | What to know |\n|---|---|\n| Developer | IDEA Research collaborators |\n| Task | Open-set object detection |\n| Inputs | An image and a text description |\n| Main output | Candidate object bounding boxes |\n| Language interface | Category names or referring expressions |\n| Public access | Official repository and pretrained checkpoints |\n\n- **No motion comes out:** The model associates image regions with words or phrases; a separate robot stack must decide how to act.\n- **A box is only an image region:** It supplies neither depth nor object orientation nor a collision-free gripper path.\n\n> **Key idea:** A language-selected box is a useful perception result, but it is only one input to a robot's action pipeline.\n\n## Key terms\n\n- **Grounding**: linking language to observable image content.\n- **Open-set detection**: searching for categories described at inference time rather than only a fixed training label list.\n- **Threshold**: a chosen cutoff for retaining candidate matches; changing it changes which results remain.\n\n## Getting started\n\n1. **Watch the tutorial**, then follow the linked Transformers image-and-text inference example with a simple photograph.\n2. **Try the documented prompt “cat . dog .”** and compare it with one category; the official repository recommends periods between category names.\n3. **Inspect boxes and phrases visually:** Record false matches and missed objects rather than treating every returned box as correct.\n4. **Test an absent object:** Your application must handle empty filtered results instead of assuming a detection always exists.\n5. **Compare thresholds:** Observe how the cutoff changes retained boxes before adding camera capture or robot control.\n\n## Used in\n\n- Try **Open-vocabulary detector shoot-out on lab objects** before integrating **Language-pointing arm with open-vocabulary detection**.\n- **Open-vocabulary detection & grounding** explains the broader perception problem and helps you compare other models fairly.",
+      "resources": [
+        {
+          "title": "Detect Anything You Want with Grounding DINO | Zero Shot Object Detection SOTA",
+          "url": "https://www.youtube.com/watch?v=cMa77r3YrDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow the repository-linked introduction to text-guided detection."
+        },
+        {
+          "title": "Grounding DINO",
+          "url": "https://huggingface.co/docs/transformers/model_doc/grounding-dino",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run image-and-text inference and understand box and text thresholds with Transformers."
+        },
+        {
+          "title": "GitHub - IDEA-Research/GroundingDINO: [ECCV 2024] Official implementation of the paper \"Grounding DINO: Marrying DINO with Grounded Pre-Training for Open-Set Object Detection\" · GitHub",
+          "url": "https://github.com/IDEA-Research/GroundingDINO",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run official inference and inspect prompt and threshold settings."
+        },
+        {
+          "title": "[2303.05499] Grounding DINO: Marrying DINO with Grounded Pre-Training for Open-Set Object Detection",
+          "url": "https://arxiv.org/abs/2303.05499",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the open-set detection architecture and evaluations."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/transformers/model_doc/grounding-dino",
+        "https://www.youtube.com/watch?v=cMa77r3YrDk",
+        "https://github.com/IDEA-Research/GroundingDINO",
+        "https://arxiv.org/abs/2303.05499"
+      ]
+    },
+    {
+      "node_id": "r:habilis-brain-0",
+      "type": "robot",
+      "name": "HABILIS Brain 0",
+      "summary": "HABILIS Brain 0 is Tommoro Robotics’ manipulation model that learns visual scene changes, converts them into actions, and adds selective recovery.",
+      "lesson_md": "## In one sentence\n\nHABILIS Brain 0 is Tommoro Robotics’ manipulation model that learns visual scene changes, converts them into actions, and adds selective recovery.\n\n![HABILIS Brain 0 architecture linking geometry-change learning to robot actions](/img/lessons/robots_ai_model_2-habilis-brain-0.webp)\n*HABILIS Brain 0 architecture linking geometry-change learning to robot actions. Source: [Tommoro Robotics](https://tommoro-ai.github.io/habilis_brain_0_web/), license unknown.*\n\n## Why it matters for us\n\n- **Recovery matters:** A robot must react when an object slips or moves, not just replay a successful demonstration from beginning to end.\n- **Software analogy:** Think of a main function plus a corrective handler, rather than restarting the entire program whenever an intermediate result is wrong.\n- **Tommoro Robotics demonstrates** tote picking, two-arm container packing, and block sorting; these are published demonstrations, not guarantees for arbitrary factory tasks.\n\n> **Key idea:** Predicting how the scene should change gives action learning and recovery a shared visual reference.\n\n## What it is made of / how it works\n\n- **GC-VLM learns scene changes:** Training compares current and future geometry from multiple views, so the representation describes change rather than only the present scene.\n- **GC-VLA adds actions:** An action-generating network learns to translate that representation into continuous robot commands through staged training.\n- **GCRF adds corrections:** A router selects bounded corrections to the frozen policy’s action-generation flow, learned from closed-loop feedback.\n\n```mermaid\nflowchart LR\n  O[Current images and instruction] --> G[GC-VLA geometry-change features]\n  S[Robot state] --> A[Action-generation flow]\n  G --> A\n  G --> C[GCRF selective correction]\n  A --> C\n  C --> R[Robot actions]\n  R --> O\n```\n\n| Specification | Published value |\n|---|---|\n| Model family | HABILIS Brain 0 |\n| Visual training horizon | Nominal 0.5 seconds |\n| GC-VLA LIBERO success | 95.20% |\n| With GCRF recovery | 99.55% |\n| Training stages | 4, from representation learning to residual recovery |\n| Downloadable weights / price | Unknown |\n\n- **Worked comparison:** The paper’s 99.55% minus 95.20% is a 4.35 percentage-point improvement on LIBERO; it is not a measured factory reliability figure.\n- **Future frames are training targets:** During use, the policy receives current observations; it cannot peek at the actual future.\n\n## Key terms\n\n- **Geometry**: the spatial structure of a scene, rather than its colors alone.\n- **Residual**: an added correction to an existing prediction or command.\n- **Closed-loop feedback**: using new observations to adjust subsequent actions.\n- **LIBERO**: a simulated robot-manipulation benchmark, not a factory deployment test.\n\n## Getting started\n\n1. **Watch the project videos**, especially object-loss recovery, and identify the changed scene before the correction begins.\n2. **Compare the architecture figure** with the paper’s four training stages; separate representation learning, action alignment, and recovery.\n3. **Treat access as unknown:** The opened materials do not establish reusable weights, an API price, or a ready-to-run student installation.\n\n## Used in\n\n- **Tommoro Robotics** presents this model within its HABILIS stack for robot work; the project page connects execution experience to retraining.\n- **Study the recovery clips** as examples of feedback-driven manipulation before proposing a hardware reproduction.",
+      "resources": [
+        {
+          "title": "HABILIS Brain 0 | One foundation. Built for real robot work.",
+          "url": "https://tommoro-ai.github.io/habilis_brain_0_web/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch tote picking, two-arm packing, and recovery demonstrations."
+        },
+        {
+          "title": "Recovery from object loss",
+          "url": "https://files.habilis-console.com/habilis-brain-zero/releases/20260910-113500-design-feedback/videos/recovery-intervention-01.mp4?v=clean-source-v4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the project’s object-loss recovery clip directly."
+        },
+        {
+          "title": "HABILIS Brain 0 | Tommoro Robotics",
+          "url": "https://tommoro.ai/brain-0",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Find the company’s dedicated entry point to Brain 0."
+        },
+        {
+          "title": "[2609.25558] HABILIS Brain 0: Geometry-Change Supervision for Vision-Language-Action and Residual Flow Recovery",
+          "url": "https://arxiv.org/abs/2609.25558",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the training stages and reported LIBERO comparison."
+        }
+      ],
+      "sources": [
+        "https://tommoro-ai.github.io/habilis_brain_0_web/",
+        "https://files.habilis-console.com/habilis-brain-zero/releases/20260910-113500-design-feedback/videos/recovery-intervention-01.mp4?v=clean-source-v4",
+        "https://tommoro.ai/brain-0",
+        "https://arxiv.org/abs/2609.25558"
+      ]
+    },
+    {
+      "node_id": "r:helix-figure",
+      "type": "robot",
+      "name": "Helix (Figure)",
+      "summary": "Helix is Figure’s vision-language-action system for turning camera observations, robot state, and language instructions into humanoid movement.",
+      "lesson_md": "## In one sentence\n\nHelix is Figure’s vision-language-action system for turning camera observations, robot state, and language instructions into humanoid movement.\n\n![Frame from Figure’s Helix grocery collaboration demonstration](/img/lessons/robots_ai_model_2-helix-figure.webp)\n*Frame from Figure’s Helix grocery collaboration demonstration. Source: [Figure](https://www.figure.ai/news/helix), license unknown.*\n\n## Why it matters for us\n\n- **Language is not a motor command:** Recognizing a bag of cookies still leaves the problem of moving fingers, wrists, head, and torso together.\n- **Software analogy:** Helix’s original design resembles a slower planning service feeding a fast execution loop through shared memory, rather than one blocking function call.\n- **Version matters:** The February 2025 introduction describes upper-body control; the January 2026 Helix 02 report extends control to walking and balance.\n\n> **Key idea:** Understanding a goal and reacting physically need different update rates, but must communicate continuously.\n\n## What it is made of / how it works\n\n- **System 2 interprets context:** A vision-language model processes robot images, measured state, and the instruction, producing an internal numerical representation of intent.\n- **System 1 reacts quickly:** A smaller network combines that representation with fresh observations and outputs continuous upper-body control targets.\n- **Training uses demonstrations:** Figure reports approximately 500 hours of remotely operated behavior, with automatically generated language labels and joint training of both systems.\n\n```mermaid\nflowchart LR\n  O[Images and robot state] --> S2[System 2: 7-9 Hz]\n  L[Language instruction] --> S2\n  S2 --> M[Shared intent vector]\n  M --> S1[System 1: 200 Hz]\n  O --> S1\n  S1 --> R[Upper-body targets]\n  R --> O\n```\n\n| Original Helix specification | Figure’s February 2025 report |\n|---|---|\n| System 2 size | 7 billion parameters |\n| System 1 size | 80 million parameters |\n| System 2 update rate | 7–9 Hz |\n| System 1 update rate | 200 Hz |\n| Upper-body action space | 35 degrees of freedom |\n| Training demonstrations | Approximately 500 hours |\n\n- **Worked timing example:** At 200 updates per second, System 1 has a nominal 5 milliseconds between updates; this is not end-to-end task latency.\n- **Watch the grocery handover:** Two robots run the same model weights while language instructions specify giving and receiving roles.\n\n## Key terms\n\n- **VLA**: a vision-language-action model connecting visual observations and instructions to actions.\n- **Hz**: updates per second, not a measure of task success.\n- **Latent vector**: an internal list of numbers encoding task-relevant information.\n- **Parameter**: a numerical weight learned during model training.\n- **Degree of freedom**: an independently controlled motion variable.\n\n## Getting started\n\n1. **Watch the original grocery video** and distinguish object recognition, handover timing, and finger control as separate challenges.\n2. **Read the logistics follow-up** to see how stereo vision and demonstration quality change manipulation performance.\n3. **Compare Helix 02 separately:** Do not apply the original upper-body specification table to the later full-body system.\n4. **Budget for study, not installation:** Public model download access and commercial pricing are unknown from these materials.\n\n## Used in\n\n- **Figure** uses Helix in its humanoid research demonstrations, including collaborative groceries and logistics package handling.\n- **Compare published versions** by their demonstrated tasks and observations, rather than treating every Helix announcement as the same architecture.",
+      "resources": [
+        {
+          "title": "Helix: A Vision-Language-Action Model for Generalist Humanoid Control",
+          "url": "https://www.figure.ai/news/helix",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the original grocery handover and inspect its two-speed architecture."
+        },
+        {
+          "title": "Helix Accelerating Real-World Logistics",
+          "url": "https://www.figure.ai/news/helix-logistics",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "See stereo vision, calibration, and demonstration curation applied to package handling."
+        },
+        {
+          "title": "Helix | Figure",
+          "url": "https://www.figure.ai/helix",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Browse Figure’s Helix-specific demonstration collection."
+        },
+        {
+          "title": "Introducing Helix 02: Full-Body Autonomy",
+          "url": "https://www.figure.ai/news/helix-02",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Distinguish the later full-body system from the original upper-body model."
+        }
+      ],
+      "sources": [
+        "https://www.figure.ai/news/helix",
+        "https://www.figure.ai/news/helix-logistics",
+        "https://www.figure.ai/helix",
+        "https://www.figure.ai/news/helix-02"
+      ]
+    },
+    {
+      "node_id": "r:humanoid-transformer-with-touch-dreaming-htd",
+      "type": "robot",
+      "name": "Humanoid Transformer with Touch Dreaming (HTD)",
+      "summary": "HTD is a humanoid manipulation policy trained to predict actions and future touch signals, helping it learn contact-aware behavior.",
+      "lesson_md": "## In one sentence\n\nHTD is a humanoid manipulation policy trained to predict actions and future touch signals, helping it learn contact-aware behavior.\n\n![HTD humanoid performing contact-rich manipulation in the authors’ demonstration](/img/lessons/robots_ai_model_2-htd.webp)\n*HTD humanoid performing contact-rich manipulation in the authors’ demonstration. Source: [HTD authors](https://github.com/chrisyrniu/humanoid-touch-dream), license unknown.*\n\n## Why it matters for us\n\n- **Vision misses contact details:** An object can look correctly positioned while a hand applies the wrong force or loses contact.\n- **Software analogy:** Touch dreaming resembles an auxiliary prediction task in a shared model: extra training outputs shape useful features without becoming mandatory runtime outputs.\n- **The public demonstrations show** towel folding, book organization, tea serving, litter scooping, and inserting a T-shaped part while the humanoid maintains whole-body stability.\n\n> **Key idea:** Learning to predict future contact can improve action representations even when those predictions are not needed during deployment.\n\n## What it is made of / how it works\n\n- **A whole-body controller maintains stability:** Reinforcement learning trains this lower-level component, which tracks torso and movement commands while manipulation happens above it.\n- **HTD learns from demonstrations:** Virtual-reality teleoperation records examples; behavioral cloning trains the manipulation policy to reproduce demonstrated actions.\n- **Inputs combine senses:** Multiple camera views, tactile measurements, and the robot’s measured configuration feed a Transformer, a neural network for combining structured observations.\n- **Training adds touch dreaming:** Alongside action sequences, the policy predicts future hand-joint forces and compressed touch representations.\n- **Deployment still senses touch:** Only the auxiliary prediction experts are omitted during deployment, not the policy’s tactile inputs.\n\n```mermaid\nflowchart LR\n  O[Vision, touch and robot state] --> P[HTD Transformer]\n  P --> A[Action chunks]\n  A --> C[Whole-body execution]\n  C --> R[Robot and scene]\n  R --> O\n  P -. Training only .-> T[Future touch predictions]\n```\n\n| Specification | Authors’ reported setup |\n|---|---|\n| Policy | Multimodal encoder-decoder Transformer |\n| Training | Behavioral cloning plus touch prediction |\n| Real-world evaluation | 5 contact-rich tasks |\n| Insert-T clearance | 3.5 mm |\n| Relative average success improvement | 90.9% over the stronger baseline |\n| Browser controller demo | 50 Hz policy, 200 Hz simulation |\n\n- **Worked timing example:** The browser demo’s 200 Hz simulation advances four physics steps per 50 Hz controller update; this describes the controller demo, not HTD inference speed.\n- **Read the metric carefully:** A 90.9% relative improvement is not a 90.9% absolute success rate or a percentage-point gain.\n- **Different control layers have different rates:** The paper’s manipulation policy streams chunks at 30 Hz; the browser’s 50 Hz is its whole-body controller.\n\n## Key terms\n\n- **Proprioception**: sensing the robot’s own configuration, such as joint positions.\n- **Tactile latent**: a learned compressed representation of touch measurements.\n- **Action chunk**: several future control steps predicted together.\n- **Auxiliary objective**: an extra training target used to improve shared features.\n\n## Getting started\n\n1. **Watch the authors’ video** and compare contact changes across scooping, insertion, and folding.\n2. **Try the free browser controller demo:** Explore torso commands and reset after a fall; it demonstrates whole-body control, not autonomous manipulation.\n3. **Read the released repository:** Follow its separate collection, control, and training instructions; hardware costs remain unknown.\n\n## Used in\n\n- **Bosch Center for Artificial Intelligence** collaborated with Carnegie Mellon University and UT Arlington on the published system.\n- **Use the project’s failure cases** to study where stable locomotion and dexterous hand control still need coordinated sensing.",
+      "resources": [
+        {
+          "title": "Humanoid Touch Dream: Learning Versatile Humanoid Manipulation with Touch Dreaming",
+          "url": "https://www.youtube.com/watch?v=QT9J6zMlNpY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors explain and demonstrate the complete system."
+        },
+        {
+          "title": "HTD whole-body controller · MuJoCo",
+          "url": "https://humanoid-touch-dream.github.io/wbc_mujoco/live/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Explore the released controller without humanoid hardware."
+        },
+        {
+          "title": "Humanoid Touch Dream",
+          "url": "https://humanoid-touch-dream.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect task rollouts, touch-prediction visualization, and failure cases."
+        },
+        {
+          "title": "GitHub - chrisyrniu/humanoid-touch-dream · GitHub",
+          "url": "https://github.com/chrisyrniu/humanoid-touch-dream",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find released collection, policy training, and controller modules."
+        },
+        {
+          "title": "[2604.13015] Learning Versatile Humanoid Manipulation with Touch Dreaming",
+          "url": "https://arxiv.org/abs/2604.13015",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the actual training objective and relative evaluation gains."
+        }
+      ],
+      "sources": [
+        "https://github.com/chrisyrniu/humanoid-touch-dream",
+        "https://www.youtube.com/watch?v=QT9J6zMlNpY",
+        "https://humanoid-touch-dream.github.io/wbc_mujoco/live/",
+        "https://humanoid-touch-dream.github.io/",
+        "https://arxiv.org/abs/2604.13015",
+        "https://humanoid-touch-dream.github.io/wbc_mujoco/live/assets/contract.json"
+      ]
+    },
+    {
+      "node_id": "r:internvla-m1",
+      "type": "robot",
+      "name": "InternVLA-M1",
+      "summary": "InternVLA-M1 is an open robot-learning framework that uses spatial grounding to connect language instructions with manipulation actions.",
+      "lesson_md": "## In one sentence\n\nInternVLA-M1 is an open robot-learning framework that uses spatial grounding to connect language instructions with manipulation actions.\n\n![InternVLA-M1 published overview of spatially guided manipulation](/img/lessons/robots_ai_model_2-internvla-m1.webp)\n*InternVLA-M1 published overview of spatially guided manipulation. Source: [InternRobotics](https://github.com/InternRobotics/InternVLA-M1), license unknown.*\n\n## Why it matters for us\n\n- **“Where” comes before “how”:** A robot receiving “put the apple on the plate” must identify the target regions before generating useful movement.\n- **Software analogy:** Spatial grounding is an intermediate representation in a compiler: language becomes a structured target that guides an action-generating backend.\n- **Shanghai AI Laboratory’s project** publishes code, checkpoints, and examples, making this a more reproducible study target than a demonstration-only model.\n\n> **Key idea:** Explicit spatial supervision can bridge language understanding and robot-specific control instead of asking one opaque mapping to learn everything at once.\n\n## What it is made of / how it works\n\n- **Stage one learns spatial grounding:** Pretraining aligns instructions with positions in images, without requiring every example to specify one robot’s motor commands.\n- **Stage two learns actions:** Spatial prompts guide an action expert, the model component producing control signals for the particular robot body.\n- **Training includes simulated manipulation:** The authors generated pick-and-place episodes covering varied tasks and objects to broaden instruction following.\n\n```mermaid\nflowchart LR\n  I[Images and instruction] --> P[Vision-language planner]\n  P --> S[Spatial prompt]\n  S --> A[Robot-specific action expert]\n  A --> N[Normalized action predictions]\n  N --> C[Robot-specific decoding and control]\n```\n\n| Specification | Published detail |\n|---|---|\n| Framework | Spatially guided vision-language-action |\n| Spatial pretraining data | More than 2.3 million examples |\n| Generated pick-and-place data | 244,000 episodes |\n| Simulation coverage | 200 tasks, more than 3,000 objects |\n| Spatial outputs studied | Boxes, points, and traces |\n| Repository license | MIT |\n\n- **Worked interface example:** The repository asks “Give the bounding box for the apple.” Its action example instead requests “Pick up the apple and place it on the plate.”\n- **Different outputs serve different purposes:** The first returns a spatial answer; the second returns normalized action predictions, not ready-made universal motor commands.\n- **Check the checkpoint:** The model collection includes separate LIBERO variants for spatial, object, goal, and long-horizon tasks.\n\n## Key terms\n\n- **Spatial grounding**: linking words to locations or regions in an observed scene.\n- **Bounding box**: a rectangle identifying an image region containing an object.\n- **Embodiment**: the robot body and its sensing and action interfaces.\n- **Trace**: a sequence of image points describing a planned path.\n- **Checkpoint**: saved model weights loaded for inference or further training.\n\n## Getting started\n\n1. **Watch the linked demonstration** and inspect the project’s box, point, and trace examples before installing anything.\n2. **Read the repository setup** and select a checkpoint matching the experiment; code and weights are public, but compute costs depend on your setup.\n3. **Start with image questions:** Inspect the apple-box response before attempting the documented two-view action-prediction example; its returned actions are normalized, not motor-ready.\n4. **Use simulation first:** Follow the provided LIBERO or SimplerEnv example before connecting model outputs to physical actuators.\n\n## Used in\n\n- **Shanghai AI Laboratory** is the connected builder node; InternRobotics hosts the implementation and experiment guides.\n- **Use the released benchmarks** to distinguish improvements from spatial guidance from improvements caused by changing the training data.",
+      "resources": [
+        {
+          "title": "InternVLA-M1: Latent Spatial Grounding for Instruction-Following Robotic Manipulation",
+          "url": "https://www.youtube.com/watch?v=n129VDqJCk4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator-linked instruction-following demonstration."
+        },
+        {
+          "title": "InternVLA-M1: A Spatially Guided Vision-Language-Action Framework for Generalist Robot Policy",
+          "url": "https://internrobotics.github.io/internvla-m1.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explore spatial outputs, manipulation videos, and the model overview."
+        },
+        {
+          "title": "GitHub - InternRobotics/InternVLA-M1: InternVLA-M1: A Spatially Guided Vision-Language-Action Framework for Generalist Robot Policy · GitHub",
+          "url": "https://github.com/InternRobotics/InternVLA-M1",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run the image-question and action-prediction examples."
+        },
+        {
+          "title": "[2510.13778] InternVLA-M1: A Spatially Guided Vision-Language-Action Framework for Generalist Robot Policy",
+          "url": "https://arxiv.org/abs/2510.13778",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study spatial pretraining, action post-training, and evaluation."
+        }
+      ],
+      "sources": [
+        "https://github.com/InternRobotics/InternVLA-M1",
+        "https://www.youtube.com/watch?v=n129VDqJCk4",
+        "https://internrobotics.github.io/internvla-m1.github.io/",
+        "https://arxiv.org/abs/2510.13778"
+      ]
+    },
+    {
+      "node_id": "r:isaac-gr00t",
+      "type": "robot",
+      "name": "Isaac GR00T",
+      "summary": "Isaac GR00T is NVIDIA’s family of pretrained vision-language-action models and tools for adapting robot manipulation policies to different bodies and tasks.",
+      "lesson_md": "## In one sentence\n\nIsaac GR00T is NVIDIA’s family of pretrained vision-language-action models and tools for adapting robot manipulation policies to different bodies and tasks.\n\n![NVIDIA’s GR00T demonstration on a Unitree G1 humanoid](/img/lessons/robots_ai_model_2-isaac-gr00t.webp)\n*NVIDIA’s GR00T demonstration on a Unitree G1 humanoid. Source: [NVIDIA](https://github.com/NVIDIA/Isaac-GR00T), license unknown.*\n\n## Why it matters for us\n\n- **Pretraining gives a starting point:** Instead of learning manipulation from nothing, adapt an existing model using demonstrations from the target robot and task.\n- **Software analogy:** Treat the pretrained policy like a reusable library with a strict data contract, not a universal executable that understands every robot automatically.\n- **Version your experiment:** The original 2025 paper describes GR00T N1; the opened repository now presents N1.7 with different model interfaces and training requirements.\n\n> **Key idea:** A reusable robot model still needs compatible cameras, state measurements, action definitions, and evaluation on its target body.\n\n## What it is made of / how it works\n\n- **Vision and language provide context:** The model combines observations and task instructions to decide what behavior the scene calls for.\n- **An action module generates movement:** A diffusion Transformer refines continuous action predictions, rather than replying with text for another system to interpret.\n- **Training mixes experience:** The original paper combines robot trajectories, human videos, and synthetic data; N1.7 adds documented human-video pretraining and relative end-effector actions.\n\n```mermaid\nflowchart LR\n  O[Images and instruction] --> V[Vision-language backbone]\n  V --> D[Diffusion action head]\n  S[Robot state] --> D\n  D --> H[40 predicted steps]\n  H --> E[Execute selected horizon]\n  E --> O\n```\n\n| N1.7 repository specification | Published detail |\n|---|---|\n| Vision-language backbone | Cosmos-Reason2-2B, using Qwen3-VL architecture |\n| Predicted action horizon | 40 steps |\n| Inference requirement | 1 GPU with 16 GB+ memory |\n| Fine-tuning recommendation | 40 GB+ GPU memory |\n| Code license | Apache 2.0 |\n| Weight license | NVIDIA Open Model License |\n\n- **Worked configuration example:** N1.7 predicts a horizon of 40 steps; the execution horizon selects how many predicted actions run before requesting another prediction.\n- **Do not confuse horizons:** Executing fewer steps can refresh observations sooner, but does not remove inference latency or make an incompatible action interface valid.\n\n## Key terms\n\n- **Embodiment**: the robot body together with its sensors and command interface.\n- **Fine-tuning**: updating pretrained weights using additional task or robot data.\n- **End effector**: the robot’s working endpoint, such as its gripper.\n- **Diffusion action model**: a model that learns to refine noisy action predictions into usable action sequences.\n\n## Getting started\n\n1. **Watch NVIDIA’s introduction**, then read the current repository rather than copying installation commands from the original paper.\n2. **Check GPU memory and licenses:** Public code and model weights have different licenses; use the N1.7 requirements rather than assuming older instructions apply.\n3. **Inspect a demo dataset:** Match video, state, action, normalization, and embodiment configuration before trying the documented inference workflow.\n4. **Evaluate offline and in simulation** before connecting a fine-tuned checkpoint to a physical robot controller.\n\n## Used in\n\n- **Fine-tuning & adapting pretrained robot policies** and **Cross-embodiment learning** explain the adaptation problems this model makes concrete.\n- **Pretrained-policy adaptation budget explorer** can compare adaptation choices while keeping data and evaluation conditions fixed.",
+      "resources": [
+        {
+          "title": "Accelerating Humanoid Robot Development With NVIDIA Isaac GR00T",
+          "url": "https://www.youtube.com/watch?v=yvDDpQZliY8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See NVIDIA’s overview of the GR00T development workflow."
+        },
+        {
+          "title": "Isaac GR00T | Humanoid Robot Development Platform | NVIDIA",
+          "url": "https://developer.nvidia.com/isaac/gr00t",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Explore the model family and its robot-development context."
+        },
+        {
+          "title": "GitHub - NVIDIA/Isaac-GR00T: NVIDIA Isaac GR00T N1.7 -  A Foundation Model for Generalist Robots. · GitHub",
+          "url": "https://github.com/NVIDIA/Isaac-GR00T",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect current N1.7 requirements, data contracts, inference, and fine-tuning."
+        },
+        {
+          "title": "[2503.14734] GR00T N1: An Open Foundation Model for Generalist Humanoid Robots",
+          "url": "https://arxiv.org/abs/2503.14734",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original dual-system model and bimanual manipulation experiments."
+        }
+      ],
+      "sources": [
+        "https://github.com/NVIDIA/Isaac-GR00T",
+        "https://www.youtube.com/watch?v=yvDDpQZliY8",
+        "https://developer.nvidia.com/isaac/gr00t",
+        "https://arxiv.org/abs/2503.14734"
+      ]
+    },
+    {
+      "node_id": "r:machenta-instant-learning-model",
+      "type": "robot",
+      "name": "Machenta instant-learning model",
+      "summary": "Machenta’s instant-learning model uses a demonstration as a task prompt, aiming to perform new robot tasks without task-specific weight updates.",
+      "lesson_md": "## In one sentence\n\nMachenta’s instant-learning model uses a demonstration as a task prompt, aiming to perform new robot tasks without task-specific weight updates.\n\n![Machenta’s published robot-arm preview](/img/lessons/robots_ai_model_2-machenta.webp)\n*Machenta’s published robot-arm preview. Source: [Machenta](https://machenta.com), license unknown.*\n\n## Why it matters for us\n\n- **Teaching can be the interface:** Rather than collecting a large task dataset and waiting for training, the company demonstrates immediate execution after one example.\n- **Software analogy:** A demonstration acts like an argument passed to an already-trained function, not a source-code change followed by recompilation.\n- **Separate claims from access:** The October 2026 materials show demonstrations and explain the approach; they do not establish unrestricted downloads or a commercial price.\n\n> **Key idea:** “No further training” means no task-specific weight update after the demonstration, not that the model never needed training.\n\n## What it is made of / how it works\n\n- **The company calls it VDA:** A vision-demo-action model takes a demonstration describing the task plus ongoing images, then predicts actions in a feedback loop.\n- **Pretraining happens in simulation:** Machenta says it varies objects, tasks, environments, teaching examples, and robot bodies to learn the task-learning process itself.\n- **Real demonstrations provide context:** During deployment, both the teaching example and current observations come from the real environment, rather than a task-specific simulation.\n\n```mermaid\nflowchart LR\n  S[Simulation pretraining] --> M[Trained VDA model]\n  D[New task demonstration] --> M\n  O[Current camera images] --> M\n  M --> A[Predicted actions]\n  A --> R[Robot and scene]\n  R --> O\n```\n\n| Company’s published description | Detail |\n|---|---|\n| Task prompt | A demonstration, rather than language alone |\n| Initial teaching | One demonstration in the showcased examples |\n| Pretraining source | Entirely simulated data |\n| Robots shown | 6 different robots |\n| Teaching modes shown | 4 |\n| Download access / commercial price | Unknown; early-access interest form |\n\n- **Worked ambiguity example:** Placing an object into a small black container could mean “use small containers” or “use black containers.”\n- **The blog adds examples** to clarify that ambiguity, illustrating why one demonstration may start an interaction without fully specifying every intended rule.\n- **Inspect the uncut sequence:** Compare the teaching example, rearranged objects, and first autonomous attempt; a polished success video alone cannot establish general reliability.\n- **Check source independence:** Creandum reports a hands-on visit, but is an investor; its account is not an independent benchmark.\n\n## Key terms\n\n- **In-context learning**: changing behavior through provided examples without updating model weights for that task.\n- **Meta-learning**: training a model to learn new tasks, rather than only memorizing individual tasks.\n- **Rollout**: a sequence of actions executed by a policy and the resulting observations.\n- **Sim-to-real gap**: differences between simulated conditions and the physical world.\n\n## Getting started\n\n1. **Watch the company’s demonstrations** and identify exactly what information the teacher provides before execution starts.\n2. **Read the technical blog:** Contrast demonstration-conditioned inference with task-specific fine-tuning; do not assume the system is a language-commanded VLA.\n3. **Use the preview for study:** Public model weights, installation requirements, and reproducible benchmark protocols remain unknown from these sources.\n\n## Used in\n\n- **Machenta’s preview tasks** include packing, tidying, machine tending, and a three-robot assembly-line demonstration, presented as company results rather than independent benchmarks.\n- **Compare the teaching modes:** Leader-follower control, virtual-reality controllers, physical guidance, and human-hand examples describe different ways of supplying the task prompt.",
+      "resources": [
+        {
+          "title": "Machenta | Instant Robot Learning",
+          "url": "https://machenta.com",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator’s instant-learning preview."
+        },
+        {
+          "title": "Introducing Instant Robot Learning | Machenta",
+          "url": "https://machenta.com/blog/instant-robot-learning",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Read how demonstrations condition the model and how simulation supports pretraining."
+        },
+        {
+          "title": "Backing Machenta: the era of Instant Robot Learning",
+          "url": "https://creandum.com/stories/backing-machenta/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read the investor’s account of testing the model with unfamiliar objects."
+        },
+        {
+          "title": "Vision | Machenta",
+          "url": "https://machenta.com/vision",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the company’s research motivation and distinction between teaching and retraining."
+        }
+      ],
+      "sources": [
+        "https://machenta.com",
+        "https://machenta.com/blog/instant-robot-learning",
+        "https://creandum.com/stories/backing-machenta/",
+        "https://machenta.com/vision"
+      ]
+    },
+    {
+      "node_id": "r:mast3r",
+      "type": "robot",
+      "name": "MASt3R",
+      "summary": "MASt3R is a learned image-matching and 3D reconstruction model that connects pixels across views using scene geometry and local visual features.",
+      "lesson_md": "## In one sentence\n\nMASt3R is a learned image-matching and 3D reconstruction model that connects pixels across views using scene geometry and local visual features.\n\n![MASt3R’s published examples of matching image regions across viewpoints](/img/lessons/robots_ai_model_2-mast3r.webp)\n*MASt3R’s published examples of matching image regions across viewpoints. Source: [NAVER LABS](https://github.com/naver/mast3r), license unknown.*\n\n## Why it matters for us\n\n- **Two photos can describe one place:** A robot comparing a current view with an earlier image needs corresponding scene points, despite changes in viewpoint.\n- **Software analogy:** Image matching resembles joining two tables by shared entities, except the keys must be inferred from appearance and geometry rather than exact identifiers.\n- **This is perception, not control:** MASt3R does not output joint commands or independently provide a complete navigation system.\n\n> **Key idea:** Predicting 3D structure and matching features together helps connect views, but downstream systems must still verify and use those matches.\n\n## What it is made of / how it works\n\n- **It builds on DUSt3R:** A Transformer-based reconstruction network predicts pointmaps, associating image pixels with estimated 3D scene points.\n- **An extra output head adds features:** Dense local descriptors summarize visual regions, trained with an additional matching objective to improve correspondence precision.\n- **Reciprocal matching reduces search:** The method searches for mutually consistent descriptor matches rather than exhaustively comparing every possible pair of pixels.\n\n```mermaid\nflowchart LR\n  A[Image A] --> N[MASt3R network]\n  B[Image B] --> N\n  N --> P[3D pointmaps]\n  N --> D[Local descriptors]\n  D --> M[Reciprocal matches]\n  P --> G[Geometric processing]\n  M --> G\n```\n\n| Research implementation detail | Published value |\n|---|---|\n| Publication | ECCV 2024 |\n| Core input | A pair of images |\n| Core outputs | Pointmaps and dense local features |\n| Released model | ViT-L encoder, ViT-B decoder |\n| Listed training resolutions | 512×384 down to 512×160 |\n| Code terms | CC BY-NC-SA 4.0, noncommercial |\n\n- **Worked viewing example:** NAVER’s blog shows a hotel-room reconstruction from 35 phone images, then a challenging room example from only five images.\n- **Check licenses separately:** The repository warns that checkpoint use also depends on training-dataset terms, including restrictive Map-free dataset conditions.\n\n## Key terms\n\n- **Correspondence**: two image locations believed to represent the same physical point.\n- **Pointmap**: an image-shaped array of predicted 3D points.\n- **Descriptor**: a numerical representation used to compare local visual content.\n- **Reciprocal match**: each descriptor selects the other as its nearest match; this consistency check does not guarantee physical correctness.\n- **Camera pose**: the camera’s position and orientation in a chosen coordinate system.\n\n## Getting started\n\n1. **Watch the creator’s reconstruction clips** in the blog, then try the linked small-scene interactive demo.\n2. **Use overlapping photographs** of a stationary scene; compare a good pair with a low-overlap pair and inspect mismatches, not just reconstructed surfaces.\n3. **Follow repository installation and checkpoint instructions:** Research access is public, but GPU compute costs extra and commercial use is not unrestricted.\n4. **Keep experiments offline initially:** Compare estimated geometry against known scene structure before proposing robot localization or mapping integration.\n\n## Used in\n\n- **Place recognition, loop closure & relocalization** explains how verified matches can help a robot recognize previously visited places.\n- **Compare geometric and learned place matching** is a suitable map project for testing false matches, not merely displaying convincing reconstructions.",
+      "resources": [
+        {
+          "title": "MASt3R - Matching And Stereo 3D Reconstruction - NAVER LABS Europe",
+          "url": "https://europe.naverlabs.com/blog/mast3r-matching-and-stereo-3d-reconstruction/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator’s room-reconstruction videos and read the accompanying explanation."
+        },
+        {
+          "title": "MASt3R - a Hugging Face Space by naver",
+          "url": "https://huggingface.co/spaces/naver/MASt3R",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Try the official small-scene reconstruction interface."
+        },
+        {
+          "title": "GitHub - naver/mast3r: Grounding Image Matching in 3D with MASt3R · GitHub",
+          "url": "https://github.com/naver/mast3r",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect inference, checkpoints, matching examples, and license restrictions."
+        },
+        {
+          "title": "[2406.09756] Grounding Image Matching in 3D with MASt3R",
+          "url": "https://arxiv.org/abs/2406.09756",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study pointmaps, descriptor learning, and reciprocal matching."
+        }
+      ],
+      "sources": [
+        "https://github.com/naver/mast3r",
+        "https://europe.naverlabs.com/blog/mast3r-matching-and-stereo-3d-reconstruction/",
+        "https://huggingface.co/spaces/naver/MASt3R",
+        "https://arxiv.org/abs/2406.09756"
+      ]
+    },
+    {
+      "node_id": "r:mediapipe-hand-pose-landmarker",
+      "type": "robot",
+      "name": "MediaPipe Hand & Pose Landmarker",
+      "summary": "The map’s MediaPipe Hand & Pose Landmarker entry groups separate hand and body trackers for gestures and teleoperation, including detailed finger landmarks.",
+      "lesson_md": "## In one sentence\n\nThe map’s MediaPipe Hand & Pose Landmarker entry groups separate hand and body trackers for gestures and teleoperation, including detailed finger landmarks.\n\n![MediaPipe Hand Landmarker’s published preview with tracked hand keypoints](/img/lessons/robots_ai_model_2-mediapipe-hand-pose.webp)\n*MediaPipe Hand Landmarker’s published preview with tracked hand keypoints. Source: [Google AI Edge](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker), Creative Commons Attribution 4.0.*\n\n## Why it matters for us\n\n- **Gestures need finger detail:** A wrist location alone cannot distinguish an open hand from a pinch; hand landmarks add the finger geometry needed for interaction.\n- **The map name groups two tasks:** Hand Landmarker supplies fingers; the separate Pose Landmarker adds body context. This entry is not one combined model download.\n- **Software analogy:** Treat them as separate input adapters producing structured events, then write your own gesture interpretation and robot-command mapping.\n\n> **Key idea:** Tracking human motion supplies observations, not an automatic or safe translation into robot motion.\n\n## What it is made of / how it works\n\n- **Hand detection finds a crop:** A palm detector locates the hand; a second model estimates detailed landmarks inside the detected region.\n- **Video tracking reuses the region:** Hand Landmarker avoids rerunning palm detection on every frame, returning to detection when tracking or hand presence fails.\n- **Body tracking adds context:** Pose Landmarker reports body joints and coarse hand points, not Hand Landmarker’s detailed finger skeleton.\n\n```mermaid\nflowchart LR\n  C[Camera frame] --> H[Hand Landmarker]\n  C --> P[Optional Pose Landmarker]\n  H --> F[21 landmarks per hand]\n  P --> B[33 landmarks per body]\n  F --> G[Gesture or teleoperation logic]\n  B --> G\n  G --> U[Onscreen command preview]\n```\n\n| Interface detail | Documented value |\n|---|---|\n| Hand output | 21 landmarks per detected hand |\n| Body output | 33 landmarks per detected pose |\n| Hand labels | Left / Right handedness |\n| Hand image-coordinate depth origin | Wrist |\n| Hand world-coordinate origin | Hand’s geometric center |\n| Web package | @mediapipe/tasks-vision |\n\n- **Worked pinch input:** The hand index map labels thumb tip as 4 and index-finger tip as 8; compare these positions as a candidate pinch signal.\n- **Keep frames consistent:** Hand and body world coordinates have different origins; do not concatenate them as one frame.\n- **Handle missing observations:** Missing hands should produce “no command,” not reuse old positions.\n\n## Key terms\n\n- **Landmark**: a predicted location of a recognizable body or hand feature.\n- **Handedness**: classification of the subject’s left or right hand, not the viewer’s side.\n- **Retargeting**: mapping human motion onto a robot with different joints and limits.\n- **Normalized coordinate**: an image position expressed relative to image width or height.\n\n## Getting started\n\n1. **Open the hand demo** with a webcam and inspect finger overlays before attempting gesture labels.\n2. **Follow Google’s hand tutorial:** Configure the task for the input mode and explicitly request two hands if needed; the documented default is one.\n3. **Prototype the pinch signal onscreen:** Use hand landmarks 4 and 8, then optionally add body-wrist context from the separate Pose Landmarker task.\n4. **Use the free SDK and models:** Disable hardware commands while testing missing hands and mirrored camera previews.\n\n## Used in\n\n- **Gesture-commanded robot** and **Hand-tracking teleoperation of the SO-101** can use the detailed hand output as an input, with separately designed command limits.\n- **Human body & hand pose tracking** supplies the broader perception concepts; **MediaPipe Pose Landmarker** focuses instead on body-level observation and confidence handling.",
+      "resources": [
+        {
+          "title": "Hand landmark detection - ML on Web with MediaPipe: Episode 4",
+          "url": "https://www.youtube.com/watch?v=hV5S4iQhNkI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the two-model hand pipeline from Google’s tutorial."
+        },
+        {
+          "title": "MediaPipe Web Task Demo",
+          "url": "https://google-ai-edge.github.io/mediapipe-samples-web/#/vision/hand_landmarker",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Inspect live finger landmarks and handedness."
+        },
+        {
+          "title": "Hand Landmarker | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Look up the hand index map, coordinates, tracking behavior, and output fields."
+        },
+        {
+          "title": "Pose Landmarker | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the separate body task used alongside detailed hand tracking."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+        "https://www.youtube.com/watch?v=hV5S4iQhNkI",
+        "https://google-ai-edge.github.io/mediapipe-samples-web/#/vision/hand_landmarker",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker"
+      ]
+    },
+    {
+      "node_id": "r:mediapipe-pose-landmarker",
+      "type": "robot",
+      "name": "MediaPipe Pose Landmarker",
+      "summary": "MediaPipe Pose Landmarker estimates 33 body landmarks from images or video, providing posture observations rather than certified human-distance measurements.",
+      "lesson_md": "## In one sentence\n\nMediaPipe Pose Landmarker estimates 33 body landmarks from images or video, providing posture observations rather than certified human-distance measurements.\n\n![MediaPipe Pose Landmarker’s published preview of a tracked human body](/img/lessons/robots_ai_model_2-mediapipe-pose.webp)\n*MediaPipe Pose Landmarker’s published preview of a tracked human body. Source: [Google AI Edge](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker), Creative Commons Attribution 4.0.*\n\n## Why it matters for us\n\n- **Body-level context:** Shoulder, elbow, wrist, and hip locations support posture-aware interaction prototypes.\n- **Software analogy:** Coordinates and confidence are telemetry, not an authoritative safety decision.\n- **Body-only scope:** This lesson uses Pose Landmarker alone; **MediaPipe Hand & Pose Landmarker** additionally covers detailed fingers.\n\n> **Key idea:** A plausible skeleton is a model estimate; confidence, visibility, coordinate origin, and missing people matter as much as drawing the joints.\n\n## What it is made of / how it works\n\n- **A detector locates the body:** A second model estimates the fuller landmark set within the detected region, using the BlazePose/GHUM body-pose approach.\n- **Pose results** contain image-normalized landmarks, world landmarks, and optionally a person mask.\n- **Body-centered coordinates:** World landmarks use meters from the hip midpoint; normalized depth also references the hips.\n\n```mermaid\nflowchart LR\n  I[Image or video frame] --> D[Body detector or tracking]\n  D --> L[Pose landmark model]\n  L --> P[33 landmarks and confidence]\n  L --> M[Optional person mask]\n  P --> V[Visibility and presence checks]\n  V --> A[Posture overlay or no observation]\n```\n\n| Pose-specific interface | Documented detail |\n|---|---|\n| Body landmarks | 33 per pose |\n| Left / right shoulders | Indices 11 / 12 |\n| Left / right wrists | Indices 15 / 16 |\n| World origin | Midpoint of hips |\n| Model bundles | Lite, full, heavy |\n| Default maximum poses | 1 |\n| Optional mask | Per-pixel values from 0 to 1 |\n\n- **Worked overlay example:** Normalized wrist x=0.25 maps to column 200 in an 800-pixel image, not a 200-millimeter robot displacement.\n- **Keep confidence information:** Visibility and presence probabilities help identify questionable joints; a complete-looking skeleton can still contain uncertain estimates.\n- **Multi-person demos need configuration:** Increase the maximum pose count, then test occlusion and missed detections.\n- **Coarse hands are not finger tracking:** Pose includes wrist, thumb, index, and pinky points, but not Hand Landmarker’s 21-point hand skeleton.\n\n## Key terms\n\n- **Visibility**: the model’s estimated likelihood that a landmark is visible in the image.\n- **Presence**: the estimated likelihood that a landmark is present in the scene.\n- **Segmentation mask**: a per-pixel estimate of which image regions belong to a person.\n- **Occlusion**: a body part being hidden behind something else.\n\n## Getting started\n\n1. **Watch Google’s pose tutorial**, then open the free webcam demo and inspect shoulders and wrists during turns or partial occlusion.\n2. **Follow the current pose documentation:** Choose a bundle, configure image or video mode, and retain timestamps alongside observations.\n3. **Print coordinates and confidence** first; test empty frames and people leaving as no-observation cases.\n4. **Record benchmark clips** with different lighting and multiple people before relying on the output for an interaction prototype.\n\n> **Watch out:** Do not use webcam pose estimates as a certified protective stop or as calibrated robot-to-human separation distance.\n\n## Used in\n\n- **Webcam human skeleton in real time** is a suitable first visualization project; **Multi-person pose benchmark for the lab space** adds miss-rate evaluation.\n- **Human detection & body-pose tracking for HRI** connects these observations to interaction design, while protective control requires a separately engineered safety system.",
+      "resources": [
+        {
+          "title": "Pose landmark detection - ML on Web with MediaPipe: Episode 8",
+          "url": "https://www.youtube.com/watch?v=oaK74yozU9g",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the body-pose model, bundle choices, and web integration from Google."
+        },
+        {
+          "title": "MediaPipe Web Task Demo",
+          "url": "https://google-ai-edge.github.io/mediapipe-samples-web/#/vision/pose_landmarker",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Inspect body skeletons on webcam input."
+        },
+        {
+          "title": "Pose Landmarker | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check body indices, confidence fields, masks, and coordinate origins."
+        },
+        {
+          "title": "mediapipe-samples/examples/pose_landmarker/python at main · google-ai-edge/mediapipe-samples · GitHub",
+          "url": "https://github.com/google-ai-edge/mediapipe-samples/tree/main/examples/pose_landmarker/python",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Open the official Python pose-landmarking notebook for a hands-on experiment."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+        "https://www.youtube.com/watch?v=oaK74yozU9g",
+        "https://google-ai-edge.github.io/mediapipe-samples-web/#/vision/pose_landmarker",
+        "https://github.com/google-ai-edge/mediapipe-samples/tree/main/examples/pose_landmarker/python"
+      ]
+    },
+    {
+      "node_id": "r:mirai",
+      "type": "robot",
+      "name": "MIRAI",
+      "summary": "MIRAI is Micropsi Industries’ commercial AI vision-control software, which learns industrial robot movements from demonstrations and adapts them to changing production conditions.",
+      "lesson_md": "## In one sentence\n\nMIRAI is Micropsi Industries’ commercial AI vision-control software, which learns industrial robot movements from demonstrations and adapts them to changing production conditions.\n\n![MIRAI cameras and gripper mounted on an industrial robot wrist](/img/lessons/robots_ai_model_2-mirai.webp)\n*MIRAI cameras and gripper mounted on an industrial robot wrist. Source: [Micropsi Industries](https://www.micropsi-industries.com), license unknown.*\n\n## Why it matters for us\n\n- **This is Micropsi’s MIRAI:** The map refers to industrial robot guidance, not another AI product or robot sharing the name.\n- **Variation is the problem:** A fixed movement can miss a part when its position changes; MIRAI uses camera feedback to adapt the path.\n- **Software analogy:** Think of a learned feedback function embedded in a larger application, rather than a complete factory program generated from a prompt.\n\n> **Key idea:** Demonstrations teach a visual movement skill; the surrounding robot program still coordinates the overall manufacturing task.\n\n## What it is made of / how it works\n\n- **Design the application:** Identify relevant variation, then equip the robot with a suitable camera and end effector, the working tool on its wrist.\n- **Demonstrate and compute:** Training images feed a learning service that produces a model called a skill; testing and further examples refine it.\n- **Execute with feedback:** Robot-control code runs on an edge device, a computer near the robot, while an app supports teaching and configuration.\n\n```mermaid\nflowchart LR\n  D[Demonstrations and images] --> T[Skill computation]\n  T --> S[Learned MIRAI skill]\n  C[Current camera image] --> S\n  S --> R[Robot movement]\n  R --> C\n  P[Overall robot program] --> S\n```\n\n| Product detail | Published information |\n|---|---|\n| Required imaging | Suitable 2D camera |\n| Variations addressed | Position, shape, light, color, background |\n| Challenging materials | Reflective and transparent objects |\n| Current product page | Includes MIRAI 2 |\n| MIRAI 2 power supply | DC 24 V industrial PC |\n| License and public price | Commercial; price unknown |\n\n- **Worked factory example:** At BSH, MIRAI guides a Universal Robots arm’s sniffer probe toward refrigerator solder joints for leak testing.\n- **A concrete deployment:** Micropsi reports millimeter precision and 24/6 serial production there; those case-study results are not guarantees for a different installation.\n- **Version distinction:** The current page describes MIRAI 2, including skill sharing and abnormal-condition detection, but does not establish a 2024 launch date.\n\n## Key terms\n\n- **Skill**: a learned model for how to perform a particular movement amid trained variations.\n- **Edge device**: a local computer that runs control software near the robot.\n- **Inference**: running a trained model to produce an output from current observations.\n- **Force-torque sensor**: a device measuring pushes and twists; Micropsi says most MIRAI 2 skills no longer require one.\n\n## Getting started\n\n1. **Watch the maker’s overview** and distinguish the camera-guided movement from the rest of the production cycle.\n2. **Read the product workflow:** List camera, tooling, teaching examples, and expected variation; plan how the surrounding robot program handles unexpected conditions.\n3. **Study the BSH case**, then consult the licensing page; this is not a free downloadable student policy or a quoted-price robot kit.\n\n## Used in\n\n- **Micropsi Industries** is the connected builder node and supplies the training software, control system, and deployment support.\n- **Industrial insertion and testing** are documented application areas; do not interpret a learned skill as unrestricted autonomous factory operation.",
+      "resources": [
+        {
+          "title": "Micropsi Loop Video HQ March 2025",
+          "url": "https://www.youtube.com/watch?v=5saFe57OzPI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch Micropsi’s own MIRAI application overview."
+        },
+        {
+          "title": "Product | micropsi industries",
+          "url": "https://www.micropsi-industries.com/product",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Follow demonstration collection, skill computation, execution, and current MIRAI 2 features."
+        },
+        {
+          "title": "Bosch Siemens Hausgeräte (BSH): End-of-line testing | micropsi industries",
+          "url": "https://www.micropsi-industries.com/mirai-cases/bsh-automates-leak-testing",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See a concrete MIRAI-guided leak-testing installation."
+        },
+        {
+          "title": "Buy MIRAI | micropsi industries",
+          "url": "https://www.micropsi-industries.com/buy-mirai",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand commercial licensing and deployment options."
+        }
+      ],
+      "sources": [
+        "https://www.micropsi-industries.com",
+        "https://www.youtube.com/watch?v=5saFe57OzPI",
+        "https://www.micropsi-industries.com/product",
+        "https://www.micropsi-industries.com/mirai-cases/bsh-automates-leak-testing",
+        "https://www.micropsi-industries.com/buy-mirai"
+      ]
+    },
+    {
+      "node_id": "r:neuron-ai",
+      "type": "robot",
+      "name": "Neuron AI",
+      "summary": "Neuron AI is NEURA Robotics’ multimodal robot foundation model, combining vision, touch, sound, robot state, and language with memory to generate physical actions.",
+      "lesson_md": "## In one sentence\n\nNeuron AI is NEURA Robotics’ multimodal robot foundation model, combining vision, touch, sound, robot state, and language with memory to generate physical actions.\n\n![NEURA’s 4NE1 Wheels at the washer-and-dryer setup used for its Neuron AI demonstration](/img/lessons/robots_ai_model_2-neuron-ai.webp)\n*NEURA’s 4NE1 Wheels at the washer-and-dryer setup used for its Neuron AI demonstration. Source: [NEURA Robotics](https://neura-robotics.com/nvidia-gtc-berlin-2026-recap/), license unknown.*\n\n## Why it matters for us\n\n- **Identify the right Neuron:** This node means NEURA Robotics’ robot model, introduced in October 2026, not an unrelated chatbot framework or processor product.\n- **Cameras miss contact events:** Hearing a latch click or feeling a part engage can provide information that an image alone cannot establish.\n- **Software analogy:** Imagine an event processor combining synchronized sensor messages with retained state, rather than treating each camera frame as an isolated request.\n\n> **Key idea:** Useful robot perception includes what happened earlier and what contact feels or sounds like, not only what is currently visible.\n\n## What it is made of / how it works\n\n- **The company calls it PLA:** Its Perception-Language-Action architecture encodes different sensor streams into a shared representation over time and generates an action stream.\n- **Memory preserves context:** NEURA describes architectural changes and dedicated training data for remembering objects and action consequences when they are out of sight.\n- **Training combines three sources:** NEURA reports using real robot interactions, simulated variations, and sensor-equipped human demonstrations.\n\n```mermaid\nflowchart LR\n  S[Vision, touch and audio] --> N[Neuron AI: vendor-described PLA]\n  L[Language and robot state] --> N\n  M[Retained context] --> N\n  N --> A[Action stream]\n  A --> R[Robot and environment]\n  R --> S\n  N --> M\n```\n\n| NEURA’s published description | Detail |\n|---|---|\n| Introduction | 14 October 2026 |\n| Input groups | 3D vision, touch, audio, state, language |\n| Shared training coverage | 5 NEURA robot embodiments |\n| Inference location | On the robot |\n| GTC laundry sequence | Around 11 minutes |\n| Public weights / price | Unknown; contact-based access |\n| Parameter count / detailed implementation | Unknown from these sources |\n\n- **Worked memory example:** A washer door closes and hides the laundry; completing the sequence still requires tracking that the garments remain inside.\n- **Read demo conditions:** NEURA’s GTC recap says appliance wash and dry cycles were shortened to about ten seconds; eleven minutes is not ordinary laundry throughput.\n- **Separate development stages:** Customers fine-tune task skills through NEURA’s ecosystem, then deploy them through Neuraverse; local inference does not mean all training occurs onboard.\n\n## Key terms\n\n- **Modality**: a kind of information, such as sound or touch.\n- **Robot state**: measurements including joint positions, velocities, and the tool’s position and orientation.\n- **Object permanence**: retaining the idea that an object exists when hidden.\n- **Fine-tuning**: adapting a pretrained model with additional task-specific examples.\n\n## Getting started\n\n1. **Watch NEURA’s model introduction**, noting which task events need touch, sound, or remembered context.\n2. **Read the product and announcement pages:** Treat model capabilities as vendor descriptions, not independently reproduced performance guarantees.\n3. **Analyze the laundry demonstration:** Identify visible steps, hidden state, and shortened appliance cycles before proposing a comparable student benchmark.\n\n## Used in\n\n- **NEURA Robotics** is the connected builder node; its 4NE1 Wheels demonstrates the laundry-handling sequence in the company’s GTC recap.\n- **Study the closed ecosystem:** The public sources explain capabilities and deployment, but do not provide an open checkpoint or a reproducible training recipe.",
+      "resources": [
+        {
+          "title": "Finally robots that can see, hear, feel and remember. Meet Neuron AI.",
+          "url": "https://www.youtube.com/watch?v=u02bHNHkqxg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear NEURA’s explanation of multisensory inputs, memory, and training."
+        },
+        {
+          "title": "Neuron AI: The Foundation Model for Physical AI​ | NEURA Robotics",
+          "url": "https://neura-robotics.com/neuron-ai/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the specific model’s inputs, local execution, and training sources."
+        },
+        {
+          "title": "NVIDIA GTC Berlin 2026 Recap: NEURA Robotics",
+          "url": "https://neura-robotics.com/nvidia-gtc-berlin-2026-recap/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Read what the laundry demonstration showed and its shortened appliance-cycle conditions."
+        },
+        {
+          "title": "NEURA Robotics Introduces Neuron AI",
+          "url": "https://neura-robotics.com/neura-robotics-introduces-neuron-ai/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read the launch description of cross-robot training and customer adaptation."
+        }
+      ],
+      "sources": [
+        "https://neura-robotics.com/nvidia-gtc-berlin-2026-recap/",
+        "https://www.youtube.com/watch?v=u02bHNHkqxg",
+        "https://neura-robotics.com/neuron-ai/",
+        "https://neura-robotics.com/neura-robotics-introduces-neuron-ai/"
+      ]
+    },
+    {
+      "node_id": "r:octo",
+      "type": "robot",
+      "name": "Octo",
+      "summary": "Octo is an open generalist robot policy that predicts action sequences from camera observations and either language instructions or goal images.",
+      "lesson_md": "## In one sentence\n\nOcto is an open generalist robot policy that predicts action sequences from camera observations and either language instructions or goal images.\n\n![Octo’s published overview of robots, task inputs, and transferable manipulation](/img/lessons/robots_ai_model_2-octo.webp)\n*Octo’s published overview of robots, task inputs, and transferable manipulation. Source: [Octo Model Team](https://octo-models.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **One starting point, multiple setups:** Octo studies sharing robot experience, then adapting the policy to a new task, sensor arrangement, or command format.\n- **Instructions need not be text:** A goal image can specify the desired result when words alone leave the target arrangement unclear.\n- **Software analogy:** Its modular input and output interfaces resemble configurable adapters around a reusable backend, rather than a hardcoded driver for one robot.\n\n> **Key idea:** Generalist pretraining provides a reusable starting point, while explicit sensor and action contracts determine whether it fits your robot.\n\n## What it is made of / how it works\n\n- **A Transformer combines inputs:** The model processes visual observations, task information, and short observation histories to build a representation for action prediction.\n- **Diffusion decodes actions:** A small learned module repeatedly refines noisy actions; the larger Transformer runs once per prediction, not once per refinement step.\n- **Adaptation can change interfaces:** The authors evaluate fine-tuning with new force-torque inputs and joint-position outputs, not only additional examples of an unchanged camera setup.\n\n```mermaid\nflowchart LR\n  T[Language or goal image] --> B[Transformer backbone]\n  O[Observation history and masks] --> B\n  B --> D[Diffusion action head]\n  D --> A[4 predicted actions]\n  A --> E[Execute chosen steps]\n  E --> O\n```\n\n| Released-policy detail | Published value |\n|---|---|\n| Pretraining scale | 800,000 robot episodes |\n| Training mixture | 25 Open X-Embodiment datasets |\n| Octo-Small | 27 million parameters |\n| Octo-Base | 93 million parameters |\n| Pretrained history window | 2 observations |\n| Predicted action chunk | 4 actions |\n\n- **Worked timing example:** At the first observation, no previous frame exists; the repository marks that history entry invalid with a timestep padding mask.\n- **At the next observation**, both current and previous frames can be valid; missing history should not be disguised as genuine camera evidence.\n- **Four actions are not a task:** You can execute the predicted chunk or just its first action before requesting a new prediction from updated observations.\n\n## Key terms\n\n- **Policy**: a function selecting actions from observations and a task description.\n- **Action chunk**: several future actions predicted in one model call.\n- **Proprioception**: measurements of the robot’s own body, such as joint positions.\n- **Fine-tuning**: updating pretrained weights using examples from the target setup.\n\n## Getting started\n\n1. **Watch the research video**, then compare language conditioning with goal-image conditioning on the project page.\n2. **Read the repository’s inference example:** Load a released checkpoint and inspect its expected inputs before acquiring hardware; compute costs are separate.\n3. **Check masks and normalization:** Missing cameras and missing history require explicit handling, and predicted action numbers need the target dataset’s interpretation.\n4. **Start offline or in simulation** before adapting a checkpoint and connecting it to a real robot controller.\n\n## Used in\n\n- **Inspect a generalist policy action output** provides a first project without moving hardware.\n- **Fine-tune a policy on one tabletop task** and **Generalist manipulation policies / VLAs** connect Octo’s reusable model to controlled adaptation experiments.",
+      "resources": [
+        {
+          "title": "Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://www.youtube.com/watch?v=99667VDGWMg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors’ demonstrations of transferable manipulation."
+        },
+        {
+          "title": "🐙 Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://octo-models.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explore architecture, training mixture, and evaluation setups."
+        },
+        {
+          "title": "GitHub - octo-models/octo: Octo is a transformer-based robot policy trained on a diverse mix of 800k robot trajectories. · GitHub",
+          "url": "https://github.com/octo-models/octo",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect checkpoints, history masks, action chunks, and fine-tuning examples."
+        },
+        {
+          "title": "[2405.12213] Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://arxiv.org/abs/2405.12213",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the generalist-policy design and real-robot evaluation protocol."
+        }
+      ],
+      "sources": [
+        "https://octo-models.github.io/",
+        "https://www.youtube.com/watch?v=99667VDGWMg",
+        "https://github.com/octo-models/octo",
+        "https://arxiv.org/abs/2405.12213"
+      ]
+    },
+    {
+      "node_id": "r:openvla",
+      "type": "robot",
+      "name": "OpenVLA",
+      "summary": "OpenVLA is an open vision-language-action model that converts a camera image and language instruction into robot actions, with fine-tuning for new setups.",
+      "lesson_md": "## In one sentence\n\nOpenVLA is an open vision-language-action model that converts a camera image and language instruction into robot actions, with fine-tuning for new setups.\n\n![OpenVLA’s published model architecture linking images and language to action tokens](/img/lessons/robots_ai_model_2-openvla.webp)\n*OpenVLA’s published model architecture linking images and language to action tokens. Source: [OpenVLA team](https://openvla.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Language becomes behavior:** The same image can call for different actions when the instruction changes, such as choosing one cup rather than another.\n- **Software analogy:** A familiar language-model interface becomes an action-producing API; its output schema and normalization matter more than whether its response sounds convincing.\n- **Public does not mean plug-and-play:** The project releases checkpoints and training code, but another robot still needs compatible observations, commands, and evaluation.\n\n> **Key idea:** OpenVLA predicts learned action representations, not universal motor commands that can be sent unchanged to any arm.\n\n## What it is made of / how it works\n\n- **Two visual backbones encode images:** SigLIP and DINOv2 produce image features; a projector maps them into the input space used by the language model.\n- **A language backbone predicts tokens:** The Llama 2-based model processes image features and the instruction, generating discrete action symbols instead of ordinary chat text.\n- **Decoding restores continuous actions:** The software converts symbols into numerical actions, then reverses dataset-specific normalization before the controller uses them.\n\n```mermaid\nflowchart LR\n  I[Camera image] --> V[SigLIP and DINOv2]\n  V --> P[Feature projector]\n  P --> L[Llama 2 backbone]\n  T[Language instruction] --> L\n  L --> A[Action tokens]\n  A --> D[Decode and unnormalize]\n  D --> R[Robot-specific control]\n```\n\n| Original OpenVLA detail | Published value |\n|---|---|\n| Advertised model scale | 7 billion parameters |\n| Pretraining data | 970,000 robot episodes |\n| Visual backbones | SigLIP and DINOv2 |\n| Language backbone | Llama 2 7B |\n| Bridge example output | 3 position deltas, 3 rotation deltas, 1 gripper command |\n| Code / model terms | MIT code; Llama Community License restrictions |\n\n- **Worked interface example:** The repository’s BridgeData V2 inference call uses `unnorm_key=\"bridge_orig\"` to select the action statistics for that dataset.\n- **A mismatched key matters:** Valid-looking numbers decoded using another dataset’s statistics are not evidence of correct robot motion.\n- **Check which version you run:** The original predicts discrete tokens; the newer Optimized Fine-Tuning recipe uses continuous actions. Do not mix their interfaces.\n\n## Key terms\n\n- **Token**: a discrete symbol processed or predicted by the model; here, output symbols represent actions.\n- **Normalization**: rescaling numerical data into a consistent training range.\n- **LoRA**: low-rank adaptation, a fine-tuning method that trains a small set of added parameters rather than all weights.\n- **Checkpoint**: saved model weights that can be loaded for prediction or further training.\n\n## Getting started\n\n1. **Watch the creator’s rollout videos:** Separate out-of-the-box WidowX and Google robot results from fine-tuned Franka results and note the stated playback speedups.\n2. **Read the model card and repository:** Use the documented dependencies and check compute and license requirements; public weights do not include GPU access.\n3. **Inspect actions offline** with matching preprocessing and normalization before attempting task-specific fine-tuning or physical execution.\n\n## Used in\n\n- **Teleoperation & demonstration collection for arms** supplies the training examples needed to adapt a policy to a target setup.\n- **Compare language-conditioned policies on held-out objects** offers a controlled comparison with **Octo**, using the same scenes and success criteria.",
+      "resources": [
+        {
+          "title": "OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://openvla.github.io/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator’s labeled manipulation rollouts and inspect the model overview."
+        },
+        {
+          "title": "openvla/openvla-7b · Hugging Face",
+          "url": "https://huggingface.co/openvla/openvla-7b",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the released model’s intended use, action interface, and license."
+        },
+        {
+          "title": "GitHub - openvla/openvla: OpenVLA: An open-source vision-language-action model for robotic manipulation. · GitHub",
+          "url": "https://github.com/openvla/openvla",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow inference, dataset-specific action decoding, and fine-tuning instructions."
+        },
+        {
+          "title": "[2406.09246] OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://arxiv.org/abs/2406.09246",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original architecture, adaptation experiments, and limitations."
+        }
+      ],
+      "sources": [
+        "https://openvla.github.io/",
+        "https://huggingface.co/openvla/openvla-7b",
+        "https://github.com/openvla/openvla",
+        "https://arxiv.org/abs/2406.09246"
+      ]
+    }
+  ]
+}
