@@ -528,6 +528,204 @@
         "https://github.com/MichaelGrupp/evo/wiki/Metrics",
         "https://raw.githubusercontent.com/PRBonn/kiss-icp/main/python/kiss_icp/config/config.py"
       ]
+    },
+    {
+      "node_id": "p:replay-a-public-visual-inertial-trajectory",
+      "type": "project",
+      "name": "Replay a public visual-inertial trajectory",
+      "summary": "Replay calibrated camera and inertial recordings through OpenVINS, then compare the estimated camera path with an independent reference instead of trusting a smooth animation.",
+      "lesson_md": "## In one sentence\n\nReplay calibrated camera and inertial recordings through OpenVINS, then compare the estimated camera path with an independent reference instead of trusting a smooth animation.\n\n![OpenVINS EuRoC dynamic-initialization demonstration](/img/lessons/projects_state_estimation_slam_2-visual-inertial.webp)\n*OpenVINS EuRoC dynamic-initialization demonstration. Source: [Official media](https://www.youtube.com/watch?v=eSQLWcNrx_I), license unknown.*\n\n## What you will learn\n\n- **Visual-inertial estimation** combines camera images with an **IMU**, an inertial measurement unit sensing acceleration and rotation.\n- **Feature tracks** follow recognizable image points across frames; OpenVINS combines these tracks and inertial measurements using a filter that alternates prediction and measurement correction.\n- **Think event processing:** two asynchronous input streams update shared state, so timestamp order matters as much as correct parsing.\n\n> **Key idea:** A plausible camera path is only a hypothesis until timing, calibration, and independent trajectory errors have been checked.\n\n## What you need\n\n- **Complete Build a trajectory evaluation scorecard:** decide how timestamps, alignment, missing estimates, and reference coordinates will be handled.\n- **Use an existing computer:** obtain OpenVINS, its documented environment, and one EuRoC recording with the published **calibration**, describing sensor geometry and measurement properties; no robot purchase is needed.\n\n## Steps\n\n1. **Start with the official tutorial:** choose its EuRoC example and retain the sequence name, configuration, software revision, and original timestamps.\n2. **Inspect both input streams:** the tutorial describes stereo images at 20 Hz and IMU measurements at 200 Hz; confirm your loader preserves them.\n3. **Run the unmodified baseline:** display camera images, feature tracks, and the estimated three-dimensional path; retain **initialization** failures (failure to establish the starting state) rather than restarting until success.\n4. **Export the whole estimated trajectory:** keep reference poses separate from estimator inputs; record tracking coverage and any missing time intervals.\n5. **Evaluate absolute and relative errors:** absolute trajectory error compares aligned paths; relative pose error measures disagreement over trajectory segments.\n6. **Demo a full replay:** show images, tracks, reference overlay, error plots, and failed intervals together; publish the exact configuration beside the recording identifier.\n\n**Worked timing example:** 200 inertial samples per second divided by 20 image frames per second gives about 10 inertial samples per image interval.\n\n```mermaid\nflowchart LR\n  A[\"Images\"] --> C[\"Feature tracks\"]\n  B[\"IMU\"] --> D[\"Predict state\"]\n  C --> E[\"Correct state\"]\n  D --> E\n  E --> F[\"Path and errors\"]\n```\n\n## Common pitfalls\n\n- **Do not hide initialization:** report its delay and failures separately from post-initialization accuracy.\n- **Do not mix sensor frames:** a camera path and an IMU-body reference need the documented coordinate transformation before comparison.\n- **Do not cherry-pick:** a short successful segment cannot represent an entire sequence with missing estimates.\n\n## When it's done\n\n- **Deliver a replay bundle:** images, tracks, estimated path, independent comparison, coverage, and configuration reproduce the same result.\n- **Continue with Audit clock offsets before running VIO:** investigate timing rather than compensating unexplained errors through arbitrary parameter changes.\n",
+      "resources": [
+        {
+          "title": "OpenVINS 2.6 - EurocMav Dynamic Initialization Demonstration",
+          "url": "https://www.youtube.com/watch?v=eSQLWcNrx_I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the actual EuRoC replay, initialization, feature tracks, and estimated motion."
+        },
+        {
+          "title": "Getting Started » Simple Tutorial",
+          "url": "https://docs.openvins.com/gs-tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Walks through the official EuRoC example with matching calibration."
+        },
+        {
+          "title": "Getting Started » Supported Datasets",
+          "url": "https://docs.openvins.com/gs-datasets.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Identifies supported recordings, calibration, and dataset-specific cautions."
+        },
+        {
+          "title": "System Evaluation » Filter Evaluation Metrics",
+          "url": "https://docs.openvins.com/eval-metrics.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Defines absolute and relative trajectory errors and consistency metrics."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=eSQLWcNrx_I",
+        "https://docs.openvins.com/gs-tutorial.html",
+        "https://docs.openvins.com/gs-datasets.html",
+        "https://docs.openvins.com/eval-metrics.html"
+      ]
+    },
+    {
+      "node_id": "p:replay-legged-body-state-estimates-with-camera-outages",
+      "type": "project",
+      "name": "Replay legged body-state estimates with camera outages",
+      "summary": "Replay synchronized legged-robot logs through contact/inertial and visual/inertial estimators, then compare body motion and failure modes during deliberately withheld camera intervals.",
+      "lesson_md": "## In one sentence\n\nReplay synchronized legged-robot logs through contact/inertial and visual/inertial estimators, then compare body motion and failure modes during deliberately withheld camera intervals.\n\n![GrandTour ANYmal and Boxi sensor setup](/img/lessons/projects_state_estimation_slam_2-legged-outages.webp)\n*GrandTour ANYmal and Boxi sensor setup. Source: [Official media](https://grandtour.leggedrobotics.com/setup), license unknown.*\n\n## What you will learn\n\n- **Body state** means the robot base's position, orientation, and velocity; estimating it does not require writing a walking controller.\n- **Contact-aided estimation** combines an **IMU**, measuring acceleration and rotation, with leg geometry and foot contacts; a planted foot constrains body motion.\n- **A stance foot** supports the robot, but slipping violates the assumption that its contact point stays fixed.\n- **Think fault injection:** suppress camera messages at a documented boundary, like dropping one service's events while preserving the rest of a distributed trace.\n\n> **Key idea:** Losing camera updates and losing reliable foot contacts are different faults; compare their effects instead of declaring either estimator universally robust.\n\n## What you need\n\n- **Complete Audit clock offsets before running VIO** and **Detect when a stance-foot assumption becomes false** before interpreting outage results.\n- **Use public GrandTour logs:** inspect its ANYmal joint, contact, IMU, camera, calibration, and reference streams before selecting a compatible interval.\n- **Plan integration explicitly:** invariant-ekf and OpenVINS are starting points, not a ready-made GrandTour benchmark; write and document adapters for frames, timestamps, and measurements.\n- **Use an existing computer:** no quadruped purchase is needed; budget dataset storage and processing separately.\n\n## Steps\n\n1. **Audit one downloadable interval:** verify all required streams, calibration, and independent reference coverage; reject incompatible intervals rather than silently substituting missing contact data.\n2. **Build measurement adapters:** convert joint measurements into foot positions using documented robot geometry, align sensor frames, and preserve contact flags and original timing.\n3. **Run contact/inertial estimation:** use IMU propagation and kinematic/contact corrections; export body velocity and pose, not just a visualization.\n4. **Run the visual/inertial baseline:** apply matching camera/IMU calibration and transform its estimated sensor path into the same body frame.\n5. **Inject planned camera gaps:** replay identical data with camera messages withheld; keep inertial and contact streams unchanged and log initialization or recovery failures.\n6. **Demo the comparison:** overlay body velocity, reference-relative pose errors, outage windows, and contact-failure clips; distinguish visual recovery from contact reliability.\n\n**Worked rate example:** GrandTour documents 400 Hz ANYmal inertial measurements; a deliberately chosen one-second camera gap still contains about 400 inertial samples.\n\n```mermaid\nflowchart LR\n  A[\"Synchronized log\"] --> B[\"Camera gate\"]\n  B --> C[\"Visual and inertial\"]\n  A --> D[\"Contact and inertial\"]\n  C --> E[\"Common body frame\"]\n  D --> E\n  E --> F[\"Reference and gaps\"]\n```\n\n## Common pitfalls\n\n- **Do not replay cached answers:** a recorded body-state topic is not a newly computed estimate affected by your injected camera dropout.\n- **Do not assume stationary feet:** annotate slipping or uncertain contacts; an estimator cannot manufacture a valid contact constraint.\n\n## When it's done\n\n- **Publish a reproducible fault-injection bundle:** adapters, interval identifiers, gap schedule, body-state plots, reference errors, and failure clips reproduce both baseline and outage runs.\n",
+      "resources": [
+        {
+          "title": "GrandTour Preview",
+          "url": "https://www.youtube.com/watch?v=QuM-gcJ4Z8c",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the legged platform and recorded environments used for the replay experiment."
+        },
+        {
+          "title": "ANYmal Grand Tour",
+          "url": "https://grandtour.leggedrobotics.com/setup",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Documents the sensor setup, leg odometry, contact estimates, and calibration."
+        },
+        {
+          "title": "leggedrobotics/grand_tour_dataset",
+          "url": "https://huggingface.co/datasets/leggedrobotics/grand_tour_dataset",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Provides the public Zarr data route and examples for inspecting synchronized streams."
+        },
+        {
+          "title": "Getting Started » Simple Tutorial",
+          "url": "https://docs.openvins.com/gs-tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Provides the visual/inertial baseline to adapt to calibrated robot recordings."
+        },
+        {
+          "title": "invariant-ekf",
+          "url": "https://github.com/RossHartley/invariant-ekf",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Provides IMU propagation and kinematic/contact measurement examples."
+        },
+        {
+          "title": "Contact-Aided Invariant Extended Kalman Filtering for Legged Robot State Estimation",
+          "url": "https://www.roboticsproceedings.org/rss14/p50.html",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains the contact-aided estimation assumptions behind the comparison."
+        }
+      ],
+      "sources": [
+        "https://grandtour.leggedrobotics.com/setup",
+        "https://www.youtube.com/watch?v=QuM-gcJ4Z8c",
+        "https://huggingface.co/datasets/leggedrobotics/grand_tour_dataset",
+        "https://docs.openvins.com/gs-tutorial.html",
+        "https://github.com/RossHartley/invariant-ekf",
+        "https://www.roboticsproceedings.org/rss14/p50.html"
+      ]
+    },
+    {
+      "node_id": "p:revisit-a-changed-room-without-corrupting-its-map",
+      "type": "project",
+      "name": "Revisit a changed room without corrupting its map",
+      "summary": "Compare frozen-map localization with deliberate map updates across changed room recordings, preserving the original map and checking persistent ghosts and wrong-place matches.",
+      "lesson_md": "## In one sentence\n\nCompare frozen-map localization with deliberate map updates across changed room recordings, preserving the original map and checking persistent ghosts and wrong-place matches.\n\n![RTAB-Map multi-session point cloud colored by session](/img/lessons/projects_state_estimation_slam_2-changed-room.webp)\n*RTAB-Map multi-session point cloud colored by session. Source: [Official media](https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango), license unknown.*\n\n## What you will learn\n\n- **Localization** estimates a sensor's pose in an existing map; **mapping** changes the stored representation of the environment.\n- **A loop closure** links observations recognized as the same place; an incorrect link can wrongly pull map regions together.\n- **Ghosts** are stale occupied surfaces, such as a chair retained where it no longer exists; a cleaner display alone does not prove better localization.\n- **Think database migrations:** preserve the original snapshot, test changes on a branch, and validate against data not used to choose the update.\n\n> **Key idea:** Accepting a new observation into a permanent map is a separate decision from using it to estimate the current pose.\n\n## What you need\n\n- **Complete Save a graph and localize a second session:** first demonstrate reliable reuse before changing the saved map.\n- **Use RTAB-Map recordings:** start with its multi-session tutorial, then select room visits with independently documented furniture changes and a held-out return.\n- **Use an existing computer:** no new sensor is required for recorded data; budget downloads and processing, and keep protected copies of original databases.\n\n## Steps\n\n1. **Build a reference session:** save its database and annotate stable walls plus objects that later move; retain the original inputs unchanged.\n2. **Create separate copies:** run frozen-map localization on one and continued mapping on another; use identical later observations and calibration.\n3. **Make the frozen policy explicit:** RTAB-Map exposes localization and read-only options; document the installed version and verify their supported combination before replay.\n4. **Record update decisions:** log accepted observations and loop closures; distinguish changes to the stored graph from regenerated occupancy cells, which represent blocked space.\n5. **Evaluate a held-out return:** measure stale occupied regions, wrong loop closures, localization coverage, and available reference errors for both policies.\n6. **Demo the room changes:** show before/after maps, moved-object annotations, failed matches, and the decision log; retain a rollback copy rather than overwriting the reference.\n\n**Worked configuration example:** these RTAB-Map parameter names distinguish localization from continued mapping; read-only mode has documented restrictions, so check compatibility first.\n\n```yaml\nMem/IncrementalMemory: false\nMem/LocalizationReadOnly: true\n```\n\n```mermaid\nflowchart LR\n  A[\"Saved room\"] --> B[\"Frozen copy\"]\n  A --> C[\"Update copy\"]\n  D[\"Changed visit\"] --> B\n  D --> C\n  B --> E[\"Held-out return\"]\n  C --> E\n  E --> F[\"Compare and decide\"]\n```\n\n## Common pitfalls\n\n- **Do not equate ray tracing with object understanding:** it fills observed free space; it does not decide which furniture changes deserve permanent acceptance.\n- **Do not count visual cleanliness alone:** report false matches and localization loss even when the updated cloud looks better.\n\n## When it's done\n\n- **Deliver both policies:** protected reference, two-session maps, change log, ghost measurements, wrong-loop counts, and held-out localization results make the tradeoff inspectable.\n",
+      "resources": [
+        {
+          "title": "Demo multi-session mapping",
+          "url": "https://www.youtube.com/watch?v=XrnyhaxPCro",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows successive sessions being connected in RTAB-Map."
+        },
+        {
+          "title": "Multi Session Mapping with RTAB Map Tango",
+          "url": "https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Provides databases and a concrete multi-session reuse workflow."
+        },
+        {
+          "title": "slam_toolbox",
+          "url": "https://docs.ros.org/en/ros2_packages/humble/api/slam_toolbox/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains frozen underlying maps, localization buffers, and lifelong mapping as contrasting policies."
+        },
+        {
+          "title": "Parameters.h",
+          "url": "https://raw.githubusercontent.com/introlab/rtabmap/master/corelib/include/rtabmap/core/Parameters.h",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Defines localization, database read-only restrictions, and occupancy ray-tracing behavior."
+        }
+      ],
+      "sources": [
+        "https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango",
+        "https://www.youtube.com/watch?v=XrnyhaxPCro",
+        "https://docs.ros.org/en/ros2_packages/humble/api/slam_toolbox/",
+        "https://raw.githubusercontent.com/introlab/rtabmap/master/corelib/include/rtabmap/core/Parameters.h"
+      ]
+    },
+    {
+      "node_id": "p:save-a-graph-and-localize-a-second-session",
+      "type": "project",
+      "name": "Save a graph and localize a second session",
+      "summary": "Serialize a SLAM Toolbox pose graph, reopen it for a second recorded session, and measure localization recovery without rebuilding the original map.",
+      "lesson_md": "## In one sentence\n\nSerialize a SLAM Toolbox pose graph, reopen it for a second recorded session, and measure localization recovery without rebuilding the original map.\n\n![SLAM Toolbox RViz panel with graph serialization and localization controls](/img/lessons/projects_state_estimation_slam_2-second-session.webp)\n*SLAM Toolbox RViz panel with graph serialization and localization controls. Source: [Official media](https://docs.ros.org/en/ros2_packages/humble/api/slam_toolbox/), license unknown.*\n\n## What you will learn\n\n- **A pose graph** stores robot poses and constraints connecting them; a floor-plan image stores occupied and free cells, not that reusable graph.\n- **Serialization** writes the graph and associated data to disk so another session can load them.\n- **Localization mode** matches new scans against a saved graph, keeping a rolling buffer of recent scans without permanently modifying the underlying map.\n- **Think restoring application state:** reopening a screenshot is not restoring a database; you need the data structure and a compatible reader.\n\n> **Key idea:** Saving a map picture and saving a reusable SLAM session are different operations.\n\n## What you need\n\n- **Complete Grow a floor plan from a recorded laser bag:** start with a functioning SLAM Toolbox replay and its coordinate-frame configuration.\n- **Use two compatible recordings:** retain laser scans, odometry, and required coordinate transforms; the second recording must revisit the mapped area.\n- **Use an existing computer:** no new lidar is needed; budget recording storage and processing separately from the no-new-hardware experiment.\n\n## Steps\n\n1. **Map the first recording:** retain its configuration and software revision; inspect the floor plan and graph before exporting anything.\n2. **Serialize the graph:** use the SLAM Toolbox panel or serialization service, verify success, and keep all generated graph files together with their basename.\n3. **Restart in localization mode:** load the saved graph using the localization launch file; set mode explicitly rather than trusting the example filename.\n4. **Replay the second recording:** preserve the original frame names and replay clock; overlay current scans on the loaded map to inspect agreement.\n5. **Test shifted starts:** repeat with documented initial poses, including poor guesses; measure time to correct localization and record wrong-place matches or failures.\n6. **Demo a cold restart:** stop the process, reload only the saved graph and configuration, then show the second session localizing without remapping the building.\n\n**Worked configuration example:** the example file includes a commented starting pose; this restores that example pose while explicitly selecting localization.\n\n```yaml\nslam_toolbox:\n  ros__parameters:\n    mode: localization\n    map_file_name: test_steve # replace with your saved graph basename\n    map_start_pose: [5.0, 1.0, 0.0] # replace with your starting pose\n```\n\n\n```mermaid\nflowchart LR\n  A[\"First replay\"] --> B[\"Build graph\"]\n  B --> C[\"Serialize\"]\n  C --> D[\"Restart and load\"]\n  E[\"Second replay\"] --> F[\"Localize\"]\n  D --> F\n  F --> G[\"Measure recovery\"]\n```\n\n## Common pitfalls\n\n- **Do not load only an occupancy image:** this workflow needs the serialized pose graph, not merely a saved floor-plan picture.\n- **Do not assume global recovery:** document when localization needs an initial guess, including RViz's initial-pose tool.\n- **Do not confuse mapping with localization:** confirm the executable and explicit mode; a growing map is not evidence of successful frozen-map reuse.\n\n## When it's done\n\n- **Deliver a restartable bundle:** graph files, configuration, recording identifiers, scan overlay, recovery delays, and wrong-place failures reproduce the second-session result.\n",
+      "resources": [
+        {
+          "title": "ROSCon 2019 Macau: On Use of SLAM Toolbox",
+          "url": "https://vimeo.com/378682207",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces persistent graphs, localization, and map reuse from the tool creator."
+        },
+        {
+          "title": "SLAM Toolbox — Localization",
+          "url": "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/README.md#localization",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains loading serialized graphs and localizing without changing the underlying map."
+        },
+        {
+          "title": "mapper_params_localization.yaml",
+          "url": "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/config/mapper_params_localization.yaml",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Shows map basename, initial pose, and frame parameters for replay."
+        },
+        {
+          "title": "localization_launch.py",
+          "url": "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/launch/localization_launch.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Identifies the ROS 2 localization executable and launch arguments."
+        },
+        {
+          "title": "SerializePoseGraph.srv",
+          "url": "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/srv/SerializePoseGraph.srv",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Defines the serialization request and success or write-failure result."
+        }
+      ],
+      "sources": [
+        "https://docs.ros.org/en/ros2_packages/humble/api/slam_toolbox/",
+        "https://vimeo.com/378682207",
+        "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/README.md#localization",
+        "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/config/mapper_params_localization.yaml",
+        "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/launch/localization_launch.py",
+        "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/srv/SerializePoseGraph.srv",
+        "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/README.md"
+      ]
     }
   ]
 }
