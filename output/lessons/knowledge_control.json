@@ -1,0 +1,802 @@
+{
+  "batch": "knowledge_control",
+  "lessons": [
+    {
+      "node_id": "k:dynamic-system-modeling-state-space",
+      "type": "knowledge",
+      "name": "Dynamic system modeling & state-space",
+      "summary": "A state-space model describes how a system’s internal state changes under inputs and how that state produces observable outputs.",
+      "lesson_md": "## In one sentence\n\nA state-space model describes how a system’s internal state changes under inputs and how that state produces observable outputs.\n\n![Simulated output responses for four state-space modeling exercises](/img/lessons/knowledge_control-dynamic-system-modeling-state-space.webp)\n*Simulated output responses for four state-space modeling exercises. Source: [APMonitor](https://apmonitor.com/pdc/index.php/Main/StateSpaceModel), license unknown.*\n\n## Why it matters for us\n\n- **A position is not enough:** An arm passing through an angle and an arm stopped there have different futures because their velocities differ.\n- **A model predicts motion:** Controllers can test candidate commands in software before sending them to a motor.\n- **Separate state from measurement:** A sensor may report position while the model also tracks velocity. Your program must not silently treat them as identical.\n\n> **Key idea:** Choose enough state variables that the current state and input determine the model’s next evolution.\n\n## How it works\n\n- **Think of a stateful API:** State is the stored object; input is a request; the dynamics function defines how the object changes.\n- **Continuous models describe rates:** The dot in `x_dot = A*x + B*u` means how quickly state changes, not its next value.\n- **Matrices organize influences:** A describes how states affect their own rates; B describes how inputs affect those rates. This form describes linear systems.\n- **Outputs need their own mapping:** `y = C*x + D*u` selects or combines states and allows an immediate input contribution.\n- **Worked first-order model:** APMonitor’s first exercise gives `x_dot = -4*x + 2*u`. At state zero with input one, the state initially increases at two units per second.\n- **Robot models can be nonlinear:** A linear approximation describes behavior near a chosen operating point, rather than every possible configuration.\n\n```mermaid\nflowchart LR\n  U[Input] --> F[Dynamics]\n  X[Current state] --> F\n  F --> I[Integrate rates]\n  I --> X\n  X --> Y[Output mapping]\n  U --> Y\n```\n\n## Key terms\n\n- **State**: internal variables needed to describe the evolving system.\n- **Input**: a quantity the controller can command.\n- **Output**: a quantity the model predicts as a measurement.\n- **Linearization**: approximating nonlinear dynamics locally with a linear model.\n\n## Before / after\n\n- **Before:** Review vectors, matrices, and derivatives; connect the model to Feedback control & PID.\n- **After:** Use this representation in Optimal control & LQR and Model predictive control (MPC), rather than treating simulation as unexplained animation.\n\n## Try it in an afternoon\n\n1. **Create APMonitor’s first model** with python-control: `ss([[-4]], [[2]], [[1]], [[0]])`. These arrays are A, B, C, and D.\n2. **Simulate a constant input** from two initial states. Plot both output curves and explain why they differ initially.\n3. **Change A from -4 to -1**, keeping B fixed. Predict the new steady output for input one, then compare simulations.",
+      "resources": [
+        {
+          "title": "Introduction to State Space Models",
+          "url": "https://www.youtube.com/watch?v=Ufcv_WLuKo4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces states, inputs, outputs, and the matrix representation."
+        },
+        {
+          "title": "State Space Models",
+          "url": "https://apmonitor.com/pdc/index.php/Main/StateSpaceModel",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Works from first-order equations to linear and nonlinear state-space models."
+        },
+        {
+          "title": "control.ss",
+          "url": "https://python-control.readthedocs.io/en/latest/generated/control.ss.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Creates continuous or discrete models from A, B, C, and D."
+        },
+        {
+          "title": "Getting started: MPC",
+          "url": "https://www.do-mpc.com/en/latest/getting_started.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows how rotating-disc angles and angular velocities become a state vector."
+        }
+      ],
+      "sources": [
+        "https://apmonitor.com/pdc/index.php/Main/StateSpaceModel",
+        "https://www.youtube.com/watch?v=Ufcv_WLuKo4",
+        "https://python-control.readthedocs.io/en/latest/generated/control.ss.html",
+        "https://www.do-mpc.com/en/latest/getting_started.html"
+      ]
+    },
+    {
+      "node_id": "k:impedance-admittance-control",
+      "type": "knowledge",
+      "name": "Impedance & admittance control",
+      "summary": "Impedance and admittance control shape how a robot yields to contact, rather than demanding that it follow a rigid position target.",
+      "lesson_md": "## In one sentence\n\nImpedance and admittance control shape how a robot yields to contact, rather than demanding that it follow a rigid position target.\n\n![Impedance-based box flip-up using a virtual spring target](/img/lessons/knowledge_control-impedance-admittance-control.webp)\n*Impedance-based box flip-up using a virtual spring target. Source: [MIT Manipulation (Tedrake)](https://manipulation.mit.edu/force.html), license unknown.*\n\n## Why it matters for us\n\n- **Contact changes the problem:** A robot following positions into a table can keep pushing even though the requested motion is impossible.\n- **Compliance means yielding:** A compliant controller lets the tool move under an external push instead of fighting every displacement.\n- **A virtual spring gives intuition:** Moving its rest position changes the force applied to an object without prescribing every detail of contact motion.\n\n> **Key idea:** Specify the relationship between force and motion, not just one rigid destination.\n\n## How it works\n\n- **Impedance maps motion into effort:** Position error and velocity determine a commanded force or torque, making the robot behave like a spring and damper.\n- **Admittance reverses the interface:** Measured external force drives a virtual mechanical model whose output becomes a motion reference for an inner controller.\n- **Think of an API adapter:** The same desired yielding behavior needs different code depending on whether the robot accepts torque commands or position commands.\n- **Stiffness sets resistance:** Higher stiffness means more restoring force for the same displacement. Damping opposes motion and reduces oscillation.\n- **Worked static relationship:** With velocity zero, the virtual spring’s displacement sets force magnitude and direction:\n\n```python\nrestoring_force = stiffness * (target_position - position)\n```\n- **Implementation needs frames:** ROS 2’s admittance controller names the force sensor frame, control frame, and gravity-compensation frame; confusing them changes the meaning of measured forces.\n\n```mermaid\nflowchart LR\n  F[Measured force] --> A[Virtual dynamics]\n  A --> R[Motion reference]\n  R --> C[Inner controller]\n  C --> M[Robot motion]\n  M --> F\n```\n\n> **Watch out:** Soft gains do not guarantee safe contact; real arms can still pinch or strike, so do this first experiment in simulation.\n\n## Key terms\n\n- **Stiffness**: restoring force per unit displacement from a rest position.\n- **Damping**: resistance proportional to velocity.\n- **Equilibrium**: the rest configuration of the virtual spring.\n- **Admittance**: the force-to-motion relationship used to generate a motion command.\n\n## Before / after\n\n- **Before:** Understand Feedback control & PID and Joint-space control of robot arms, including which commands the motor interface actually accepts.\n- **After:** Connect to Task-space & whole-body control when the desired compliance belongs at the tool rather than at each individual joint.\n\n\n## Try it in an afternoon\n\n1. **Simulate a mass, spring, and damper** under constant external force; plot displacement until the motion settles.\n2. **Double the stiffness** and compare the final displacement with your prediction from the spring relationship.\n3. **Remove damping** and compare oscillation with the damped case, keeping the external force unchanged.",
+      "resources": [
+        {
+          "title": "Maxon Motor - Impedance Control in Robotics",
+          "url": "https://www.youtube.com/watch?v=aZVtv_66Xb0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains impedance control and the motor, sensing, and controller components behind it."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.mit.edu/force.html",
+          "format": "Book",
+          "level": "Beginner",
+          "why": "Explains virtual springs and impedance-based contact with a box."
+        },
+        {
+          "title": "Admittance Controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows the force sensor, frame, stiffness, and damping configuration."
+        },
+        {
+          "title": "libfranka/examples/cartesian_impedance_control.cpp at main · frankarobotics/libfranka · GitHub",
+          "url": "https://github.com/frankarobotics/libfranka/blob/main/examples/cartesian_impedance_control.cpp",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Implements a spring-damper controller and explicitly warns about its collision settings."
+        }
+      ],
+      "sources": [
+        "https://manipulation.mit.edu/force.html",
+        "https://www.youtube.com/watch?v=aZVtv_66Xb0",
+        "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html",
+        "https://github.com/frankarobotics/libfranka/blob/main/examples/cartesian_impedance_control.cpp"
+      ]
+    },
+    {
+      "node_id": "k:joint-space-control-of-robot-arms",
+      "type": "knowledge",
+      "name": "Joint-space control of robot arms",
+      "summary": "Joint-space control makes each arm joint follow a desired angle or displacement while accounting for errors and, when available, robot dynamics.",
+      "lesson_md": "## In one sentence\n\nJoint-space control makes each arm joint follow a desired angle or displacement while accounting for errors and, when available, robot dynamics.\n\n![Joint-position sliders in ROS 2’s joint trajectory controller interface](/img/lessons/knowledge_control-joint-space-control-of-robot-arms.webp)\n*Joint-position sliders command individual joints, not Cartesian tool coordinates. Source: [ros2_control documentation](https://control.ros.org/rolling/doc/ros2_controllers/rqt_joint_trajectory_controller/doc/userdoc.html), license unknown.*\n\n## Why it matters for us\n\n- **An arm needs more than waypoints:** A planned joint trajectory still needs a controller to turn desired motion into commands the motors can execute.\n- **Gravity creates a load:** Holding an arm still can require torque, even though the desired velocity is zero.\n- **Moving links interact:** A model-based controller can account for coupled dynamics instead of treating every moving joint as an isolated motor.\n\n> **Key idea:** Feedback corrects errors; a dynamics model can anticipate the effort needed before errors appear.\n\n## How it works\n\n- **Read the joint state:** Compare measured angles and velocities with the desired values at the current trajectory time.\n- **Proportional feedback restores position:** A larger angle error asks for more corrective torque.\n- **Derivative feedback adds damping:** PD means proportional-derivative control; its velocity-error term brakes unwanted motion.\n- **Worked stationary-target law:** Modern Robotics derives this PD rule. Angle error means target minus measured angle:\n\n```python\ntorque = Kp*angle_error - Kd*joint_velocity\n```\n- **This law omits gravity compensation:** Kp and Kd are gains, not universal constants. The lesson’s horizontal-joint assumption removes gravity from the initial tuning exercise.\n- **Computed torque uses dynamics:** A model converts desired acceleration plus feedback correction into torque, including estimated gravity and other modeled effects.\n- **Think of feedforward as prefetching:** Anticipate predictable work, then use feedback like runtime correction when the prediction is wrong.\n- **Check the command interface:** A velocity command and a torque command are not interchangeable; some robots already close an inner control loop for you.\n\n```mermaid\nflowchart LR\n  T[Desired joint trajectory] --> C[Feedback and model]\n  S[Measured joint state] --> C\n  C --> U[Joint torques]\n  U --> R[Arm dynamics]\n  R --> S\n```\n\n> **Watch out:** Excessive gains can excite vibration or instability; keep the first tuning experiment in simulation.\n\n## Key terms\n\n- **Joint space**: coordinates describing the arm through its individual joint positions.\n- **Torque**: the turning effort applied at a rotating joint.\n- **Feedforward**: a command predicted from desired motion and a model.\n- **Tracking error**: the difference between desired and actual motion.\n\n## Before / after\n\n- **Before:** Learn Feedback control & PID and Dynamic system modeling & state-space, then practice with a single simulated joint.\n- **After:** Move toward Impedance & admittance control or Task-space & whole-body control when the desired behavior concerns contact or tool motion.\n\n\n## Try it in an afternoon\n\n1. **Simulate one horizontal joint** with no gravity and implement proportional-derivative control for a fixed target angle.\n2. **Plot angle and torque** while changing damping; compare overshoot and settling instead of judging only the final position.\n3. **Introduce gravity** and compare plain feedback with model-based gravity compensation under the same target.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 11.4:  Motion Control with Torque or Force Inputs (Part 1 of 3)",
+          "url": "https://www.youtube.com/watch?v=HAVBtupm8zM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Derives joint PD control and shows how gains influence motion."
+        },
+        {
+          "title": "11.3. Motion Control with Velocity Inputs (Part 1 of 3)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-3-motion-control-with-velocity-inputs-part-1-of-3/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Distinguishes velocity-command interfaces from torque-command interfaces."
+        },
+        {
+          "title": "11.4. Motion Control with Torque or Force Inputs (Part 3 of 3)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-3-of-3/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Builds computed torque from feedforward dynamics and feedback."
+        },
+        {
+          "title": "rqt_joint_trajectory_controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/rqt_joint_trajectory_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows joint-position sliders and numerical targets for testing a joint trajectory controller."
+        }
+      ],
+      "sources": [
+        "https://control.ros.org/rolling/doc/ros2_controllers/rqt_joint_trajectory_controller/doc/userdoc.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-1-of-3/",
+        "https://www.youtube.com/watch?v=HAVBtupm8zM",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-3-motion-control-with-velocity-inputs-part-1-of-3/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-3-of-3/"
+      ]
+    },
+    {
+      "node_id": "k:learning-based-data-driven-control",
+      "type": "knowledge",
+      "name": "Learning-based & data-driven control",
+      "summary": "Learning-based control uses data to improve a dynamics model, correct a conventional controller, or learn the action-producing controller itself.",
+      "lesson_md": "## In one sentence\n\nLearning-based control uses data to improve a dynamics model, correct a conventional controller, or learn the action-producing controller itself.\n\n![Cart-pole and quadrotor systems used for learning-based control evaluation](/img/lessons/knowledge_control-learning-based-data-driven-control.webp)\n*Cart-pole and quadrotor systems used for learning-based control evaluation. Source: [safe-control-gym repository](https://github.com/learnsyslab/safe-control-gym), license unknown.*\n\n## Why it matters for us\n\n- **Models miss real effects:** Friction and contact can be hard to capture with a simple physical model, yet they strongly affect the controller’s behavior.\n- **Learning need not replace everything:** A conventional controller can handle the known structure while a learned correction handles part of the remaining error.\n- **Evaluation needs a baseline:** Comparing a learned controller only with itself does not show whether learning improved on a simpler feedback controller.\n\n> **Key idea:** Decide exactly what is learned and what remains trusted before training anything.\n\n## How it works\n\n- **Learned dynamics predict transitions:** Fit a model from state-action observations, then use that model inside a planner or predictive controller.\n- **Residual control learns a correction:** Add a learned action to a conventional controller’s output instead of asking a network to discover the whole behavior.\n- **Direct policies output actions:** Reinforcement learning adjusts a state-to-action function using rewards collected from interaction rather than labeled target actions.\n- **Think of a plugin boundary:** Keep the existing control API and replace one component, so you can disable learning and compare identical test conditions.\n- **Worked residual policy:** This pseudocode expresses the authors’ addition of conventional and learned control signals; the baseline feedback path stays active:\n\n```python\naction = baseline(state) + residual(state)\n```\n- **Testing must include surprises:** Hold out starting states and disturbances; good training performance alone does not establish safe behavior outside the training distribution.\n- **Use a shared environment:** safe-control-gym supplies cart-pole and quadrotor benchmarks for comparisons among classical and learning-based methods.\n\n```mermaid\nflowchart LR\n  S[Measured state] --> B[Baseline controller]\n  S --> L[Learned residual]\n  B --> A[Add commands]\n  L --> A\n  A --> R[Simulated robot]\n  R --> S\n```\n\n> **Watch out:** Exploration can command dangerous actions; use simulated systems rather than learning through collisions on a real arm.\n\n## Key terms\n\n- **Policy**: a function mapping observations or states to actions.\n- **Residual**: a learned correction added to an existing model or controller.\n- **Reward**: a numerical training signal defining desirable outcomes.\n- **Distribution shift**: test conditions differing from those represented in training data.\n\n## Before / after\n\n- **Before:** Learn Feedback control & PID and Model predictive control (MPC), then separate supervised model fitting from reinforcement learning.\n- **After:** Study Safety filters & control barrier functions to understand one way to restrict actions proposed by a learned controller.\n\n\n## Try it in an afternoon\n\n1. **Run a baseline controller** on a simulated benchmark and save states, actions, and tracking errors for repeatable trials.\n2. **Fit a small dynamics correction** on part of those transitions; evaluate prediction error on trajectories excluded from fitting.\n3. **Compare held-out predictions** from the original model and corrected model; do not mistake lower prediction error for proven closed-loop improvement.",
+      "resources": [
+        {
+          "title": "Residual Reinforcement Learning (ICRA 2019)",
+          "url": "https://www.youtube.com/watch?v=RRllUka-r2A",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows the authors’ residual reinforcement-learning robot-control demonstration."
+        },
+        {
+          "title": "Residual Reinforcement Learning for Robot Control",
+          "url": "https://residualrl.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explains splitting conventional feedback and a learned correction."
+        },
+        {
+          "title": "learnsyslab/safe-control-gym",
+          "url": "https://github.com/learnsyslab/safe-control-gym",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Provides simulated systems and classical and learning-based controller examples."
+        },
+        {
+          "title": "Safe Learning in Robotics: From Learning-Based Control to Safe Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2108.06266",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Surveys learned dynamics, reinforcement learning, and safety certification."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1812.03201",
+        "https://arxiv.org/abs/2108.06266",
+        "https://github.com/learnsyslab/safe-control-gym",
+        "https://residualrl.github.io/",
+        "https://www.youtube.com/watch?v=RRllUka-r2A"
+      ]
+    },
+    {
+      "node_id": "k:mobile-robot-path-tracking-control",
+      "type": "knowledge",
+      "name": "Mobile robot path-tracking control",
+      "summary": "Path-tracking control turns a planned route and the robot’s measured pose into repeated speed and turning commands.",
+      "lesson_md": "## In one sentence\n\nPath-tracking control turns a planned route and the robot’s measured pose into repeated speed and turning commands.\n\n![Pure pursuit selecting a lookahead point on a pruned path](/img/lessons/knowledge_control-mobile-robot-path-tracking-control.webp)\n*Pure pursuit selecting a lookahead point on a pruned path. Source: [Nav2 repository](https://github.com/ros-navigation/navigation2/tree/main/nav2_regulated_pure_pursuit_controller), license unknown.*\n\n## Why it matters for us\n\n- **A path is not a command:** A list of map coordinates does not tell the wheels how quickly to move right now.\n- **Errors need continual correction:** After moving, the robot must use its updated pose rather than assume the last command placed it exactly on the route.\n- **Steering restrictions matter:** A differential-drive base, steered by different left and right wheel speeds, cannot slide sideways toward the path.\n\n> **Key idea:** Recompute a feasible local motion from the robot’s current pose, not just from the original plan.\n\n## How it works\n\n- **Pure pursuit chooses a target:** Select a point ahead on the path, called the lookahead point, and calculate a circular arc toward it.\n- **Transform into the robot frame:** Expressing that point relative to the chassis makes its sideways offset directly useful for steering.\n- **Curvature determines turning:** For forward speed v, angular velocity is v times curvature. Angular velocity describes how fast the heading changes.\n- **Worked steering law:** This pseudocode converts geometric curvature into the heading-change rate sent to the base:\n\n```python\nangular_velocity = forward_speed * curvature\n```\n- **The geometry is compact:** `curvature = 2*y/L²`, where y is lateral offset and L is the nonzero straight-line distance to the lookahead point.\n- **Regulation adjusts speed:** Nav2’s regulated variant slows for curvature and nearby obstacles and checks projected motion for collisions.\n- **Think of a streaming iterator:** Consume the route a little at a time, discard passed points, then choose a fresh target after every update.\n\n```mermaid\nflowchart LR\n  P[Planned path] --> T[Lookahead target]\n  S[Current pose] --> T\n  T --> C[Curvature and speed]\n  C --> R[Robot motion]\n  R --> S\n```\n\n## Key terms\n\n- **Pose**: position and orientation of the robot.\n- **Lookahead distance**: distance used to choose the next tracking target.\n- **Curvature**: how sharply a path bends; a circle’s curvature is its inverse radius.\n- **Tracking**: correcting motion to follow an existing path, rather than finding the route itself.\n\n## Before / after\n\n- **Before:** Understand Feedback control & PID and basic geometry; distinguish localization, route planning, and execution.\n- **After:** Compare with Model predictive control (MPC) and Sampling-based & GPU-parallel MPC when you want to optimize candidate motions rather than pursue one point.\n\n## Try it in an afternoon\n\n1. **Run the PythonRobotics pure-pursuit example** and plot the reference path alongside the simulated vehicle’s actual track.\n2. **Change lookahead distance** while keeping the path fixed. Record corner-cutting and oscillation instead of comparing screenshots alone.\n3. **Reduce speed near bends** and compare tracking error on the same route before considering a real wheeled platform.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.3.4:  Feedback Control for Nonholonomic Mobile Robots",
+          "url": "https://www.youtube.com/watch?v=STF1Ubf3moU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Explains feedback tracking for wheeled robots with motion constraints."
+        },
+        {
+          "title": "PythonRobotics/PathTracking/pure_pursuit at master · AtsushiSakai/PythonRobotics · GitHub",
+          "url": "https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathTracking/pure_pursuit",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Provides a small executable pure-pursuit tracking example."
+        },
+        {
+          "title": "navigation2/nav2_regulated_pure_pursuit_controller at main · ros-navigation/navigation2 · GitHub",
+          "url": "https://github.com/ros-navigation/navigation2/tree/main/nav2_regulated_pure_pursuit_controller",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains lookahead selection, speed regulation, and collision projection."
+        },
+        {
+          "title": "Regulated Pure Pursuit for Robot Path Tracking",
+          "url": "https://arxiv.org/abs/2305.20026",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Presents the regulated tracking algorithm and its evaluation."
+        }
+      ],
+      "sources": [
+        "https://github.com/ros-navigation/navigation2/tree/main/nav2_regulated_pure_pursuit_controller",
+        "https://arxiv.org/abs/2305.20026",
+        "https://www.youtube.com/watch?v=STF1Ubf3moU",
+        "https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathTracking/pure_pursuit",
+        "https://raw.githubusercontent.com/ros-navigation/navigation2/main/nav2_regulated_pure_pursuit_controller/src/regulated_pure_pursuit_controller.cpp"
+      ]
+    },
+    {
+      "node_id": "k:model-predictive-control-mpc",
+      "type": "knowledge",
+      "name": "Model predictive control (MPC)",
+      "summary": "Model predictive control repeatedly predicts future motion, optimizes a sequence of commands under constraints, and executes only the first command before replanning.",
+      "lesson_md": "## In one sentence\n\nModel predictive control repeatedly predicts future motion, optimizes a sequence of commands under constraints, and executes only the first command before replanning.\n\n![Model predictive control plot showing realized motion and future predictions](/img/lessons/knowledge_control-model-predictive-control-mpc.webp)\n*Model predictive control plot showing realized motion and future predictions. Source: [do-mpc documentation](https://www.do-mpc.com/en/latest/theory_mpc.html), license unknown.*\n\n## Why it matters for us\n\n- **Limits belong inside the decision:** An optimizer can consider input and state bounds while choosing commands, rather than clipping an unconstrained plan afterward.\n- **Prediction anticipates consequences:** A controller can trade immediate tracking error against effort and future behavior across several time steps.\n- **Fresh measurements correct the plan:** Replanning lets the next decision use what actually happened instead of trusting an old predicted trajectory indefinitely.\n\n> **Key idea:** Predict many steps, execute one, then solve again from the updated state.\n\n## How it works\n\n- **Start from the current state:** Measure it directly or estimate the missing variables from available sensors.\n- **Roll the model forward:** Predict how candidate command sequences change the state over a finite horizon, meaning the window of future steps under consideration.\n- **Score each prediction:** A cost function penalizes unwanted behavior, such as distance from a target or excessive command changes.\n- **Enforce constraints:** Reject sequences that violate the modeled input or state bounds while finding a low-cost feasible sequence.\n- **Think of a rolling scheduler:** Recompute the work queue after each new event, but commit only its first action before receiving updated information.\n- **Worked tutorial example:** do-mpc models three spring-connected rotating discs: three angles and three angular velocities, plus two actual motor angles, make eight states.\n- **Commands act through motors:** Two motor-angle setpoints are inputs, distinct from actual motor-angle states; the controller suppresses oscillations within configured bounds.\n- **Read one model equation:** After defining the states, this tutorial line says the first disc’s angle changes at its angular velocity:\n\n```python\nmodel.set_rhs('phi_1', dphi[0])\n```\n\n```mermaid\nflowchart LR\n  S[Current state] --> O[Optimize future commands]\n  M[Model and limits] --> O\n  O --> A[Apply first command]\n  A --> R[System evolves]\n  R --> S\n```\n\n> **Watch out:** Constraints checked at discrete time points do not automatically guarantee safe behavior between those points or under model error.\n\n## Key terms\n\n- **Horizon**: the finite future window included in each optimization.\n- **Objective**: the numerical score the optimizer tries to minimize.\n- **Constraint**: a bound or relationship a candidate solution must satisfy.\n- **Receding horizon**: shifting the planning window forward after each applied command.\n- **Feasibility**: whether any candidate satisfies the modeled constraints from the current state.\n\n## Before / after\n\n- **Before:** Understand Dynamic system modeling & state-space, Optimal control & LQR, and the idea of numerical optimization.\n- **After:** Explore Trajectory optimization for planning whole motions and Sampling-based & GPU-parallel MPC for a different way to search command sequences.\n\n\n## Try it in an afternoon\n\n1. **Open the do-mpc getting-started notebook** and run its three-disc example without changing the controller configuration.\n2. **Plot inputs and angles** together; identify the current trajectory and the predicted future shown by the plotting tools.\n3. **Tighten one input bound** and compare settling behavior, checking whether the solver still finds a feasible solution.",
+      "resources": [
+        {
+          "title": "Introduction to Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=DFqOf5wbQtc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces prediction, optimization, and repeated first-command execution."
+        },
+        {
+          "title": "Getting started: MPC",
+          "url": "https://www.do-mpc.com/en/latest/getting_started.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Builds a complete controller and simulator for three coupled rotating discs."
+        },
+        {
+          "title": "Model Predictive Control",
+          "url": "https://apmonitor.com/pdc/index.php/Main/ModelPredictiveControl",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Explains repeated optimization and provides a Python shooting example."
+        },
+        {
+          "title": "Basics of model predictive control",
+          "url": "https://www.do-mpc.com/en/latest/theory_mpc.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Defines model equations, objectives, bounds, and robust scenarios."
+        }
+      ],
+      "sources": [
+        "https://www.do-mpc.com/en/latest/theory_mpc.html",
+        "https://www.do-mpc.com/en/latest/getting_started.html",
+        "https://www.youtube.com/watch?v=DFqOf5wbQtc",
+        "https://apmonitor.com/pdc/index.php/Main/ModelPredictiveControl"
+      ]
+    },
+    {
+      "node_id": "k:multirotor-flight-control",
+      "type": "knowledge",
+      "name": "Multirotor flight control",
+      "summary": "Multirotor flight control uses nested feedback loops to turn position or orientation requests into coordinated motor commands that stabilize a flying robot.",
+      "lesson_md": "## In one sentence\n\nMultirotor flight control uses nested feedback loops to turn position or orientation requests into coordinated motor commands that stabilize a flying robot.\n\n![Cascaded PID control diagram for the Crazyflie flight controller](/img/lessons/knowledge_control-multirotor-flight-control.webp)\n*Cascaded PID control diagram for the Crazyflie flight controller. Source: [Bitcraze documentation](https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/sensor-to-control/controllers/), license unknown.*\n\n## Why it matters for us\n\n- **A destination is not a motor command:** A drone must change its orientation and thrust to move, while continually correcting unwanted rotation.\n- **Loops divide the work:** An outer controller asks for motion; inner controllers make the vehicle achieve the required orientation and rotation rate.\n- **Simulation exposes the chain:** You can compare desired and measured signals at each level instead of diagnosing every wobble from the final position plot.\n\n> **Key idea:** A position-hold problem can originate in the innermost rotation-rate loop, not just the position controller.\n\n## How it works\n\n- **Estimate the current motion:** Sensors feed a state estimator that reports quantities such as position, velocity, orientation, and angular rate.\n- **Cascade the targets:** Crazyflie documents position, velocity, attitude, and attitude-rate control levels; each outer level supplies a reference to the next.\n- **Rate feedback reacts to rotation:** Gyroscope measurements tell the innermost controller how quickly the body is actually rotating.\n- **Allocate motor effort:** PX4 translates desired thrust and torque into actuator commands using the airframe’s geometry; the controller does not command identical changes to every motor.\n- **Think of layered services:** A position API calls a velocity API, which calls an orientation API. Debug the lowest failing contract before blaming the caller.\n- **Worked timing example:** Bitcraze documents rate control at 500 Hz and position/velocity control at 100 Hz: one update every 2 milliseconds versus every 10 milliseconds.\n- **Not every mode uses every loop:** An angular-rate request can bypass the outer loops; changing modes changes which references enter the cascade.\n\n```mermaid\nflowchart LR\n  P[Position control] --> V[Velocity control]\n  V --> A[Attitude control]\n  A --> W[Rate control]\n  W --> M[Motor allocation]\n  M --> R[Drone]\n  R --> S[Estimated motion]\n  S --> P\n  S --> V\n  S --> A\n  S --> W\n```\n\n> **Watch out:** Propellers can cut and a badly tuned drone can fly away; keep this first control experiment entirely in simulation.\n\n## Key terms\n\n- **Attitude**: the vehicle’s orientation, distinct from its position.\n- **Angular rate**: how quickly orientation changes around an axis.\n- **Thrust**: the pushing force produced by the propellers.\n- **Control allocation**: converting desired total force and torque into individual actuator commands.\n\n## Before / after\n\n- **Before:** Learn Feedback control & PID and 3D rotation representations; identify which signals your simulator provides as estimates.\n- **After:** Connect to Optimal control & LQR for model-based hover stabilization and Learning-based & data-driven control for alternative low-level controllers.\n\n## Try it in an afternoon\n\n1. **Open a stock flight simulation** and identify the logged attitude target, measured attitude, rate target, and measured rate.\n2. **Command a small orientation change** and plot the rate response beside the slower change in orientation.\n3. **Compare rate and position modes** and mark which outer controllers are bypassed in each case, without changing motor parameters on hardware.",
+      "resources": [
+        {
+          "title": "An In-depth Look at the Multicopter Control System Architecture — PX4 Developer Summit Virtual 2020",
+          "url": "https://www.youtube.com/watch?v=nEo4WGl4Lgc",
+          "format": "Video",
+          "why": "The PX4 team walks through the multicopter control architecture.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Controllers in the Crazyflie",
+          "url": "https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/sensor-to-control/controllers/",
+          "format": "Docs",
+          "why": "Lists control levels, loop frequencies, and the cascaded PID implementation.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Controller Diagrams",
+          "url": "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+          "format": "Docs",
+          "why": "Shows how multicopter position, attitude, and rate controllers connect.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Control Allocation (Mixing)",
+          "url": "https://docs.px4.io/main/en/concept/control_allocation.html",
+          "format": "Docs",
+          "why": "Explains translating thrust and torque requests into motor commands.",
+          "level": "Intermediate"
+        }
+      ],
+      "sources": [
+        "https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/sensor-to-control/controllers/",
+        "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+        "https://docs.px4.io/main/en/concept/control_allocation.html",
+        "https://www.youtube.com/watch?v=nEo4WGl4Lgc"
+      ]
+    },
+    {
+      "node_id": "k:nonlinear-robust-adaptive-control",
+      "type": "knowledge",
+      "name": "Nonlinear, robust & adaptive control",
+      "summary": "Nonlinear control handles state-dependent dynamics, robust control accounts for specified uncertainty, and adaptive control updates its model or parameters while running.",
+      "lesson_md": "## In one sentence\n\nNonlinear control handles state-dependent dynamics, robust control accounts for specified uncertainty, and adaptive control updates its model or parameters while running.\n\n![Nonlinear scalar dynamics with gain uncertainty and a reduced robust region of attraction](/img/lessons/knowledge_control-nonlinear-robust-adaptive-control.webp)\n*Nonlinear scalar dynamics with gain uncertainty and a reduced robust region of attraction. Source: [MIT Underactuated Robotics (Tedrake)](https://underactuated.mit.edu/lyapunov.html), license unknown.*\n\n## Why it matters for us\n\n- **Local models have limits:** A controller designed near one arm posture need not behave well far from it.\n- **Models can be wrong:** Unknown payloads and disturbances separate predicted from actual motion, even with correct controller code.\n- **These tools combine:** A controller can be nonlinear, robust, and adaptive.\n\n> **Key idea:** A guarantee is meaningful only together with the operating region and uncertainty assumptions it covers.\n\n## How it works\n\n- **Nonlinear methods retain structure:** Feedback linearization uses the dynamics model to cancel selected nonlinear effects, making part of the controlled behavior simpler.\n- **Cancellation has conditions:** In Tedrake’s cart-pole example, one formulation divides by the cosine of the pole angle and becomes singular when the pole is horizontal.\n- **Robust design covers a set:** Specify allowed parameter errors or disturbances, then seek behavior that holds across that set, not just the nominal model.\n- **Adaptive design learns online:** Parameter estimates evolve while control runs. Stability analysis must consider the robot and the estimator together, as in the adaptive architecture below.\n- **Think of resilient software:** Robustness resembles testing a declared fault model; adaptation resembles updating configuration from live telemetry.\n- **Worked source example:** Tedrake studies `x_dot = -x + alpha*x³`, with `3/4 < alpha < 3/2`; x is a scalar state. The uncertain cubic term changes the attraction region.\n- **The resulting certified interval shrinks:** The notes show `abs(x) < sqrt(2/3)` lies inside the robust region of attraction, using one energy-like function across the uncertainty range.\n\n```mermaid\nflowchart LR\n  S[Measured state] --> C[Controller]\n  P[Model parameters] --> C\n  C --> R[Uncertain system]\n  R --> S\n  S --> E[Online estimator]\n  E --> P\n```\n\n> **Watch out:** Canceling a modeled effect does not cancel unmodeled actuator limits; a mathematically requested command can be physically impossible.\n\n## Key terms\n\n- **Nonlinear dynamics**: state evolution that cannot be represented globally by fixed linear matrices.\n- **Uncertainty set**: the explicitly allowed range of modeling errors or disturbances.\n- **Adaptation**: changing model or controller parameters using data collected during operation.\n- **Region of attraction**: starting states from which motion converges to the target equilibrium.\n\n## Before / after\n\n- **Before:** Study Stability & frequency-domain analysis and Optimal control & LQR before comparing local stabilization with stronger nonlinear claims.\n- **After:** Connect to System identification & controller tuning for parameter estimation and Model predictive control (MPC) for control with explicitly modeled uncertainty.\n\n## Try it in an afternoon\n\n1. **Simulate the scalar source example** at several alpha values within the documented interval, using the same initial state each time.\n2. **Plot trajectories inside the certified interval** and compare them with starts outside it; lack of certification alone does not prove failure.\n3. **Explain what this example does not do:** It analyzes uncertain autonomous dynamics; it contains neither a control input nor an online estimator. Contrast that with the adaptive architecture above.",
+      "resources": [
+        {
+          "title": "What Is Robust Control? | Robust Control, Part 1",
+          "url": "https://www.youtube.com/watch?v=A7wHSr6GRnc",
+          "format": "Video",
+          "why": "Introduces robust control as a response to model uncertainty.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Ch. 9 - Lyapunov Analysis",
+          "url": "https://underactuated.mit.edu/lyapunov.html",
+          "format": "Book",
+          "why": "Works through the scalar uncertainty example and its robust attraction region.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.mit.edu/acrobot.html#partial_feedback_linearization",
+          "format": "Book",
+          "why": "Derives partial feedback linearization and identifies its singular configurations.",
+          "level": "Advanced"
+        },
+        {
+          "title": "Ch. 13 - Robust and Stochastic Control",
+          "url": "https://underactuated.mit.edu/robust.html",
+          "format": "Book",
+          "why": "Contrasts worst-case guarantees with average-cost and probabilistic formulations.",
+          "level": "Advanced"
+        },
+        {
+          "title": "Ch. 18 - System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Book",
+          "why": "Explains online parameter estimation and why adaptive-control analysis includes estimator dynamics.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/lyapunov.html",
+        "https://underactuated.mit.edu/acrobot.html",
+        "https://underactuated.mit.edu/robust.html",
+        "https://underactuated.mit.edu/sysid.html",
+        "https://www.youtube.com/watch?v=A7wHSr6GRnc",
+        "https://underactuated.mit.edu/acrobot.html#partial_feedback_linearization"
+      ]
+    },
+    {
+      "node_id": "k:optimal-control-lqr",
+      "type": "knowledge",
+      "name": "Optimal control & LQR",
+      "summary": "The linear quadratic regulator chooses state-feedback gains that minimize a specified trade-off between state error and control effort for a linear model.",
+      "lesson_md": "## In one sentence\n\nThe linear quadratic regulator chooses state-feedback gains that minimize a specified trade-off between state error and control effort for a linear model.\n\n![LQR output-feedback simulation for a vectored-thrust aircraft](/img/lessons/knowledge_control-optimal-control-lqr.webp)\n*LQR output-feedback simulation for a vectored-thrust aircraft. Source: [python-control documentation](https://python-control.readthedocs.io/en/latest/examples/pvtol-outputfbk.html), license unknown.*\n\n## Why it matters for us\n\n- **Hand-tuning becomes difficult:** A controller that sees several positions and velocities needs a consistent way to balance their importance.\n- **A cost makes preferences explicit:** Penalize state errors and input effort instead of selecting every feedback gain independently.\n- **Robotics still benefits from linear models:** Linearizing near a resting arm posture or a balancing configuration gives a useful local stabilization problem.\n\n> **Key idea:** LQR finds the best feedback for your chosen model and cost, not the universally best robot behavior.\n\n## How it works\n\n- **Describe the dynamics:** A maps current state to its rate of change; B describes how commanded inputs affect that rate.\n- **Choose cost weights:** Q weights state errors; R weights input effort. Use symmetric Q with nonnegative quadratic penalties and symmetric R with strictly positive penalties on nonzero inputs.\n- **Solve for gains:** The solver returns K, a matrix that turns current state error into a corrective input.\n- **Apply state feedback:** In NumPy notation, `u = -K @ x` multiplies the gain matrix by the state deviation. The gain depends on both the dynamics and the selected penalties.\n- **Think of a scoring function:** Like an optimizer minimizing a weighted loss, LQR reflects the weights you supply; it cannot infer missing requirements.\n- **Worked source example:** Tedrake’s double integrator uses position and velocity as states, acceleration as input, and identity Q and R matrices.\n- **The computed law is concrete:** Its gain is `[1, sqrt(3)]`, so `u = -position - sqrt(3)*velocity`; the two terms correct displacement and brake motion.\n- **Check the equilibrium offset:** Around a nonzero operating point, apply feedback to state deviation and add the equilibrium input needed to remain there.\n\n```mermaid\nflowchart LR\n  M[Linear model] --> D[Choose Q and R]\n  D --> K[Solve gain K]\n  K --> C[State feedback]\n  S[Measured or estimated state] --> C\n  C --> R[System]\n  R --> S\n```\n\n> **Watch out:** Standard unconstrained LQR does not enforce motor limits; saturation can invalidate conclusions drawn from the ideal closed-loop model.\n\n## Key terms\n\n- **Quadratic cost**: a penalty built from squared, weighted state and input values.\n- **Regulator**: a controller designed to return deviations toward an equilibrium.\n- **Gain matrix**: the coefficients mapping state error into control input.\n- **Local stabilization**: convergence near a chosen equilibrium, not necessarily from every initial state.\n\n## Before / after\n\n- **Before:** Learn Dynamic system modeling & state-space and matrix multiplication; know which variables belong in the state vector.\n- **After:** Connect to Model predictive control (MPC) for finite-horizon decisions with constraints and Underactuated & balancing control for cart-pole applications.\n\n## Try it in an afternoon\n\n1. **Copy the double-integrator model** from Tedrake’s example and compute its feedback gain with python-control’s `lqr` function.\n2. **Check the returned gain** against `[1, sqrt(3)]`, then simulate the response from a displaced position with no initial velocity.\n3. **Increase the input penalty** while keeping the model unchanged. Compare input effort and recovery time rather than judging only the final state.",
+      "resources": [
+        {
+          "title": "Linear Quadratic Regulator (LQR) Control for the Inverted Pendulum on a Cart [Control Bootcamp]",
+          "url": "https://www.youtube.com/watch?v=1_UobILf3cc",
+          "format": "Video",
+          "why": "Brunton demonstrates LQR stabilization on an inverted pendulum and cart.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Ch. 8 - Linear Quadratic Regulators",
+          "url": "https://underactuated.mit.edu/lqr.html",
+          "format": "Book",
+          "why": "Derives LQR and gives the double-integrator matrices and exact gain.",
+          "level": "Beginner"
+        },
+        {
+          "title": "control.lqr",
+          "url": "https://python-control.readthedocs.io/en/latest/generated/control.lqr.html",
+          "format": "Docs",
+          "why": "Documents the gain, Riccati solution, and closed-loop eigenvalues returned by the solver.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Output feedback control using LQR and extended Kalman filtering",
+          "url": "https://python-control.readthedocs.io/en/latest/examples/pvtol-outputfbk.html",
+          "format": "Docs",
+          "why": "Combines a state estimate with LQR feedback in an aircraft simulation.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/lqr.html",
+        "https://python-control.readthedocs.io/en/latest/examples/pvtol-outputfbk.html",
+        "https://www.youtube.com/watch?v=1_UobILf3cc",
+        "https://python-control.readthedocs.io/en/latest/generated/control.lqr.html",
+        "https://numpy.org/doc/stable/reference/generated/numpy.matmul.html"
+      ]
+    },
+    {
+      "node_id": "k:safety-filters-control-barrier-functions",
+      "type": "knowledge",
+      "name": "Safety filters & control barrier functions",
+      "summary": "A control-barrier-function safety filter modifies a controller’s proposed action to preserve a mathematically specified safe set under stated dynamics and feasibility assumptions.",
+      "lesson_md": "## In one sentence\n\nA control-barrier-function safety filter modifies a controller’s proposed action to preserve a mathematically specified safe set under stated dynamics and feasibility assumptions.\n\n![CBFpy demonstration of manipulator joint-limit avoidance](/img/lessons/knowledge_control-safety-filters-control-barrier-functions.webp)\n*CBFpy demonstration of manipulator joint-limit avoidance. Source: [CBFpy documentation](https://stanfordasl.github.io/cbfpy/), license unknown.*\n\n## Why it matters for us\n\n- **A policy can propose unsafe actions:** A controller pursuing its task may approach a wall or exceed a joint limit.\n- **Separate task and safety logic:** Check the task controller’s proposed action against an explicit boundary before execution.\n- **A filter is not omniscient:** Its conclusions depend on the modeled dynamics, state estimates, actuator limits, and whether a safe action exists.\n\n> **Key idea:** Preserving a safe set requires controlling how its boundary is approached, not merely detecting that a violation already happened.\n\n## How it works\n\n- **Define a signed margin:** A barrier function h is nonnegative inside the chosen safe set and zero on its boundary.\n- **Constrain the motion of that margin:** The filter restricts actions so the barrier cannot decrease too quickly toward an unsafe state.\n- **Stay close to the proposal:** A quadratic program minimizes the squared change from the nominal command while enforcing barrier and input constraints.\n- **Think of middleware:** Transform the policy’s request before forwarding it to actuators.\n- **Worked source example:** CBFpy defines a one-dimensional positional barrier `h = x - x_min`; subtracting the lower position limit gives the signed clearance.\n- **Dynamics change the condition:** If the input is force rather than velocity, position does not respond instantly; CBFpy handles this through higher-order barrier conditions.\n- **Filter a proposed command:** Build an instance with `cbf = CBF.from_config(config)`, then call `safe_control = cbf.safety_filter(current_state, nominal_control)`.\n- **Keep goals distinct:** A barrier describes where the robot may remain; it does not by itself specify how to complete a useful task.\n\n```mermaid\nflowchart LR\n  P[Task controller] --> U[Proposed command]\n  U --> F[Barrier constrained filter]\n  S[Estimated state] --> F\n  F --> A[Actuators]\n  A --> R[Robot motion]\n  R --> S\n```\n\n> **Watch out:** Invariance requires starting inside the certified safe set. A filter with relaxed constraints or inaccurate dynamics is not an unconditional collision-prevention guarantee.\n\n## Key terms\n\n- **Safe set**: the collection of states permitted by a mathematical specification.\n- **Barrier function**: a scalar function encoding the boundary of that set.\n- **Nominal control**: the action proposed before safety filtering.\n- **Feasibility**: existence of an input satisfying all imposed constraints at the current state.\n- **Quadratic program**: an optimization problem with a quadratic objective and linear constraints in the decision variables.\n\n## Before / after\n\n- **Before:** Learn Optimal control & LQR, Stability & frequency-domain analysis, and basic constrained optimization.\n- **After:** Combine with Learning-based & data-driven control when a policy proposes actions, or Joint-space control of robot arms when limits concern individual joints.\n\n## Try it in an afternoon\n\n1. **Open CBFpy’s point-mass example** and identify its state, force input, nominal controller, and positional barrier before running anything.\n2. **Simulate with the filter enabled** and disabled; plot the barrier value as well as position to see proximity to the boundary.\n3. **Inspect input limits and constraint relaxation** before interpreting the plot. Record when the optimization cannot enforce the original specification.",
+      "resources": [
+        {
+          "title": "ICRA 2022 Workshop on Safe Autonomy: Aaron Ames (Control Barrier Functions for Safe Robot Autonomy)",
+          "url": "https://www.youtube.com/watch?v=EU3fciGisDc",
+          "format": "Video",
+          "why": "Ames explains control barrier functions for safe robotic autonomy.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Index - CBFpy",
+          "url": "https://stanfordasl.github.io/cbfpy/#example-a-point-mass-robot-in-1d-with-an-applied-force-and-a-positional-barrier",
+          "format": "Docs",
+          "why": "Works through a point-mass robot and its positional barrier.",
+          "level": "Beginner"
+        },
+        {
+          "title": "CBF - CBFpy",
+          "url": "https://stanfordasl.github.io/cbfpy/api/cbf/",
+          "format": "Docs",
+          "why": "Defines the minimum-change optimization and the safety_filter API.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Control Barrier Functions: Theory and Applications",
+          "url": "https://arxiv.org/html/1903.11199",
+          "format": "Paper",
+          "why": "Explains invariance conditions and robotic applications in the authors’ survey.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://stanfordasl.github.io/cbfpy/",
+        "https://stanfordasl.github.io/cbfpy/api/cbf/",
+        "https://arxiv.org/html/1903.11199",
+        "https://www.youtube.com/watch?v=EU3fciGisDc",
+        "https://stanfordasl.github.io/cbfpy/#example-a-point-mass-robot-in-1d-with-an-applied-force-and-a-positional-barrier"
+      ]
+    },
+    {
+      "node_id": "k:sampling-based-gpu-parallel-mpc",
+      "type": "knowledge",
+      "name": "Sampling-based & GPU-parallel MPC",
+      "summary": "Sampling-based MPC tests candidate command sequences in simulation, scores their predicted outcomes, and uses parallel hardware to evaluate many candidates together.",
+      "lesson_md": "## In one sentence\n\nSampling-based MPC tests candidate command sequences in simulation, scores their predicted outcomes, and uses parallel hardware to evaluate many candidates together.\n\n![Hydrax humanoid simulation controlled by MPPI](/img/lessons/knowledge_control-sampling-based-gpu-parallel-mpc.webp)\n*Hydrax humanoid simulation controlled by MPPI. Source: [Hydrax repository](https://github.com/vincekurtz/hydrax), license unknown.*\n\n## Why it matters for us\n\n- **Contacts make optimization awkward:** Legged robots switch between touching and leaving the ground, so smooth local approximations can miss important behaviors.\n- **Simulation can score alternatives:** Instead of differentiating every contact event, sample commands and compare the motions they produce in a dynamics model.\n- **Parallelism changes the workload:** Independent candidate simulations can run together, making this a useful connection between GPU programming and robot control.\n\n> **Key idea:** Training-free control still needs a model, a cost function, and enough computation before the next command deadline.\n\n## How it works\n\n- **Start with a command sequence:** Perturb it to produce multiple candidates covering different possible future actions.\n- **Roll out each candidate:** Simulate forward from the same current state, accumulating task penalties and any final-state penalty.\n- **Update the proposal:** Predictive sampling keeps the lowest-cost candidate; MPPI forms an exponentially weighted combination, giving better candidates greater influence.\n- **Think of a batched test runner:** Each worker receives the same snapshot but a different command sequence; a reducer combines the scores into the next proposal.\n- **Recede the horizon:** Apply the first command, refresh the state, shift the sequence forward, and repeat rather than execute the whole old plan blindly.\n- **Worked selection rule:** Hydrax sums rollout costs over time, then uses `best_idx = jnp.argmin(costs)` with JAX NumPy to select the lowest-cost candidate’s commands.\n- **Refinement can be iterative:** DIAL-MPC progressively changes the sampling spread while refining a solution, rather than relying on a single unstructured batch.\n- **GPU support is implementation-specific:** Hydrax uses JAX and MuJoCo MJX to run sampling-based algorithms on accelerators; not every sampling controller requires a GPU.\n\n```mermaid\nflowchart LR\n  S[Current state] --> B[Sample command sequences]\n  B --> R[Parallel simulations]\n  R --> C[Compute costs]\n  C --> U[Update sequence]\n  U --> A[Apply first command]\n  A --> S\n```\n\n> **Watch out:** Low sampled cost is not proof of collision avoidance; unsampled behavior and model error can still invalidate a plan.\n\n## Key terms\n\n- **Rollout**: one predicted trajectory obtained by simulating a candidate sequence.\n- **MPPI**: model predictive path integral control, a sampling-based command-update method.\n- **Sampling distribution**: the rule used to generate candidate perturbations.\n- **Annealing**: changing the sampling spread during optimization to balance exploration and refinement.\n\n## Before / after\n\n- **Before:** Understand Model predictive control (MPC), array batching, and the distinction between simulated and measured state.\n- **After:** Connect to Mobile robot path-tracking control for sampled navigation commands and Task-space & whole-body control for coordinated multi-joint behavior.\n\n## Try it in an afternoon\n\n1. **Inspect Hydrax’s pendulum example** and identify its model, objective, and sampling algorithm before choosing a compatible documented environment.\n2. **Run predictive sampling and MPPI** on the same example, keeping starting conditions unchanged and plotting both commands and state trajectories.\n3. **Compare compute time and control quality** rather than assuming more samples always help; record whether each update finishes within the simulated control interval.",
+      "resources": [
+        {
+          "title": "[Demos] DIAL-MPC: Diffusion-Inspired Annealing for Legged MPC",
+          "url": "https://www.youtube.com/watch?v=baCGTKIooO0",
+          "format": "Video",
+          "why": "The DIAL-MPC authors show training-free locomotion-control demonstrations.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Hydrax",
+          "url": "https://github.com/vincekurtz/hydrax",
+          "format": "Repo",
+          "why": "Explains predictive sampling, MPPI, CEM, and accelerator-backed pendulum examples.",
+          "level": "Beginner"
+        },
+        {
+          "title": "Full-Order Sampling-Based MPC for Torque-Level Locomotion Control via Diffusion-Style Annealing",
+          "url": "https://lecar-lab.github.io/dial-mpc/",
+          "format": "Article",
+          "why": "Illustrates annealed sampling and torque-level legged-control results.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Information Theoretic Model Predictive Control: Theory and Applications to Autonomous Driving",
+          "url": "https://arxiv.org/abs/1707.02342",
+          "format": "Paper",
+          "why": "Develops the information-theoretic sampling controller and compares it with cross-entropy MPC.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://github.com/vincekurtz/hydrax",
+        "https://lecar-lab.github.io/dial-mpc/",
+        "https://arxiv.org/abs/1707.02342",
+        "https://www.youtube.com/watch?v=baCGTKIooO0",
+        "https://raw.githubusercontent.com/vincekurtz/hydrax/main/hydrax/algs/predictive_sampling.py",
+        "https://raw.githubusercontent.com/vincekurtz/hydrax/main/hydrax/algs/mppi.py"
+      ]
+    },
+    {
+      "node_id": "k:stability-frequency-domain-analysis",
+      "type": "knowledge",
+      "name": "Stability & frequency-domain analysis",
+      "summary": "Stability analysis asks whether small deviations stay small; frequency-domain analysis shows how a system amplifies and shifts signals at different oscillation rates.",
+      "lesson_md": "## In one sentence\n\nStability analysis asks whether small deviations stay small; frequency-domain analysis shows how a system amplifies and shifts signals at different oscillation rates.\n\n![Bode magnitude and phase plots comparing two single-input single-output systems](/img/lessons/knowledge_control-stability-frequency-domain-analysis.webp)\n*Bode magnitude and phase plots comparing two single-input single-output systems. Source: [python-control documentation](https://python-control.readthedocs.io/en/latest/response.html), license unknown.*\n\n## Why it matters for us\n\n- **A plausible controller can oscillate:** Increasing feedback gains may improve a slow response but also change the behavior of the full closed loop.\n- **One trial is insufficient:** Settling from one initial state does not establish stability throughout every configuration.\n- **Use different views:** Step responses reveal motion over time; frequency responses reveal amplification and delay across oscillation rates.\n\n> **Key idea:** Analyze the closed-loop system and its assumptions, not just the controller’s isolated gain values.\n\n## How it works\n\n- **Start with equilibrium:** Ask how small deviations behave around a resting state under feedback.\n- **Inspect linear modes:** A continuous-time linear closed loop is asymptotically stable when all eigenvalues have negative real parts. The discrete-time counterpart requires all eigenvalues strictly inside the unit circle.\n- **Sweep the input frequency:** A Bode plot places magnitude and phase against frequency, showing how much a sinusoid is amplified and shifted in time.\n- **Read margins carefully:** Gain and phase margins describe proximity to instability using the loop transfer function, not an arbitrary measured position trace.\n- **Think of a frequency-dependent API:** Slow and rapid request patterns can produce different amplification and delay.\n- **Worked source calculation:** python-control documents `G = ct.tf(1, [1, 2, 1, 0])`, meaning a numerator of 1 over the polynomial `s³ + 2*s² + s`.\n- **Measure the reserve:** Calling `gm, pm, wcg, wcp = ct.margin(G)` returns gain margin, phase margin, and the associated crossover frequencies for that loop model.\n- **Nonlinear tools:** A Lyapunov function is energy-like; suitable decrease conditions establish stability without explicitly solving trajectories.\n\n```mermaid\nflowchart LR\n  M[Plant and controller] --> L[Loop model]\n  L --> B[Bode plot and margins]\n  L --> C[Closed loop modes]\n  B --> T[Revise and simulate]\n  C --> T\n```\n\n## Key terms\n\n- **Equilibrium**: a state that remains unchanged under the corresponding input.\n- **Asymptotic stability**: small deviations stay small and also converge to the equilibrium.\n- **Magnitude**: output amplitude divided by input amplitude at a particular frequency.\n- **Phase**: the angular shift between sinusoidal input and output.\n- **Margin**: a measure of allowable gain or phase change before a modeled stability boundary is reached.\n- **Lyapunov function**: an energy-like scalar used to reason about state evolution and stability.\n\n## Before / after\n\n- **Before:** Learn Dynamic system modeling & state-space and complex numbers; distinguish continuous-time rates from sampled state updates.\n- **After:** Use these checks in System identification & controller tuning and Nonlinear, robust & adaptive control rather than relying on visual smoothness alone.\n\n## Try it in an afternoon\n\n1. **Create the documented transfer function** in python-control and calculate its margins; note that this is an example loop model, not a real robot specification.\n2. **Plot its Bode response** and identify the frequencies returned by the margin calculation, checking the axis units.\n3. **Change the loop gain** and compare margins with a closed-loop step response, recording overshoot and any failure to settle.",
+      "resources": [
+        {
+          "title": "Control System Lectures - Bode Plots, Introduction",
+          "url": "https://www.youtube.com/watch?v=_eh1conN6YM",
+          "format": "Video",
+          "why": "Introduces the magnitude-and-phase view of a system’s response.",
+          "level": "Beginner"
+        },
+        {
+          "title": "4. Input/Output Response and Plotting",
+          "url": "https://python-control.readthedocs.io/en/latest/response.html#frequency-response-data",
+          "format": "Docs",
+          "why": "Shows Bode, Nyquist, and time-response plots using python-control.",
+          "level": "Beginner"
+        },
+        {
+          "title": "control.margin",
+          "url": "https://python-control.readthedocs.io/en/latest/generated/control.margin.html",
+          "format": "Docs",
+          "why": "Provides the worked transfer-function example and defines both stability margins.",
+          "level": "Intermediate"
+        },
+        {
+          "title": "Ch. 9 - Lyapunov Analysis",
+          "url": "https://underactuated.mit.edu/lyapunov.html",
+          "format": "Book",
+          "why": "Extends stability reasoning beyond linear frequency-domain models.",
+          "level": "Advanced"
+        }
+      ],
+      "sources": [
+        "https://python-control.readthedocs.io/en/latest/response.html",
+        "https://python-control.readthedocs.io/en/latest/generated/control.margin.html",
+        "https://underactuated.mit.edu/lyapunov.html",
+        "https://www.youtube.com/watch?v=_eh1conN6YM",
+        "https://python-control.readthedocs.io/en/latest/response.html#frequency-response-data",
+        "https://hankyang.seas.harvard.edu/OptimalControlReinforcementLearning/app-lti-system-theory.html"
+      ]
+    },
+    {
+      "node_id": "k:system-identification-controller-tuning",
+      "type": "knowledge",
+      "name": "System identification & controller tuning",
+      "summary": "System identification fits a motion model from measured inputs and outputs; controller tuning chooses how strongly feedback corrects errors.",
+      "lesson_md": "## In one sentence\n\nSystem identification fits a motion model from measured inputs and outputs; controller tuning chooses how strongly feedback corrects errors.\n\n![Sample output compared with initial and optimized model predictions](/img/lessons/knowledge_control-system-identification-controller-tuning.webp)\n*Simulated sample output and fitted model predictions. Source: [APMonitor](https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization), license unknown.*\n\n## Why it matters for us\n\n- **Measurements replace guesses:** A model fitted from experiments can describe response delays and dynamics that affect how well a controller tracks its target.\n- **Identification and tuning differ:** Identification changes the model parameters; tuning changes the controller gains. A good fit does not automatically supply a good controller.\n- **Plots make debugging concrete:** Compare input commands, measured output, and model predictions on the same timeline before blaming the feedback code.\n\n> **Key idea:** First learn how the system responds, then choose corrections for that response.\n\n## How it works\n\n- **Record a useful experiment:** Vary the input and record the resulting output with timestamps, rather than collecting only a motionless robot.\n- **Choose a compact model:** A first-order model with delay describes response size, response speed, and how long the output waits before reacting.\n- **Fit the parameters:** Minimize squared prediction errors, meaning the sum of squared differences between modeled and recorded output values.\n- **Worked fitting example:** APMonitor starts its fit with gain 2, time constant 3, and delay 0; optimization adjusts these against its supplied simulated data.\n- **Think of performance profiling:** Measure the running system before changing configuration; your model plays the role of a reproducible benchmark.\n- **Tune against observed behavior:** ODrive's guide adjusts velocity gain before position gain, then adds velocity integral gain to address persistent error.\n- **Keep gain meanings separate:** Model gain describes input-to-output response size; controller gain determines the strength of a correction.\n\n```mermaid\nflowchart LR\n  U[Test inputs] --> R[System response]\n  R --> D[Recorded data]\n  D --> M[Fit model]\n  M --> T[Tune controller]\n  T --> V[Evaluate response]\n  V --> U\n```\n\n## Key terms\n\n- **System identification**: estimating model parameters from observed behavior.\n- **Time constant**: the characteristic response time of a first-order model.\n- **Delay**: time between an input change and its effect on the output.\n- **Residual**: the difference between a prediction and its measurement.\n\n## Before / after\n\n- **Before:** Read Dynamic system modeling & state-space and Feedback control & PID; know what a state, input, and feedback error represent.\n- **After:** Try Identify friction and inertia of one joint, then Cascaded position-velocity loop on an ODrive bench.\n\n## Try it in an afternoon\n\n1. **Run APMonitor's Python fitting example** using its supplied data, keeping the initial and optimized predictions on one plot.\n2. **Inspect the residuals** and compare the initial sum of squared errors with the optimized value.\n3. **Change the initial guesses** and repeat; note whether different starts produce similar predictions before moving to motor experiments.",
+      "resources": [
+        {
+          "title": "Fit Lower Order Models in Python",
+          "url": "https://www.youtube.com/watch?v=RVnId1hU7qE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how recorded input and output data become a fitted dynamic model."
+        },
+        {
+          "title": "Optimization Method: FOPDT to Data",
+          "url": "https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Provides Python data, fitting code, and model-versus-measurement plots."
+        },
+        {
+          "title": "Tuning the Controller",
+          "url": "https://docs.odriverobotics.com/v/latest/guides/tuning.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains the order and observed symptoms used to tune cascaded motor-control gains."
+        },
+        {
+          "title": "Ch. 18 - System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Develops least-squares identification and explains which model errors matter for control."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RVnId1hU7qE",
+        "https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization",
+        "https://docs.odriverobotics.com/v/latest/guides/tuning.html",
+        "https://underactuated.mit.edu/sysid.html"
+      ]
+    },
+    {
+      "node_id": "k:task-space-whole-body-control",
+      "type": "knowledge",
+      "name": "Task-space & whole-body control",
+      "summary": "Task-space control specifies goals for robot parts; whole-body control coordinates those goals with the robot's motion, contact, and actuator constraints.",
+      "lesson_md": "## In one sentence\n\nTask-space control specifies goals for robot parts; whole-body control coordinates those goals with the robot's motion, contact, and actuator constraints.\n\n![Task frames on several simulated robots, including a dual-arm robot and humanoid](/img/lessons/knowledge_control-task-space-whole-body-control.webp)\n*Task-based inverse kinematics on different robot bodies. Source: [Pink repository](https://github.com/pink-kinematics/pink), Apache-2.0.*\n\n## Why it matters for us\n\n- **Describe the outcome:** “Keep the hand here” is easier to reason about than manually coordinating every joint angle while other parts move.\n- **Multiple goals can conflict:** A hand target, preferred posture, and joint limits may not all be achievable together.\n- **Whole-body motion adds constraints:** A floating robot base and feet touching the ground require more than independent arm-joint corrections.\n\n> **Key idea:** Solve the tasks together, because moving one joint can help one goal and hurt another.\n\n## How it works\n\n- **Measure task error:** Compare a robot part's current position and orientation with its target, expressed in a consistent coordinate frame.\n- **Map robot motion to task motion:** A Jacobian maps configuration velocities, including floating-base motion when present, to task velocities.\n- **Start with velocities:** Differential inverse kinematics repeatedly chooses joint velocities that reduce task errors, then updates the robot configuration.\n- **Think of a constrained scheduler:** Tasks request outcomes, but a shared solver allocates motion while respecting limits instead of running independent commands.\n- **Worked task example:** Pink's biped example combines four tasks: base, left contact, right contact, and posture. The posture task supplies preferred joint angles.\n- **Names are not guarantees:** Those contact-frame tasks are weighted objectives, not rigid-contact constraints or a proof of dynamic balance.\n- **Add dynamics for torque control:** TSID uses Pinocchio to formulate optimization-based inverse dynamics, relating accelerations and contact forces to joint torques.\n- **Separate costs from constraints:** A weighted cost trades errors against each other; a hard constraint must be satisfied rather than merely assigned a large weight.\n\n```mermaid\nflowchart LR\n  G[Task targets] --> E[Task errors]\n  S[Robot state] --> E\n  E --> Q[Constrained solver]\n  L[Model and limits] --> Q\n  Q --> C[Motion command]\n  C --> S\n```\n\n## Key terms\n\n- **Task space**: coordinates describing the outcome, such as a hand's position, rather than individual joint angles.\n- **Posture**: the collection of joint positions used to shape the robot's overall configuration.\n- **Inverse dynamics**: computing forces or torques needed for desired accelerations.\n- **Quadratic program**: an optimization problem with a quadratic objective and linear constraints.\n\n## Before / after\n\n- **Before:** Read Joint-space control of robot arms and learn Jacobians; distinguish joint velocity commands from joint torque commands.\n- **After:** Explore TSID and Pinocchio, then Task-space controller: keep the hand still while the base moves.\n\n## Try it in an afternoon\n\n1. **Run a Pink arm example** in simulation and identify the task target and the model's joint limits.\n2. **Move the target** and plot task error as the configuration updates; keep the same initial pose for comparisons.\n3. **Add a posture preference** and change its cost; observe how the arm resolves competing goals without assuming this velocity-level demo proves balance.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 11.3:  Motion Control with Velocity Inputs (Part 3 of 3)",
+          "url": "https://www.youtube.com/watch?v=WuhEEidkes8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces task-space feedback and mapping desired task motion into joint velocities."
+        },
+        {
+          "title": "GitHub - pink-kinematics/pink: Python inverse kinematics using Pinocchio and QP solvers · GitHub",
+          "url": "https://github.com/pink-kinematics/pink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Gives runnable task-based velocity control with posture costs and joint limits."
+        },
+        {
+          "title": "GitHub - stack-of-tasks/tsid: Efficient Task Space Inverse Dynamics (TSID) based on Pinocchio · GitHub",
+          "url": "https://github.com/stack-of-tasks/tsid",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Connects task-based goals to inverse-dynamics control and robot examples."
+        },
+        {
+          "title": "Home · stack-of-tasks/tsid Wiki · GitHub",
+          "url": "https://github.com/stack-of-tasks/tsid/wiki",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Explains motion tasks, contact constraints, and the optimization variables used by TSID."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=WuhEEidkes8",
+        "https://github.com/pink-kinematics/pink",
+        "https://github.com/stack-of-tasks/tsid",
+        "https://github.com/stack-of-tasks/tsid/wiki",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-3-motion-control-with-velocity-inputs-part-3-of-3/"
+      ]
+    },
+    {
+      "node_id": "k:trajectory-generation-motion-profiles",
+      "type": "knowledge",
+      "name": "Trajectory generation & motion profiles",
+      "summary": "Trajectory generation turns a destination into timed motion targets, with profiles that control velocity, acceleration, and how quickly acceleration changes.",
+      "lesson_md": "## In one sentence\n\nTrajectory generation turns a destination into timed motion targets, with profiles that control velocity, acceleration, and how quickly acceleration changes.\n\n![Ruckig example profiles plotting position, velocity, acceleration, and jerk over time](/img/lessons/knowledge_control-trajectory-generation-motion-profiles.webp)\n*Timed motion profiles from Ruckig. Source: [Ruckig repository](https://github.com/pantor/ruckig), MIT.*\n\n## Why it matters for us\n\n- **A destination is incomplete:** A controller needs to know where the joint should be during the move, not only where it should finish.\n- **Timing changes the demand:** The same geometric path can require different speeds and accelerations depending on how quickly it is traversed.\n- **Smoothness has levels:** Continuous position does not guarantee continuous velocity or acceleration; inspect those curves separately.\n\n> **Key idea:** Choose how motion unfolds over time before asking feedback to follow it.\n\n## How it works\n\n- **Separate path from timing:** The path says where the robot travels; a time scaling says how far along it should be at each instant.\n- **Use a trapezoidal velocity profile:** Accelerate at a constant rate, coast at constant speed, then decelerate to rest.\n- **Notice the corners:** That profile's acceleration jumps between segments. An S-curve instead uses bounded jerk, the rate at which acceleration changes.\n- **Think of an animation interpolator:** A start and end keyframe need an interpolation rule; the intermediate samples matter as much as the endpoints.\n- **Worked cubic example:** Modern Robotics uses zero endpoint speed. For elapsed time t and duration T, set `r = t/T`; progress is `s = 3*r*r - 2*r*r*r`.\n- **Check the midpoint:** At r = 0.5, this gives s = 0.5. Zero endpoint speed still does not remove the cubic profile's endpoint acceleration jumps.\n- **Respect limits explicitly:** Ruckig takes current and target motion states plus velocity, acceleration, and jerk limits to calculate a trajectory.\n\n```mermaid\nflowchart LR\n  A[Current state] --> G[Trajectory generator]\n  B[Target and limits] --> G\n  G --> T[Timed targets]\n  T --> C[Feedback controller]\n  C --> R[Robot motion]\n  R --> A\n```\n\n## Key terms\n\n- **Trajectory**: a motion description that includes time, unlike a purely geometric path.\n- **Velocity**: how quickly position changes, including direction.\n- **Acceleration**: how quickly velocity changes.\n- **Jerk**: how quickly acceleration changes.\n- **Interpolation**: calculating intermediate values between supplied samples.\n\n## Before / after\n\n- **Before:** Understand Feedback control & PID and basic derivatives; separate the desired target from the measured joint position.\n- **After:** Try Smooth arm motions with Ruckig, then Online re-targeting with ros2 joint trajectory controller using ros2_controllers.\n\n## Try it in an afternoon\n\n1. **Plot the cubic example** for normalized times from zero to one, including its velocity and acceleration.\n2. **Run Ruckig's example** and plot position, velocity, acceleration, and jerk rather than inspecting position alone.\n3. **Reduce the jerk limit** while keeping the destination unchanged; compare motion duration and acceleration curves before considering a real arm.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapters 9.1 and 9.2:  Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compares cubic, quintic, trapezoidal, and S-curve timing profiles."
+        },
+        {
+          "title": "9.1 and 9.2. Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Supplies the written explanation of endpoint conditions and timing choices."
+        },
+        {
+          "title": "GitHub - pantor/ruckig: Motion Generation for Robots and Machines. Real-time. Jerk-constrained. Time-optimal. · GitHub",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Shows how to specify motion states and limits for jerk-limited generation."
+        },
+        {
+          "title": "Trajectory Representation",
+          "url": "https://control.ros.org/lyrical/doc/ros2_controllers/joint_trajectory_controller/doc/trajectory.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains how waypoint fields affect interpolation continuity in ROS 2."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+        "https://github.com/pantor/ruckig",
+        "https://control.ros.org/lyrical/doc/ros2_controllers/joint_trajectory_controller/doc/trajectory.html"
+      ]
+    },
+    {
+      "node_id": "k:trajectory-optimization",
+      "type": "knowledge",
+      "name": "Trajectory optimization",
+      "summary": "Trajectory optimization searches for a sequence of states and commands that achieves a goal while minimizing a cost and respecting the robot's physics.",
+      "lesson_md": "## In one sentence\n\nTrajectory optimization searches for a sequence of states and commands that achieves a goal while minimizing a cost and respecting the robot's physics.\n\n![Optimized pendulum swing-up trajectory under a tight torque limit](/img/lessons/knowledge_control-trajectory-optimization.webp)\n*Pendulum swing-up found by direct collocation with severe torque limits. Source: [Underactuated Robotics](https://underactuated.mit.edu/trajopt.html), license unknown.*\n\n## Why it matters for us\n\n- **A motion can require preparation:** A torque-limited pendulum may need to swing back and forth before it can reach the upright position.\n- **Goals become an objective:** Penalize unwanted motion or control effort, then let the optimizer search for a motion that balances those preferences.\n- **Physics stays in the problem:** A low-cost sequence is useless if the robot cannot produce the forces needed to execute it.\n\n> **Key idea:** Optimize an entire physically consistent motion, not just the next target position.\n\n## How it works\n\n- **Choose the unknowns:** Represent a continuous motion using finitely many numbers, such as states and commands at selected times.\n- **Score the motion:** Add costs along the trajectory and a terminal cost, which evaluates how the motion finishes.\n- **Enforce dynamics and limits:** Require successive states to agree with the motion model; include actuator bounds and other required constraints.\n- **Think of a compiler optimizer:** Many candidate implementations can produce an outcome; search for one that meets correctness constraints with a better performance score.\n- **Direct shooting simulates forward:** Optimize commands and obtain states by running the dynamics from the starting condition.\n- **Direct collocation adds state variables:** Optimize sampled states and commands together, constraining the interpolated motion to agree with the dynamics.\n- **Worked discretization:** Crocoddyl's cart-pole notebook uses 50 running steps of 0.05 seconds, giving a 2.5-second horizon for its model rollout.\n- **Keep feedback separate:** A planned trajectory starts from one initial condition. Tracking feedback handles deviations; repeatedly optimizing from measurements leads toward Model predictive control (MPC).\n\n```mermaid\nflowchart LR\n  M[Model and start] --> O[Optimize motion]\n  G[Goal and limits] --> O\n  O --> T[State and command sequence]\n  T --> V[Simulate and inspect]\n  V --> R[Revise guess or costs]\n  R --> O\n```\n\n## Key terms\n\n- **Decision variable**: a number the solver can change while searching for a solution.\n- **Cost**: a numerical score to minimize, not a guarantee that a requirement is met.\n- **Constraint**: a requirement the solution must satisfy.\n- **Horizon**: the time interval covered by the optimized motion.\n- **Local optimum**: a solution that cannot be improved by small nearby changes, but may not be globally best.\n\n## Before / after\n\n- **Before:** Study Optimal control & LQR and nonlinear optimization; distinguish Trajectory generation & motion profiles from searching over motions using dynamics.\n- **After:** Explore Drake and Crocoddyl, then Pendulum swing-up with direct collocation or Crocoddyl jump for a simulated quadruped.\n\n## Try it in an afternoon\n\n1. **Run Crocoddyl's cart-pole notebook** and compare its uncontrolled rollout with the optimized motion.\n2. **Inspect the solver log** alongside the trajectory; look at cost and feasibility rather than animation alone.\n3. **Change a cost weight** while keeping the starting state fixed, then compare cart motion, pole motion, and control effort.",
+      "resources": [
+        {
+          "title": "Lecture 9 | MIT 6.832 Underactuated Robotics, Spring 2009",
+          "url": "https://www.youtube.com/watch?v=g-VehRFsDcI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces trajectory optimization as a way to search for robot motions."
+        },
+        {
+          "title": "crocoddyl/notebooks/02_optimizing_a_cartpole_swingup.ipynb at devel · loco-3d/crocoddyl · GitHub",
+          "url": "https://github.com/loco-3d/crocoddyl/blob/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Builds a cart-pole model and optimizes its commands using feasibility-driven differential dynamic programming."
+        },
+        {
+          "title": "Ch. 10 - Trajectory Optimization",
+          "url": "https://underactuated.mit.edu/trajopt.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Explains direct shooting, direct collocation, costs, and dynamics constraints."
+        },
+        {
+          "title": "GitHub - loco-3d/crocoddyl: Crocoddyl is an optimal control library for robot control under contact sequence. Its solver is based on various efficient Differential Dynamic Programming (DDP)-like algorithms · GitHub",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Connects trajectory optimization and feedback gains to multi-contact robot examples."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=g-VehRFsDcI",
+        "https://github.com/loco-3d/crocoddyl/blob/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb",
+        "https://underactuated.mit.edu/trajopt.html",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://ocw.mit.edu/courses/6-832-underactuated-robotics-spring-2009/resources/lecture-9-trajectory-optimization/",
+        "https://raw.githubusercontent.com/loco-3d/crocoddyl/devel/notebooks/02_optimizing_a_cartpole_swingup.ipynb"
+      ]
+    },
+    {
+      "node_id": "k:underactuated-balancing-control",
+      "type": "knowledge",
+      "name": "Underactuated & balancing control",
+      "summary": "Underactuated control uses coupled motion to steer systems that cannot command every movement independently, including robots that must swing up and then balance.",
+      "lesson_md": "## In one sentence\n\nUnderactuated control uses coupled motion to steer systems that cannot command every movement independently, including robots that must swing up and then balance.\n\n![Cart-pole diagram labeling the cart, pole angle, and applied horizontal force](/img/lessons/knowledge_control-underactuated-balancing-control.webp)\n*The cart moves the pole without a motor at its hinge. Source: [Underactuated Robotics](https://underactuated.mit.edu/acrobot.html), license unknown.*\n\n## Why it matters for us\n\n- **Missing actuators change the problem:** On a cart-pole, the controller pushes the cart horizontally; it cannot directly command a torque at the pole's hinge.\n- **Motion can be useful:** Swing-up control deliberately builds motion to reach the upright position instead of trying to eliminate every deviation immediately.\n- **Balancing is a local skill:** A controller designed near the upright state is not automatically a controller that can recover from every starting configuration.\n\n> **Key idea:** Use the system's dynamics to reach the balancing region, then stabilize it with feedback.\n\n## How it works\n\n- **Track the full state:** Cart position, pole angle, cart velocity, and pole angular velocity all matter when choosing a cart force.\n- **Exploit coupling:** Accelerating the cart affects the pole's motion even though the pole hinge has no actuator.\n- **Shape energy for swing-up:** Compare current mechanical energy with the energy needed at the upright state, then choose motion that reduces that energy mismatch.\n- **Switch near the top:** The MIT cart-pole example changes from energy-shaping swing-up to an LQR balancing controller near the upright state.\n- **Think of a state machine:** One mode builds the conditions needed for another mode; neither mode alone solves the complete task.\n- **Worked target state:** In MIT's convention, angle zero hangs down. The balancing target is `[cart position, angle, cart speed, angular speed] = [0, pi, 0, 0]`.\n- **Keep conventions separate:** safe-control-gym instead uses `[position, speed, angle, angular speed]`, with zero angle upright. Do not copy MIT's target vector unchanged.\n\n```mermaid\nflowchart LR\n  S[Measured state] --> D[Near upright?]\n  D --> E[Energy swing-up]\n  D --> L[LQR balance]\n  E --> F[Cart force]\n  L --> F\n  F --> P[Cart and pole motion]\n  P --> S\n```\n\n## Key terms\n\n- **Underactuated**: unable to command acceleration independently in every configuration direction.\n- **Coupling**: motion or force in one part influences another part through the dynamics.\n- **Equilibrium**: a state that remains unchanged without a disturbance when the required input is applied.\n- **Energy shaping**: choosing inputs to drive mechanical energy toward a desired value.\n- **LQR**: linear quadratic regulator, a feedback controller trading state error against control effort in a local linear model.\n\n## Before / after\n\n- **Before:** Understand Dynamic system modeling & state-space and Optimal control & LQR; include velocities, not just positions, in your state.\n- **After:** Try Balance a cart-pole with LQR, then Energy-shaping pendulum swing-up or Acrobot swing-up then LQR catch.\n\n## Try it in an afternoon\n\n1. **Run the cart-pole stabilization example** in safe-control-gym and plot pole angle, cart position, and commanded force.\n2. **Vary the starting state** with the same controller; record successful recoveries and failures rather than assuming global stability.\n3. **Study MIT's swing-up example** and compare the energy-building phase with the small corrections used near the balancing target.",
+      "resources": [
+        {
+          "title": "Acrobot swing up and stabilization with nonlinear controller",
+          "url": "https://www.youtube.com/watch?v=FeCwtvrD76I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows an underactuated mechanism first building motion and then balancing."
+        },
+        {
+          "title": "GitHub - learnsyslab/safe-control-gym: PyBullet CartPole and Quadrotor environments—with CasADi symbolic a priori dynamics—for learning-based control and RL · GitHub",
+          "url": "https://github.com/learnsyslab/safe-control-gym",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Includes a runnable cart-pole stabilization experiment using LQR."
+        },
+        {
+          "title": "Lecture 7 | MIT 6.832 Underactuated Robotics, Spring 2009",
+          "url": "https://www.youtube.com/watch?v=9qnpQ1hVlqw",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Develops swing-up control for the acrobot and cart-pole."
+        },
+        {
+          "title": "Ch. 3 - Acrobots, Cart-Poles, and Quadrotors",
+          "url": "https://underactuated.mit.edu/acrobot.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Derives coupled dynamics, local balancing, and energy-based swing-up."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=FeCwtvrD76I",
+        "https://github.com/learnsyslab/safe-control-gym",
+        "https://www.youtube.com/watch?v=9qnpQ1hVlqw",
+        "https://underactuated.mit.edu/acrobot.html",
+        "https://ocw.mit.edu/courses/6-832-underactuated-robotics-spring-2009/resources/lecture-7-swing-up-control-of-acrobot-and-cart-pole-systems/",
+        "https://raw.githubusercontent.com/learnsyslab/safe-control-gym/main/safe_control_gym/envs/gym_control/cartpole.py"
+      ]
+    },
+    {
+      "node_id": "k:visual-servoing",
+      "type": "knowledge",
+      "name": "Visual servoing",
+      "summary": "Visual servoing repeatedly turns camera measurements into motion commands so the robot reduces the difference between its current view and a desired visual target.",
+      "lesson_md": "## In one sentence\n\nVisual servoing repeatedly turns camera measurements into motion commands so the robot reduces the difference between its current view and a desired visual target.\n\n![ViSP plots showing visual-feature errors and camera velocities converging toward zero](/img/lessons/knowledge_control-visual-servoing.webp)\n*Feature errors and camera velocities during image-based control. Source: [ViSP tutorial](https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html), license unknown.*\n\n## Why it matters for us\n\n- **Images become feedback:** The camera is not just used to choose a destination once; new visual measurements influence the next motion command.\n- **The error is visible:** Plotting current and desired image features lets us inspect whether a movement actually improves alignment.\n- **Simulation gives a clear starting point:** ViSP's four-point example isolates the camera-control loop before adding real tracking and robot hardware.\n\n> **Key idea:** Keep measuring what the camera sees while moving, rather than trusting a single visual estimate.\n\n## How it works\n\n- **Choose visual features:** A feature is a measurable image quantity, such as the horizontal and vertical coordinates of a tracked point.\n- **Store the desired features:** These specify the image arrangement the controller should reach, rather than a separate target for every joint.\n- **Compute feature error:** Compare current features with desired features in the same coordinate convention.\n- **Map error into camera motion:** An interaction matrix describes how camera velocity changes the image features; the control law uses this relationship to reduce error.\n- **Think of a reconciliation loop:** Like a service repeatedly comparing actual and desired state, the controller measures again after each update instead of sending one blind command.\n- **Worked ViSP setup:** The basic simulation projects four corners of a 20-centimeter square, uses gain 0.5, and updates its camera every 0.040 seconds.\n- **Count the feedback values:** Each corner supplies two image coordinates, giving eight feature-error components; the controller produces camera translation and rotation velocities.\n- **Do not discard geometry:** The basic simulation builds features directly from projected 3D points. Pixel-tracking examples additionally use camera intrinsics to convert pixels into normalized features.\n\n```mermaid\nflowchart LR\n  I[Camera image] --> F[Current features]\n  F --> E[Feature error]\n  T[Desired features] --> E\n  E --> C[Camera velocity command]\n  C --> R[Robot and camera move]\n  R --> I\n```\n\n## Key terms\n\n- **IBVS**: image-based visual servoing, using image features to define the feedback error.\n- **Eye-in-hand**: a camera mounted on the moving robot, so robot motion changes the camera viewpoint.\n- **Interaction matrix**: a local mapping between camera velocity and the rate of change of visual features.\n- **Gain**: a scale controlling the strength of the feedback response.\n\n## Before / after\n\n- **Before:** Learn Feedback control & PID, basic camera geometry, and Joint-space control of robot arms; distinguish camera-frame velocities from joint commands.\n- **After:** Start Image-based visual servoing in ViSP simulation, then consider Webcam visual servoing on the SO-101 using ViSP.\n\n## Try it in an afternoon\n\n1. **Run ViSP's four-point simulation** and identify where current features, desired features, and the camera velocity are updated.\n2. **Plot feature errors** and camera velocities together, matching the tutorial's convergence plots.\n3. **Change the simulated initial camera pose** while keeping the target fixed; compare feature paths and convergence before attempting the real-camera version.",
+      "resources": [
+        {
+          "title": "Internal camera view during an IBVS simulation",
+          "url": "https://www.youtube.com/watch?v=sPNkDfp3UeU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows image features moving toward their targets in ViSP's simulated camera view."
+        },
+        {
+          "title": "Tutorial: Image-based visual servo (IBVS)",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Walks through four-point camera control and its simulation loop."
+        },
+        {
+          "title": "tutorial-ibvs-4pts.cpp Source File",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs-4pts_8cpp_source.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Provides the full small C++ example with feature updates and velocity commands."
+        },
+        {
+          "title": "Tutorial: How to boost your visual servo control law",
+          "url": "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Compares constant gain, adaptive gain, and continuous command sequencing."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=sPNkDfp3UeU",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs.html",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-ibvs-4pts_8cpp_source.html",
+        "https://visp-doc.inria.fr/doxygen/visp-daily/tutorial-boost-vs.html"
+      ]
+    }
+  ]
+}
