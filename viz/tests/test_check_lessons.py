@@ -12,6 +12,7 @@ from viz.scripts.check_lessons import (
     _check_word_count,
     check_urls,
     load_graph_nodes,
+    main,
     url_reuse_warnings,
     validate_payload,
     word_count,
@@ -36,6 +37,9 @@ def _prepare_image_dir(tmp_path, monkeypatch):
     image_dir.mkdir(exist_ok=True)
     (image_dir / "test.webp").write_bytes(b"fixture")
     monkeypatch.setattr("viz.scripts.check_lessons.LESSON_IMAGE_DIR", image_dir)
+    credits_dir = tmp_path / "credits"
+    credits_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr("viz.scripts.check_lessons.LESSON_CREDITS_DIR", credits_dir)
     credits_path = tmp_path / "credits.json"
     credits_path.write_text(
         json.dumps({
@@ -643,6 +647,82 @@ def test_visuals_require_a_matching_credit_entry(tmp_path, monkeypatch):
     errors = _visual_errors(_visual_fixture())
 
     assert any("missing image credit for test.webp" in error for error in errors)
+
+
+def test_visual_credits_merge_batch_files(tmp_path, monkeypatch):
+    _prepare_image_dir(tmp_path, monkeypatch)
+    image_dir = tmp_path / "lesson-images"
+    (image_dir / "batch.webp").write_bytes(b"fixture")
+    batch_page_url = "https://example.org/batch-source"
+    (tmp_path / "credits" / "batch.json").write_text(
+        json.dumps({
+            "batch.webp": {
+                "page_url": batch_page_url,
+                "image_url": "https://example.org/batch.webp",
+                "license": "CC BY 4.0",
+                "author": "Batch author",
+            }
+        }),
+        encoding="utf-8",
+    )
+    markdown = _visual_fixture().replace(
+        IMAGE_MD,
+        IMAGE_MD
+        + "\n\n![A second diagram](/img/lessons/batch.webp)\n"
+        + f"*A second diagram. Source: [Batch source]({batch_page_url}), CC BY 4.0.*",
+    )
+
+    assert _visual_errors(markdown) == []
+
+
+def test_visual_credits_reject_duplicate_filenames_across_files(tmp_path, monkeypatch):
+    _prepare_image_dir(tmp_path, monkeypatch)
+    batch_path = tmp_path / "credits" / "batch.json"
+    batch_path.write_text(
+        json.dumps({
+            "test.webp": {
+                "page_url": "https://example.org/another-source",
+                "image_url": "https://example.org/another.webp",
+                "license": "CC BY 4.0",
+                "author": "Another author",
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    errors = _visual_errors(_visual_fixture())
+
+    assert any(
+        "duplicate image credit for test.webp" in error
+        and str(tmp_path / "credits.json") in error
+        and str(batch_path) in error
+        for error in errors
+    )
+
+
+def test_visual_credits_allow_missing_batch_directory(tmp_path, monkeypatch):
+    _prepare_image_dir(tmp_path, monkeypatch)
+    (tmp_path / "credits").rmdir()
+
+    assert _visual_errors(_visual_fixture()) == []
+
+
+def test_duplicate_node_id_across_lesson_files_fails(tmp_path, monkeypatch, capsys):
+    first_path = tmp_path / "first.json"
+    second_path = tmp_path / "second.json"
+    payload = json.dumps({"lessons": [{"node_id": "k:test"}]})
+    first_path.write_text(payload, encoding="utf-8")
+    second_path.write_text(payload, encoding="utf-8")
+    monkeypatch.setattr(
+        "viz.scripts.check_lessons.load_graph_nodes",
+        lambda _path: {"k:test": {"type": "knowledge", "name": "Test concept"}},
+    )
+
+    assert main([str(first_path), str(second_path)]) == 1
+    output = capsys.readouterr().err
+    assert "duplicate node_id 'k:test' across lesson files" in output
+    assert str(first_path) in output
+    assert str(second_path) in output
 
 
 def test_visuals_limit_prose_paragraphs_and_allow_intro_exception(tmp_path, monkeypatch):

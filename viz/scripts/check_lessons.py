@@ -103,6 +103,7 @@ MARKDOWN_IMAGE_RE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)")
 LESSON_IMAGE_PATH_RE = re.compile(r"^/img/lessons/(?P<name>[^/\s]+\.webp)$")
 LESSON_IMAGE_DIR = Path(__file__).resolve().parents[1] / "web" / "public" / "img" / "lessons"
 LESSON_CREDITS_PATH = LESSON_IMAGE_DIR / "credits.json"
+LESSON_CREDITS_DIR = LESSON_IMAGE_DIR / "credits"
 VISUAL_STEP_HEADINGS = {
     "## Steps",
     "## Try it in an afternoon",
@@ -304,8 +305,33 @@ def _normalized_lead_words(text: str) -> tuple[str, ...]:
     )
 
 
+def _load_lesson_credits(errors: list[str], label: str) -> dict[str, object]:
+    credits: dict[str, object] = {}
+    owners: dict[str, Path] = {}
+    paths = [LESSON_CREDITS_PATH, *sorted(LESSON_CREDITS_DIR.glob("*.json"))]
+    for path in paths:
+        try:
+            file_credits = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"{label}: cannot read lesson image credits from {path}: {exc}")
+            continue
+        if not isinstance(file_credits, dict):
+            errors.append(f"{label}: lesson image credits in {path} must be a JSON object")
+            continue
+        for filename, credit in file_credits.items():
+            if filename in owners:
+                errors.append(
+                    f"{label}: duplicate image credit for {filename} in "
+                    f"{owners[filename]} and {path}"
+                )
+                continue
+            owners[filename] = path
+            credits[filename] = credit
+    return credits
+
+
 def _check_visuals(markdown: object, label: str, kind: str,
-                   errors: list[str]) -> None:
+                   errors: list[str], credits: dict[str, object] | None = None) -> None:
     if not isinstance(markdown, str):
         errors.append(f"{label}: markdown body must be a string")
         return
@@ -364,14 +390,8 @@ def _check_visuals(markdown: object, label: str, kind: str,
     image_lines = [(index, line.strip()) for index, line in enumerate(lines) if "![" in line]
     if not 1 <= len(image_lines) <= 2:
         errors.append(f"{label}: has {len(image_lines)} images; expected 1-2")
-    try:
-        credits = json.loads(LESSON_CREDITS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        errors.append(f"{label}: cannot read lesson image credits: {exc}")
-        credits = {}
-    if not isinstance(credits, dict):
-        errors.append(f"{label}: lesson image credits must be a JSON object")
-        credits = {}
+    if credits is None:
+        credits = _load_lesson_credits(errors, label)
     for index, line in image_lines:
         match = MARKDOWN_IMAGE_RE.fullmatch(line)
         if match is None:
@@ -579,7 +599,7 @@ def _check_node(node_id: object, node_type: object, name: object, label: str,
 
 
 def _check_lesson(lesson: object, index: int, graph_nodes: dict[str, dict[str, str]],
-                  errors: list[str]) -> None:
+                  errors: list[str], credits: dict[str, object] | None = None) -> None:
     label = f"lesson {index}"
     if not isinstance(lesson, dict):
         errors.append(f"{label}: must be an object")
@@ -605,7 +625,7 @@ def _check_lesson(lesson: object, index: int, graph_nodes: dict[str, dict[str, s
         if isinstance(markdown, str):
             minimum, maximum = (150, 300) if lesson_type == "org" else (250, 500)
             _check_word_count(markdown, minimum, maximum, label, errors)
-            _check_visuals(markdown, label, lesson_type, errors)
+            _check_visuals(markdown, label, lesson_type, errors, credits)
             if lesson_type in {"knowledge", "robot"}:
                 _check_bullet_section(markdown, "## Key terms", 3, 6, label, errors,
                                       term_format=True)
@@ -627,14 +647,14 @@ def _check_lesson(lesson: object, index: int, graph_nodes: dict[str, dict[str, s
 
 
 def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
-                 errors: list[str]) -> None:
+                 errors: list[str], credits: dict[str, object] | None = None) -> None:
     if data.get("title") != "Robotics from zero":
         errors.append(f"{label}: title must be 'Robotics from zero'")
     intro = data.get("intro_md")
     _check_headings(intro, GUIDE_INTRO_HEADINGS, f"{label} intro", errors)
     if isinstance(intro, str):
         _check_word_count(intro, 500, 900, f"{label} intro", errors)
-        _check_visuals(intro, f"{label} intro", "intro", errors)
+        _check_visuals(intro, f"{label} intro", "intro", errors, credits)
     chapters = data.get("chapters")
     if not isinstance(chapters, list):
         errors.append(f"{label}: chapters must be a list")
@@ -672,7 +692,7 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
         if isinstance(body, str):
             _check_word_count(body, 250, 450, chapter_label, errors)
             _check_bullet_section(body, "## The big ideas", 3, 5, chapter_label, errors)
-            _check_visuals(body, chapter_label, "chapter", errors)
+            _check_visuals(body, chapter_label, "chapter", errors, credits)
         start_here = chapter.get("start_here")
         if not isinstance(start_here, list) or not 3 <= len(start_here) <= 6:
             errors.append(f"{chapter_label}: start_here must contain 3-6 node IDs")
@@ -685,12 +705,13 @@ def _check_guide(data: dict, label: str, graph_nodes: dict[str, dict[str, str]],
 
 
 def validate_payload(data: object, label: str,
-                     graph_nodes: dict[str, dict[str, str]]) -> list[str]:
+                     graph_nodes: dict[str, dict[str, str]],
+                     credits: dict[str, object] | None = None) -> list[str]:
     errors: list[str] = []
     if not isinstance(data, dict):
         return [f"{label}: JSON root must be an object"]
     if "chapters" in data or "intro_md" in data:
-        _check_guide(data, label, graph_nodes, errors)
+        _check_guide(data, label, graph_nodes, errors, credits)
     elif "lessons" in data:
         lessons = data.get("lessons")
         if not isinstance(lessons, list):
@@ -698,7 +719,7 @@ def validate_payload(data: object, label: str,
             lessons = []
         lesson_ids: list[str] = []
         for index, lesson in enumerate(lessons, 1):
-            _check_lesson(lesson, index, graph_nodes, errors)
+            _check_lesson(lesson, index, graph_nodes, errors, credits)
             if isinstance(lesson, dict) and isinstance(lesson.get("node_id"), str):
                 lesson_ids.append(lesson["node_id"])
         if len(lesson_ids) != len(set(lesson_ids)):
@@ -791,6 +812,26 @@ def url_reuse_warnings(documents: list[tuple[Path, object]], maximum: int = 3) -
     ]
 
 
+def _duplicate_lesson_node_id_errors(
+    documents: list[tuple[Path, object]],
+) -> list[str]:
+    locations: dict[str, set[str]] = defaultdict(set)
+    for path, data in documents:
+        if not isinstance(data, dict) or not isinstance(data.get("lessons"), list):
+            continue
+        for lesson in data["lessons"]:
+            if not isinstance(lesson, dict):
+                continue
+            node_id = lesson.get("node_id")
+            if isinstance(node_id, str) and node_id:
+                locations[node_id].add(str(path))
+    return [
+        f"duplicate node_id {node_id!r} across lesson files: {', '.join(sorted(paths))}"
+        for node_id, paths in sorted(locations.items())
+        if len(paths) > 1
+    ]
+
+
 def check_urls(
     urls: set[str],
     timeout: float = 15.0,
@@ -863,6 +904,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: could not load graph {graph_path}: {exc}", file=sys.stderr)
         return 2
     problems: list[str] = []
+    credits = _load_lesson_credits(problems, "lesson image credits")
     documents: list[tuple[Path, object]] = []
     for path in args.files:
         try:
@@ -871,7 +913,8 @@ def main(argv: list[str] | None = None) -> int:
             problems.append(f"{path}: could not parse JSON: {exc}")
             continue
         documents.append((path, data))
-        problems.extend(validate_payload(data, str(path), graph_nodes))
+        problems.extend(validate_payload(data, str(path), graph_nodes, credits))
+    problems.extend(_duplicate_lesson_node_id_errors(documents))
     for problem in problems:
         print(f"ERROR: {problem}", file=sys.stderr)
     if not problems:

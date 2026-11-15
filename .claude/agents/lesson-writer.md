@@ -58,9 +58,12 @@ scan:
   `viz/web/public/img/lessons/<slug>.webp`. Embed it as its own paragraph:
   `![Alt text describing the picture](/img/lessons/<slug>.webp)` followed on the next line by
   `*Caption. Source: [Site](page-url), license.*`. The image must show exactly this node/topic;
-  never a logo-only or text-only card. Max 2 images per lesson/chapter.
+  never use a text-only card. Max 2 images per lesson/chapter.
+- Project lessons use a real photo or figure of the main robot, setup or result the project builds on.
+- Organization lessons prefer a photo of their robots, lab or event; if no such photo exists, their
+  official logo from their own site is allowed.
 - Use real published media only: never generate or draw your own image files. Record every image
-  in `viz/web/public/img/lessons/credits.json` as
+  in your batch's `viz/web/public/img/lessons/credits/<batch_slug>.json` as
   `"<file>.webp": {"page_url": "...", "image_url": "...", "license": "...", "author": "..."}`, where
   `page_url` is the page that publishes that exact image (a Commons file page, or the docs/blog page
   embedding it), `image_url` is the original file, and `license` is copied from that page
@@ -85,6 +88,14 @@ scan:
   and at most one `> **Watch out:** ...` callout (a real pitfall or hazard).
 - Robot/model lessons: a "spec sheet" Markdown table (2 columns, 4-8 rows: the sourced numbers)
   under `## What it is made of / how it works`.
+
+## Batch conventions
+- Output goes in `output/lessons/<batch_slug>.json`.
+- Images go in `viz/web/public/img/lessons/<batch_slug>-<short-node-slug>.webp` (flat dir, ≤1200 px wide).
+- Credits go in `viz/web/public/img/lessons/credits/<batch_slug>.json`.
+- Never edit `viz/web/public/img/lessons/credits.json`, `output/lessons/guide.json`,
+  `output/lessons/pilot.json`, or another batch's files. Never commit `viz/data/graph.json`
+  (regenerate it locally for checking only).
 
 ## Lesson body (Markdown) per node type
 Use exactly these `##` headings, in this order. Skip a heading only if it truly does not apply.
