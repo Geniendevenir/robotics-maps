@@ -258,8 +258,15 @@
       "type": "project",
       "name": "Correct a robot with one keypress",
       "summary": "In simulation, let a human press one key to take over a learned policy, log the corrections, and retrain the policy on them.",
-      "lesson_md": "## In one sentence\n\nIn simulation, let a human press one key to take over a learned policy, log the corrections, and retrain the policy on them.\n\n![Test vehicle and its sensors used for human-gated imitation learning](/img/lessons/projects_hri_safety_1-keypress.webp)\n*The vehicle used to test HG-DAgger, where a human expert takes control when needed. Source: [Kelly et al., arXiv 1810.02890](https://arxiv.org/html/1810.02890v2), CC BY 4.0.*\n\n## What you will learn\n\n- **Distribution shift:** A cloned policy drifts into states the demonstrations never showed, and errors compound.\n- **DAgger:** Run the learner, ask an expert what it should have done, add that data, retrain.\n- **HG-DAgger:** The human only takes control when things go wrong, and those takeovers become training data.\n- **Interactive imitation learning:** A survey describes it as human feedback given intermittently during execution.\n\n> **Key idea:** Corrections collected where the robot actually fails are worth more than more perfect demos.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, MuJoCo and a simple reaching or pushing task.\n- **Background:** Learning from human feedback & corrections.\n- **Starter policy:** A behaviour-cloning model trained on a few demos.\n\n## Steps\n\n1. **Train** a small behaviour-cloning policy.\n2. **Run the policy** and listen for a keypress each step.\n3. **Switch control** to keyboard actions while the key is held, logging state and action.\n4. **Aggregate** logged corrections with the original demos and retrain.\n5. **Repeat** for a few rounds and plot success rate.\n\n```python\ndata = demos[:]\nfor rnd in range(3):\n    for t in range(T):\n        human = key_pressed(\"space\")\n        a = keyboard_action() if human else policy(obs)\n        if human:\n            data.append((obs, a))   # only takeovers are logged\n        obs = env.step(a)\n    policy = train(data)\n```\n\n```mermaid\nflowchart LR\n  A[\"Policy acts\"] --> B{\"Key pressed?\"}\n  B -- \"No\" --> A\n  B -- \"Yes\" --> C[\"Human acts + log\"]\n  C --> D[\"Aggregate data\"]\n  D --> E[\"Retrain\"]\n  E --> A\n```\n\n## Common pitfalls\n\n- **Late takeovers:** If you correct only after a crash, the data teaches recovery from bad states too late.\n- **Laggy input:** Keyboard handling inside the sim loop must not block physics stepping.\n- **No baseline:** Compare against training on the same amount of plain demos.\n\n## When it's done\n\n- **Clip:** A user presses a key, takes over, releases, and the policy continues.\n- **Plot:** Success rate per round, with versus without corrections.\n- **Next step:** Move to Human-gated interactive imitation on SO-101.",
+      "lesson_md": "## In one sentence\n\nIn simulation, let a human press one key to take over a learned policy, log the corrections, and retrain the policy on them.\n\n![Test vehicle and its sensors used for human-gated imitation learning](/img/lessons/projects_hri_safety_1-keypress.webp)\n*The vehicle used to test HG-DAgger, where a human expert takes control when needed. Source: [Kelly et al., arXiv 1810.02890](https://arxiv.org/html/1810.02890v2), CC BY 4.0.*\n\n## What you will learn\n\n- **Distribution shift:** A cloned policy drifts into states the demonstrations never showed, and errors compound.\n- **DAgger:** Run the learner, ask an expert what it should have done, add that data, retrain.\n- **HG-DAgger:** The expert decides when to take full control, collecting intervention labels. The paper also learns an uncertainty threshold; this project implements only the intervention loop.\n- **Interactive imitation learning:** A survey describes it as human feedback given intermittently during execution.\n\n> **Key idea:** Collect corrections in learner-visited states, then measure whether they improve held-out performance rather than assuming every intervention helps.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware, MuJoCo and a simple reaching or pushing task.\n- **Background:** Learning from human feedback & corrections.\n- **Starter policy:** A behaviour-cloning model, trained to map observations to actions from demonstrations.\n- **Software analogy:** A human-controlled fallback handles a failing policy, like routing requests from an experimental service back to a trusted implementation.\n\n## Steps\n\n1. **Train** a small behaviour-cloning policy.\n2. **Run the policy** and listen for a keypress each step.\n3. **Switch control** to keyboard actions while the key is held, logging state and action.\n4. **Aggregate** logged corrections with the original demos and retrain.\n5. **Repeat** for a few rounds and plot success rate.\n\n**Pseudocode:** Supply your simulator adapter, episode resets and input functions; `env.step` below stands for returning the next observation, not a specific simulator API.\n\n```python\ndata = demos[:]\nfor rnd in range(3):\n    for t in range(T):\n        human = key_pressed(\"space\")\n        a = keyboard_action() if human else policy(obs)\n        if human:\n            data.append((obs, a))   # only takeovers are logged\n        obs = env.step(a)\n    policy = train(data)\n```\n\n```mermaid\nflowchart LR\n  A[\"Policy acts\"] --> B{\"Key pressed?\"}\n  B -- \"No\" --> A\n  B -- \"Yes\" --> C[\"Human acts + log\"]\n  C --> D[\"Aggregate data\"]\n  D --> E[\"Retrain\"]\n  E --> A\n```\n\n## Common pitfalls\n\n- **Late takeovers:** If you correct only after a crash, the data teaches recovery from bad states too late.\n- **Laggy input:** Keyboard handling inside the sim loop must not block physics stepping.\n- **No baseline:** Compare against training on the same amount of plain demos.\n- **Empty correction round:** Keep the current model when no labels are added; reset terminated episodes before continuing collection.\n\n## When it's done\n\n- **Clip:** A user presses a key, takes over, releases, and the policy continues.\n- **Plot:** Success rate per round, with versus without corrections.\n- **Next step:** Move to Human-gated interactive imitation on SO-101.",
       "resources": [
+        {
+          "title": "CS 182: Lecture 14: Part 3: Imitation Learning",
+          "url": "https://www.youtube.com/watch?v=a5wkzPa4fO4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Lecture on imitation learning, distribution shift and DAgger."
+        },
         {
           "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
           "url": "https://arxiv.org/abs/1011.0686",
@@ -280,13 +287,6 @@
           "format": "Paper",
           "level": "Intermediate",
           "why": "Survey placing keypress corrections in interactive imitation learning."
-        },
-        {
-          "title": "CS 182: Lecture 14: Part 3: Imitation Learning",
-          "url": "https://www.youtube.com/watch?v=a5wkzPa4fO4",
-          "format": "Video",
-          "level": "Beginner",
-          "why": "Lecture on imitation learning, distribution shift and DAgger."
         },
         {
           "title": "Overview - MuJoCo Documentation",
@@ -310,29 +310,8 @@
       "type": "project",
       "name": "Depth-camera separation monitor",
       "summary": "Use an RGB-D camera to measure the distance between a person and an SO-101 arm, and shrink the arm's speed as that distance falls.",
-      "lesson_md": "## In one sentence\n\nUse an RGB-D camera to measure the distance between a person and an SO-101 arm, and shrink the arm's speed as that distance falls.\n\n![Robot and human skeleton keypoints with separation distances drawn between them](/img/lessons/projects_hri_safety_1-depth-ssm.webp)\n*Distances between robot and human keypoints, computed from an RGB-D camera. Source: [Svarny et al., arXiv 1908.03046](https://arxiv.org/html/1908.03046v2), license unknown.*\n\n## What you will learn\n\n- **RGB-D camera:** Gives a colour image plus a depth value per pixel, so 2D keypoints become 3D points.\n- **Separation distance:** One paper computes pairwise distances between robot and human body keypoints and keeps the minimum.\n- **Speed and separation monitoring (SSM):** Speed is lowered as the person gets closer, and the arm stops when too close.\n- **Self-occlusion:** The robot can hide parts of the person or appear as a \"human\"; filtering matters.\n\n> **Key idea:** Separation monitoring is a loop: measure distance, map it to a speed limit, send the limit, repeat fast.\n\n## What you need\n\n- **Hardware under €500:** An SO-101 arm, a depth camera and a laptop.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** A body-keypoint detector, the camera SDK and LeRobot.\n- **Background:** The Speed & separation monitoring implementation knowledge node.\n\n## Steps\n\n1. **Calibrate** camera and robot into one coordinate frame using a known marker.\n2. **Detect** human keypoints and convert them to 3D with depth.\n3. **Compute** the minimum distance to the arm's link positions from forward kinematics.\n4. **Map** distance to a speed scale, for example the rule below.\n5. **Apply** the scale to commanded joint velocities and show a speed bar.\n\n```python\ndef speed_scale(d, d_stop=0.5, d_full=1.5):  # metres, example values\n    if d <= d_stop: return 0.0\n    if d >= d_full: return 1.0\n    return (d - d_stop) / (d_full - d_stop)\nprint(speed_scale(1.0))  # 0.5 -> half speed\n```\n\n```mermaid\nflowchart LR\n  A[\"RGB-D frame\"] --> B[\"Human keypoints 3D\"]\n  C[\"Robot joint angles\"] --> D[\"Link positions\"]\n  B --> E[\"Minimum distance\"]\n  D --> E\n  E --> F[\"Speed scale\"]\n  F --> G[\"Arm command + speed bar\"]\n```\n\n## Common pitfalls\n\n- **Frame errors:** A few centimetres of calibration error shift every distance; test with a tape measure.\n- **Latency:** Measure end-to-end delay; a slow loop means the person moved before the arm reacted.\n- **Missed detections:** If no person is detected, slow down instead of assuming the space is empty.\n\n> **Watch out:** This demo is not a certified safety function; keep a hardware stop within reach.\n\n## When it's done\n\n- **Video:** The speed bar shrinks and the arm slows as a person approaches.\n- **Log:** Distance and speed scale over time for one approach.\n- **Next step:** Compare with Learned speed scaling vs analytic rule.",
+      "lesson_md": "## In one sentence\n\nUse an RGB-D camera to measure the distance between a person and an SO-101 arm, and shrink the arm's speed as that distance falls.\n\n![Robot and human skeleton keypoints with separation distances drawn between them](/img/lessons/projects_hri_safety_1-depth-ssm.webp)\n*Published keypoint and bounding-sphere representation for separation monitoring; this illustrates body-size compensation, not a live distance overlay. Source: [Svarny et al., arXiv 1908.03046](https://arxiv.org/html/1908.03046v2), license unknown.*\n\n## What you will learn\n\n- **RGB-D camera:** Combines colour with depth measurements. Convert valid pixel-depth pairs into 3D using camera calibration; missing depth is not a measured free space.\n- **Separation distance:** The papers compare robot and human keypoints, compensating for body size; point-to-point distance alone can overestimate clearance.\n- **Speed and separation monitoring (SSM):** Speed is lowered as the person gets closer, and the arm stops when too close.\n- **Self-occlusion:** The robot can hide parts of the person or appear as a \"human\"; filtering matters.\n\n> **Key idea:** Separation monitoring is a loop: measure distance, map it to a speed limit, send the limit, repeat fast.\n\n## What you need\n\n- **Hardware:** An SO-101, depth camera and existing laptop. Total cost is unknown; obtain current quotes instead of assuming a €500 complete setup.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** A body-keypoint detector, the camera SDK and LeRobot.\n- **Background:** The Speed & separation monitoring implementation knowledge node.\n\n## Steps\n\n1. **Calibrate** camera and robot into one coordinate frame using a known marker.\n2. **Detect** human keypoints and convert them to 3D with depth.\n3. **Compute** link positions from joint angles, called **forward kinematics**. Add geometry margins for the arm, gripper and human body.\n4. **Map** distance to a speed scale, for example the rule below.\n5. **Prototype in simulation**, then scale successive position-target increments for the SO-101 position interface; verify measured motion instead of assuming a velocity command exists.\n\n**Toy rule:** These metre thresholds demonstrate interpolation only; they are not protective separation distances. Treat the function like a rate limiter, not a safety certificate.\n\n```python\nfrom math import isfinite\ndef speed_scale(d, d_stop=0.5, d_full=1.5):\n    if not 0 <= d_stop < d_full: raise ValueError(\"thresholds\")\n    if d is None or not isfinite(d): return 0.0\n    return max(0.0, min(1.0, (d-d_stop)/(d_full-d_stop)))\nprint(speed_scale(1.0))  # 0.5, a command-scale example\n```\n\n```mermaid\nflowchart LR\n  A[\"RGB-D frame\"] --> B[\"Human keypoints 3D\"]\n  C[\"Robot joint angles\"] --> D[\"Link positions\"]\n  B --> E[\"Minimum distance\"]\n  D --> E\n  E --> F[\"Speed scale\"]\n  F --> G[\"Arm command + speed bar\"]\n```\n\n## Common pitfalls\n\n- **Frame errors:** A few centimetres of calibration error shift every distance; test with a tape measure.\n- **Latency:** Measure end-to-end delay; a slow loop means the person moved before the arm reacted.\n- **Missed detections:** Halt the experimental command stream on missing, stale or invalid depth; do not interpret a missing skeleton as an empty workspace.\n\n> **Watch out:** This demo is not a certified safety function; keep a hardware stop within reach.\n\n## When it's done\n\n- **Video:** The speed bar shrinks and the arm slows as a person approaches.\n- **Log:** Distance and speed scale over time for one approach.\n- **Next step:** Compare with Learned speed scaling vs analytic rule.",
       "resources": [
-        {
-          "title": "Toward safe separation distance monitoring from RGB-D sensors in human-robot interaction",
-          "url": "https://arxiv.org/abs/1810.04953",
-          "format": "Paper",
-          "level": "Intermediate",
-          "why": "Computes robot-human keypoint distances from an RGB-D camera, the core of this project."
-        },
-        {
-          "title": "Safe physical HRI: Toward a unified treatment of speed and separation monitoring together with power and force limiting",
-          "url": "https://arxiv.org/abs/1908.03046",
-          "format": "Paper",
-          "level": "Intermediate",
-          "why": "Shows how distance drives speed changes and stops on a real arm."
-        },
-        {
-          "title": "Speed and Separation Monitoring using on-robot Time--of--Flight laser--ranging sensor arrays",
-          "url": "https://arxiv.org/abs/1904.07379",
-          "format": "Paper",
-          "level": "Advanced",
-          "why": "Speed modulation from minimum distance and relative velocity, with occlusion filtering."
-        },
         {
           "title": "Demo Speed and Separation Monitoring",
           "url": "https://www.youtube.com/watch?v=9wJbrgnP-EM",
@@ -353,6 +332,27 @@
           "format": "Docs",
           "level": "Beginner",
           "why": "Official scope of the collaborative-robot specification behind separation monitoring."
+        },
+        {
+          "title": "so_follower.py",
+          "url": "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/robots/so_follower/so_follower.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The SO-101 implementation writes joint-position targets; inspect this before implementing command scaling."
+        },
+        {
+          "title": "Toward safe separation distance monitoring from RGB-D sensors in human-robot interaction",
+          "url": "https://arxiv.org/abs/1810.04953",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Computes robot-human keypoint distances from an RGB-D camera, the core of this project."
+        },
+        {
+          "title": "Safe physical HRI: Toward a unified treatment of speed and separation monitoring together with power and force limiting",
+          "url": "https://arxiv.org/abs/1908.03046",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Shows how distance drives speed changes and stops on a real arm."
         }
       ],
       "sources": [
@@ -362,7 +362,8 @@
         "https://www.youtube.com/watch?v=9wJbrgnP-EM",
         "https://www.youtube.com/watch?v=esJkeV3Lcxg",
         "https://www.iso.org/standard/62996.html",
-        "https://arxiv.org/html/1908.03046v2"
+        "https://arxiv.org/html/1908.03046v2",
+        "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/robots/so_follower/so_follower.py"
       ]
     },
     {
@@ -370,35 +371,35 @@
       "type": "project",
       "name": "Detect an open hand ready to receive",
       "summary": "Build a webcam demo that labels \"ready to receive\" when a person extends an open palm, the first step of a robot-to-human handover.",
-      "lesson_md": "## In one sentence\n\nBuild a webcam demo that labels \"ready to receive\" when a person extends an open palm, the first step of a robot-to-human handover.\n\n![Grid of hand gestures recognised by MediaPipe, including open palm and closed fist](/img/lessons/projects_hri_safety_1-open-hand.webp)\n*Gestures recognised out of the box, including Open_Palm. Source: [Google AI Edge, Gesture Recognizer](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer), license unknown.*\n\n## What you will learn\n\n- **Hand landmarks:** MediaPipe Hand Landmarker tracks 21 3D keypoints per hand and reports left or right.\n- **Gesture classes:** The Gesture Recognizer returns labels such as **Open_Palm**, Closed_Fist and Thumb_Up.\n- **Handover phases:** A review splits handovers into a pre-handover phase and the physical exchange.\n- **Debouncing:** Require the label for several frames, like debouncing a button press in embedded code.\n\n> **Key idea:** A robot should start a handover only when the person clearly signals they are ready.\n\n## What you need\n\n- **Webcam and laptop:** Hardware cost is under €500, and a laptop webcam is enough.\n- **MediaPipe:** The Python or web version of the Gesture Recognizer.\n- **Background:** Human-robot handovers and Human detection & body-pose tracking for HRI.\n\n## Steps\n\n1. **Run** the Gesture Recognizer demo to see labels and scores live.\n2. **Read** labels per frame in your own Python loop.\n3. **Debounce:** set \"ready\" only after the open palm is seen for enough consecutive frames.\n4. **Add a pose check** with the Pose Landmarker: the arm is extended, not just raised.\n5. **Overlay** the \"ready to receive\" label on the video and log timings.\n\n```python\nREADY_FRAMES = 10\ncount = 0\nfor frame in camera():\n    g = recognizer.recognize(frame)\n    top = g.gestures[0][0].category_name if g.gestures else \"None\"\n    count = count + 1 if top == \"Open_Palm\" else 0\n    show(frame, \"ready to receive\" if count >= READY_FRAMES else \"\")\n```\n\n```mermaid\nflowchart LR\n  A[\"Webcam frame\"] --> B[\"Gesture Recognizer\"]\n  B --> C{\"Open_Palm?\"}\n  C -- \"Yes, N frames\" --> D[\"Ready to receive\"]\n  C -- \"No\" --> E[\"Reset counter\"]\n```\n\n## Common pitfalls\n\n- **Waving looks like readiness:** An open palm while waving is not an offer; combine with arm pose.\n- **Lighting and distance:** Test in the real room; small or dark hands lower confidence.\n- **Single user:** Test several people, hands and skin tones.\n\n## When it's done\n\n- **Demo:** The label appears within about a second of a clear open palm and disappears when the hand closes.\n- **Confusion table:** True and false \"ready\" counts for a few test gestures.\n- **Next step:** Use it to trigger the robot in Handover benchmark in simulation.",
+      "lesson_md": "## In one sentence\n\nBuild a webcam demo that labels \"ready to receive\" when a person extends an open palm, the first step of a robot-to-human handover.\n\n![Real hand showing a thumbs-up gesture with MediaPipe landmarks and classification overlay](/img/lessons/projects_hri_safety_1-open-hand.webp)\n*Frame from Google’s published Gesture Recognizer preview: Thumb_Up is a negative test for the Open_Palm readiness heuristic. Source: [Google AI Edge](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer), CC BY 4.0.*\n\n## What you will learn\n\n- **Hand landmarks:** MediaPipe Hand Landmarker tracks 21 3D keypoints per hand and reports left or right.\n- **Gesture classes:** The Gesture Recognizer returns labels such as **Open_Palm**, Closed_Fist and Thumb_Up.\n- **Handover phases:** A review splits handovers into a pre-handover phase and the physical exchange.\n- **Debouncing:** Require the label for several frames, like debouncing a button press in embedded code.\n\n> **Key idea:** An open palm is evidence for a readiness hypothesis, not proof of intent or permission to move a robot.\n\n## What you need\n\n- **Webcam and laptop:** Reuse an existing webcam for the first prototype; new equipment cost is unknown.\n- **MediaPipe:** The Python or web version of the Gesture Recognizer.\n- **Background:** Human-robot handovers and Human detection & body-pose tracking for HRI.\n\n## Steps\n\n1. **Run** the Gesture Recognizer demo to see labels and scores live.\n2. **Read** labels per frame in your own Python loop.\n3. **Debounce:** set \"ready\" only after the open palm is seen for enough consecutive frames.\n4. **Define an arm-extension heuristic** using shoulder, elbow and wrist landmarks. Validate it separately; Pose Landmarker does not directly output “ready”.\n5. **Overlay** the \"ready to receive\" label on the video and log timings.\n\n**Worked logic:** Ten frames is an arbitrary starting threshold. Feed this pure function validated observations from the recognizer and your pose check.\n\n```python\ndef update(count, label, pose_ok, confident):\n    valid = label == \"Open_Palm\" and pose_ok and confident\n    count = count + 1 if valid else 0\n    return count, count >= 10\ncount = 0\nfor _ in range(10):\n    count, ready = update(count, \"Open_Palm\", True, True)\nprint(ready)  # True; a missing label resets the count\n```\n\n```mermaid\nflowchart LR\n  A[\"Webcam frame\"] --> B[\"Gesture Recognizer\"]\n  B --> C{\"Open_Palm?\"}\n  C -- \"Yes, N frames + pose\" --> D[\"Candidate readiness\"]\n  C -- \"No\" --> E[\"Reset counter\"]\n```\n\n## Common pitfalls\n\n- **Waving looks like readiness:** An open palm while waving is not an offer; combine with arm pose.\n- **Lighting and distance:** Measure errors across lighting, distance, skin tones and partial occlusions instead of assuming confidence behaves equally for every person.\n- **Single user:** Test several people, hands and skin tones.\n\n## When it's done\n\n- **Demo:** Measure delay in milliseconds at your actual frame rate. Test closed hands, waving, no hand and failed pose checks; invalid inputs clear readiness.\n- **Confusion table:** True and false \"ready\" counts for a few test gestures.\n- **Next step:** Use it to trigger the robot in Handover benchmark in simulation.",
       "resources": [
-        {
-          "title": "Gesture Recognizer | Google AI Edge",
-          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Provides the Open_Palm label and a live demo."
-        },
-        {
-          "title": "Hand Landmarker | Google AI Edge",
-          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Explains the 21 hand keypoints behind the gesture labels."
-        },
-        {
-          "title": "Pose Landmarker | Google AI Edge",
-          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Body pose to check the arm is extended toward the robot."
-        },
         {
           "title": "Hand landmark detection - ML on Web with MediaPipe: Episode 4",
           "url": "https://www.youtube.com/watch?v=hV5S4iQhNkI",
           "format": "Video",
           "level": "Beginner",
           "why": "Google walkthrough of hand landmark detection in the browser."
+        },
+        {
+          "title": "Gesture Recognizer | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Provides the Open_Palm label and a live demo."
+        },
+        {
+          "title": "Hand Landmarker | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Explains the 21 hand keypoints behind the gesture labels."
+        },
+        {
+          "title": "Pose Landmarker | Google AI Edge | Google for Developers",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Body pose to check the arm is extended toward the robot."
         },
         {
           "title": "Object Handovers: a Review for Robotics",
@@ -420,29 +421,15 @@
       "node_id": "p:detect-collisions-from-motor-current",
       "type": "project",
       "name": "Detect collisions from motor current",
-      "summary": "Read an SO-101's servo load telemetry while it moves, set a threshold that flags bumps into a foam block, and explain why this is not certified collision detection.",
-      "lesson_md": "## In one sentence\n\nRead an SO-101's servo load telemetry while it moves, set a threshold that flags bumps into a foam block, and explain why this is not certified collision detection.\n\n![SO-101 follower robot arm](/img/lessons/projects_hri_safety_1-motor-current.webp)\n*The SO-101 follower arm whose servo telemetry you will log. Source: [Hugging Face LeRobot docs](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Servo telemetry:** Smart bus servos report internal values such as position and load, readable over the serial bus.\n- **Thresholding:** A collision shows up as a spike above the normal effort for that motion.\n- **Power and force limiting (PFL):** Real collaborative robots limit contact force; one study adapts collision sensitivity using the robot's effective mass.\n- **False alarms:** Fast moves and payloads also raise load, like noisy CPU spikes triggering a bad alert.\n\n> **Key idea:** Telemetry thresholds can detect some bumps, but they are an experiment, not a safety function.\n\n## What you need\n\n- **Hardware under €500:** An assembled SO-101 and a soft foam block.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** LeRobot, Python and Matplotlib.\n- **Background:** Experimental contact detection from servo telemetry and Collision detection & reaction (power and force limiting).\n\n## Steps\n\n1. **Check** which telemetry registers your servos expose and their units; write \"unknown\" if undocumented.\n2. **Log** load for a repeated slow motion with nothing in the way.\n3. **Compute** a baseline per joint and a threshold, for example mean plus a margin.\n4. **Repeat** the motion with the foam block in the path and mark contact times.\n5. **Plot** both runs and count hits and false alarms.\n\n```python\nbase = logs_free[:, joint]            # load samples, no contact\nthr = base.mean() + 4 * base.std()    # example margin\nhits = logs_block[:, joint] > thr\nprint(\"first contact sample:\", hits.argmax() if hits.any() else None)\n```\n\n```mermaid\nflowchart LR\n  A[\"Move arm\"] --> B[\"Read servo load\"]\n  B --> C{\"Above threshold?\"}\n  C -- \"Yes\" --> D[\"Flag contact + stop command\"]\n  C -- \"No\" --> A\n```\n\n## Common pitfalls\n\n- **Polling too slowly:** A slow read loop can miss short spikes; record the sample rate.\n- **One threshold for all:** Each joint and speed needs its own baseline.\n- **Hard objects:** Use only foam; never test on hands or faces.\n\n> **Watch out:** Do not present this as certified collision detection; it is unvalidated.\n\n## When it's done\n\n- **Plot:** Load over time with clear spikes at foam contacts and the threshold line.\n- **Write-up:** Detection rate, false alarms, and why the method is not certified.\n- **Next step:** Combine with the Depth-camera separation monitor.",
+      "summary": "Test whether an SO-101's documented effort telemetry can flag foam-block contacts, plot threshold errors, and explain why this is not certified collision detection.",
+      "lesson_md": "## In one sentence\n\nTest whether an SO-101's documented effort telemetry can flag foam-block contacts, plot threshold errors, and explain why this is not certified collision detection.\n\n![SO-101 follower robot arm](/img/lessons/projects_hri_safety_1-motor-current.webp)\n*The SO-101 follower arm whose servo telemetry you will log. Source: [Hugging Face LeRobot docs](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Servo telemetry:** Measurements reported over a motor bus; verify supported registers for your motor and API before contact tests.\n- **Thresholding:** A contact may change the recorded effort signal, but a threshold can miss contacts or trigger during ordinary acceleration.\n- **Power and force limiting (PFL):** Real collaborative robots limit contact force; one study adapts collision sensitivity using the robot's effective mass.\n- **False alarms:** Fast moves and payloads also raise load, like noisy CPU spikes triggering a bad alert.\n\n> **Key idea:** Telemetry thresholds can detect some bumps, but they are an experiment, not a safety function.\n\n## What you need\n\n- **Hardware:** An assembled SO-101 and soft foam block; current purchase cost is unknown. Start with prerecorded signals before physical tests.\n- **Prior project:** Assemble & teleoperate an SO-101.\n- **Software:** LeRobot, Python and Matplotlib.\n- **Background:** Experimental contact detection from servo telemetry and Collision detection & reaction (power and force limiting).\n\n## Steps\n\n1. **Check** the exact motor, firmware and bus API for a documented effort register. Keep units “unknown” unless verified; load values are not automatically amperes.\n2. **Log** a supported effort signal during repeated slow, unobstructed motion. If unavailable, use synthetic data and report the hardware limitation.\n3. **Compute** a baseline per joint and a threshold, for example mean plus a margin.\n4. **Repeat** the motion with the foam block in the path and mark contact times.\n5. **Plot** both runs and count hits and false alarms.\n\n**Synthetic example:** These dimensionless magnitudes illustrate a threshold, not calibrated torque or current. Four standard deviations is a tuning choice, not a safety limit.\n\n```python\nimport numpy as np\nbase = np.array([1.0, 2.0, 1.0, 2.0])\ntest = np.array([1.0, 2.0, 6.0])\nif not base.size or not np.isfinite(base).all():\n    raise ValueError(\"invalid baseline\")\nthr = base.mean() + 4 * base.std()\nhits = np.flatnonzero(np.isfinite(test) & (test > thr))\nprint(hits[0] if hits.size else None)  # 2\n```\n\n```mermaid\nflowchart LR\n  A[\"Move arm\"] --> B[\"Read servo load\"]\n  B --> C{\"Above threshold?\"}\n  C -- \"Yes\" --> D[\"Flag contact + stop command\"]\n  C -- \"No\" --> A\n```\n\n## Common pitfalls\n\n- **Missing telemetry:** Flag timeouts and invalid samples explicitly; do not turn them into zero load or “no contact”.\n- **Polling too slowly:** A slow read loop can miss short spikes; record the sample rate.\n- **One threshold for all:** Each joint and speed needs its own baseline.\n- **Hard objects:** Use only foam; never test on hands or faces.\n\n> **Watch out:** Do not present this as certified collision detection; it is unvalidated.\n\n## When it's done\n\n- **Plot:** Effort signal over time, independently marked contacts and the threshold line; show missed detections as well as successes.\n- **Write-up:** Detection rate, false alarms, and why the method is not certified.\n- **Next step:** Combine with the Depth-camera separation monitor.",
       "resources": [
-        {
-          "title": "SO-101",
-          "url": "https://huggingface.co/docs/lerobot/so101",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Official SO-101 setup guide for the arm you instrument."
-        },
-        {
-          "title": "Adaptive Collision Sensitivity for Efficient and Safe Human-Robot Collaboration",
-          "url": "https://arxiv.org/abs/2409.20184",
-          "format": "Paper",
-          "level": "Advanced",
-          "why": "How real collaborative robots tune collision sensitivity, for your comparison."
-        },
         {
           "title": "HC10 stops when bumped Power and Force Limit stop",
           "url": "https://www.youtube.com/watch?v=u48fm391FGk",
           "format": "Video",
           "level": "Beginner",
-          "why": "See a certified cobot stop when bumped, the behaviour you only approximate."
+          "why": "Watch an industrial cobot stop on contact; this does not validate the SO-101 experiment or its safety performance."
         },
         {
           "title": "The LeRobot SO101 Arm: Hardware, DOF & Why LeRobot Exists | Ep. 01",
@@ -452,11 +439,25 @@
           "why": "Tour of the SO-101 hardware and its servos."
         },
         {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official SO-101 setup guide for the arm you instrument."
+        },
+        {
           "title": "ISO/TS 15066:2016 Robots and robotic devices — Collaborative robots",
           "url": "https://www.iso.org/standard/62996.html",
           "format": "Docs",
           "level": "Beginner",
           "why": "Official scope of the specification covering force limits for cobots."
+        },
+        {
+          "title": "Adaptive Collision Sensitivity for Efficient and Safe Human-Robot Collaboration",
+          "url": "https://arxiv.org/abs/2409.20184",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "How real collaborative robots tune collision sensitivity, for your comparison."
         }
       ],
       "sources": [
@@ -464,7 +465,8 @@
         "https://arxiv.org/abs/2409.20184",
         "https://www.youtube.com/watch?v=u48fm391FGk",
         "https://www.youtube.com/watch?v=WFmkVGL_wZY",
-        "https://www.iso.org/standard/62996.html"
+        "https://www.iso.org/standard/62996.html",
+        "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/motors/motors_bus.py"
       ]
     },
     {
@@ -472,29 +474,8 @@
       "type": "project",
       "name": "EU robot regulation one-pager",
       "summary": "Make a one-page annotated infographic of the EU Machinery Regulation timeline and how it meets the AI Act for robots, using official sources only.",
-      "lesson_md": "## In one sentence\n\nMake a one-page annotated infographic of the EU Machinery Regulation timeline and how it meets the AI Act for robots, using official sources only.\n\n![European Commission diagram of the steps for a high-risk AI system to reach the market](/img/lessons/projects_hri_safety_1-eu-onepager.webp)\n*How a high-risk AI system moves from development to the market under the AI Act. Source: [European Commission, AI Act page](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai), license unknown.*\n\n## What you will learn\n\n- **Machinery Regulation:** Regulation (EU) 2023/1230 was adopted on 14 June 2023 and applies from 20 January 2027.\n- **Old regime:** Machinery placed on the market before that date follows Machinery Directive 2006/42/EC.\n- **AI Act dates:** Article 113 sets general application from 2 August 2026, with amended later dates for some high-risk rules.\n- **Interaction:** The new machinery rules cover AI-powered safety functions, and the AI Act treats some AI safety components as high-risk.\n\n> **Key idea:** A good one-pager shows dates and links, so readers can check every claim in the official text.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware and a drawing tool such as Figma or draw.io.\n- **Official sources:** The Commission machinery page, the Commission AI Act page and the AI Act Explorer article pages.\n- **Background:** Robotics regulation & compliance in the EU.\n\n## Steps\n\n1. **Collect dates** from official pages into a table: date, event, source URL.\n2. **Mark uncertainty:** note any date changed by later amendments, with the amending act.\n3. **Draw a timeline** from 2023 to 2028 with both laws on parallel tracks.\n4. **Annotate** what a robot builder must care about at each point.\n5. **Peer review:** a classmate checks each date against its link.\n\n```mermaid\nflowchart LR\n  A[\"14 Jun 2023: Machinery Regulation adopted\"] --> B[\"2 Aug 2026: AI Act general application\"]\n  B --> C[\"20 Jan 2027: Machinery Regulation applies\"]\n  C --> D[\"Later: amended high-risk dates\"]\n```\n\n## Common pitfalls\n\n- **Secondary sources:** Blogs often have outdated dates; use only official texts and pages.\n- **Moving targets:** The AI Act dates were amended; print the date you checked on the page.\n- **Too much text:** One page means short labels and links, not paragraphs.\n\n## When it's done\n\n- **Infographic:** One page, every date linked to an official source.\n- **Changelog:** Where you saw each date and when you checked it.\n- **Next step:** Use it in the AI Act classifier for robot features and the Compliance checklist for a lab demo robot.",
+      "lesson_md": "## In one sentence\n\nMake a one-page annotated infographic of the EU Machinery Regulation timeline and how it meets the AI Act for robots, using official sources only.\n\n![European Commission diagram of the steps for a high-risk AI system to reach the market](/img/lessons/projects_hri_safety_1-eu-onepager.webp)\n*How a high-risk AI system moves from development to the market under the AI Act. Source: [European Commission, AI Act page](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai), license unknown.*\n\n## What you will learn\n\n- **Machinery Regulation:** Regulation (EU) 2023/1230 was adopted on 14 June 2023 and applies from 20 January 2027.\n- **Old regime:** Machinery placed on the market before that date follows Machinery Directive 2006/42/EC.\n- **AI Act dates:** The Commission lists general application from 2 August 2026, Annex III high-risk rules from 2 December 2027, and Annex I rules from 2 August 2028.\n- **Annex:** A numbered appendix to a law; Annex I and Annex III describe different classification routes, so keep their timelines separate.\n- **Interaction:** The new machinery rules cover AI-powered safety functions, and the AI Act treats some AI safety components as high-risk.\n\n> **Key idea:** A good one-pager shows dates and links, so readers can check every claim in the official text.\n\n## What you need\n\n- **Laptop-only setup:** €0 hardware and a drawing tool such as Figma or draw.io.\n- **Official corpus:** Use Commission pages for claims and dates. The videos are orientation only, not official legal evidence.\n- **Software analogy:** Maintain a release changelog: each milestone needs a versioned legal source, not a remembered deadline.\n- **Background:** Robotics regulation & compliance in the EU.\n\n## Steps\n\n1. **Collect dates** from official pages into a table: date, event, source URL.\n2. **Mark uncertainty:** note any date changed by later amendments, with the amending act.\n3. **Draw a timeline** from 2023 to 2028 with both laws on parallel tracks.\n4. **Annotate** what a robot builder must care about at each point.\n5. **Peer review:** a classmate checks each date against its link.\n\n```mermaid\nflowchart LR\n  A[\"14 Jun 2023: Machinery Regulation adopted\"] --> B[\"2 Aug 2026: AI Act general application\"]\n  B --> C[\"20 Jan 2027: Machinery Regulation applies\"]\n  C --> D[\"2 Dec 2027: Annex III rules\"]\n  D --> E[\"2 Aug 2028: Annex I rules\"]\n```\n\n## Common pitfalls\n\n- **Secondary sources:** Blogs often have outdated dates; use only official texts and pages.\n- **Moving targets:** The AI Act dates were amended; print the date you checked on the page.\n- **Too much text:** One page means short labels and links, not paragraphs.\n- **Missing evidence:** Mark unsupported claims “unknown”; a broken link or later amendment must trigger review rather than silently preserve a deadline.\n\n## When it's done\n\n- **Infographic:** One page, every date linked to an official source.\n- **Worked label:** “20 January 2027 → Machinery Regulation applies”, linked to the Commission machinery page; distinguish adoption, entry into force and application.\n- **Changelog:** Where you saw each date and when you checked it.\n- **Next step:** Use it in the AI Act classifier for robot features and the Compliance checklist for a lab demo robot.",
       "resources": [
-        {
-          "title": "Machinery - Internal Market, Industry, Entrepreneurship and SMEs",
-          "url": "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Official source for Machinery Regulation adoption and application dates."
-        },
-        {
-          "title": "Article 113: Entry into Force and Application",
-          "url": "https://artificialintelligenceact.eu/article/113/",
-          "format": "Docs",
-          "level": "Intermediate",
-          "why": "AI Act application dates, including amendments, for your timeline."
-        },
-        {
-          "title": "AI Act | Shaping Europe’s digital future",
-          "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
-          "format": "Docs",
-          "level": "Beginner",
-          "why": "Official AI Act overview for the second track of your infographic."
-        },
         {
           "title": "EU Machinery Regulation 2023/1230 Explained | The New Era of Safety, Cyber, & AI",
           "url": "https://www.youtube.com/watch?v=7pegCpKPiHo",
@@ -508,11 +489,24 @@
           "format": "Video",
           "level": "Beginner",
           "why": "Quick AI Act explainer for the annotations."
+        },
+        {
+          "title": "Machinery - Internal Market, Industry, Entrepreneurship and SMEs",
+          "url": "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official source for Machinery Regulation adoption and application dates."
+        },
+        {
+          "title": "AI Act | Shaping Europe’s digital future",
+          "url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official AI Act overview for the second track of your infographic."
         }
       ],
       "sources": [
         "https://single-market-economy.ec.europa.eu/sectors/mechanical-engineering/machinery_en",
-        "https://artificialintelligenceact.eu/article/113/",
         "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
         "https://www.youtube.com/watch?v=7pegCpKPiHo",
         "https://www.youtube.com/watch?v=s_rxOnCt3HQ"
