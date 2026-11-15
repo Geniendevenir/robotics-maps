@@ -544,6 +544,167 @@
         "https://en.siasun.com/new-model-industrial-robots-certified-with-eu-ce-marking.html",
         "https://www.youtube.com/watch?v=jXvH40nQ60I"
       ]
+    },
+    {
+      "node_id": "k:safe-learning-safety-filters",
+      "type": "knowledge",
+      "name": "Safe learning & safety filters",
+      "summary": "A safety filter sits between a learned policy and the motors and changes unsafe commands as little as possible, so the robot stays inside a safe set.",
+      "lesson_md": "## In one sentence\nA safety filter sits between a learned policy and the motors and changes unsafe commands as little as possible, so the robot stays inside a safe set.\n\n![Diagram comparing model-driven, data-driven and combined approaches to a safe region](/img/lessons/knowledge_hri_safety-safety-filters.webp)\n*Model-driven, data-driven and combined views of the safe region, from the safe-control-gym repository. Source: [safe-control-gym on GitHub](https://github.com/utiasDSL/safe-control-gym), license unknown.*\n\n## Why it matters for us\n- **Learned policies surprise you:** a VLA can finish a task while knocking over unrelated objects, so task success does not prove safety.\n- **Training-free fix:** a 2026 shield filtered a pretrained VLA's commands and cut simulated collisions from 65.62% to 27.27% without retraining.\n- **Sim-only start:** safe-control-gym runs on PyBullet and costs nothing but a laptop.\n\n## How it works\nA safety filter is like **input validation middleware**: every request passes through, and only invalid ones are rewritten. The policy stays unchanged.\n\n```mermaid\nflowchart LR\n  A[Sensors] --> B[Learned policy]\n  B --> C[Proposed command]\n  C --> D[Safety filter]\n  A --> D\n  D --> E[Safe command]\n  E --> F[Motors]\n```\n\n- **Safe set:** define a function h(state) that is positive when safe, for example distance to an obstacle minus a margin.\n- **Control barrier function (CBF):** a tool to enforce that the system never leaves that set, surveyed by Ames et al.\n- **Barrier rule in words:** h may shrink, but slower as it nears zero; written dh/dt ≥ -α·h with α > 0.\n- **Minimal change:** the filter solves a small optimization picking the allowed command closest to the policy's command.\n- **Safe RL:** instead of filtering afterwards, constraints are added during learning; Brunke et al. review both families.\n\n> **Key idea:** Keep the clever learned policy and the provable safety rule in separate boxes, so each can be checked on its own.\n\n> **Watch out:** A filter only protects against constraints you modelled; an unmodelled hazard passes straight through.\n\n## Key terms\n- **Safety filter**: A runtime layer that minimally modifies unsafe actions from any controller.\n- **Control barrier function**: A function whose sign marks safe states, used to keep a system inside them.\n- **Safe set**: All states where the constraints hold.\n- **Constraint**: A rule such as a position limit or minimum distance the system must respect.\n- **Safe RL**: Reinforcement learning that encourages or enforces constraint satisfaction while learning.\n\n## Before / after\n- **Before:** Reinforcement learning for robots and basic feedback control.\n- **After:** Speed & separation monitoring implementation, Semantic safety & guardrails for LLM/VLA-controlled robots and Safety of humanoids & dynamically stable mobile robots.\n\n## Try it in an afternoon\n1. **Write a 1D robot:** position x, velocity command u, wall at x = 1, in plain Python.\n2. **Define h:** set h = 1 - x and a \"policy\" that always commands full speed toward the wall.\n3. **Filter the command:** clip u to at most α·h, which satisfies the barrier rule for this simple model.\n4. **Compare runs:** plot x with and without the filter for two values of α.\n5. **Go further:** install safe-control-gym and read how it declares constraints on its cart-pole task.\n",
+      "resources": [
+        {
+          "title": "ACC24: Practical Considerations for Implementing CBF Safety Filters (Presentation)",
+          "url": "https://www.youtube.com/watch?v=7XXyp-vtqKQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short talk on implementing CBF safety filters in practice."
+        },
+        {
+          "title": "Jason Choi -- Introduction to Control Lyapunov Functions and Control Barrier Functions",
+          "url": "https://www.youtube.com/watch?v=_Tkn_Hzo4AA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Lecture building CBF intuition from the ground up."
+        },
+        {
+          "title": "safe-control-gym",
+          "url": "https://github.com/utiasDSL/safe-control-gym",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "PyBullet cart-pole and quadrotor tasks with symbolic constraints and disturbances."
+        },
+        {
+          "title": "Control Barrier Functions: Theory and Applications",
+          "url": "https://arxiv.org/abs/1903.11199",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Survey of CBF theory and robotics applications."
+        },
+        {
+          "title": "Safe Learning in Robotics: From Learning-Based Control to Safe Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2108.06266",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Review unifying safe learning-based control and safe RL."
+        }
+      ],
+      "sources": [
+        "https://github.com/utiasDSL/safe-control-gym",
+        "https://raw.githubusercontent.com/utiasDSL/safe-control-gym/main/README.md",
+        "https://arxiv.org/abs/1903.11199",
+        "https://arxiv.org/abs/2108.06266",
+        "https://arxiv.org/abs/2109.06325",
+        "https://arxiv.org/abs/2609.40007",
+        "https://www.youtube.com/watch?v=7XXyp-vtqKQ",
+        "https://www.youtube.com/watch?v=_Tkn_Hzo4AA"
+      ]
+    },
+    {
+      "node_id": "k:safety-of-humanoids-dynamically-stable-mobile-robots",
+      "type": "knowledge",
+      "name": "Safety of humanoids & dynamically stable mobile robots",
+      "summary": "A walking or self-balancing robot cannot just cut power in an emergency, because falling is itself a hazard, so its safe stop must be actively controlled.",
+      "lesson_md": "## In one sentence\nA walking or self-balancing robot cannot just cut power in an emergency, because falling is itself a hazard, so its safe stop must be actively controlled.\n\n![Humanoid robot emergency-stop experiments with a digital twin and a safety-confidence plot](/img/lessons/knowledge_hri_safety-humanoids.webp)\n*PRISM overview: a monitor predicts whether a fallback controller can still stop the humanoid safely. Source: [CMU Intelligent Control Lab](https://intelligent-control-lab.github.io/humanoid_stoppability/), license unknown.*\n\n## Why it matters for us\n- **Affordable humanoids:** Unitree lists the G1 from US $13.5K, so humanoids are reaching labs and demo floors.\n- **Certification gap:** a 2026 paper argues industrial humanoids are limited less by skills than by immature functional-safety certification.\n- **Demo planning:** any public humanoid demo needs a stop plan that does not end in an uncontrolled fall.\n\n## How it works\nClassic machine safety assumes **fail-passive**: remove power and the machine becomes safe. A biped is more like a server that must flush its state before shutdown; pulling the plug corrupts everything.\n\n```mermaid\nflowchart LR\n  A[Stop requested] --> B{Monitor: safe-stoppable?}\n  B -- yes --> C[Fallback controller]\n  C --> D[Minimum-risk posture]\n  B -- no --> E[Keep balancing policy]\n  E --> B\n```\n\n- **Fail-passive gap:** removing power from a walking biped causes an uncontrolled fall, which violates the assumption behind ISO 13849-1 and EN 60204-1.\n- **Stop Category 0:** contactor-based power removal is the certifiable reaction subsystem, exactly what a balancing humanoid cannot use.\n- **Safe-stoppability:** PRISM learns a runtime monitor predicting whether a fixed fallback controller can still reach a minimum-risk condition from the current state.\n- **Context-aware compliance:** SafeHumanoid uses a VLM with retrieval to schedule arm impedance and speed near people; latency reaches 1.4 s.\n\n> **Key idea:** For a balancing robot, \"safe state\" is something the controller must actively reach, not something power removal gives you.\n\n> **Watch out:** Never test emergency stops on a real humanoid without a gantry or harness; an unsupported fall can injure people nearby.\n\n## Key terms\n- **Dynamically stable robot**: A robot that stays upright only through active control, like a biped or a self-balancing wheeled base.\n- **Fail-passive**: A design that becomes safe when power or control is lost.\n- **Minimum-risk condition**: A terminal posture, such as crouched or seated, where the robot poses least danger.\n- **Fallback controller**: A predefined controller that takes over to bring the robot to that condition.\n- **Functional safety**: Safety that depends on control systems working correctly, rated with levels like PL or SIL.\n\n## Before / after\n- **Before:** Robot safety standards & risk assessment and RL locomotion with sim-to-real.\n- **After:** Safe learning & safety filters applied to whole-body policies, and Speed & separation monitoring implementation for humanoid cells.\n\n## Try it in an afternoon\n1. **Watch a talk:** note what the Synapticon talk says about stopping a humanoid safely.\n2. **Load a humanoid model:** open a free humanoid model in MuJoCo or another simulator.\n3. **Cut torques mid-walk:** zero all motor commands during a gait and record how it falls.\n4. **Script a fallback:** command a crouch posture instead and compare peak base speed with the uncontrolled fall.\n",
+      "resources": [
+        {
+          "title": "Making Humanoid Robots Safe - Florian Weißhardt - Synapticon: GmbH",
+          "url": "https://www.youtube.com/watch?v=njHdPOUCcoE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Industry talk on why humanoid safety differs from arm safety."
+        },
+        {
+          "title": "Considerations for Humanoid Robot Safety | Interview with Ricard Picas Prat",
+          "url": "https://www.youtube.com/watch?v=IsmYUILHY7o",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Interview on practical humanoid safety considerations."
+        },
+        {
+          "title": "Learning Safe-Stoppability Monitors for Humanoid Robots",
+          "url": "https://intelligent-control-lab.github.io/humanoid_stoppability/",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Project page with video explaining why humanoid e-stops cannot cut power."
+        },
+        {
+          "title": "Toward Certified Functional Safety for Industrial Humanoid Robots: The Fail-Passive Gap and a Feasibility Study",
+          "url": "https://arxiv.org/abs/2608.02809",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Pinpoints which part of a humanoid safety chain is not yet certifiable."
+        },
+        {
+          "title": "End-to-End Humanoid Robot Safe and Comfortable Locomotion Policy",
+          "url": "https://arxiv.org/abs/2508.07611",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Turns CBF ideas into costs for safe humanoid locomotion learning."
+        }
+      ],
+      "sources": [
+        "https://intelligent-control-lab.github.io/humanoid_stoppability/",
+        "https://arxiv.org/abs/2608.02809",
+        "https://arxiv.org/abs/2511.23300",
+        "https://arxiv.org/abs/2508.07611",
+        "https://www.unitree.com/g1/",
+        "https://www.youtube.com/watch?v=njHdPOUCcoE",
+        "https://www.youtube.com/watch?v=IsmYUILHY7o"
+      ]
+    },
+    {
+      "node_id": "k:semantic-safety-guardrails-for-llm-vla-controlled-robots",
+      "type": "knowledge",
+      "name": "Semantic safety & guardrails for LLM/VLA-controlled robots",
+      "summary": "When an LLM or VLA controls a robot, safety also means judging meaning: refusing harmful instructions and checking plans against safety rules before the robot acts.",
+      "lesson_md": "## In one sentence\nWhen an LLM or VLA controls a robot, safety also means judging meaning: refusing harmful instructions and checking plans against safety rules before the robot acts.\n\n![RoboGuard architecture: safety rules, a root-of-trust LLM, control synthesis and a mobile robot](/img/lessons/knowledge_hri_safety-guardrails.webp)\n*RoboGuard grounds safety rules in a world model, then repairs the LLM planner's proposed plan. Source: [RoboGuard project page](https://robo-guard.github.io/), license unknown.*\n\n## Why it matters for us\n- **Real attacks work:** RoboPAIR jailbroke a GPT-3.5-integrated Unitree Go2 and a GPT-4o-planned Jackal, often with 100% attack success.\n- **Guardrails help:** RoboGuard cut execution of unsafe plans from over 92% to below 3% without hurting safe plans.\n- **Our stack:** any language-commanded SO-101 demo inherits these risks.\n\n## How it works\nIt is the robotics version of **prompt injection defence plus a type checker**. The planner proposes; an independent checker verifies against rules it cannot be talked out of.\n\n```mermaid\nflowchart LR\n  A[User instruction] --> B[LLM planner]\n  B --> C[Proposed plan]\n  D[Safety rules] --> E[Guardrail checker]\n  C --> E\n  E -- safe --> F[Robot executes]\n  E -- unsafe --> G[Repair or refuse]\n```\n\n- **Jailbreaking:** RoboPAIR adapts chatbot jailbreak attacks to elicit harmful physical actions, in white-, gray- and black-box settings.\n- **Root-of-trust LLM:** RoboGuard's checker LLM is shielded from user prompts and turns rules into context-specific temporal logic constraints.\n- **Control synthesis:** the plan is then resolved against those constraints, minimally violating user preferences.\n- **Semantic safety benchmarks:** Google DeepMind's ASIMOV builds undesirable situations from real scenes and hospital injury reports to test robot \"brains\".\n- **Robot constitutions:** ASIMOV also auto-generates written behaviour rules to steer models via Constitutional AI.\n- **Modular layers:** a 2026 position paper argues for separate monitoring and intervention layers across the autonomy stack.\n\n> **Key idea:** Never let the same model that a user can talk to be the only thing deciding whether an action is safe.\n\n> **Watch out:** Text guardrails do not replace physical limits; keep speed and force limits active underneath any LLM.\n\n## Key terms\n- **Semantic safety**: Safety that depends on understanding context, such as not handing a hot pan to a child.\n- **Jailbreak**: A prompt that makes a model bypass its safety training.\n- **Guardrail**: An independent layer that checks or blocks model outputs before they act.\n- **Temporal logic**: A formal language for rules over time, such as \"never enter the hallway\".\n- **Red teaming**: Deliberately attacking your own system to find failures.\n\n## Before / after\n- **Before:** LLM/VLM task planning & code-as-policies and Vision-Language-Action models (VLAs).\n- **After:** Robotics regulation & compliance in the EU and Safe learning & safety filters as the physical layer beneath.\n\n## Try it in an afternoon\n1. **Write a tool API:** expose fake robot actions like move_to(place) and pick(object) to an LLM.\n2. **Write rules:** list three safety rules in plain text, for example \"never move toward a person\".\n3. **Add a checker:** use a second, separately prompted LLM call that approves or rejects each planned step.\n4. **Red-team the checker:** try role-play prompts from the RoboPAIR page and log which ones get through.\n",
+      "resources": [
+        {
+          "title": "Jailbreaking LLM-Controlled Robots: RoboPair Promo Video | Penn Engineering",
+          "url": "https://www.youtube.com/watch?v=A4HbargVKXo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See jailbroken robots perform harmful actions on video."
+        },
+        {
+          "title": "RoboPAIR",
+          "url": "https://robopair.org/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Project page with the attack settings, videos and media coverage."
+        },
+        {
+          "title": "RoboGuard",
+          "url": "https://robo-guard.github.io/",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Project page explaining the two-stage guardrail with video and code."
+        },
+        {
+          "title": "ASIMOV Benchmark v1",
+          "url": "https://asimov-benchmark.github.io/v1/",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Google DeepMind's semantic safety benchmark data and code."
+        },
+        {
+          "title": "Modular Safety Guardrails Are Necessary for Foundation-Model-Enabled Robots in the Real World",
+          "url": "https://arxiv.org/abs/2602.04056",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Position paper on action, decision and human-centred safety layers."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2410.13691",
+        "https://robopair.org/",
+        "https://arxiv.org/abs/2503.07885",
+        "https://robo-guard.github.io/",
+        "https://arxiv.org/abs/2503.08663",
+        "https://asimov-benchmark.github.io/v1/",
+        "https://arxiv.org/abs/2602.04056",
+        "https://www.youtube.com/watch?v=A4HbargVKXo"
+      ]
     }
   ]
 }
