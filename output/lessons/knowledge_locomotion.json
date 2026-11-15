@@ -390,6 +390,179 @@
         "https://arxiv.org/abs/2403.17367",
         "https://proceedings.mlr.press/v305/zhi25a.html"
       ]
+    },
+    {
+      "node_id": "k:model-predictive-control-for-legged-robots",
+      "type": "knowledge",
+      "name": "Model predictive control for legged robots",
+      "summary": "Model predictive control repeatedly predicts a short future, optimizes feasible robot actions, and updates the plan using fresh measurements.",
+      "lesson_md": "## In one sentence\n\nModel predictive control repeatedly predicts a short future, optimizes feasible robot actions, and updates the plan using fresh measurements.\n\n![OCS2 legged-robot MPC example visualized with a quadruped and supporting feet](/img/lessons/knowledge_locomotion-mpc.webp)\n*A frame from OCS2's legged-robot example. Source: [OCS2 contributors](https://leggedrobotics.github.io/ocs2/robotic_examples.html), license unknown.*\n\n## Why it matters for us\n\n- **Look beyond the current error:** pushing harder now can help or hurt the robot's posture several steps later.\n- **Respect physical limits:** a lifted foot cannot push the ground, and a supporting foot cannot supply unlimited sideways force without slipping.\n- **An inspectable starting point:** the project **Inspect a contact-force MPC rollout** lets us study predicted movement before trying hardware.\n\n> **Key idea:** Optimize a future sequence, use its immediate action, then replan rather than blindly executing the entire prediction.\n\n## How it works\n\n- **Estimate the state:** describe the body's position, orientation, and motion using current measurements.\n- **Predict the response:** a dynamics model estimates how candidate foot forces will move the robot over a finite future interval.\n- **Score candidate plans:** an objective penalizes unwanted motion or large commands; constraints exclude actions that violate the model's contact rules.\n- **Software analogy:** a scheduler repeatedly replans queued work after receiving new load measurements; the predicted queue is useful, but not an irrevocable script.\n- **Simplify for speed:** the Cheetah 3 study optimizes ground forces using simplified body dynamics, rather than simulating every joint inside its optimizer.\n- **Keep contact choices explicit:** OCS2's quadruped example receives a user-defined gait; swing feet have zero force and stance feet have zero velocity.\n- **Worked timing example:** the Cheetah paper reports horizons up to 0.5 s and updates at 20–30 Hz: roughly 10–15 update intervals fit inside that horizon.\n\n```mermaid\nflowchart LR\n  S[\"Measured state\"] --> P[\"Predict future motion\"]\n  P --> O[\"Optimize constrained actions\"]\n  O --> A[\"Apply immediate action\"]\n  A --> R[\"Robot moves\"]\n  R --> S\n```\n\n## Key terms\n\n- **Prediction horizon**: the future time interval considered during one optimization.\n- **Objective**: a numerical score that the optimizer tries to reduce.\n- **Constraint**: a rule the planned states or actions must satisfy.\n- **Ground reaction force**: the force the ground applies to a contacting foot.\n- **Convex optimization**: a problem structure that avoids competing local minima and supports efficient solvers.\n\n## Before / after\n\n- **Before:** Understand forces, feedback, and constrained optimization; distinguish a contact schedule from the forces applied during each scheduled contact.\n- **After:** The project **Reproduce a simulated MPC trot** turns predictions into motion; **Compare convex and nonlinear contact control** is the subsequent comparison project.\n\n## Try it in an afternoon\n\n1. **Watch the Cheetah video** and identify which feet are supporting the body during one short sequence.\n2. **Inspect OCS2's legged example** and list its swing-foot, stance-foot, and friction constraints.\n3. **Draw a 0.5 s prediction** with 20 Hz replanning marks; distinguish each new plan from the original prediction.\n4. **Design a rollout log** with desired motion, predicted body motion, contact forces, and constraint violations; reserve hardware deployment for later.",
+      "resources": [
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=q6zxCvCxhic",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the gaits controlled by a short-horizon ground-force optimizer."
+        },
+        {
+          "title": "Robotic Examples",
+          "url": "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the quadruped model, user-defined gait, and contact constraints."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://leggedrobotics.github.io/ocs2/getting-started.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand repeated optimization, tracking interfaces, and rollout testing."
+        },
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model-Predictive Control",
+          "url": "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the open manuscript and its prediction-horizon and runtime results."
+        }
+      ],
+      "sources": [
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html",
+        "https://www.youtube.com/watch?v=q6zxCvCxhic",
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot",
+        "https://leggedrobotics.github.io/ocs2/getting-started.html",
+        "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf"
+      ]
+    },
+    {
+      "node_id": "k:multirotor-flight-dynamics-control",
+      "type": "knowledge",
+      "name": "Multirotor flight dynamics & control",
+      "summary": "A multirotor controls flight by changing rotor thrusts, using nested feedback loops to turn position goals into body rotation and motor commands.",
+      "lesson_md": "## In one sentence\n\nA multirotor controls flight by changing rotor thrusts, using nested feedback loops to turn position goals into body rotation and motor commands.\n\n![PX4 diagram showing position, velocity, angle, angular-rate controllers and motor mixing](/img/lessons/knowledge_locomotion-multirotor.webp)\n*PX4's published multicopter cascade; implementation rates vary by platform. Source: [PX4 contributors](https://docs.px4.io/main/en/flight_stack/controller_diagrams.html), license unknown.*\n\n## Why it matters for us\n\n- **Translation needs rotation:** a conventional quadcopter tilts its thrust direction to accelerate sideways; moving horizontally is not a separate wheel-like command.\n- **Stabilization is continuous:** the controller must correct orientation disturbances while pursuing a position goal.\n- **A useful first experiment:** the project **Animate thrust and attitude coupling** shows why keeping altitude becomes harder when the vehicle tilts.\n\n> **Key idea:** The outer loop requests motion; the inner loops make the vehicle point and rotate appropriately to produce it.\n\n## How it works\n\n- **Generate force and torque:** rotor thrusts add to move the body; differences between rotor outputs also turn it.\n- **Track position:** PX4's position controller requests velocity, and its velocity controller requests acceleration.\n- **Choose thrust direction:** requested acceleration becomes a thrust magnitude and an attitude, meaning the body's orientation.\n- **Stabilize rotation:** an attitude loop requests angular rate; the rate loop corrects how fast the body is rotating.\n- **Software analogy:** a high-level API requests a destination while lower-level handlers translate it into concrete operations; motor allocation is the hardware-specific backend.\n- **Allocate motor commands:** PX4 translates desired thrust and torque into actuator outputs using the airframe's geometry, rather than embedding every motor layout in the controller.\n- **Worked timing example:** Bitcraze documents 500 Hz attitude/rate loops and 100 Hz position/velocity loops for its cascaded PID: five inner updates per outer update.\n- **Read rates carefully:** the PX4 figure illustrates another configuration; do not copy its rates into a Crazyflie tuning exercise.\n\n```mermaid\nflowchart LR\n  P[\"Position goal\"] --> V[\"Velocity goal\"]\n  V --> A[\"Thrust and attitude\"]\n  A --> R[\"Angular-rate goal\"]\n  R --> M[\"Motor allocation\"]\n  M --> D[\"Drone and sensing\"]\n  D --> P\n```\n\n## Key terms\n\n- **Thrust**: the propeller-generated force that accelerates the vehicle.\n- **Attitude**: the body's orientation, often described as roll, pitch, and yaw.\n- **Angular rate**: how quickly orientation changes around an axis.\n- **Setpoint**: a desired value supplied to a feedback controller.\n- **Cascade**: nested controllers where one loop supplies the next loop's setpoint.\n- **Control allocation**: translating desired body forces and torques into individual actuator commands.\n\n## Before / after\n\n- **Before:** Understand proportional, integral, and derivative feedback, plus the difference between a rotation angle and its rate of change.\n- **After:** The project **Tune a simulated hover cascade** provides a safer precursor to the project **Fly a Crazyflie with the stock cascaded PID**.\n\n## Try it in an afternoon\n\n1. **Watch the hover explanation** and trace a position request down to motor commands.\n2. **Label each PX4 block** with its input and output units: position, velocity, acceleration, angle, rate, or actuator command.\n3. **Draw Bitcraze's update timeline** with five 2 ms inner ticks per 10 ms outer tick.\n4. **Plan a simulated disturbance test** and plot orientation and position separately; keep real propellers out of this first experiment.",
+      "resources": [
+        {
+          "title": "Drone Simulation and Control, Part 2: How Do You Get a Drone to Hover?",
+          "url": "https://www.youtube.com/watch?v=GK1t8YIvGM8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow motor mixing, thrust direction, and hover-controller architecture."
+        },
+        {
+          "title": "Controllers in the Crazyflie",
+          "url": "https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/sensor-to-control/controllers/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the cascaded PID levels and their documented update rates."
+        },
+        {
+          "title": "Controller Diagrams",
+          "url": "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Trace position, velocity, attitude, and rate loops in PX4."
+        },
+        {
+          "title": "Control Allocation (Mixing)",
+          "url": "https://docs.px4.io/main/en/concept/control_allocation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See how airframe geometry maps thrust and torque requests onto motors."
+        }
+      ],
+      "sources": [
+        "https://docs.px4.io/main/en/flight_stack/controller_diagrams.html",
+        "https://www.youtube.com/watch?v=GK1t8YIvGM8",
+        "https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/functional-areas/sensor-to-control/controllers/",
+        "https://docs.px4.io/main/en/concept/control_allocation.html"
+      ]
+    },
+    {
+      "node_id": "k:perceptive-rough-terrain-locomotion",
+      "type": "knowledge",
+      "name": "Perceptive rough-terrain locomotion",
+      "summary": "Perceptive locomotion uses observations of upcoming ground to adapt movement before contact, while retaining feedback from the robot's own body.",
+      "lesson_md": "## In one sentence\n\nPerceptive locomotion uses observations of upcoming ground to adapt movement before contact, while retaining feedback from the robot's own body.\n\n![ANYmal terrain-height maps compared with real stairs, snow, vegetation, reflective ground, and sensor occlusion](/img/lessons/knowledge_locomotion-rough-terrain.webp)\n*Terrain maps can be incomplete or misleading even when the robot can walk there. Source: [Takahiro Miki and collaborators](https://leggedrobotics.github.io/rl-perceptiveloco/), license unknown.*\n\n## Why it matters for us\n\n- **See before stepping:** sensing upcoming stairs or uneven ground lets a robot adapt earlier than waiting for a foot to collide.\n- **Appearance can mislead:** vegetation, snow, and reflective surfaces can make measured terrain differ from the surface that actually supports a foot.\n- **Make the input visible:** the project **Render terrain-height foothold overlays** helps us inspect what a controller believes lies beneath its next steps.\n\n> **Key idea:** Terrain observations are evidence to combine with body feedback, not a perfect map that the feet must blindly obey.\n\n## How it works\n\n- **Observe the surroundings:** depth measurements describe distances to visible surfaces outside the robot.\n- **Build a usable representation:** the ETH perceptive-locomotion system samples heights from an elevation map built using measured 3D points.\n- **Combine internal sensing:** joint and body measurements provide information about actual movement and contact responses.\n- **Software analogy:** a cached database read can be missing or stale; a controller should not treat a delayed terrain sample as unquestionable current state.\n- **Remember uncertain evidence:** ETH's learned recurrent encoder combines external observations and internal sensing while retaining information across time.\n- **Learn robustness deliberately:** its training includes noisy observations, with a simulated teacher providing targets for a controller that can run on the robot.\n- **Worked field example:** the reported hiking route covered 2.2 km with 120 m elevation gain; completion took 78 minutes in that particular evaluation.\n- **Recognize alternate inputs:** Extreme Parkour instead demonstrates a learned policy using a front-facing depth camera directly, without requiring this same elevation-map pipeline.\n\n```mermaid\nflowchart LR\n  T[\"Depth observations\"] --> E[\"Terrain representation\"]\n  E --> F[\"Combine with body sensing\"]\n  B[\"Joint and body state\"] --> F\n  F --> C[\"Movement controller\"]\n  C --> R[\"Robot and ground\"]\n  R --> B\n  R --> T\n```\n\n## Key terms\n\n- **Exteroception**: sensing the environment outside the robot.\n- **Proprioception**: sensing the robot's own configuration and movement.\n- **Elevation map**: a representation assigning ground-height estimates to horizontal locations.\n- **Occlusion**: something blocking a sensor's view of a surface.\n- **Recurrent encoder**: a learned observation-processing component that carries information forward over time.\n\n## Before / after\n\n- **Before:** Understand stance and swing, feedback, and depth measurements; distinguish observed surface geometry from reliable support.\n- **After:** The project **Compare blind and terrain-aware walking** isolates perception's contribution; the project **Inject depth delay into rough-terrain walking** tests stale inputs.\n\n## Try it in an afternoon\n\n1. **Inspect the terrain-map figure** and label missing observations separately from misleading height estimates.\n2. **Watch the ETH examples** and compare visible terrain with the support the robot actually uses.\n3. **Sketch a simulated comparison** using identical terrain and commands with and without terrain observations.\n4. **Add delayed observations** to the test plan; record falls, completion, and foot collisions rather than judging only a successful-looking clip.",
+      "resources": [
+        {
+          "title": "Learning robust perceptive locomotion for quadrupedal robots in the wild",
+          "url": "https://www.youtube.com/watch?v=zXbb6KQ0xV8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See perceptive walking and robustness to challenging terrain observations."
+        },
+        {
+          "title": "Learning robust perceptive locomotion for quadrupedal robots in the wild",
+          "url": "https://leggedrobotics.github.io/rl-perceptiveloco/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Inspect terrain maps, perception failures, and controlled comparisons."
+        },
+        {
+          "title": "Extreme Parkour",
+          "url": "https://extreme-parkour.github.io/",
+          "format": "Interactive",
+          "level": "Intermediate",
+          "why": "Compare a direct depth-camera policy with an elevation-map-based approach."
+        },
+        {
+          "title": "Learning robust perceptive locomotion for quadrupedal robots in the wild",
+          "url": "https://arxiv.org/abs/2201.08117",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study learned fusion of internal sensing and uncertain external observations."
+        }
+      ],
+      "sources": [
+        "https://leggedrobotics.github.io/rl-perceptiveloco/",
+        "https://www.youtube.com/watch?v=zXbb6KQ0xV8",
+        "https://extreme-parkour.github.io/",
+        "https://arxiv.org/abs/2201.08117"
+      ]
+    },
+    {
+      "node_id": "k:reduced-order-locomotion-models",
+      "type": "knowledge",
+      "name": "Reduced-order locomotion models",
+      "summary": "Reduced-order models replace a many-jointed robot with a few variables, preserving selected walking or hopping dynamics while deliberately omitting other details.",
+      "lesson_md": "## In one sentence\n\nReduced-order models replace a many-jointed robot with a few variables, preserving selected walking or hopping dynamics while deliberately omitting other details.\n\n![Spring-loaded inverted pendulum diagram with a point mass, spring leg, ground contact, leg length and angle](/img/lessons/knowledge_locomotion-reduced-models.webp)\n*The spring-loaded inverted pendulum replaces a complete legged body with a mass and spring. Source: [Russ Tedrake](https://underactuated.mit.edu/simple_legs.html), license unknown.*\n\n## Why it matters for us\n\n- **Reason before simulating everything:** a small model exposes why a body accelerates or bounces without burying us in dozens of joint coordinates.\n- **Pick the behavior to preserve:** nearly constant-height walking and springy running need different simplifications.\n- **Build a controlled comparison:** the project **Simulate LIPM versus SLIP** lets us discover what each abstraction predicts and what it cannot represent.\n\n> **Key idea:** A useful simplified model preserves the dynamics relevant to a question, not every detail of the robot's appearance.\n\n## How it works\n\n- **Gather the mass:** represent the robot through its center of mass, the point describing the average location of its mass.\n- **Approximate walking:** a linear inverted pendulum model (LIPM) keeps that point at constant height and relates horizontal acceleration to its offset from support.\n- **Approximate bouncing:** a spring-loaded inverted pendulum (SLIP) places a point mass above a massless spring leg.\n- **Software analogy:** an interface mock reproduces selected behavior without implementing every dependency; a reduced model must similarly state which physical behavior its simplifications preserve.\n- **Switch equations with contact:** SLIP uses free-flight motion in the air and spring-leg motion while its foot is anchored.\n- **Worked state example:** SLIP's flight state has four values: horizontal position, height, and their two velocities; stance instead uses leg length, angle, and their rates.\n- **Keep the omissions visible:** SLIP assumes its massless leg can reposition instantly in flight; a real actuator cannot meet that assumption exactly.\n- **Choose richer abstractions when needed:** OCS2's single-rigid-body model includes orientation, while its centroidal model also incorporates limb motion into whole-body momentum.\n\n```mermaid\nflowchart LR\n  F[\"SLIP flight equations\"] --> T[\"Touchdown\"]\n  T --> S[\"Spring-leg stance equations\"]\n  S --> L[\"Liftoff\"]\n  L --> F\n```\n\n## Key terms\n\n- **Reduced order**: using fewer state variables than a detailed physical model.\n- **State**: the variables needed to predict the model's next evolution.\n- **LIPM**: a constant-height inverted-pendulum approximation for walking dynamics.\n- **SLIP**: a point-mass and spring-leg approximation for bouncing locomotion.\n- **Hybrid dynamics**: continuous motion combined with discrete changes, such as touchdown switching the governing equations.\n\n## Before / after\n\n- **Before:** Understand position, velocity, acceleration, and numerical integration; separate the model's state variables from a robot's complete joint configuration.\n- **After:** The project **Map stable hopping parameters** explores the model; the project **Test reduced-model predictions on a full robot** probes its limitations.\n\n## Try it in an afternoon\n\n1. **Watch the LegLab examples** and identify flight, touchdown, stance, and liftoff in a hopping sequence.\n2. **Inspect the SLIP figure** and list which real robot components have disappeared.\n3. **Write two state records** with the four flight variables and four stance variables; label their units.\n4. **Trace one hop's transitions** using touchdown and spring rest length as events, then list real-world effects missing from that model.",
+      "resources": [
+        {
+          "title": "LegLab",
+          "url": "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe physical hopping behaviors that motivate spring-mass models."
+        },
+        {
+          "title": "Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Read the SLIP assumptions, phase equations, and simulation discussion."
+        },
+        {
+          "title": "Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Understand constant-height center-of-mass dynamics and contact-force abstractions."
+        },
+        {
+          "title": "Robotic Examples",
+          "url": "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Compare single-rigid-body and centroidal approximations in a quadruped controller."
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/simple_legs.html",
+        "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot"
+      ]
     }
   ]
 }
