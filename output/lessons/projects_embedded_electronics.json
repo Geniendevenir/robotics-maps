@@ -1053,6 +1053,216 @@
         "https://control.ros.org/jazzy/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html",
         "https://moveit.picknik.ai/main/doc/examples/controller_configuration/controller_configuration_tutorial.html"
       ]
+    },
+    {
+      "node_id": "p:sim-matched-digital-twin-of-the-arm-electronics",
+      "type": "project",
+      "name": "Sim-matched digital twin of the arm electronics",
+      "summary": "Measure an SO-101 arm's response, then build a custom servo-and-bus simulation that reproduces its delay, saturation, and deadband instead of merely animating the joints.",
+      "lesson_md": "## In one sentence\n\nMeasure an SO-101 arm's response, then build a custom servo-and-bus simulation that reproduces its delay, saturation, and deadband instead of merely animating the joints.\n\n![SO-101 follower arm in its published resting calibration pose](/img/lessons/projects_embedded_electronics-arm-twin.webp)\n*The real follower supplies the measurements your model must explain. Source: [LeRobot assembly guide](https://huggingface.co/docs/lerobot/main/en/assemble_so101), license unknown.*\n\n## What you will learn\n\n- **A digital twin is a tested model:** Treat it like a software test double whose timing and outputs must agree with measured hardware.\n- **Delay is waiting before observed motion:** Record command and motion timestamps on a consistent clock rather than confusing feedback arrival with physical movement.\n- **Deadband and saturation describe limits:** Deadband means small commands produce no detectable movement; saturation means increasing a request no longer increases the response.\n- **Firmware emulation is a separate layer:** Renode helps with supported MCU firmware and peripherals; it is not an SO-101 electromechanical twin.\n\n> **Key idea:** Matching the robot's shape does not establish that its electronics and actuators behave realistically.\n\n## What you need\n\n- **Prerequisite practice:** Complete Intro: drive a servo motor from code and Assemble & teleoperate an SO-101.\n- **Hardware:** Calibrated SO-101, bus adapter, secured mounting, and a way to timestamp observed joint movement; total local equipment cost is unknown.\n- **Software:** ROS 2, ros2_control, a simulation interface, and plotting tools; study Smart servos & serial actuator buses.\n- **Testing background:** Connect Embedded simulation & hardware-in-the-loop testing to ROS 2 hardware interfaces (ros2_control, micro-ROS).\n\n## Steps\n\n1. **Establish the baseline:** Launch a simulated arm and verify joint names and units; keep the command interface identical to the real arm's interface.\n2. **Collect repeatable traces:** Record targets, timestamps, observed position, and feedback arrival during bounded movements; document load, supply, sensor resolution, and clock alignment.\n3. **Identify separate effects:** Estimate command-to-motion delay, small-command deadband, and response limits; do not assume one fitted parameter explains every error.\n4. **Implement the model:** Add the measured effects to a custom servo/bus simulation component, retaining a separate ideal mock backend for integration tests.\n5. **Validate unseen inputs:** Compare predictions with held-out trajectories; also test absent commands, missing feedback, and simulated communication failures.\n6. **Show the demo:** Overlay measured and simulated motion with residual-error plots, fitted parameters, and the operating conditions where agreement breaks down.\n\nCompute the delay from aligned observations, not from an invented servo specification:\n\n`delay_ms = motion_onset_ms - command_sent_ms`\n\n```mermaid\nflowchart LR\n  C[\"Commands\"] --> R[\"Real arm\"]\n  C --> S[\"Custom servo model\"]\n  R --> T[\"Measured traces\"]\n  S --> P[\"Predicted traces\"]\n  T --> V[\"Compare and refine\"]\n  P --> V\n```\n\n## Common pitfalls\n\n- **Ideal feedback:** GenericSystem normally mirrors commands into states; that is useful plumbing validation, not measured actuator dynamics.\n- **Overfitting:** A model fitted to one trajectory or load may fail elsewhere; preserve separate validation runs.\n\n> **Watch out:** Keep the powered arm's travel clear and retain an accessible stop during measurement runs.\n\n## When it's done\n\n- **Evidence package:** Deliver reproducible traces, model code, parameter estimates, validation plots, and explicit limitations; list Renode firmware tests separately from electromechanical validation.",
+      "resources": [
+        {
+          "title": "SO101_Gazebo.mp4",
+          "url": "https://github.com/user-attachments/assets/7d82b15c-8276-43b1-9b73-00b3567a5cf7",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the author's SO-101 Gazebo demonstration as a visualization baseline, not proof of matched dynamics."
+        },
+        {
+          "title": "so101_ros2",
+          "url": "https://github.com/adoodevv/so101_ros2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Compare Gazebo, mock hardware, simulated servos, and physical-arm backends."
+        },
+        {
+          "title": "Mock Components",
+          "url": "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand command mirroring and why ideal mock hardware cannot establish a calibrated twin."
+        },
+        {
+          "title": "Writing a Hardware Component",
+          "url": "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/writing_new_hardware_component.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Implement and test the custom read/write interface that hosts your servo model."
+        },
+        {
+          "title": "Using Renode",
+          "url": "https://renode.readthedocs.io/en/latest/introduction/using.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Scope optional MCU and peripheral emulation separately from the arm dynamics."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/main/en/assemble_so101",
+        "https://github.com/Pavankv92/lerobot_ws",
+        "https://github.com/user-attachments/assets/7d82b15c-8276-43b1-9b73-00b3567a5cf7",
+        "https://github.com/adoodevv/so101_ros2",
+        "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html",
+        "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/writing_new_hardware_component.html",
+        "https://renode.readthedocs.io/en/latest/introduction/using.html"
+      ]
+    },
+    {
+      "node_id": "p:simplefoc-gimbal-motor-position-velocity-torque-modes",
+      "type": "project",
+      "name": "SimpleFOC gimbal motor: position, velocity, torque modes",
+      "summary": "Use SimpleFOC and a position sensor to make a gimbal motor hold an angle, maintain a low speed, and demonstrate the chosen torque-control mode.",
+      "lesson_md": "## In one sentence\n\nUse SimpleFOC and a position sensor to make a gimbal motor hold an angle, maintain a low speed, and demonstrate the chosen torque-control mode.\n\n![Published SimpleFOC setup with Arduino, driver shield, encoder, and gimbal motor](/img/lessons/projects_embedded_electronics-simplefoc-modes.webp)\n*Final frame of the official setup animation. Source: [SimpleFOC position example](https://docs.simplefoc.com/position_control_example), MIT.*\n\n## What you will learn\n\n- **BLDC means brushless direct-current motor:** Its driver energizes motor phases electronically rather than through mechanical brushes.\n- **FOC means field-oriented control:** It uses rotor-angle information to coordinate phase excitation and produce controlled motor effort.\n- **Position, velocity, and torque are different requests:** Ask for an angle, a rotation rate, or motor effort; do not confuse these with interchangeable numeric targets.\n- **The loops form a software pipeline:** Position control can request velocity, which requests effort; the inner FOC loop applies the resulting motor command.\n\n> **Key idea:** Selecting torque mode does not automatically give you measured-current control or a calibrated torque value.\n\n## What you need\n\n- **Start here:** Complete Intro: microcontroller, breadboard & I2C sensors; review Electronics fundamentals for robots.\n- **Hardware:** Compatible MCU, BLDC driver, gimbal motor, position sensor, current-limited supply, and secure fixture; use a documented matching setup.\n- **Control background:** Study BLDC motor control & field-oriented control (FOC) and Motor drivers & power electronics.\n- **Software and budget:** Install SimpleFOC using its current instructions; total local hardware cost is unknown. Current-controlled operation additionally requires suitable current-sensing hardware.\n\n## Steps\n\n1. **Validate the sensor:** Read shaft angle before powering motion; confirm direction, wiring, and your motor's pole-pair count rather than copying another motor's configuration.\n2. **Configure the driver:** Match supply settings and conservative limits to the actual board and motor; initialize the sensor, driver, motor, and FOC alignment.\n3. **Demonstrate position:** Select angle control and command a bounded target; observe recovery after a gentle external disturbance without grabbing the rotating shaft.\n4. **Demonstrate velocity:** Select velocity control, command slow rotation, and plot requested versus measured speed; tune the documented feedback parameters.\n5. **Demonstrate effort:** Identify the torque backend explicitly: voltage mode approximates effort without current measurement; FOC current mode requires current sensing and its own tuning.\n6. **Show the demo:** Film position holding and smooth low-speed rotation; include normal tracking, zero targets, sensor-failure handling, and a labelled effort-mode trace.\n\nWith angle mode configured during setup, the documented update pattern is:\n\n```cpp\nvoid loop() {\n  motor.loopFOC();\n  motor.move(target_angle);\n}\n```\n\n```mermaid\nflowchart LR\n  T[\"Angle target\"] --> P[\"Position loop\"]\n  P --> V[\"Velocity loop\"]\n  V --> F[\"Effort and FOC\"]\n  F --> M[\"Driver and motor\"]\n  M --> S[\"Position sensor\"]\n  S --> P\n  S --> F\n```\n\n## Common pitfalls\n\n- **Target units change:** Angle, angular speed, voltage, and current have different meanings; label plots and serial commands with the active mode.\n- **Voltage is not current limiting:** The voltage torque backend cannot directly measure or regulate phase current.\n\n> **Watch out:** Limit the supply and controller appropriately; a stalled motor or exposed rotating shaft can overheat hardware or injure fingers.\n\n## When it's done\n\n- **Reproducible evidence:** Deliver the sketch, hardware configuration, limits, mode-labelled plots, and video; state whether effort was voltage-based or current-controlled.",
+      "resources": [
+        {
+          "title": "Arduino Field Oriented Control (FOC) Open Source Library Demonstration -  Simple FOC project",
+          "url": "https://www.youtube.com/watch?v=Y5kLeqTc6Zk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the project's creator demonstrate position, velocity, and effort control on a gimbal motor."
+        },
+        {
+          "title": "Position control example using Simple FOC Shield",
+          "url": "https://docs.simplefoc.com/position_control_example",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow a concrete encoder, driver, motor, and Arduino position-control setup."
+        },
+        {
+          "title": "Velocity control example using Drotek’s L6234 driver",
+          "url": "https://docs.simplefoc.com/velocity_control_example",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Adapt the feedback loop for a speed target."
+        },
+        {
+          "title": "Closed loop motion control",
+          "url": "https://docs.simplefoc.com/closed_loop_motion_control",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate the motion controller from the inner FOC update."
+        },
+        {
+          "title": "Torque/FOC control loop",
+          "url": "https://docs.simplefoc.com/torque_control",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Distinguish voltage, estimated-current, DC-current, and FOC-current backends."
+        }
+      ],
+      "sources": [
+        "https://docs.simplefoc.com/voltage_torque_mode",
+        "https://www.youtube.com/watch?v=Y5kLeqTc6Zk",
+        "https://docs.simplefoc.com/position_control_example",
+        "https://docs.simplefoc.com/velocity_control_example",
+        "https://docs.simplefoc.com/closed_loop_motion_control",
+        "https://docs.simplefoc.com/torque_control"
+      ]
+    },
+    {
+      "node_id": "p:tinyml-gesture-keyword-control-on-an-mcu",
+      "type": "project",
+      "name": "TinyML gesture/keyword control on an MCU",
+      "summary": "Train a small keyword classifier, deploy it to an ESP32, and let one recognized phrase trigger a bounded SO-101 movement without a PC at runtime.",
+      "lesson_md": "## In one sentence\n\nTrain a small keyword classifier, deploy it to an ESP32, and let one recognized phrase trigger a bounded SO-101 movement without a PC at runtime.\n\n![Espressif ESP-EYE development board with camera and microphone](/img/lessons/projects_embedded_electronics-tinyml-control.webp)\n*The documented ESP-EYE is the baseline audio board; other variants need verification. Source: [Edge Impulse](https://docs.edgeimpulse.com/hardware/boards/espressif-esp32), license unknown.*\n\n## What you will learn\n\n- **TinyML means small-device machine learning:** Training happens on development infrastructure; inference, which applies the trained model to new sensor data, runs on the MCU.\n- **Keyword spotting is classification:** This project recognizes a chosen phrase, not arbitrary speech; gesture recognition would need a separate sensor dataset and model.\n- **Feature extraction prepares raw measurements:** Edge Impulse packages preprocessing and inference together, like a compiled function accepting audio and returning class scores.\n- **A command gate separates recognition from motion:** Confidence, repeated-detection filtering, and explicit application state decide whether a result becomes a robot command.\n\n> **Key idea:** Recognizing a phrase is not permission for unlimited movement; the motion application owns the allowed actions.\n\n## What you need\n\n- **Start here:** Complete Intro: microcontroller, breadboard & I2C sensors; study Microcontrollers & bare-metal firmware and Edge AI hardware & on-device inference.\n- **Hardware:** ESP-EYE with microphone, calibrated SO-101, matching power supplies, and a compatible servo-bus interface; total local cost is unknown.\n- **Board choice:** ESP32-S3 is a related option, not the same board; verify capture drivers, memory, and firmware instead of flashing an ESP-EYE binary blindly.\n- **Tools:** Edge Impulse for the baseline workflow, an embedded C++ toolchain, and a tested Feetech driver; LiteRT for Microcontrollers offers an alternative integration route.\n\n## Steps\n\n1. **Choose one action:** Start with a harmless indicator, then define one bounded, pre-recorded arm movement; keep the base application independent of the classifier.\n2. **Collect varied audio:** Use keyword, noise, and unknown-word classes; split speakers or sessions between training and evaluation to avoid testing memorized recordings.\n3. **Match preprocessing:** The official keyword tutorial records at 16 kHz and uses one-second samples, giving 16,000 audio samples per example.\n4. **Train and evaluate:** Inspect mistakes on held-out audio; export the model and preprocessing together as a C++ library, then measure memory and execution time.\n5. **Integrate on the MCU:** Feed live microphone windows into the library; gate accepted detections before sending the stored trajectory through the tested servo-bus driver.\n6. **Show the demo:** Run from standalone power without a PC; demonstrate the phrase, silence, unrelated speech, repeated detections, and microphone or bus failure.\n\n```mermaid\nflowchart LR\n  A[\"Microphone\"] --> F[\"Audio features\"]\n  F --> M[\"Tiny classifier\"]\n  M --> G[\"Command gate\"]\n  G --> T[\"Stored trajectory\"]\n  T --> B[\"Servo bus\"]\n  B --> R[\"SO-101\"]\n```\n\n## Common pitfalls\n\n- **Training is not deployment:** A working Studio preview does not prove that audio capture and inference fit your MCU.\n- **Repeated triggers:** Sliding windows can recognize the same phrase repeatedly; require a new command event rather than restarting motion continuously.\n\n> **Watch out:** Keep an independent physical stop and bounded motion; a voice classifier is not an emergency-stop system.\n\n## When it's done\n\n- **Evidence package:** Deliver dataset splits, exported firmware, memory and latency measurements, false-trigger results, and a PC-free video of the controlled movement.",
+      "resources": [
+        {
+          "title": "Build Your Own ML-Powered Keyword Spotting Model in 30KB RAM",
+          "url": "https://www.youtube.com/watch?v=vbIg4Up1Ts0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow Edge Impulse's own keyword-training walkthrough; measure your model rather than assuming the title's memory figure."
+        },
+        {
+          "title": "Keyword spotting",
+          "url": "https://docs.edgeimpulse.com/tutorials/end-to-end/keyword-spotting",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Collect keyword, noise, and unknown classes and evaluate an embedded audio classifier."
+        },
+        {
+          "title": "Espressif ESP-EYE",
+          "url": "https://docs.edgeimpulse.com/hardware/boards/espressif-esp32",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the documented microphone-equipped ESP32 board and distinguish other board variants."
+        },
+        {
+          "title": "Run C++ library on custom boards",
+          "url": "https://docs.edgeimpulse.com/hardware/deployments/run-cpp",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Export preprocessing and inference together and integrate live sensor data."
+        },
+        {
+          "title": "FEETECH BUS Servo",
+          "url": "https://github.com/ftservo/FTServo_Arduino",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Adapt the Arduino/ESP32 bus library to the actual STS servo models and bounded trajectory application."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/litert/microcontrollers/overview",
+        "https://raw.githubusercontent.com/ftservo/FTServo_Arduino/master/README.md",
+        "https://www.youtube.com/watch?v=vbIg4Up1Ts0",
+        "https://docs.edgeimpulse.com/tutorials/end-to-end/keyword-spotting",
+        "https://docs.edgeimpulse.com/hardware/boards/espressif-esp32",
+        "https://docs.edgeimpulse.com/hardware/deployments/run-cpp",
+        "https://github.com/ftservo/FTServo_Arduino"
+      ]
+    },
+    {
+      "node_id": "p:vla-on-board-a-mobile-manipulator-with-jetson-thor",
+      "type": "project",
+      "name": "VLA on board a mobile manipulator with Jetson Thor",
+      "summary": "Run a robot-adapted vision-language-action policy entirely on Jetson AGX Thor, while a separate MCU handles bounded motor commands and real-time control.",
+      "lesson_md": "## In one sentence\n\nRun a robot-adapted vision-language-action policy entirely on Jetson AGX Thor, while a separate MCU handles bounded motor commands and real-time control.\n\n![Official exploded view of a Jetson AGX Thor development system and T5000 module](/img/lessons/projects_embedded_electronics-thor-vla.webp)\n*The onboard computer is one subsystem, not the mobile robot itself. Source: [NVIDIA](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-thor/), license unknown.*\n\n## What you will learn\n\n- **VLA means vision-language-action:** A model combines camera images, robot state, and a language instruction to predict robot actions.\n- **An embodiment is a robot's physical configuration:** Joint ordering, action meaning, cameras, and calibration must match the policy's training and adaptation.\n- **An action chunk contains future commands:** It is a prediction, not a guarantee that every proposed movement remains appropriate as the scene changes.\n- **Split compute resembles separate services:** Thor performs expensive inference; the MCU maintains predictable control updates and rejects commands outside the application contract.\n\n> **Key idea:** More inference compute does not remove the need for robot-specific training, timing measurements, and independent motor-control boundaries.\n\n## What you need\n\n- **Prerequisite projects:** Complete On-board policy: run an ACT/diffusion policy on Jetson Orin Nano and Language-commanded arm with SmolVLA.\n- **Hardware:** NVIDIA Jetson AGX Thor, mobile base, calibrated arm, cameras, MCU, suitable power conversion, cooling, and an independent stop; total integration cost is unknown.\n- **Supporting concepts:** Review Embedded Linux & companion computers, Edge AI hardware & on-device inference, and Real-time OS & real-time control loops.\n- **Model workflow:** Use Isaac GR00T as the reference, with a compatible checkpoint and robot-specific data; a downloaded model is not automatically a mobile-manipulator controller.\n\n## Steps\n\n1. **Define the interfaces:** Specify camera names, state fields, action units, timestamps, and command limits; keep the motor interface separate from policy-specific tensors.\n2. **Adapt before deployment:** Collect demonstrations and configure the robot embodiment; validate predicted actions offline, then with a parked base and restrained arm task.\n3. **Bring inference onboard:** Follow the matching Thor software instructions; cache weights and required assets locally, and record the exact checkpoint and environment.\n4. **Measure the pipeline:** Timestamp sensing, preprocessing, inference, transfer, and execution; log electrical power and thermal behavior during repeated tasks.\n5. **Integrate the MCU:** Send bounded, expiring commands to the motor controller; test stale observations, missing commands, failed inference, and communication loss before enabling mobility.\n6. **Show the demo:** Execute a language-commanded task on the mobile manipulator with cloud access disabled; report successes, failures, latency distribution, and power measurements.\n\nThe reference Thor tutorial reports about 40 ms inference for its specific batch-one benchmark: roughly 25 calls per second, not a promised robot-control rate.\n\n```mermaid\nflowchart LR\n  C[\"Images and state\"] --> V[\"Thor VLA\"]\n  L[\"Language instruction\"] --> V\n  V --> G[\"Bounds and freshness\"]\n  G --> M[\"Real-time MCU\"]\n  M --> R[\"Arm and base\"]\n  R --> C\n```\n\n## Common pitfalls\n\n- **Wrong robot assumptions:** Adapt arm and base actions explicitly; tabletop benchmarks do not establish mobile-task success.\n- **Hidden network dependence:** Preloaded inference must still work without model downloads, remote inference servers, or cloud perception.\n\n> **Watch out:** Retain an independent stop and MCU-enforced command limits; language instructions must never bypass them.\n\n## When it's done\n\n- **Deployment evidence:** Deliver the offline demonstration, model and hardware configuration, power traces, latency breakdown, and fault-response logs; distinguish measured performance from published benchmarks.",
+      "resources": [
+        {
+          "title": "Getting Started with the NVIDIA Jetson AGX Thor Developer Kit for Physical AI",
+          "url": "https://www.youtube.com/watch?v=iYT2haVIgSM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Identify the physical computer, initial boot workflow, and supported robotics demonstrations."
+        },
+        {
+          "title": "Isaac GR00T 1.7 on Jetson Thor",
+          "url": "https://www.jetson-ai-lab.com/tutorials/groot_n17_on_thor/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Deploy and benchmark an actual VLA pipeline on Thor while preserving the benchmark's exact conditions."
+        },
+        {
+          "title": "Fine-tune on Custom Embodiments (\"NEW_EMBODIMENT\")",
+          "url": "https://github.com/NVIDIA/Isaac-GR00T/blob/main/getting_started/finetune_new_embodiment.md",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Adapt data fields and action representations instead of assuming another robot's checkpoint fits."
+        },
+        {
+          "title": "NVIDIA Isaac GR00T",
+          "url": "https://github.com/NVIDIA/Isaac-GR00T",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Find the policy API, data preparation, evaluation, and platform deployment entry points."
+        },
+        {
+          "title": "NVIDIA Jetson Thor",
+          "url": "https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-thor/",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Check hardware specifications and system-integration requirements independently of application benchmarks."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/NVIDIA/Isaac-GR00T/main/getting_started/finetune_new_embodiment.md",
+        "https://www.youtube.com/watch?v=iYT2haVIgSM",
+        "https://www.jetson-ai-lab.com/tutorials/groot_n17_on_thor/",
+        "https://github.com/NVIDIA/Isaac-GR00T/blob/main/getting_started/finetune_new_embodiment.md",
+        "https://github.com/NVIDIA/Isaac-GR00T",
+        "https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-thor/"
+      ]
     }
   ]
 }
