@@ -609,6 +609,265 @@
         "https://leggedrobotics.github.io/rl-blindloco/",
         "https://arxiv.org/abs/2201.08117"
       ]
+    },
+    {
+      "node_id": "p:compare-capture-steps-and-fixed-footsteps",
+      "type": "project",
+      "name": "Compare capture steps and fixed footsteps",
+      "summary": "Compare fixed and capture-based footstep placement under identical simulated pushes, measuring falls, recovery steps and walking errors.",
+      "lesson_md": "## In one sentence\n\nCompare fixed and capture-based footstep placement under identical simulated pushes, measuring falls, recovery steps and walking errors.\n\n![Humanoid walking model showing center of mass, support foot and capture point](/img/lessons/projects_locomotion_1-capture-fixed.webp)\n*Published walking and capture-point model, not a completed comparison. Source: [Reference setup](https://scaron.info/robotics/capture-point.html), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **Fixed footsteps** follow previously chosen landing locations; **capture steps** adjust placement using the robot's current motion to help restore balance.\n- **The capture point** combines center-of-mass position and velocity in a simplified model; it is not simply the point underneath the body.\n- **A controlled comparison** changes footstep adaptation while keeping other settings fixed, like an A/B test with identical requests sent to both implementations.\n\n> **Key idea:** A recovery target is useful only if the robot can reach it before its balance is lost.\n\n## What you need\n\n- **Background:** Complete Reproduce preview-style flat-ground walking and review Bipedal walking control before adding disturbances.\n- **Setup:** A working simulated biped, a fixed-footstep baseline, foot-placement limits and logs of body motion, contacts and target footsteps.\n- **Tools:** Crocoddyl is a related contact-control framework; use a compatible controller rather than assuming any walking example already supports capture steps.\n- **Planning estimate:** 1-2 months; hardware €0 in simulation, excluding computer/GPU costs. Save the same initial state for each paired trial.\n\n## Steps\n\n1. **Establish ordinary walking:** Verify the baseline without pushes; record forward-speed error and the actual landing locations before changing the planner.\n2. **Add a capture target:** Start with constant body height and level ground; explain the simplified pendulum assumptions beside the overlay.\n3. **Inspect the calculation:** Add a velocity-dependent offset to body position; the model rate depends on gravity and center-of-mass height.\n\n`capture_x = com_x + com_velocity_x / model_rate`\n\n4. **Constrain the step:** Enforce reachable landing positions and contact timing; log clipped targets rather than allowing impossible emergency steps.\n5. **Replay matched pushes:** Keep force, duration, application point and walking phase identical; include no push, no contact, invalid states and motor limits.\n6. **Film the paired demo:** Show fixed and adaptive targets, actual landings and body motion; count falls, timeouts and successful recoveries.\n\n```mermaid\nflowchart LR\n  A[Saved state and push] --> B[Fixed footsteps]\n  A --> C[Capture-based footsteps]\n  B --> D[Matched simulation]\n  C --> D\n  D --> E[Recovery and tracking logs]\n```\n\n## Common pitfalls\n\n- **Instantaneous stepping** is a model idealization; swing time and limited reach can invalidate a seemingly perfect capture location.\n- **Hidden controller changes** confound the comparison; disclose any retuning needed by the adaptive version.\n- **Position-only metrics** miss ongoing motion; show velocity and contacts alongside the footstep overlay.\n\n## When it's done\n\n- **Deliver reproducible results:** Another student can replay each push and see whether adaptation changes recovery, walking accuracy or failure type.\n- **Report the boundaries:** Include failed directions and unreachable targets; do not generalize a flat-ground simulation into a guarantee of real-world balance.",
+      "resources": [
+        {
+          "title": "Capture Steps: Robust Walking for Humanoid Robots",
+          "url": "https://www.youtube.com/watch?v=5w2tdfEQzac",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch footstep location and timing adaptation during push recovery."
+        },
+        {
+          "title": "Capture point",
+          "url": "https://scaron.info/robotics/capture-point.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand the velocity-dependent capture location and its stopping interpretation."
+        },
+        {
+          "title": "Comparison of Atlas Robot Controllers",
+          "url": "https://www.cs.cmu.edu/~cga/drc/atlas-control/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Distinguish fixed target footsteps from optimizing future placements in response to errors."
+        },
+        {
+          "title": "Capture Steps: Robust Walking for Humanoid Robots",
+          "url": "https://arxiv.org/abs/2011.02793",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the model-fitting and step timing approach behind the reference demonstration."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=5w2tdfEQzac",
+        "https://scaron.info/robotics/capture-point.html",
+        "https://www.cs.cmu.edu/~cga/drc/atlas-control/",
+        "https://arxiv.org/abs/2011.02793"
+      ]
+    },
+    {
+      "node_id": "p:compare-convex-and-nonlinear-contact-control",
+      "type": "project",
+      "name": "Compare convex and nonlinear contact control",
+      "summary": "Benchmark convex and nonlinear contact controllers on the same simulated robot, terrain and contact schedule, measuring tracking, computation time and constraint violations.",
+      "lesson_md": "## In one sentence\n\nBenchmark convex and nonlinear contact controllers on the same simulated robot, terrain and contact schedule, measuring tracking, computation time and constraint violations.\n\n![ANYmal quadruped in the OCS2 legged robot example](/img/lessons/projects_locomotion_1-contact-solvers.webp)\n*OCS2 legged-robot reference example; it is not evidence that both benchmark controllers are already interchangeable. Source: [Reference setup](https://leggedrobotics.github.io/ocs2/robotic_examples.html), unknown.*\n\n## What you will learn\n\n- **Model predictive control (MPC)** repeatedly predicts a short future, optimizes commands and replans using new measurements.\n- **Convex optimization** uses a specially structured problem; MIT's reference simplifies robot dynamics to obtain this form rather than solving arbitrary contact discovery.\n- **Nonlinear control optimization** can retain richer relationships, but its model, constraints and numerical settings still determine what comparison is meaningful.\n\n> **Key idea:** Benchmark complete, explicitly defined control problems, not the words “convex” and “nonlinear” on two software repositories.\n\n## What you need\n\n- **Background:** Start with Reproduce a simulated MPC trot and Model predictive control for legged robots.\n- **Setup:** One robot model, simulator and contact timetable; compatible convex and nonlinear implementations sharing state, command and force conventions.\n- **References:** Cheetah-Software provides a convex MPC starting point; OCS2 provides nonlinear optimal-control tools and a legged example, not an automatic matched benchmark.\n- **Planning estimate:** 1-2 months; hardware €0 in simulation, excluding computer/GPU costs. Porting both controllers onto the same model is part of the work.\n\n## Steps\n\n1. **Write a shared contract:** Fix terrain, robot parameters, requested motion, contact sequence and motor limits before tuning either implementation.\n2. **Match the task:** Align prediction duration, update rate and tracking objectives where possible; list remaining model differences instead of hiding them.\n3. **Instrument computation:** Time complete controller updates and separate solver time, model preparation and interface overhead.\n\n```python\nstarted = perf_counter()\nresult = controller.update(state, reference, contacts)\nelapsed = perf_counter() - started\nlog(elapsed, result.status, tracking_error, violations)\n```\n\n4. **Replay normal trials:** Compare matched starts and commands; record body tracking error and contact-force constraint violations, not only visual smoothness.\n5. **Exercise failures:** Include zero commands, no-contact starts, invalid observations, infeasible targets and motor saturation; record rejected solutions and missed deadlines.\n6. **Demo the trade-offs:** Synchronize robot replays with timing and error plots; count falls, timeouts and successful runs for both methods.\n\n```mermaid\nflowchart LR\n  A[Shared state and schedule] --> B[Convex problem]\n  A --> C[Nonlinear problem]\n  B --> D[Controller result]\n  C --> D\n  D --> E[Timing and simulation logs]\n```\n\n## Common pitfalls\n\n- **Different robots** turn a solver comparison into a platform comparison; port carefully or label the study exploratory.\n- **Solver success** does not prove physical feasibility; inspect applied forces and actual simulated contacts.\n- **Average timing** hides occasional stalls; show the timing distribution and deadline misses alongside average tracking error.\n\n## When it's done\n\n- **Deliver a reproducible benchmark:** Include model files, controller settings, timing boundaries, hardware description and the fixed test set.\n- **State a bounded conclusion:** Explain which implementation worked better under these conditions; do not claim one formulation universally dominates the other.",
+      "resources": [
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model Predictive Control",
+          "url": "https://www.youtube.com/watch?v=q6zxCvCxhic",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the convex-MPC reference robot execute different gaits."
+        },
+        {
+          "title": "Robotic Examples",
+          "url": "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the nonlinear legged example's gait schedule, dynamics options and constraints."
+        },
+        {
+          "title": "mit-biomimetics/Cheetah-Software",
+          "url": "https://github.com/mit-biomimetics/Cheetah-Software",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find the convex MPC implementation and simulator integration to study before porting."
+        },
+        {
+          "title": "Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model-Predictive Control",
+          "url": "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the free manuscript explaining the simplifications used to obtain convex force planning."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=q6zxCvCxhic",
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html#legged-robot",
+        "https://github.com/mit-biomimetics/Cheetah-Software",
+        "https://dspace.mit.edu/entities/publication/bc8c7e1e-5830-443f-a879-787947111fcf",
+        "https://leggedrobotics.github.io/ocs2/robotic_examples.html"
+      ]
+    },
+    {
+      "node_id": "p:compare-gait-energy-and-slip",
+      "type": "project",
+      "name": "Compare gait energy and slip",
+      "summary": "Compare simulated gaits at matched achieved speeds, logging a mechanical-energy proxy, stance-foot slip, contact loss and falls.",
+      "lesson_md": "## In one sentence\n\nCompare simulated gaits at matched achieved speeds, logging a mechanical-energy proxy, stance-foot slip, contact loss and falls.\n\n![AllGaits photographs showing walk, trot, pace, bound and other quadruped gaits](/img/lessons/projects_locomotion_1-gait-energy-slip.webp)\n*Published AllGaits demonstrations illustrate gait differences; the proposed comparison is simulation-only. Source: [Reference setup](https://arxiv.org/html/2411.04787), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **A gait** specifies repeated foot-contact timing; changing that pattern can change body motion and effort even at the same requested speed.\n- **Torque** is rotational force; multiplying joint torque by angular velocity gives mechanical power, not battery power.\n- **Stance-foot slip** is motion along the ground while a foot is contacting it; a moving swing foot should not count as slipping.\n\n> **Key idea:** A lower effort score is not an improvement if the robot moves more slowly, slides or falls.\n\n## What you need\n\n- **Background:** Build an interactive gait phase viewer introduces contact timing; Gaits & gait cycles supplies the vocabulary for comparing patterns.\n- **Setup:** One simulated quadruped with selectable gaits, measured joint torques and velocities, contact logs and a repeatable surface.\n- **Planning estimate:** 2-4 weeks; hardware €0 in simulation, excluding computer/GPU costs. Start with compatible existing gaits rather than training every pattern from scratch.\n\n## Steps\n\n1. **Freeze the experiment:** Keep robot mass, motor model, surface and route unchanged; treat each gait as a configuration in the same benchmark harness.\n2. **Match achieved speed:** Log actual displacement and duration; reject or separately report trials that cannot meet the shared motion task.\n3. **Integrate an effort proxy:** Sum absolute joint mechanical power over time; document this convention so braking cannot silently cancel propulsive effort.\n\n```python\npower_proxy = abs(joint_torque * joint_velocity).sum()\nenergy_proxy += power_proxy * timestep\n```\n\n4. **Measure slip during contact:** Accumulate horizontal foot travel only during measured stance; record unexpected contact loss separately from planned swing.\n5. **Test difficult cases:** Include standstill, no-contact starts, invalid torque samples and motor limits; separate falls and timeouts from completed traversals.\n6. **Film the comparison:** Show synchronized gait replays, speed, energy proxy and slip traces; compare complete routes rather than cherry-picked stable moments.\n\n```mermaid\nflowchart LR\n  A[Matched route and surface] --> B[Selectable gait]\n  B --> C[Joint and contact logs]\n  C --> D[Energy proxy]\n  C --> E[Slip and failures]\n  D --> F[Compare at achieved speed]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Commanded torque** may differ from applied torque after motor limits; use the applied quantity or label the measurement limitation.\n- **Contact schedules** describe intended stance, not measured contact; keep both traces to expose missed touchdowns.\n- **Battery claims** require an electrical model or measurements; this mechanical proxy alone cannot establish runtime.\n\n## When it's done\n\n- **Deliver a results table:** For every gait, include achieved speed, completed distance, proxy definition, slip and failure counts.\n- **Connect the next project:** Keep conservative successful settings for Transfer a conservative gait to Bittle; simulated efficiency does not establish physical compatibility or safety.",
+      "resources": [
+        {
+          "title": "AllGaits: Learning All Quadruped Gaits and Transitions",
+          "url": "https://www.youtube.com/watch?v=OLoWSX_R868",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See distinct gait patterns before comparing their energy and motion."
+        },
+        {
+          "title": "StanfordQuadruped/src/Gaits.py at master · stanfordroboticsclub/StanfordQuadruped · GitHub",
+          "url": "https://github.com/stanfordroboticsclub/StanfordQuadruped/blob/master/src/Gaits.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect how phase timing maps to intended stance and flight."
+        },
+        {
+          "title": "AllGaits: Learning All Quadruped Gaits and Transitions",
+          "url": "https://arxiv.org/html/2411.04787",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study matched-speed gait efficiency and why different metrics can select different gaits."
+        },
+        {
+          "title": "Learning Agile and Dynamic Motor Skills for Legged Robots",
+          "url": "https://arxiv.org/html/1901.08652",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Inspect mechanical-power evaluation and the supplementary stance-foot slip cost."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=OLoWSX_R868",
+        "https://github.com/stanfordroboticsclub/StanfordQuadruped/blob/master/src/Gaits.py",
+        "https://arxiv.org/html/2411.04787",
+        "https://arxiv.org/html/1901.08652"
+      ]
+    },
+    {
+      "node_id": "p:compare-hybrid-and-leg-only-energy-proxies",
+      "type": "project",
+      "name": "Compare hybrid and leg-only energy proxies",
+      "summary": "Compare rolling-and-stepping with leg-only motion on matched simulated routes, using identical mass assumptions and clearly labeled energy proxies.",
+      "lesson_md": "## In one sentence\n\nCompare rolling-and-stepping with leg-only motion on matched simulated routes, using identical mass assumptions and clearly labeled energy proxies.\n\n![Wheeled ANYmal traversing a plank, rough terrain and underground environments](/img/lessons/projects_locomotion_1-hybrid-energy.webp)\n*Published wheeled-ANYmal reference demonstrations, not energy results for the student benchmark. Source: [Reference setup](https://arxiv.org/html/1909.07193v3), unknown.*\n\n## What you will learn\n\n- **Hybrid locomotion** combines rolling and stepping; Wheel-legged hybrid locomotion explains why the two contact modes need different constraints.\n- **An energy proxy** is a declared stand-in measurement, such as accumulated mechanical effort; it is not automatically electrical consumption.\n- **A fair comparison** controls payload, route and achieved speed, like benchmarking two algorithms on the same dataset rather than different workloads.\n\n> **Key idea:** Count the wheel motors too, and disclose what your model leaves out before interpreting an apparent energy saving.\n\n## What you need\n\n- **Background:** Complete Switch between roll and step modes before comparing efficiencies; mode switching must already work reliably.\n- **Setup:** A compatible wheeled-leg robot model, hybrid and leg-only controllers, repeatable routes, and logs of every motor's torque and speed.\n- **Tools:** OCS2 is related control infrastructure, not proof that your chosen wheeled robot and both controllers are available.\n- **Planning estimate:** 1-2 months; hardware €0 in simulation, excluding computer/GPU costs. Unknown motor losses must remain explicitly unknown.\n\n## Steps\n\n1. **Define the two modes:** Specify whether leg-only uses locked wheels on the same robot or another model; document the resulting contact assumptions.\n2. **Match mass assumptions:** Keep total mass and payload equal; disclose remaining mass-distribution, geometry and motor differences that could confound the comparison.\n3. **Freeze routes and commands:** Include flat travel and obstacles; compare achieved speed and route completion before interpreting energy scores.\n4. **Integrate all motor effort:** Include both leg and wheel joints in the same absolute-power convention; report contributions separately as well as together.\n\n```python\nleg_power = abs(leg_torque * leg_velocity).sum()\nwheel_power = abs(wheel_torque * wheel_velocity).sum()\nenergy_proxy += (leg_power + wheel_power) * timestep\n```\n\n5. **Exercise edge cases:** Include zero motion, no-contact starts, invalid motor logs, wheel slip and motor limits; retain falls and timeout counts.\n6. **Film paired routes:** Overlay mode labels, achieved distance and cumulative effort; show failures and disclose which losses the motor model omits.\n\n```mermaid\nflowchart LR\n  A[Matched route and mass] --> B[Hybrid motion]\n  A --> C[Leg-only motion]\n  B --> D[All motor logs]\n  C --> D\n  D --> E[Effort and completion comparison]\n```\n\n## Common pitfalls\n\n- **Removing wheel mass** changes the experiment; a lighter leg-only robot is not the same comparison as disabling rolling on one platform.\n- **Ignored wheel effort** makes rolling appear artificially free; a velocity-controlled wheel without torque telemetry cannot support the proposed mechanical comparison.\n- **Net-work cancellation** can hide effort during braking; state your sign convention and avoid claiming regeneration without an appropriate motor model.\n\n## When it's done\n\n- **Deliver reproducible evidence:** Publish route definitions, mass assumptions, contact conventions, per-mode effort and completed-distance results.\n- **Bound the conclusion:** Explain differences for this simulator and model; do not turn a proxy into a battery-life claim or universal hardware ranking.",
+      "resources": [
+        {
+          "title": "Rolling in the Deep – Hybrid Locomotion for Wheeled-Legged Robots",
+          "url": "https://www.youtube.com/watch?v=ukY0vyM-yfY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch wheels and legs combine during reference hybrid maneuvers."
+        },
+        {
+          "title": "Research | Marko Bjelonic",
+          "url": "https://www.markobjelonic.com/research/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read the researcher's descriptions of hybrid motion and efficiency experiments."
+        },
+        {
+          "title": "Rolling in the Deep – Hybrid Locomotion for Wheeled-Legged Robots using Online Trajectory Optimization",
+          "url": "https://arxiv.org/html/1909.07193v3",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Inspect rolling constraints, contact timing and the wheeled robot setup."
+        },
+        {
+          "title": "Keep Rollin’ – Whole-Body Motion Control and Planning for Wheeled Quadrupedal Robots",
+          "url": "https://arxiv.org/html/1809.03557",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the mechanical cost-of-transport comparison and its experimental conditions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=ukY0vyM-yfY",
+        "https://www.markobjelonic.com/research/",
+        "https://arxiv.org/html/1909.07193v3",
+        "https://arxiv.org/html/1809.03557"
+      ]
+    },
+    {
+      "node_id": "p:compare-nominal-and-residual-dynamics-tracking",
+      "type": "project",
+      "name": "Compare nominal and residual-dynamics tracking",
+      "summary": "Compare nominal and learned-correction motion tracking under a known simulated dynamics mismatch, using held-out motions and reporting failures as well as tracking error.",
+      "lesson_md": "## In one sentence\n\nCompare nominal and learned-correction motion tracking under a known simulated dynamics mismatch, using held-out motions and reporting failures as well as tracking error.\n\n![ASAP pipeline showing motion tracking, delta action learning and policy fine-tuning](/img/lessons/projects_locomotion_1-residual-tracking.webp)\n*Published ASAP pipeline; this project is an inspired simulation study, not a reproduction of hardware results. Source: [Reference setup](https://agile.human2humanoid.com/), unknown.*\n\n## What you will learn\n\n- **Nominal dynamics** are the simulator's original rules for how forces produce motion; **dynamics mismatch** means those rules differ from the evaluation environment.\n- **A residual correction** learns what the original model misses, like a small compatibility adapter around an existing API rather than a complete rewrite.\n- **ASAP learns delta actions:** Its correction changes simulated actions during policy fine-tuning; this is not interchangeable with directly predicting a residual next state.\n\n> **Key idea:** Lower training error is not enough; the corrected approach must improve tracking on mismatch cases it did not train on.\n\n## What you need\n\n- **Background:** Start with Retargeting-quality study on BeyondMimic and Humanoid motion imitation & retargeting; keep the reference motion fixed throughout the comparison.\n- **Setup:** A compatible humanoid model, reference motions, a working tracker and controllable simulation parameters; Isaac Sim / Isaac Lab is a related map tool.\n- **Planning estimate:** 3+ months; hardware €0 in simulation, excluding computer/GPU costs. Verify model, motion and training-code compatibility before committing to full experiments.\n\n## Steps\n\n1. **Freeze a baseline:** Save the nominal simulator, tracker and evaluation motions; measure ordinary tracking before deliberately introducing a mismatch.\n2. **Create a target simulator:** Change one documented dynamics parameter and collect rollouts there; preserve the unmodified simulator as the nominal reference.\n3. **Choose the correction interface:** For an ASAP-inspired variant, train a delta-action model from paired rollout discrepancies; document its inputs, outputs and fitting objective.\n4. **Align and fine-tune:** Freeze the learned correction inside nominal simulation while updating the tracker; keep evaluation in the target simulator without that correction.\n\n`aligned_action = policy_action + learned_delta_action`\n\n5. **Test generalization:** Compare original and fine-tuned trackers on held-out motions; include no mismatch, zero commands, no contacts, invalid observations and motor limits.\n6. **Film matched replays:** Show reference and actual motion with tracking-error plots; report falls, timeouts, training compute and cases where correction hurts.\n\n```mermaid\nflowchart LR\n  A[Target simulator rollouts] --> B[Learn correction]\n  B --> C[Freeze correction]\n  C --> D[Fine-tune tracker in aligned sim]\n  D --> E[Evaluate in target sim]\n  F[Nominal tracker] --> E\n```\n\n## Common pitfalls\n\n- **Evaluation leakage** occurs when held-out motions or target test rollouts enter correction training; split data before fitting.\n- **A residual action model** and a residual dynamics model solve different parameterizations; name your implementation accurately rather than borrowing a label.\n- **Different training budgets** confound correction with extra practice; include an equally fine-tuned nominal-control baseline.\n\n## When it's done\n\n- **Deliver a transparent comparison:** Publish mismatch settings, dataset splits, correction placement, training budgets and error distributions for every baseline.\n- **Keep claims narrow:** Explain this simulated alignment experiment; neither a good replay nor ASAP's published results establish your own real-world transfer.",
+      "resources": [
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the reference before-and-after tracking demonstrations."
+        },
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://agile.human2humanoid.com/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Follow the distinction between delta-action training, aligned fine-tuning and deployment."
+        },
+        {
+          "title": "ASAP: Aligning Simulation and Real-World Physics for Learning Agile Humanoid Whole-Body Skills",
+          "url": "https://arxiv.org/abs/2502.01143",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the dynamics-mismatch study and its baseline comparisons."
+        },
+        {
+          "title": "LeCAR-Lab/ASAP",
+          "url": "https://github.com/LeCAR-Lab/ASAP",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect the motion-tracking, delta-action and fine-tuning workflows before choosing a compatible subset."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=tu7LSNYWDTs",
+        "https://agile.human2humanoid.com/",
+        "https://arxiv.org/abs/2502.01143",
+        "https://github.com/LeCAR-Lab/ASAP"
+      ]
+    },
+    {
+      "node_id": "p:compare-shared-and-per-body-policy-training",
+      "type": "project",
+      "name": "Compare shared and per-body policy training",
+      "summary": "Compare one shared locomotion policy with separate body-specific policies under equal total training compute, testing unseen robot shapes and adaptation needs.",
+      "lesson_md": "## In one sentence\n\nCompare one shared locomotion policy with separate body-specific policies under equal total training compute, testing unseen robot shapes and adaptation needs.\n\n![Collection of simulated legged robots and real quadrupeds from One Policy to Run Them All](/img/lessons/projects_locomotion_1-shared-body-policy.webp)\n*Published multi-embodiment reference setup; use a smaller compatible subset for the student comparison. Source: [Reference setup](https://github.com/nico-bohlinger/one_policy_to_run_them_all), unknown.*\n\n## What you will learn\n\n- **A policy** maps observations to motor commands; a shared policy reuses learned parameters, while body-specific policies are trained separately.\n- **Morphology** means the robot's body structure and proportions; different joint counts can change observation and action sizes, not merely appearance.\n- **Cross-body training** resembles one service supporting several API schemas: an explicit representation must connect each body's sensors and motors to shared computation.\n\n> **Key idea:** Sharing weights is useful only if it improves the accuracy, compute or adaptation trade-off under a fair evaluation budget.\n\n## What you need\n\n- **Background:** Start with Test one policy on scaled virtual quadrupeds and Cross-embodiment locomotion policies before mixing substantially different bodies.\n- **Setup:** Compatible robot assets, shared task definitions, training code, saved model weights and per-body evaluation logs.\n- **Tools:** Isaac Sim / Isaac Lab and MuJoCo Playground are related environments; do not mix engines between experimental groups without reporting the confound.\n- **Planning estimate:** 3+ months; hardware €0 in simulation, excluding computer/GPU costs. Begin with a small compatible body family and verify asset licenses.\n\n## Steps\n\n1. **Split bodies first:** Reserve unseen proportions or models for testing; publish which morphologies are training, validation and held-out cases.\n2. **Define the interface:** Record joint ordering, action units, observation scaling and body descriptors (numbers describing geometry); test the mapping before launching training.\n3. **Allocate equal total compute:** Give the shared run the same aggregate GPU-time budget as all body-specific runs combined, including declared tuning and adaptation costs.\n\n```python\nseparate_cost = sum(run.accelerator_seconds for run in separate_runs)\nshared_cost = shared_run.accelerator_seconds\nreport(shared_cost, separate_cost, adaptation_cost)\n```\n\n4. **Train matched baselines:** Keep tasks, rewards and evaluation commands aligned; record random seed, training progress and each body's share of sampled experience.\n5. **Evaluate transfer and faults:** Test seen and unseen bodies, then budgeted adaptation; include zero commands, absent contacts, invalid body descriptors and motor limits.\n6. **Demo paired evaluations:** Show tracking error and falls per body; plot adaptation data against performance instead of presenting only a pooled success score.\n\n```mermaid\nflowchart LR\n  A[Training body set] --> B[Shared policy]\n  A --> C[Separate policies]\n  B --> D[Seen and unseen evaluation]\n  C --> D\n  D --> E[Budgeted adaptation]\n  E --> F[Per-body comparison]\n```\n\n## Common pitfalls\n\n- **Per-body budgets** multiply total compute; equal steps for every specialist are not automatically fair against one shared run.\n- **Retuned body settings** are adaptation information; count changed gains, descriptors and reward tuning rather than claiming transfer without adaptation.\n- **Averages hide failures:** A successful large body can obscure a failing smaller one; retain separate scores and failure categories.\n\n## When it's done\n\n- **Deliver an auditable comparison:** Include body splits, interface mappings, actual compute, training curves and per-body results before and after adaptation.\n- **State the limits:** Distinguish unseen scaling variants from genuinely new structures; simulated generalization does not prove arbitrary hardware transfer.",
+      "resources": [
+        {
+          "title": "One Policy to Run Them All: an End-to-end Learning Approach to Multi-Embodiment Locomotion",
+          "url": "https://www.youtube.com/watch?v=BbbBAH-T7-Q",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch one learned policy operate across different legged robot bodies."
+        },
+        {
+          "title": "One Policy to Run Them All",
+          "url": "https://nico-bohlinger.github.io/one_policy_to_run_them_all_website/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Explore the robot examples and see how the morphology-aware architecture routes observations."
+        },
+        {
+          "title": "nico-bohlinger/one_policy_to_run_them_all",
+          "url": "https://github.com/nico-bohlinger/one_policy_to_run_them_all",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect training, evaluation and new-robot configuration requirements."
+        },
+        {
+          "title": "One Policy to Run Them All: an End-to-end Learning Approach to Multi-Embodiment Locomotion",
+          "url": "https://www.ias.informatik.tu-darmstadt.de/uploads/Team/NicoBohlinger/one_policy_to_run_them_all.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the shared architecture and evaluation design before specifying the student compute comparison."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=BbbBAH-T7-Q",
+        "https://nico-bohlinger.github.io/one_policy_to_run_them_all_website/",
+        "https://github.com/nico-bohlinger/one_policy_to_run_them_all",
+        "https://www.ias.informatik.tu-darmstadt.de/uploads/Team/NicoBohlinger/one_policy_to_run_them_all.pdf"
+      ]
     }
   ]
 }
