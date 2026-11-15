@@ -512,6 +512,135 @@
         "https://raw.githubusercontent.com/RobotLocomotion/drake/master/tutorials/dynamical_systems.ipynb",
         "https://github.com/RobotLocomotion/drake/blob/master/LICENSE.TXT"
       ]
+    },
+    {
+      "node_id": "r:dynamixel-protocol-2-0",
+      "type": "robot",
+      "name": "Dynamixel (Protocol 2.0)",
+      "summary": "Dynamixel Protocol 2.0 is the addressed serial message format used to command compatible ROBOTIS actuators and read their responses.",
+      "lesson_md": "## In one sentence\n\nDynamixel Protocol 2.0 is the addressed serial message format used to command compatible ROBOTIS actuators and read their responses.\n\n![ROBOTIS diagram of half-duplex communication between a controller and DYNAMIXEL actuators](/img/lessons/robots_simulator_tool_2-dynamixel-protocol-2-0.webp)\n*ROBOTIS illustrates the shared half-duplex communication path. Source: [Publisher](https://emanual.robotis.com/docs/en/dxl/protocol2/), license unknown.*\n\n## Why it matters for us\n\n- **A motor becomes an endpoint**: your program sends an addressed instruction and receives structured feedback, rather than directly generating every motor-control signal.\n- **Software analogy**: imagine an API over a shared wire; the device ID selects the server, and the instruction selects the operation.\n\n## What it is made of / how it works\n\n- **Instruction packets** carry a header, destination ID, length, command, parameters and error-detection checksum; status packets report results and errors.\n- **Half-duplex communication** means devices take turns sending; the controller must finish transmitting before switching to receive mode.\n- **Unique IDs** distinguish actuators on the same bus; duplicate IDs cause collisions, not two reliably synchronized motors.\n\n| Protocol property | Published value |\n| --- | --- |\n| Serial framing | 8 data bits, 1 stop bit, no parity |\n| Device IDs | 0–252 |\n| Broadcast ID | 254 |\n| Header and reserved byte | FF FF FD 00 |\n| CRC checksum | 16 bits |\n| Ping instruction | 0x01 |\n\n- **Worked example**: a Ping with no parameters has length 3: one instruction byte plus two checksum bytes; it checks whether the addressed device responds.\n- **Read before writing**: register addresses and data widths belong to the specific actuator's control table, not to one universal motor specification.\n\n> **Key idea:** A valid packet format is only half the interface; the destination actuator determines what each register means.\n\n## Key terms\n\n- **Packet**: a structured sequence of transmitted bytes.\n- **Control table**: an actuator's addressed settings and measurements.\n- **CRC**: a checksum for detecting damaged messages.\n- **Broadcast**: an instruction addressed to all connected devices.\n\n## Getting started\n\n1. **Read the free protocol reference** and identify your actuator's supported protocol and electrical interface before choosing an adapter.\n2. **Inspect the SDK Ping example**; set the correct port, baud rate and device ID rather than copying its model-specific defaults.\n3. **Ping one actuator first** and record its returned model number before attempting position writes.\n4. **Decode the response** against the packet layout, including the error field, then explore grouped reads in the official video.\n\n## Used in\n\n- **Smart servos & serial actuator buses** connects the packet view to actuator networks.\n- **Joint bus shoot-out: serial vs CAN-FD vs EtherCAT** can compare communication behaviour, not just whether a joint moves.\n",
+      "resources": [
+        {
+          "title": "DYNAMIXEL SDK",
+          "url": "https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/sample_code/python_ping_protocol_2_0/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the Protocol 2.0 Ping example and its connection settings."
+        },
+        {
+          "title": "DYNAMIXEL Tips | Use Fast Sync and Fast Bulk Read Instruction for Speedy Communication",
+          "url": "https://www.youtube.com/watch?v=claLIK8omIQ",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See ROBOTIS explain grouped Protocol 2.0 reads."
+        },
+        {
+          "title": "DYNAMIXEL Protocol 2.0 | ROBOTIS Docs",
+          "url": "https://docs.robotis.com/docs/dxl/protocol/protocol2",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Decode packet fields, instructions and returned errors."
+        },
+        {
+          "title": "GitHub - ROBOTIS-GIT/DynamixelSDK: ROBOTIS Dynamixel SDK (Protocol1.0/2.0) · GitHub",
+          "url": "https://github.com/ROBOTIS-GIT/DynamixelSDK",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find control libraries and examples for supported languages."
+        }
+      ],
+      "sources": [
+        "https://docs.robotis.com/docs/dxl/protocol/protocol2",
+        "https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/sample_code/python_ping_protocol_2_0/",
+        "https://github.com/ROBOTIS-GIT/DynamixelSDK"
+      ]
+    },
+    {
+      "node_id": "r:dynaslam",
+      "type": "robot",
+      "name": "DynaSLAM",
+      "summary": "DynaSLAM is a visual mapping system that detects moving objects so camera tracking and maps can focus on the static background.",
+      "lesson_md": "## In one sentence\n\nDynaSLAM is a visual mapping system that detects moving objects so camera tracking and maps can focus on the static background.\n\n![DynaSLAM published comparison showing dynamic scenes and reconstructed static backgrounds](/img/lessons/robots_simulator_tool_2-dynaslam.webp)\n*The authors compare scene inputs with dynamic-content removal and background reconstruction. Source: [Publisher](https://bertabescos.github.io/DynaSLAM/), license unknown.*\n\n## Why it matters for us\n\n- **People are not walls**: a camera sees both stable scenery and moving foregrounds; treating everything as fixed can undermine its motion estimate.\n- **Software analogy**: filter unstable records before building an index; DynaSLAM filters dynamic image regions before relying on them for mapping.\n\n## What it is made of / how it works\n\n- **ORB-SLAM2 provides the base**: DynaSLAM extends this camera-tracking and mapping system with dynamic-object detection and background reconstruction.\n- **Two detection routes** use observations from multiple viewpoints, deep learning, or both to identify moving content.\n- **Background inpainting** fills regions hidden by moving objects using the scene's static map; it is distinct from estimating camera motion.\n\n| Research-system property | Published detail |\n| --- | --- |\n| Paper | RA-L and IROS 2018 |\n| Camera configurations | Monocular, stereo, RGB-D |\n| Base system | ORB-SLAM2 |\n| Segmentation model | Mask R-CNN |\n| Example datasets | TUM and KITTI |\n| Repository licence | CC BY-NC 4.0 |\n\n- **Worked example**: in the RGB-D runner, omit both optional paths for geometry-only detection; supply a masks path to use Mask R-CNN segmentation.\n- **Add the output path** to save inpainted frames; the README also allows reusing previously computed masks instead of computing them again.\n\n> **Key idea:** A useful long-lived map should describe the room, not the person who happened to walk through it.\n\n## Key terms\n\n- **SLAM**: simultaneous localization and mapping, estimating camera position while building a scene map.\n- **RGB-D**: colour images paired with depth measurements.\n- **Mask**: a per-image indication of which pixels belong to selected regions.\n- **Inpainting**: reconstructing image regions hidden or removed from the input.\n\n## Getting started\n\n1. **Watch the authors' demonstration** and use their free project page's sliders to compare input and reconstructed backgrounds.\n2. **Read the repository setup** before installing; it lists Python 2.7 and older vision dependencies, so isolate this historical research environment.\n3. **Inspect a TUM RGB-D example** and its image associations, which pair colour and depth frames before processing.\n4. **Compare detection settings** on the same sequence; inspect both estimated motion and the remaining static map, not just attractive reconstructed images.\n\n## Used in\n\n- **Break a SLAM replay with moving foregrounds** uses this exact failure mode as an experiment.\n- **Robust, dynamic & lifelong state estimation** asks how mapping survives changing scenes; **Visual odometry & visual-inertial SLAM** supplies the camera-motion foundation.\n",
+      "resources": [
+        {
+          "title": "DynaSLAM",
+          "url": "https://www.youtube.com/watch?v=EabI_goFmQs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors demonstrate moving-object removal and mapping."
+        },
+        {
+          "title": "DynaSLAM",
+          "url": "https://bertabescos.github.io/DynaSLAM/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Slide between original inputs and reconstructed backgrounds."
+        },
+        {
+          "title": "GitHub - BertaBescos/DynaSLAM",
+          "url": "https://github.com/BertaBescos/DynaSLAM",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Study RGB-D runner options and historical setup requirements."
+        },
+        {
+          "title": "DynaSLAM: Tracking, Mapping and Inpainting in Dynamic Scenes",
+          "url": "https://arxiv.org/abs/1806.05620",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original method and evaluation."
+        }
+      ],
+      "sources": [
+        "https://bertabescos.github.io/DynaSLAM/",
+        "https://github.com/BertaBescos/DynaSLAM",
+        "https://raw.githubusercontent.com/BertaBescos/DynaSLAM/master/README.md",
+        "https://arxiv.org/abs/1806.05620",
+        "https://raw.githubusercontent.com/BertaBescos/DynaSLAM/master/LICENSE.txt"
+      ]
+    },
+    {
+      "node_id": "r:edge-impulse",
+      "type": "robot",
+      "name": "Edge Impulse",
+      "summary": "Edge Impulse is a platform for collecting sensor data, training machine-learning pipelines and deploying them to run locally on devices.",
+      "lesson_md": "## In one sentence\n\nEdge Impulse is a platform for collecting sensor data, training machine-learning pipelines and deploying them to run locally on devices.\n\n![Edge Impulse Studio screenshot showing the continuous-motion impulse configuration](/img/lessons/robots_simulator_tool_2-edge-impulse.webp)\n*The official motion tutorial configures the processing and learning blocks. Source: [Publisher](https://docs.edgeimpulse.com/docs/tutorials/end-to-end-tutorials/continuous-motion-recognition), license unknown.*\n\n## Why it matters for us\n\n- **A small perception project** can start with phone motion data rather than a complete robot, making the data-to-deployment workflow easier to understand.\n- **Software analogy**: treat the workflow like a build pipeline; data and processing configuration become a deployable package, not just a trained weights file.\n\n## What it is made of / how it works\n\n- **Collect labelled examples** of sensor readings; labels tell training which gesture each recording represents.\n- **Design an impulse**: this pipeline slices recordings into windows, extracts informative features, then uses a learning block to classify them.\n- **Deploy the whole pipeline**: exported packages include configuration, signal processing and the learned model; your application still needs to supply sensor samples.\n\n| Motion tutorial setting | Published value |\n| --- | --- |\n| Sensor | Three-axis accelerometer |\n| Example sampling rate | 62.5 Hz |\n| Recording duration | 10 seconds |\n| Window size | 2000 ms |\n| Window increase | 80 ms |\n| Gesture labels | idle, snake, wave, updown |\n\n- **Worked example**: one 10-second recording at 62.5 samples per second contains about 625 three-axis samples; the tutorial classifies overlapping two-second windows.\n- **Inspect the confusion matrix** to see which gesture labels are mistaken for each other, then collect varied speeds and orientations instead of only repeating easy examples.\n\n> **Key idea:** The deployed result needs the same signal-processing pipeline as training, not merely the neural network.\n\n## Key terms\n\n- **Accelerometer**: a sensor measuring acceleration along its axes.\n- **Feature**: a numerical descriptor extracted from raw data, such as frequency information.\n- **Inference**: running a trained model on new input.\n- **Anomaly detection**: identifying input unlike the examples used to establish normal behaviour.\n\n## Getting started\n\n1. **Start with the public tutorial** and its prebuilt dataset; this avoids buying a development board for the first experiment.\n2. **Connect a phone** through the project's Devices page and QR code; allow the browser to access the required sensors.\n3. **Train the four gestures** using spectral analysis and classification, then test recordings not used for training.\n4. **Switch to classification mode** on the phone to build the WebAssembly package and run locally, including without an internet connection after loading.\n\n## Used in\n\n- **TinyML gesture/keyword control on an MCU** can build on this workflow; MCU means microcontroller, a small computer embedded in a device.\n- **Edge AI hardware & on-device inference** connects deployment choices to where predictions actually execute.\n",
+      "resources": [
+        {
+          "title": "Building a Continuous Motion Recognition System with Embedded Machine Learning",
+          "url": "https://www.youtube.com/watch?v=FseGCn-oBA0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow Edge Impulse through its motion-recognition workflow."
+        },
+        {
+          "title": "Motion recognition with anomaly detection - Edge Impulse Documentation",
+          "url": "https://docs.edgeimpulse.com/docs/tutorials/end-to-end-tutorials/continuous-motion-recognition",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build and evaluate the gesture pipeline step by step."
+        },
+        {
+          "title": "Mobile phone - Edge Impulse Documentation",
+          "url": "https://docs.edgeimpulse.com/hardware/devices/mobile-phone",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Collect sensor data and run local browser inference without a board."
+        },
+        {
+          "title": "Deployments - Edge Impulse Documentation",
+          "url": "https://docs.edgeimpulse.com/hardware/deployments",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose an export package and understand sensor-integration responsibilities."
+        }
+      ],
+      "sources": [
+        "https://docs.edgeimpulse.com/docs/tutorials/end-to-end-tutorials/continuous-motion-recognition",
+        "https://docs.edgeimpulse.com/hardware/devices/mobile-phone",
+        "https://docs.edgeimpulse.com/hardware/deployments",
+        "https://docs.edgeimpulse.com/datasets/time-series/continuous-motion-recognition"
+      ]
     }
   ]
 }
