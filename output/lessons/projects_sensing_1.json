@@ -302,6 +302,161 @@
         "https://www.youtube.com/watch?v=-5e403JcevY",
         "https://www.youtube.com/watch?v=NfX0uOaXQ3c"
       ]
+    },
+    {
+      "node_id": "p:event-camera-illumination-flicker-throughput-envelope",
+      "type": "project",
+      "name": "Event-camera illumination-flicker throughput envelope",
+      "summary": "Expose one event camera to safe, controlled light flicker and measure how event rate, file throughput and data loss change as flicker and bias settings vary.",
+      "lesson_md": "## In one sentence\n\nExpose one event camera to safe, controlled light flicker and measure how event rate, file throughput and data loss change as flicker and bias settings vary.\n\n![Prophesee diagram of contrast-detector event generation from a changing light level](/img/lessons/projects_sensing_1-event-flicker.webp)\n*How a contrast detector turns light changes into ON and OFF events. Source: [Prophesee Event-Based Concepts](https://docs.prophesee.ai/stable/concepts.html), license unknown.*\n\n## What you will learn\n\n- **Event camera:** Each pixel emits an event only when its light level changes past a threshold; Prophesee encodes events as (x, y, polarity, time in µs).\n- **Flicker drives data volume:** A flickering lamp makes many pixels fire repeatedly, so throughput depends on the scene, not on a fixed frame rate.\n- **Biases:** Settings such as `bias_diff_on` and `bias_fo` tune contrast sensitivity and filter rapidly changing light.\n\n> **Key idea:** An event camera's bandwidth is set by the scene, so measure it under the worst lighting you expect.\n\n## What you need\n\n- **A supported event camera:** Borrowed or procured hardware listed in Prophesee's supported products, plus OpenEB or Metavision SDK.\n- A dimmable LED lamp with a safe controller, a laptop with fast storage, and a phone camera.\n\n## Steps\n\n1. **Record a static baseline** with steady light, then with the lamp off, logging events per second.\n2. **Sweep flicker frequency** in safe steps, recording a short file for each setting.\n3. **Change one bias at a time**, staying within documented ranges, and repeat the sweep.\n4. **Separate two numbers:** events the sensor generated versus events the recorder actually saved.\n5. **Force a failure:** write to a slow USB stick or unplug the camera, and note the warnings.\n\n```python\nimport numpy as np\nt_us = events[\"t\"]                    # microsecond timestamps\ncounts, _ = np.histogram(t_us, bins=np.arange(t_us.min(), t_us.max(), 10_000))\nrate_mev_s = counts / 0.01 / 1e6      # Mev/s per 10 ms bin\n```\n\n```mermaid\nflowchart LR\n  L[\"Flickering lamp\"] --> C[\"Event camera\"]\n  B[\"Bias settings\"] --> C\n  C --> E[\"Event stream x,y,p,t\"]\n  E --> R[\"Recorder file\"]\n  E --> M[\"Event-rate monitor\"]\n  R --> T[\"Throughput and loss table\"]\n  M --> T\n```\n\n## Common pitfalls\n\n- **Filtering changes latency:** Prophesee notes that raising the low-pass filter to remove flicker also increases sensor latency.\n- **Hidden on-chip filters:** Some sensors provide Anti-Flicker and Event Rate Control blocks; record whether they were on.\n- Do not claim a **latency advantage** unless you actually measured it.\n\n## When it's done\n\n- **A side-by-side video exists:** the lamp changes beside live event rate, file throughput and loss indicators, plus lamp-off and unplugged trials.\n- Read **Event cameras & asynchronous acquisition**, then try the **Recorded event-stream polarity and time microscope**.",
+      "resources": [
+        {
+          "title": "What is Event-Based Vision | Metavision by Prophesee",
+          "url": "https://www.youtube.com/watch?v=MjX3z-6n3iA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short visual introduction to how event cameras sense change."
+        },
+        {
+          "title": "Event-Based Concepts — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Defines contrast detection, polarity and microsecond timestamps."
+        },
+        {
+          "title": "Metavision® Intelligence Data Rate",
+          "url": "https://www.youtube.com/watch?v=RrftO5XU1G8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Prophesee's short clip on how event data rate behaves."
+        },
+        {
+          "title": "Biases",
+          "url": "https://docs.prophesee.ai/stable/hw/manuals/biases.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains contrast threshold and filter biases you will sweep."
+        },
+        {
+          "title": "Event Signal Processing",
+          "url": "https://docs.prophesee.ai/stable/hw/manuals/esp.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Describes Anti-Flicker and Event Rate Control on supported sensors."
+        },
+        {
+          "title": "prophesee-ai/openeb",
+          "url": "https://github.com/prophesee-ai/openeb",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Open-source modules to stream, record and read event data."
+        }
+      ],
+      "sources": [
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://docs.prophesee.ai/stable/hw/manuals/biases.html",
+        "https://docs.prophesee.ai/stable/hw/manuals/esp.html",
+        "https://github.com/prophesee-ai/openeb",
+        "https://raw.githubusercontent.com/prophesee-ai/openeb/main/README.md",
+        "https://www.youtube.com/watch?v=MjX3z-6n3iA",
+        "https://www.youtube.com/watch?v=RrftO5XU1G8"
+      ]
+    },
+    {
+      "node_id": "p:focus-and-resolution-changes-invalidate-camera-calibration",
+      "type": "project",
+      "name": "Focus and resolution changes invalidate camera calibration",
+      "summary": "Calibrate a webcam, then change only its focus or resolution and show with held-out images that the old calibration no longer fits.",
+      "lesson_md": "## In one sentence\n\nCalibrate a webcam, then change only its focus or resolution and show with held-out images that the old calibration no longer fits.\n\n![OpenCV chessboard calibration pattern with detected corners drawn](/img/lessons/projects_sensing_1-calib-invalid.webp)\n*Chessboard with detected corners from the OpenCV calibration tutorial. Source: [OpenCV calibration tutorial source](https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown), Apache-2.0.*\n\n## What you will learn\n\n- **Intrinsics:** OpenCV describes them as focal lengths (fx, fy) and optical centre (cx, cy), plus five **distortion coefficients** for lens bending.\n- **Calibration has a scope:** ROS `CameraInfo.msg` says these values are fixed during calibration and stores the calibrated width and height.\n- **Re-projection error:** The pixel gap between detected and predicted corners; OpenCV says closer to zero means more accurate parameters.\n\n> **Key idea:** A calibration file describes one camera in one configuration; change the configuration and you need new evidence.\n\n## What you need\n\n- **A webcam with manual controls:** Autofocus and auto-resolution you can lock, ideally with a manual focus setting.\n- A printed chessboard, OpenCV in Python, and a tripod or clamp so the target can stay unchanged.\n\n## Steps\n\n1. **Freeze settings:** disable autofocus, note focus value, resolution and camera ID.\n2. **Capture two sets** of at least 10 chessboard views, as OpenCV recommends: one to calibrate, one held out.\n3. **Calibrate and test** on the held-out set, recording the mean re-projection error.\n4. **Change one thing**, focus or resolution, then re-run the held-out test with the *old* calibration and with a fresh one.\n5. **Try failures:** a covered lens, a frame with no board, and a mismatched resolution file.\n\n```python\nimport cv2 as cv\nerr = []\nfor obj, img_pts in held_out:\n    ok, rvec, tvec = cv.solvePnP(obj, img_pts, K, dist)\n    proj, _ = cv.projectPoints(obj, rvec, tvec, K, dist)\n    err.append(cv.norm(img_pts, proj, cv.NORM_L2) / len(proj))\n```\n\n```mermaid\nflowchart LR\n  A[\"Locked settings\"] --> B[\"Calibrate with OpenCV\"]\n  B --> C[\"Held-out error\"]\n  C --> D[\"Change focus or resolution\"]\n  D --> E[\"Old vs new calibration error\"]\n```\n\n## Common pitfalls\n\n- **Silent autofocus:** If focus drifts during capture, you mixed two cameras in one dataset.\n- **Resizing is not free:** a driver may crop instead of scale, so recalibrate rather than rescaling numbers by hand.\n- Comparing errors on **training images only** hides overfitting; always keep a held-out set.\n\n## When it's done\n\n- **A side-by-side video exists:** the unchanged target before and after the change, with held-out residuals for old and new calibrations, plus covered-lens and no-board trials.\n- Revisit **RGB cameras & intrinsic calibration** and compare with the **Intro: calibrate a webcam and track AprilTags** project.",
+      "resources": [
+        {
+          "title": "Intrinsic Camera Calibration - 5 Minutes with Cyrill",
+          "url": "https://www.youtube.com/watch?v=26nV4oDLiqc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A short, clear explanation of what intrinsic calibration estimates."
+        },
+        {
+          "title": "py_calibration.markdown",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The standard tutorial: chessboard capture, calibration and re-projection error."
+        },
+        {
+          "title": "OpenCV Python Camera Calibration (Intrinsic, Extrinsic, Distortion)",
+          "url": "https://www.youtube.com/watch?v=H5qbRTikxI4",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Walks through the OpenCV calibration code step by step."
+        },
+        {
+          "title": "CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Shows how ROS stores intrinsics with the calibrated resolution and binning."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://www.youtube.com/watch?v=26nV4oDLiqc",
+        "https://www.youtube.com/watch?v=H5qbRTikxI4"
+      ]
+    },
+    {
+      "node_id": "p:gazebo-noise-model-fingerprint-with-known-ground-truth",
+      "type": "project",
+      "name": "Gazebo noise-model fingerprint with known ground truth",
+      "summary": "Run the same Gazebo sensor with and without a noise model, subtract the exact simulated truth, and fit the residuals to recover the noise you configured.",
+      "lesson_md": "## In one sentence\n\nRun the same Gazebo sensor with and without a noise model, subtract the exact simulated truth, and fit the residuals to recover the noise you configured.\n\n![Gazebo tutorial world with a robot facing a wall for sensor testing](/img/lessons/projects_sensing_1-gazebo-noise.webp)\n*Gazebo sensor tutorial world: a vehicle facing a wall. Source: [Gazebo Harmonic Sensors tutorial](https://gazebosim.org/docs/harmonic/sensors/), license unknown.*\n\n## What you will learn\n\n- **Ground truth:** In simulation you know the exact value a sensor *should* read, so error = measured − truth is computable.\n- **Noise fingerprint:** The residual's mean is **bias** and its spread is **standard deviation**; Gazebo's `GaussianNoiseModel` exposes a bias accessor.\n- **Model limits:** Kalibr's IMU model separates white noise from slowly drifting bias, which simple Gaussian noise may not capture.\n\n> **Key idea:** Simulation is the one place where you can grade a sensor against perfect truth.\n\n## What you need\n\n- **Simulation-only setup:** No hardware. Gazebo Harmonic following its Sensors tutorial, which adds an IMU and a lidar to a vehicle.\n- Python with NumPy and Matplotlib, and the `gz topic -e -t /imu` command to inspect messages.\n\n## Steps\n\n1. **Build the tutorial world** with the IMU and lidar facing a wall at a known distance.\n2. **Record an ideal run** with noise disabled to confirm residuals are zero.\n3. **Enable Gaussian noise** with values you choose and record again at a fixed update rate.\n4. **Fit the residuals:** compute mean, standard deviation and a histogram per axis or per ray.\n5. **Run controls:** an empty world with no wall, and a deliberately invalid noise setting; log what Gazebo reports.\n\nExample lidar residual check with a wall at 5.0 m:\n\n```python\nimport numpy as np\nres = ranges - 5.0                  # truth is exact in sim\nprint(res.mean(), res.std())        # e.g. 0.002, 0.010 m\n```\n\n```mermaid\nflowchart LR\n  W[\"Known world\"] --> S[\"Gazebo sensor\"]\n  N[\"Noise settings\"] --> S\n  S --> M[\"Measured values\"]\n  W --> T[\"Exact truth\"]\n  M --> R[\"Residual histogram\"]\n  T --> R\n```\n\n## Common pitfalls\n\n- **Wrong truth frame:** comparing lidar ranges from the sensor frame against distances measured from the robot centre adds a false bias.\n- **Too few samples:** a few hundred readings give a shaky standard deviation; record longer.\n- Do not claim **Gaussian noise reproduces real hardware**; real sensors also drift, saturate and drop data.\n\n## When it's done\n\n- **A screen recording exists:** ideal and noisy sensors side by side with residual histograms and bias estimates beside the exact truth, plus empty-world and invalid-config trials.\n- Next, study **Sensor simulation & noise models** and **Sensor characteristics, uncertainty & noise**.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Sensors",
+          "url": "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Gazebo's own walkthrough of adding and reading sensors."
+        },
+        {
+          "title": "Sensors — Gazebo harmonic documentation",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Step-by-step IMU and lidar setup used as the test world."
+        },
+        {
+          "title": "Add and Simulate Lidar in Gazebo and ROS2 Jazzy - Tutorial on Lidars in ROS2 and Jazzy",
+          "url": "https://www.youtube.com/watch?v=gEAdcgM7cCk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Adds a lidar in Gazebo with ROS 2, the sensor you will fingerprint."
+        },
+        {
+          "title": "Gazebo Sensors: GaussianNoiseModel Class Reference",
+          "url": "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "API reference for the Gaussian noise model applied to sensor values."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Explains noise terms beyond simple Gaussian noise for IMUs."
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+        "https://www.youtube.com/watch?v=gEAdcgM7cCk"
+      ]
     }
   ]
 }
