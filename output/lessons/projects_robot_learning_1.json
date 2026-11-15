@@ -443,6 +443,447 @@
         "https://imitation.readthedocs.io/en/latest/algorithms/dagger.html",
         "https://arxiv.org/abs/1011.0686"
       ]
+    },
+    {
+      "node_id": "p:denoising-budget-control-shootout",
+      "type": "project",
+      "name": "Denoising-budget control shootout",
+      "summary": "Compare diffusion-policy rollouts at different inference budgets without changing the task, training data or action horizon.",
+      "lesson_md": "## In one sentence\n\nCompare diffusion-policy rollouts at different inference budgets without changing the task, training data or action horizon.\n\n![Push-T demonstration of iterative action generation](/img/lessons/projects_robot_learning_1-denoising-budget-control-shootout.webp)\n*Push-T demonstration of iterative action generation. Source: [Published project media](https://diffusion-policy.cs.columbia.edu/), license unknown.*\n\n## What you will learn\n\n- **Denoising:** iteratively turning a noisy candidate action sequence into a usable prediction; each iteration consumes computation.\n- **Inference budget:** the sampling work allowed at deployment, distinct from the updates used to train the policy.\n- **Software analogy:** a server can spend longer refining an answer, but a control loop also pays for the delay before that answer arrives.\n\n> **Key idea:** Better-looking predictions are not automatically better control if computing them delays feedback.\n\n## What you need\n\n- **Setup:** Diffusion Policy, a compatible Push-T simulator and checkpoint, a timer and a video/trace recorder.\n- **Skills:** checkpoint loading and configuration; Multimodal action distribution movie explains why multiple plausible action sequences matter.\n- **Cost:** no robot purchase; use the same computer for all timed trials and report its CPU/GPU rather than quoting portable speed claims.\n\n## Steps\n\n1. **Freeze the experiment:** pin checkpoint, sampler, observation preprocessing, seeds, predicted horizon and executed action prefix. Record the original configuration before editing.\n2. **Choose supported budgets:** vary only the sampler’s inference-step setting through its documented interface; do not confuse training noise steps with deployment steps.\n3. **Time complete predictions:** include preprocessing and action decoding, warm up the model, and synchronize GPU work before ending a timer.\n4. **Run matched rollouts:** use identical resets and data for every budget. Include an absent target and corrupted observations; log validation stops separately.\n5. **Plot quality against cost:** show task success, prediction latency and missed control deadlines, not merely the model’s training loss.\n6. **Film synchronized runs:** overlay inference budget and measured runtime on each rollout, showing failures and pauses as well as smooth completions.\n\n**Worked trace:** log `observation_time`, `prediction_ready_time` and `first_action_time`; prediction latency and queue waiting are separate quantities.\n\n```mermaid\nflowchart LR\n  A[\"Observation\"] --> B\n  B[\"Timed denoising\"] --> C\n  C[\"Action prefix\"] --> D\n  D[\"Task score\"]\n```\n\n## Common pitfalls\n\n- **Unfair horizon changes:** a longer action prefix can hide slow inference by reducing calls while also delaying feedback.\n- **Sampler incompatibility:** changing a step count outside the scheduler’s supported configuration may produce a different algorithm or invalid sampling.\n- **Simulation timing:** distinguish a paused simulator from real-time execution; a paused-world success result does not measure latency robustness.\n\n## When it's done\n\n- **Deliverable:** repeatable latency/success curves and matched videos make the quality-versus-runtime trade-off visible.\n- **Next step:** Flow-versus-diffusion reproducibility challenge compares different generative heads only after this within-model budget experiment is understood.",
+      "resources": [
+        {
+          "title": "Push-T",
+          "url": "https://diffusion-policy.cs.columbia.edu/videos/highlight_pusht_process.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See iterative action prediction in the Push-T task."
+        },
+        {
+          "title": "Diffusion Policy",
+          "url": "https://diffusion-policy.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand receding-horizon diffusion control and its benchmarks."
+        },
+        {
+          "title": "Training Diffusion Policy",
+          "url": "https://robomimic.github.io/docs/tutorials/training_diffusion_policy.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect diffusion-policy configuration and training/evaluation workflow."
+        },
+        {
+          "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+          "url": "https://arxiv.org/abs/2303.04137",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original policy formulation and sampling design."
+        }
+      ],
+      "sources": [
+        "https://diffusion-policy.cs.columbia.edu/",
+        "https://diffusion-policy.cs.columbia.edu/videos/highlight_pusht_process.mp4",
+        "https://robomimic.github.io/docs/tutorials/training_diffusion_policy.html",
+        "https://arxiv.org/abs/2303.04137"
+      ]
+    },
+    {
+      "node_id": "p:embodiment-action-space-passport",
+      "type": "project",
+      "name": "Embodiment action-space passport",
+      "summary": "Create explicit action passports for different robots, showing why matching tensor shapes do not establish compatible commands.",
+      "lesson_md": "## In one sentence\n\nCreate explicit action passports for different robots, showing why matching tensor shapes do not establish compatible commands.\n\n![Open X-Embodiment collection of different robot platforms](/img/lessons/projects_robot_learning_1-embodiment-action-space-passport.webp)\n*Open X-Embodiment collection of different robot platforms. Source: [Published project media](https://robotics-transformer-x.github.io/), license unknown.*\n\n## What you will learn\n\n- **Embodiment:** the robot’s body, sensors and controllable motions; these define what observations and actions mean.\n- **Schema:** a machine-readable description of fields, dimensions, types and meanings, like an API specification.\n- **Software analogy:** two JSON messages can have identical keys but incompatible units; robot action arrays need semantic contracts too.\n\n> **Key idea:** Shared action dimensions do not imply shared action meaning.\n\n## What you need\n\n- **Setup:** a small Open X-Embodiment sample, its dataset descriptions and two robot models with documented joints for a viewer.\n- **Skills:** Python data inspection and basic plotting; start after Intro: run a pretrained policy in simulation.\n- **Cost:** no robot hardware is required. Download only a documented small sample first because dataset storage and transfer are separate costs.\n\n## Steps\n\n1. **Audit each source:** identify observations, action dimensions, sampling rate and episode boundaries. Mark unsupported units or coordinate frames as unknown.\n2. **Write passports:** record joint names, absolute versus incremental commands, reference frame, normalization, gripper meaning and any available limits.\n3. **Build the viewer:** animate two documented robot skeletons with different joint counts. Display joint labels beside the source action values and timestamps.\n4. **Compare contracts:** flag both structural differences and semantic conflicts. Require an explicit adapter before replaying a command on another embodiment.\n5. **Inject invalid cases:** remove a camera frame, change a declared unit and use an absent target; reject unvalidated motion and retain the audit record.\n6. **Show the demo:** switch between robots, reveal their passports and demonstrate a same-shaped command rejected because its meaning differs.\n\n**Worked passport:** fields such as `translation_unit`, `rotation_representation`, `reference_frame` and `is_delta` distinguish commands that a bare `shape` check cannot.\n\n```mermaid\nflowchart LR\n  A[\"Dataset sample\"] --> B\n  B[\"Metadata passport\"] --> C\n  C[\"Compatibility checks\"] --> D\n  D[\"Robot viewer\"]\n```\n\n## Common pitfalls\n\n- **Unknown metadata:** never infer radians, metres or control rate from plausible-looking values alone; consult the dataset documentation.\n- **Normalized actions:** shared numerical ranges can hide different scales and controller semantics. Preserve both raw and transformed descriptions.\n- **Animation overclaim:** a skeleton replay is a schema visualization, not evidence that a learned policy transfers successfully.\n\n## When it's done\n\n- **Deliverable:** two readable passports, a schema validator and an animation make the differences visible without training a policy.\n- **Next step:** Cross-robot negative-transfer benchmark can use these contracts to separate data-sharing questions from interface mistakes.",
+      "resources": [
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://robotics-transformer-x.github.io/video/teaser_compressed.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the variety of robots collected in Open X-Embodiment."
+        },
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://robotics-transformer-x.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand why cross-robot datasets need standardized representations."
+        },
+        {
+          "title": "google-deepmind/open_x_embodiment",
+          "url": "https://github.com/google-deepmind/open_x_embodiment",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect dataset transformations and the data-loading notebook."
+        },
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://arxiv.org/abs/2310.08864",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the collection’s scope and cross-embodiment learning setup."
+        }
+      ],
+      "sources": [
+        "https://robotics-transformer-x.github.io/",
+        "https://robotics-transformer-x.github.io/video/teaser_compressed.mp4",
+        "https://github.com/google-deepmind/open_x_embodiment",
+        "https://arxiv.org/abs/2310.08864"
+      ]
+    },
+    {
+      "node_id": "p:episode-timeline-and-schema-inspector",
+      "type": "project",
+      "name": "Episode timeline and schema inspector",
+      "summary": "Build a synchronized episode viewer that catches timestamp, dimension and boundary errors before robot data reaches training.",
+      "lesson_md": "## In one sentence\n\nBuild a synchronized episode viewer that catches timestamp, dimension and boundary errors before robot data reaches training.\n\n![LeRobot Dataset Visualizer showing camera frames and signal traces](/img/lessons/projects_robot_learning_1-episode-timeline-and-schema-inspector.webp)\n*LeRobot Dataset Visualizer showing camera frames and signal traces. Source: [Published project media](https://huggingface.co/docs/lerobot/index), license unknown.*\n\n## What you will learn\n\n- **Episode:** one bounded attempt at a task, containing ordered observations, actions and an ending condition.\n- **Terminal flag:** metadata describing an episode ending; reaching a time limit and reaching a task terminal state need not mean the same thing.\n- **Software analogy:** this is a log inspector joining video and numeric events, with schema checks before records enter a training pipeline.\n\n> **Key idea:** A dataset that loads without exceptions can still pair the wrong observation with an action.\n\n## What you need\n\n- **Setup:** a small public LeRobotDataset v3 sample, Python data tools and a browser or notebook viewer; no training or robot is required.\n- **Skills:** tables, indexing and video timestamps; read Robot learning toolchains & data formats for the surrounding map context.\n- **Cost:** hardware purchase is unnecessary. Keep the sample small and account separately for video downloads and local disk space.\n\n## Steps\n\n1. **Inspect metadata first:** list feature names, shapes, frame rate, episode identifiers and video references. Record the dataset revision and selected episodes.\n2. **Join the streams:** align numeric rows with camera frames using the dataset’s indexing and timestamps, not a guessed shared file offset.\n3. **Validate the timeline:** flag non-monotonic times, missing frames, unexpected action dimensions and rows assigned to the wrong episode.\n4. **Check boundaries:** inspect LeRobot’s episode metadata and, on an RLDS sample, distinguish first, last and terminal step fields explicitly.\n5. **Create fault fixtures:** remove a frame, alter an action shape and insert an empty episode. Show errors instead of silently repairing or skipping them.\n6. **Record the demo:** scrub through synchronized video/action plots and cross an episode boundary, displaying both valid records and injected validation failures.\n\n**Worked checks:** assert increasing timestamps within an episode, verify each action’s declared shape, and explicitly stop a sequence window before the next episode begins.\n\n```mermaid\nflowchart LR\n  A[\"Dataset metadata\"] --> B\n  B[\"Video and tables\"] --> C\n  C[\"Timeline checks\"] --> D\n  D[\"Synchronized viewer\"]\n```\n\n## Common pitfalls\n\n- **File assumptions:** LeRobot v3 decouples logical episodes from physical storage; one file is not necessarily one episode.\n- **Off-by-one joins:** an action index and a video frame index can look plausible while referring to different moments.\n- **Ending semantics:** do not invent terminal labels from missing data. An absent target is an explicit test case, not an empty successful episode.\n\n## When it's done\n\n- **Deliverable:** a screen recording and validation report identify exactly which episode, feature and timestamp caused each failure.\n- **Next step:** retain the schema report for RLDS-to-LeRobot semantic round trip; format conversion must preserve these meanings.",
+      "resources": [
+        {
+          "title": "Video Overview",
+          "url": "https://robomimic.github.io/assets/robomimic_video.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See robot demonstrations and camera observations that a timeline inspector must keep aligned."
+        },
+        {
+          "title": "Using Dataset Tools",
+          "url": "https://huggingface.co/docs/lerobot/using_dataset_tools",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explore dataset visualization and manipulation tools."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand Parquet, video storage, metadata and logical episode indexing."
+        },
+        {
+          "title": "google-research/rlds",
+          "url": "https://github.com/google-research/rlds",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect step, episode and terminal-field semantics in RLDS."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/index",
+        "https://robomimic.github.io/assets/robomimic_video.mp4",
+        "https://huggingface.co/docs/lerobot/using_dataset_tools",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://github.com/google-research/rlds"
+      ]
+    },
+    {
+      "node_id": "p:eureka-reward-code-safety-tournament",
+      "type": "project",
+      "name": "Eureka reward-code safety tournament",
+      "summary": "Compare audited generated rewards with a fixed baseline while rejecting unsafe reward code before simulated training.",
+      "lesson_md": "## In one sentence\n\nCompare audited generated rewards with a fixed baseline while rejecting unsafe reward code before simulated training.\n\n![Cartpole simulation from the Eureka reward-design benchmark](/img/lessons/projects_robot_learning_1-eureka-reward-code-safety-tournament.webp)\n*Cartpole simulation from the Eureka reward-design benchmark. Source: [Published project media](https://eureka-research.github.io/), license unknown.*\n\n## What you will learn\n\n- **Reward:** a numeric training signal describing desirable behaviour; it is not automatically the same as the intended task outcome.\n- **Reward hacking:** a policy increases that signal through behaviour that fails the real objective.\n- **Software analogy:** generated reward code is an untrusted plugin; type checks and tests precede execution, and the plugin never receives host privileges.\n\n> **Key idea:** A reward must pass both a code-execution boundary and an independent test of intended behaviour.\n\n## What you need\n\n- **Setup:** a small Eureka-compatible simulator task such as Cartpole, a fixed baseline reward and a restricted reward-expression interface.\n- **Skills:** Python testing, isolation and experiment tracking; Reward learning & reward specification explains the objective-design problem.\n- **Cost:** simulation needs no robot hardware. Model API calls and reinforcement-learning compute are separate expenses; start with manually supplied candidate expressions.\n\n## Steps\n\n1. **Specify the task:** define completion and failure independently of reward. Freeze evaluation resets and the baseline reward before seeing generated candidates.\n2. **Restrict the interface:** allow only approved numeric observations and pure operations; reject imports, file access, network access and arbitrary function calls.\n3. **Audit candidate expressions:** check allowed names, output shape, finite values and edge cases. Human review remains necessary before admitting a variant.\n4. **Isolate evaluation:** run approved expressions in a resource-limited process or container with no secrets, network or host filesystem mounts.\n5. **Train matched policies:** allocate equal environment interactions and tuning budgets. Test absent goals and corrupt observations; stop on invalid data or non-finite rewards.\n6. **Film the tournament:** show baseline and generated-reward behaviour with separate reward and task-completion overlays, including rejected candidates and reward-hacking failures.\n\n**Worked contract:** a candidate receives approved state arrays and returns one finite reward per simulated environment; a file-opening expression is rejected before any training starts.\n\n```mermaid\nflowchart LR\n  A[\"Candidate reward\"] --> B\n  B[\"Restricted audit\"] --> C\n  C[\"Isolated training\"] --> D\n  D[\"Independent task test\"]\n```\n\n## Common pitfalls\n\n- **A parser is not a sandbox:** syntax validation alone does not safely isolate arbitrary Python. Do not execute raw generated code on your host.\n- **Reward-only winners:** select using the frozen task evaluator, not the highest score under each candidate’s differently scaled reward.\n- **Eureka overclaim:** the project demonstrates reward search, not a security guarantee for generated code or a promise of better policies.\n\n## When it's done\n\n- **Deliverable:** a candidate audit ledger, equal-budget comparison and paired videos explain both admitted behaviours and rejection reasons.\n- **Safety boundary:** keep the entire tournament in simulation; generated rewards do not authorize deployment on physical robots.",
+      "resources": [
+        {
+          "title": "Eureka",
+          "url": "https://eureka-research.github.io/videos/eureka_zoomout.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch behaviours produced through generated reward design."
+        },
+        {
+          "title": "Eureka: Human-Level Reward Design via Coding Large Language Models",
+          "url": "https://eureka-research.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the reward-generation and feedback loop."
+        },
+        {
+          "title": "eureka-research/Eureka",
+          "url": "https://github.com/eureka-research/Eureka",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect task integration and experiment configuration."
+        },
+        {
+          "title": "Eureka: Human-Level Reward Design via Coding Large Language Models",
+          "url": "https://arxiv.org/abs/2310.12931",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the reward-search method and its evaluation, distinct from this project’s defensive sandbox."
+        }
+      ],
+      "sources": [
+        "https://eureka-research.github.io/",
+        "https://eureka-research.github.io/videos/eureka_zoomout.mp4",
+        "https://github.com/eureka-research/Eureka",
+        "https://arxiv.org/abs/2310.12931"
+      ]
+    },
+    {
+      "node_id": "p:failure-early-warning-precision-recall-lab",
+      "type": "project",
+      "name": "Failure early-warning precision-recall lab",
+      "summary": "Replay robot-policy failures with warning timestamps, measuring missed failures and false alarms rather than showing only successful warnings.",
+      "lesson_md": "## In one sentence\n\nReplay robot-policy failures with warning timestamps, measuring missed failures and false alarms rather than showing only successful warnings.\n\n![Robot planner uncertainty scores beside a microwave task](/img/lessons/projects_robot_learning_1-failure-early-warning-precision-recall-lab.webp)\n*Robot planner uncertainty scores beside a microwave task. Source: [Published project media](https://robot-help.github.io/), license unknown.*\n\n## What you will learn\n\n- **Precision:** the fraction of warnings that correctly predict failure; recall is the fraction of actual failures that receive a warning.\n- **Lead time:** how long before a labelled failure a warning appears; an alarm after failure is not early detection.\n- **Software analogy:** evaluate the monitor like an incident alert system, where alert fatigue and missed incidents both matter.\n\n> **Key idea:** An early-warning system must be judged on false alarms, missed failures and time left to respond.\n\n## What you need\n\n- **Setup:** saved simulated policy rollouts with timestamps and blinded failure labels, plus a replay viewer and plotting tools.\n- **Skills:** event labels and held-out evaluation; Uncertainty calibration help button provides the distinction between confidence and correctness.\n- **Cost:** no physical robot or retraining is necessary for the first replay study. Storage and optional policy inference consume local resources.\n\n## Steps\n\n1. **Define failure first:** specify observable failure events and a prediction window before inspecting monitor scores; label episodes without seeing candidate warnings.\n2. **Build simple monitors:** compare action disagreement, stalled progress and approaching timeouts. Document each required signal and what its score means.\n3. **Separate calibration data:** select thresholds on development episodes only. Keep a held-out episode set with successes, failures and shifted conditions.\n4. **Score warnings consistently:** define how repeated alarms count and what timing qualifies as an early true positive; report event-level precision, recall and lead time.\n5. **Challenge missing inputs:** include absent targets and corrupt observations; a data-invalid stop is a separate event, not an automatically correct failure prediction.\n6. **Film annotated replay:** mark first warning, failure time, false alarms and misses; show precision-recall curves alongside unedited representative episodes.\n\n**Worked scoring rule:** a warning inside the declared pre-failure window can count as a true positive; the identical warning after failure counts as late, not early.\n\n```mermaid\nflowchart LR\n  A[\"Labelled episodes\"] --> B\n  B[\"Monitor scores\"] --> C\n  C[\"Frozen threshold\"] --> D\n  D[\"Warning audit\"]\n```\n\n## Common pitfalls\n\n- **Frame-level leakage:** adjacent frames from one episode are correlated; splitting them across calibration and test sets makes evaluation misleading.\n- **Trivial timeout alarms:** warning at the episode limit may identify failure without leaving any useful recovery time.\n- **KnowNo scope:** uncertainty-based help seeking inspires the setup, but its guarantees do not automatically apply to these new failure monitors.\n\n## When it's done\n\n- **Deliverable:** each monitor has a fixed threshold, precision/recall results, lead-time distribution and visible missed/false-alarm examples.\n- **Next step:** Shift-aware stop-or-continue arena can test what action follows a warning; detecting a problem and recovering are different claims.",
+      "resources": [
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://www.youtube.com/watch?v=xCXx09gfhx4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See uncertainty-aware robot assistance and its limits as a failure-monitor analogy."
+        },
+        {
+          "title": "Precision-Recall",
+          "url": "https://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn precision-recall curves and threshold trade-offs through a worked example."
+        },
+        {
+          "title": "precision_recall_curve",
+          "url": "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_curve.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the exact binary-label and score interface used to compute curves."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://arxiv.org/abs/2307.01928",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish uncertainty alignment for planners from generic action-failure prediction."
+        }
+      ],
+      "sources": [
+        "https://robot-help.github.io/",
+        "https://www.youtube.com/watch?v=xCXx09gfhx4",
+        "https://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_curve.html",
+        "https://arxiv.org/abs/2307.01928"
+      ]
+    },
+    {
+      "node_id": "p:fast-action-compression-oscilloscope",
+      "type": "project",
+      "name": "FAST action compression oscilloscope",
+      "summary": "Plot original and decoded action chunks to see what FAST compression preserves, distorts and costs.",
+      "lesson_md": "## In one sentence\n\nPlot original and decoded action chunks to see what FAST compression preserves, distorts and costs.\n\n![FAST policy bussing a table](/img/lessons/projects_robot_learning_1-fast-action-compression-oscilloscope.webp)\n*FAST policy bussing a table. Source: [Published project media](https://www.pi.website/research/fast), license unknown.*\n\n## What you will learn\n\n- **Tokenizer:** a converter between structured action sequences and discrete symbols that a model can predict.\n- **FAST:** a tokenizer using the discrete cosine transform, or DCT, to describe motion through frequency components before quantization and byte-pair encoding.\n- **Software analogy:** inspect it like a lossy codec: decoded output can resemble the input while still losing task-critical detail.\n\n> **Key idea:** Compression quality must be checked in decoded actions and task behaviour, not just token counts.\n\n## What you need\n\n- **Setup:** FAST tokenizer access, a small recorded action dataset, its normalization metadata and a simple simulated cursor viewer.\n- **Skills:** array reshaping and plots; Action chunking & action tokenization introduces the sequence representation.\n- **Cost:** no robot purchase is needed. Start with offline encode/decode operations; account separately for downloads, storage and optional GPU use.\n\n## Steps\n\n1. **Inspect the action contract:** record chunk length, action dimensions, units and normalization. Keep an untouched copy before applying any transformations.\n2. **Run a round trip:** encode normalized chunks with FAST, decode them and restore physical units using the same statistics.\n3. **Add a baseline:** quantize each action dimension independently into declared bins; compare token count, actual serialized size and reconstruction error.\n4. **Sweep supported settings:** inspect the tokenizer’s exposed scaling/precision configuration. Document every setting; do not silently claim a fixed pretrained vocabulary was retrained.\n5. **Replay difficult segments:** compare smooth motion, reversals and gripper transitions. Reject corrupt arrays, missing metadata and episodes with absent targets before simulated execution.\n6. **Film the oscilloscope:** overlay original/decoded traces and a moving cursor, then report per-dimension error, sequence length and task outcomes separately.\n\n**Worked shape check:** a chunk has axes `[time, action_dimension]`; after decoding, assert both axes match the original before plotting any reconstruction error.\n\n```mermaid\nflowchart LR\n  A[\"Recorded actions\"] --> B\n  B[\"Normalize and encode\"] --> C\n  C[\"Decode\"] --> D\n  D[\"Trace and task audit\"]\n```\n\n## Common pitfalls\n\n- **Units hide error:** calculate reconstruction error after restoring units, not only in normalized space; different dimensions can have different scales.\n- **Compression versus policy quality:** a shorter token sequence does not itself prove faster or more successful learned control.\n- **Metadata mismatch:** decoding into the wrong chunk shape or using another dataset’s normalization can invalidate an apparently successful round trip.\n\n## When it's done\n\n- **Deliverable:** repeatable plots and a cursor replay show the trade-off between compact representation and preserved action detail.\n- **Next step:** Chunk-horizon disturbance challenge investigates when decoded chunks should be interrupted, rather than only how accurately they are stored.",
+      "resources": [
+        {
+          "title": "Bus table",
+          "url": "https://website.pi-asset.com/karl/fast_reencoded/single_task_videos/video_0_bus_table_long_20fps_fixedrate_4x.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a FAST-controlled table-clearing task motivating compact action sequences."
+        },
+        {
+          "title": "FAST: Efficient Robot Action Tokenization",
+          "url": "https://www.pi.website/research/fast",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand the DCT and byte-pair-encoding pipeline."
+        },
+        {
+          "title": "physical-intelligence/fast",
+          "url": "https://huggingface.co/physical-intelligence/fast",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect tokenizer loading, normalization assumptions and encode/decode usage."
+        },
+        {
+          "title": "FAST: Efficient Action Tokenization for Vision-Language-Action Models",
+          "url": "https://arxiv.org/abs/2501.09747",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the action-compression formulation and evaluation."
+        }
+      ],
+      "sources": [
+        "https://www.pi.website/research/fast",
+        "https://website.pi-asset.com/karl/fast_reencoded/single_task_videos/video_0_bus_table_long_20fps_fixedrate_4x.mp4",
+        "https://huggingface.co/physical-intelligence/fast",
+        "https://arxiv.org/abs/2501.09747"
+      ]
+    },
+    {
+      "node_id": "p:flow-versus-diffusion-reproducibility-challenge",
+      "type": "project",
+      "name": "Flow-versus-diffusion reproducibility challenge",
+      "summary": "Compare small diffusion and flow action heads under one fixed data, observation and evaluation contract.",
+      "lesson_md": "## In one sentence\n\nCompare small diffusion and flow action heads under one fixed data, observation and evaluation contract.\n\n![Diffusion Policy manipulating a mug](/img/lessons/projects_robot_learning_1-flow-versus-diffusion-reproducibility-challenge.webp)\n*Diffusion Policy manipulating a mug. Source: [Published project media](https://diffusion-policy.cs.columbia.edu/), license unknown.*\n\n## What you will learn\n\n- **Generative head:** the policy component that turns an observation representation and a noisy sample into a candidate action sequence.\n- **Flow matching:** training a model to predict a velocity field along a path from noise to data; diffusion learns an iterative noise-removal process.\n- **Software analogy:** compare two interchangeable implementations behind the same interface, rather than comparing unrelated applications with different inputs.\n\n> **Key idea:** A fair comparison controls the surrounding policy and measures both sampling work and task success.\n\n## What you need\n\n- **Setup:** one simulated manipulation task, a frozen demonstration split, a shared observation encoder and small trainable action heads.\n- **Skills:** model training and sampling loops; finish Denoising-budget control shootout before comparing distinct generative formulations.\n- **Cost:** no robot hardware is necessary. Training both heads needs measured compute; this project does not require recreating π0 / π0.5 at scale.\n\n## Steps\n\n1. **Freeze the contract:** match observations, normalization, action dimensions, chunk length, executed prefix and held-out reset seeds across both heads.\n2. **Implement explicit objectives:** document the diffusion noise schedule and the flow interpolation/velocity target. Test tensor shapes and finite outputs before training.\n3. **Match capacity and effort:** use the same encoder, comparable head size and declared training/tuning budgets; save full configuration and random seeds.\n4. **Sweep inference work:** compare both equal model-evaluation counts and measured wall-clock budgets; those are different fairness criteria, so label both.\n5. **Evaluate task behaviour:** measure completion, latency and variability across runs. Include missing observations and absent targets, recording deliberate stops and all failures.\n6. **Publish the reproduction:** film matched resets with timing overlays, release exact configurations and mark deviations from the source methods rather than hiding them.\n\n**Worked experiment ledger:** record `encoder_hash`, `data_split`, `head_parameters`, `training_updates`, `model_evaluations` and `measured_latency`; differing entries expose possible confounds.\n\n```mermaid\nflowchart LR\n  A[\"Shared observations\"] --> B\n  B[\"Flow or diffusion head\"] --> C\n  C[\"Timed sampling\"] --> D\n  D[\"Matched rollouts\"]\n```\n\n## Common pitfalls\n\n- **Architecture confounds:** comparing a large pretrained flow VLA against a small diffusion model cannot isolate flow versus diffusion.\n- **Loss comparison:** the training objectives have different meanings and scales; lower loss is not a common measure of task competence.\n- **Runtime shortcuts:** ignoring preprocessing, accelerator synchronization or decoding can produce a misleading speed ranking.\n\n## When it's done\n\n- **Deliverable:** latency/quality curves, matched videos and a reproducibility ledger show what changed and what stayed fixed.\n- **Claim boundary:** conclusions apply to the implemented heads and tested task, not every flow-based or diffusion-based robot policy.",
+      "resources": [
+        {
+          "title": "Mug Flipping",
+          "url": "https://diffusion-policy.cs.columbia.edu/videos/highlight_mug.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See receding-horizon generative control on a manipulation task."
+        },
+        {
+          "title": "Training Diffusion Policy",
+          "url": "https://robomimic.github.io/docs/tutorials/training_diffusion_policy.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the practical diffusion-policy training and action-horizon interface."
+        },
+        {
+          "title": "Physical-Intelligence/openpi",
+          "url": "https://github.com/Physical-Intelligence/openpi",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Study an implementation of flow-based robot policies without treating its full stack as a matched baseline."
+        },
+        {
+          "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+          "url": "https://arxiv.org/abs/2303.04137",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the diffusion action-policy formulation."
+        },
+        {
+          "title": "π₀: A Vision-Language-Action Flow Model for General Robot Control",
+          "url": "https://arxiv.org/abs/2410.24164",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the flow-based action-generation formulation used in π0."
+        }
+      ],
+      "sources": [
+        "https://diffusion-policy.cs.columbia.edu/",
+        "https://diffusion-policy.cs.columbia.edu/videos/highlight_mug.mp4",
+        "https://robomimic.github.io/docs/tutorials/training_diffusion_policy.html",
+        "https://github.com/Physical-Intelligence/openpi",
+        "https://arxiv.org/abs/2303.04137",
+        "https://arxiv.org/abs/2410.24164"
+      ]
+    },
+    {
+      "node_id": "p:frequency-aware-token-allocation-study",
+      "type": "project",
+      "name": "Frequency-aware token allocation study",
+      "summary": "Prototype a frequency-aware action-compression rule and test whether its byte budget preserves task-critical changes better than uniform allocation.",
+      "lesson_md": "## In one sentence\n\nPrototype a frequency-aware action-compression rule and test whether its byte budget preserves task-critical changes better than uniform allocation.\n\n![FAST policy folding a shirt](/img/lessons/projects_robot_learning_1-frequency-aware-token-allocation-study.webp)\n*FAST policy folding a shirt. Source: [Published project media](https://www.pi.website/research/fast), license unknown.*\n\n## What you will learn\n\n- **Frequency component:** part of a time-varying signal describing slow variation or quicker changes; FAST uses a cosine-transform representation.\n- **Allocation heuristic:** your proposed rule for distributing limited representation capacity; it is a student experiment, not a published FAST capability.\n- **Software analogy:** a bandwidth-limited streaming system can spend more bytes near meaningful changes instead of treating every segment identically.\n\n> **Key idea:** Representation capacity is useful only if the details it preserves matter to the task.\n\n## What you need\n\n- **Setup:** recorded smooth and abrupt action segments, a tokenizer/decoder, a fixed serialization format and a simulated trajectory viewer.\n- **Skills:** FAST action compression oscilloscope and Chunk-horizon disturbance challenge provide reconstruction and execution baselines.\n- **Cost:** offline experiments need no robot purchase; optional task rollouts and training use separately budgeted computer resources.\n\n## Steps\n\n1. **Freeze the baseline:** choose uniform representation settings, action normalization, chunk boundaries and a total serialized byte allowance per episode.\n2. **Define your heuristic:** estimate change intensity from each chunk’s action signal and propose where to spend extra precision or representation capacity.\n3. **Account for metadata:** count allocation tags, chunk lengths and codec headers in the byte budget; the decoder must reconstruct without hidden information.\n4. **Compare matched storage:** evaluate uniform and adaptive methods on smooth motions, reversals and gripper transitions, restoring physical units before measuring errors.\n5. **Replay task outcomes:** test decoded trajectories under identical simulator resets. Add absent targets and corrupt chunks; reject invalid packets and retain their failure records.\n6. **Film the study:** show both decoded trajectories and outcomes with a byte counter, explaining whether extra capacity went to genuinely useful segments.\n\n**Worked budget:** define total bytes as `payload + allocation_metadata + headers`; an adaptive codec that ignores its metadata has not matched the uniform baseline.\n\n```mermaid\nflowchart LR\n  A[\"Action segments\"] --> B\n  B[\"Allocation rule\"] --> C\n  C[\"Budgeted encoding\"] --> D\n  D[\"Decode and evaluate\"]\n```\n\n## Common pitfalls\n\n- **Token-count shortcut:** vocabulary identifiers and side metadata may have different storage costs; equal token counts do not guarantee equal bytes.\n- **Hindsight leakage:** an offline encoder may inspect a full action chunk, but an online allocation rule must state which future information is available.\n- **Smoothness bias:** low average reconstruction error can still erase a brief gripper change that determines task success.\n\n## When it's done\n\n- **Deliverable:** a reproducible original heuristic, a uniform baseline and fixed-budget videos expose where adaptive allocation helps or harms.\n- **Interpretation:** report codec reconstruction separately from a learned policy’s performance; do not attribute your heuristic to FAST’s authors.",
+      "resources": [
+        {
+          "title": "Fold Laundry",
+          "url": "https://website.pi-asset.com/karl/fast_reencoded/single_task_videos/video_3_shirt_folding_50fps_fixedrate_4x.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Observe a dexterous FAST task with varied action dynamics."
+        },
+        {
+          "title": "FAST: Efficient Robot Action Tokenization",
+          "url": "https://www.pi.website/research/fast",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand why frequency structure motivates compact action representation."
+        },
+        {
+          "title": "physical-intelligence/fast",
+          "url": "https://huggingface.co/physical-intelligence/fast",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build a verifiable tokenizer round trip before changing allocation."
+        },
+        {
+          "title": "FAST: Efficient Action Tokenization for Vision-Language-Action Models",
+          "url": "https://arxiv.org/abs/2501.09747",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish the published tokenizer from your proposed fixed-budget heuristic."
+        }
+      ],
+      "sources": [
+        "https://www.pi.website/research/fast",
+        "https://website.pi-asset.com/karl/fast_reencoded/single_task_videos/video_3_shirt_folding_50fps_fixedrate_4x.mp4",
+        "https://huggingface.co/physical-intelligence/fast",
+        "https://arxiv.org/abs/2501.09747"
+      ]
+    },
+    {
+      "node_id": "p:frozen-encoder-low-data-race",
+      "type": "project",
+      "name": "Frozen-encoder low-data race",
+      "summary": "Race frozen visual encoders on the same small robot-learning dataset without changing the action head or evaluation task.",
+      "lesson_md": "## In one sentence\n\nRace frozen visual encoders on the same small robot-learning dataset without changing the action head or evaluation task.\n\n![CortexBench tasks and pretrained visual representation evaluation](/img/lessons/projects_robot_learning_1-frozen-encoder-low-data-race.webp)\n*CortexBench tasks and pretrained visual representation evaluation. Source: [Published project media](https://eai-vc.github.io/), license unknown.*\n\n## What you will learn\n\n- **Encoder:** a neural network mapping an image to a feature vector that another model can use.\n- **Frozen backbone:** encoder weights remain unchanged while a small action head learns from demonstrations; fine-tuning also updates selected encoder weights.\n- **Software analogy:** swap a reusable library behind a stable interface while keeping the application logic and tests unchanged.\n\n> **Key idea:** The encoder comparison is meaningful only when the data, action head and evaluation remain controlled.\n\n## What you need\n\n- **Setup:** one simulated visual-control task, nested demonstration subsets and available R3M, VC-1 and DINOv2 checkpoints.\n- **Skills:** image preprocessing and training loops; Robot-camera feature atlas provides the representation-inspection starting point.\n- **Cost:** no robot purchase is needed. Check checkpoint access and measure feature-extraction memory before scheduling GPU experiments.\n\n## Steps\n\n1. **Freeze data and evaluation:** use identical episode splits, reset seeds, camera frames and action normalization for every backbone.\n2. **Respect input contracts:** apply each checkpoint’s documented image size and normalization. Log feature shapes and compare dimensions before attaching heads.\n3. **Match action capacity:** use the same small action-head design and comparable parameter budgets; document any feature projection needed to align dimensions.\n4. **Run the low-data ladder:** train on nested demonstration subsets with matched updates and seeds; cache frozen features only from the appropriate split.\n5. **Add a tuning control:** compare a declared frozen-versus-fine-tuned variant separately. Test absent targets and corrupt images, recording invalid-input stops.\n6. **Film paired control:** show identical simulator resets for all backbones and plot held-out success against demonstration count, inference cost and training cost.\n\n**Worked ledger:** record `image_transform`, `feature_dimension`, `head_parameters` and `trainable_parameters`; a frozen encoder should contribute no trainable weights.\n\n```mermaid\nflowchart LR\n  A[\"Camera images\"] --> B\n  B[\"Frozen encoder\"] --> C\n  C[\"Matched action head\"] --> D\n  D[\"Held-out control\"]\n```\n\n## Common pitfalls\n\n- **Hidden capacity:** a larger feature vector can create a larger head; account for that before crediting an encoder’s pretraining.\n- **Preprocessing mistakes:** feeding every model the same numeric normalization is not automatically fair when their input contracts differ.\n- **Semantics versus precision:** a feature useful for recognizing an object may not preserve the location detail required for control.\n\n## When it's done\n\n- **Deliverable:** three frozen-backbone curves, matched task videos and a capacity/preprocessing ledger make low-data comparisons inspectable.\n- **Next step:** Precision-versus-semantics encoder audit probes why an apparently strong representation may fail fine manipulation.",
+      "resources": [
+        {
+          "title": "Frozen VC-1",
+          "url": "https://eai-vc.github.io/assets/videos/frozen_vc1_mobilepick.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a frozen VC-1 representation support a mobile manipulation task."
+        },
+        {
+          "title": "Visual Cortex (VC-1)",
+          "url": "https://eai-vc.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand CortexBench and frozen-versus-fine-tuned representation evaluation."
+        },
+        {
+          "title": "facebookresearch/r3m",
+          "url": "https://github.com/facebookresearch/r3m",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the R3M checkpoint and feature-extraction interface."
+        },
+        {
+          "title": "DINOv2: Learning Robust Visual Features without Supervision",
+          "url": "https://arxiv.org/abs/2304.07193",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the self-supervised visual representation method behind DINOv2."
+        }
+      ],
+      "sources": [
+        "https://eai-vc.github.io/",
+        "https://eai-vc.github.io/assets/videos/frozen_vc1_mobilepick.mp4",
+        "https://github.com/facebookresearch/r3m",
+        "https://arxiv.org/abs/2304.07193"
+      ]
+    },
+    {
+      "node_id": "p:generated-robot-code-contract-arena",
+      "type": "project",
+      "name": "Generated robot-code contract arena",
+      "summary": "Make generated robot programs either satisfy explicit skill contracts in simulation or stop with a visible rejection reason.",
+      "lesson_md": "## In one sentence\n\nMake generated robot programs either satisfy explicit skill contracts in simulation or stop with a visible rejection reason.\n\n![Robot tasks controlled with generated policy programs](/img/lessons/projects_robot_learning_1-generated-robot-code-contract-arena.webp)\n*Robot tasks controlled with generated policy programs. Source: [Published project media](https://code-as-policies.github.io/), license unknown.*\n\n## What you will learn\n\n- **Code as Policies:** using language-model-generated programs to compose perception and robot-control APIs for a task.\n- **Contract:** a skill’s permitted arguments, required scene conditions and expected result; generated text does not override it.\n- **Software analogy:** process a restricted workflow language like a compiler, validating structure and types before an isolated runtime executes approved operations.\n\n> **Key idea:** Generated code proposes behaviour; only a restricted runtime and valid scene contracts may authorize execution.\n\n## What you need\n\n- **Setup:** a simulated tabletop, a small approved skill API and a declarative restricted language; start with hand-written candidate programs.\n- **Skills:** parsing, tests and process isolation; Affordance-grounded plan ranking lab supplies feasibility checks for the skill library.\n- **Cost:** no robot hardware is necessary. Model API use is optional and separately budgeted from local simulation.\n\n## Steps\n\n1. **Declare the API:** list supported skills, object identifiers, argument units, preconditions and postconditions; keep filesystem and network operations outside the language.\n2. **Parse without executing:** accept only the declared command structure and approved names; reject unknown calls, malformed arguments and unrestricted Python constructs.\n3. **Check scene contracts:** verify target presence and valid observations before each skill. Require human confirmation for the proposed complete program.\n4. **Run an isolated interpreter:** enforce step and runtime limits with no secrets, host mounts or network access; restrict execution to approved simulated skills.\n5. **Audit defensive rejection:** test invalid calls, absent targets and corrupted observations without implementing escape payloads; stop when any precondition or postcondition fails.\n6. **Show the arena:** display generated program, validation outcome and simulated behaviour together, including successful composition and refusal cases with exact reasons.\n\n**Worked contract:** `pick(object_id)` accepts only a known visible object; `pick(missing_id)` is rejected before motion, with the failed precondition shown in the demo.\n\n```mermaid\nflowchart LR\n  A[\"Candidate program\"] --> B\n  B[\"Parse and validate\"] --> C\n  C[\"Human confirmation\"] --> D\n  D[\"Isolated skill runtime\"]\n```\n\n## Common pitfalls\n\n- **String filters:** banning a few suspicious words is not a security boundary. Prefer a small declarative language over general-purpose code execution.\n- **Stale preconditions:** a scene can change after planning, so revalidate at skill execution time rather than trusting the initial check.\n- **Confirmation limits:** human approval does not repair an unsafe interpreter or prove a plan will complete its task.\n\n## When it's done\n\n- **Deliverable:** a restricted interpreter, contract tests and a video show both approved task completion and deterministic rejection.\n- **Scope:** keep all programs in simulation; this defensive exercise does not authorize generated code to control physical hardware.",
+      "resources": [
+        {
+          "title": "Code as Policies",
+          "url": "https://code-as-policies.github.io/videos/3_min_explainer.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See language-conditioned programs composing robot skills."
+        },
+        {
+          "title": "Code as Policies: Language Model Programs for Embodied Control",
+          "url": "https://code-as-policies.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the perception and control API composition approach."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Connect skill selection to present-scene feasibility."
+        },
+        {
+          "title": "google-research/code_as_policies",
+          "url": "https://github.com/google-research/google-research/tree/master/code_as_policies",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the research implementation while treating its execution model as distinct from a security sandbox."
+        }
+      ],
+      "sources": [
+        "https://code-as-policies.github.io/",
+        "https://code-as-policies.github.io/videos/3_min_explainer.mp4",
+        "https://say-can.github.io/",
+        "https://github.com/google-research/google-research/tree/master/code_as_policies"
+      ]
     }
   ]
 }
