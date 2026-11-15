@@ -119,6 +119,194 @@
         "https://www.ti.com/product/BQ76952",
         "https://www.ti.com/video/6010861045001"
       ]
+    },
+    {
+      "node_id": "k:communication-buses-uart-i2c-spi-can",
+      "type": "knowledge",
+      "name": "Communication buses (UART, I2C, SPI, CAN)",
+      "lesson_md": "## In one sentence\n\nCommunication buses are shared rules and electrical connections that let a robot's processors, sensors, and motor controllers exchange bits.\n\n![I2C controllers and peripherals sharing SDA data and SCL clock wires](/img/lessons/knowledge_embedded_electronics-buses.webp)\n*I2C devices share data and clock lines. Source: [SparkFun](https://learn.sparkfun.com/tutorials/i2c/all), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **A sensor library is not enough:** its protocol, wiring, voltage levels, and configuration must match the connected hardware.\n- **Local sensors and distributed joints differ:** I2C and SPI connect nearby chips; CAN supports multiple communicating controllers with arbitration.\n- **Software analogy:** connecting a UART transmitter to another transmitter resembles connecting two HTTP clients without a server: the expected receiving endpoint is missing.\n\n> **Key idea:** Agree on both the electrical interface and the message format before debugging the application data.\n\n## How it works\n\n- **UART sends without a clock wire:** connect one device's TX output to the other's RX input, with a shared ground and matching communication settings.\n- **Worked UART example:** SparkFun uses 9600 bits/second with one start bit, eight data bits, and one stop bit per byte.\n- **Payload rate:** each byte occupies ten transmitted bits, so the link carries at most `9600 / 10 = 960` data bytes/second in that configuration.\n- **I2C shares two signal wires:** SDA carries data; SCL carries the clock. An address identifies the peripheral, and an acknowledgement reports reception.\n- **Pull-ups restore I2C signals high:** these resistors connect the lines to their logic supply; devices pull the lines low.\n- **SPI adds selection:** a controller supplies a clock, separate transmit/receive data lines, and usually a chip-select line per peripheral.\n- **CAN arbitrates competing messages:** the ESP32-S3's TWAI controller supports Classical CAN, requires an external transceiver, and rejects CAN-FD frames.\n\n```mermaid\nflowchart LR\n  A[\"Application request\"] --> C[\"Configure interface\"]\n  C --> T[\"Transmit frame\"]\n  T --> R[\"Receive bits\"]\n  R --> D[\"Decode sensor value\"]\n```\n\n## Key terms\n\n- **Protocol**: agreed rules for encoding and exchanging information.\n- **Frame**: a bounded transmission containing data and protocol overhead.\n- **Bit rate**: transmitted bits per second, not useful payload bytes per second.\n- **Clock**: a timing signal indicating when to read each bit.\n- **Transceiver**: circuitry translating a controller's logic signals into the bus's electrical signals.\n- **Arbitration**: rules deciding which message proceeds when devices transmit together.\n\n## Before / after\n\n- **Before:** Learn Microcontrollers & bare-metal firmware so configuring pins and reading peripheral data are familiar operations.\n- **After:** Start Intro: microcontroller, breadboard & I2C sensors; later investigate CAN-FD bus sniffer & dashboard with explicitly CAN-FD-capable hardware.\n\n## Try it in an afternoon\n\n1. **Trace SparkFun's UART example:** mark the start bit, eight payload bits, and stop bit; calculate the time used per byte.\n2. **Compare the published diagrams:** list UART, I2C, and SPI signal names and identify which side generates each signal.\n3. **Plan one sensor connection:** copy its address, supported voltage, and clock limit from its documentation before choosing pins.\n4. **Check CAN compatibility:** explain why adding only a transceiver cannot make an ESP32-S3 TWAI controller understand CAN-FD.",
+      "resources": [
+        {
+          "title": "SparkFun According to Pete 10-15-12: SPI & I2C",
+          "url": "https://www.youtube.com/watch?v=UTF99NNtQ7g",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "SparkFun compares two clocked interfaces and their wiring."
+        },
+        {
+          "title": "Serial Communication",
+          "url": "https://learn.sparkfun.com/tutorials/serial-communication/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Decode UART start, data, and stop bits and calculate useful byte rates."
+        },
+        {
+          "title": "I2C",
+          "url": "https://learn.sparkfun.com/tutorials/i2c/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Follow shared clock/data lines, addressing, acknowledgements, and pull-up resistors."
+        },
+        {
+          "title": "Serial Peripheral Interface (SPI)",
+          "url": "https://learn.sparkfun.com/tutorials/serial-peripheral-interface-spi/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand clock edges, transmit/receive lines, and chip selection."
+        },
+        {
+          "title": "Two-Wire Automotive Interface (TWAI)",
+          "url": "https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/twai.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check ESP32-S3 Classical CAN support, external transceivers, and CAN-FD incompatibility."
+        }
+      ],
+      "summary": "Communication buses are shared rules and electrical connections that let a robot's processors, sensors, and motor controllers exchange bits.",
+      "sources": [
+        "https://www.youtube.com/watch?v=UTF99NNtQ7g",
+        "https://learn.sparkfun.com/tutorials/serial-communication/all",
+        "https://learn.sparkfun.com/tutorials/i2c/all",
+        "https://learn.sparkfun.com/tutorials/serial-peripheral-interface-spi/all",
+        "https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/twai.html"
+      ]
+    },
+    {
+      "node_id": "k:microcontrollers-bare-metal-firmware",
+      "type": "knowledge",
+      "name": "Microcontrollers & bare-metal firmware",
+      "lesson_md": "## In one sentence\n\nA microcontroller runs firmware close to a robot's sensors and outputs; bare-metal firmware does this without an operating system.\n\n![ATmega328P microcontroller highlighted on a SparkFun RedBoard](/img/lessons/knowledge_embedded_electronics-microcontrollers.webp)\n*The highlighted chip runs the board's program. Source: [SparkFun](https://learn.sparkfun.com/tutorials/redboard-qwiic-hookup-guide/all), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Physical inputs need a reader:** firmware can read a button or sensor and update an output repeatedly.\n- **The board is not the chip:** SparkFun's RedBoard adds USB communication, power connections, and headers around its ATmega328 microcontroller.\n- **Deployment is different:** upload a compiled program to board memory; it keeps executing while the board is powered, without your development terminal remaining open.\n\n> **Key idea:** Bare-metal programming means owning the program's execution loop rather than relying on operating-system services.\n\n## How it works\n\n- **Write and compile:** turn source code into instructions for the selected board, then upload them using the board's supported programming connection.\n- **Initialize first:** configure the pins before using them; an output pin drives a signal, while an input pin reads one.\n- **Repeat useful work:** Arduino's Blink example calls `setup()` once, then repeats `loop()`; the framework supplies the surrounding execution machinery.\n- **Software analogy:** Blink's `setup()` is server initialization; `loop()` is the request-processing loop, except the inputs and outputs are physical pin states.\n- **Worked timing example:** Arduino's published Blink waits 1000 milliseconds with the LED on, then 1000 off: one complete cycle takes two seconds.\n- **Frameworks are not operating systems:** bare-metal code can use libraries; the Embedded Rust Book explains why OS-dependent standard-library facilities need different support.\n\n```cpp\nvoid setup() {\n  pinMode(LED_BUILTIN, OUTPUT);\n}\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(1000);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(1000);\n}\n```\n\n```mermaid\nflowchart LR\n  S[\"Source code\"] --> C[\"Compile for board\"]\n  C --> U[\"Upload firmware\"]\n  U --> I[\"Initialize pins\"]\n  I --> L[\"Run loop\"]\n  L --> L\n```\n\n## Key terms\n\n- **MCU**: microcontroller unit, a small computer chip used to control connected hardware.\n- **Firmware**: the program stored on and executed by an embedded device.\n- **GPIO**: general-purpose input/output, a configurable digital connection.\n- **Bare metal**: execution without an operating system providing services such as processes and files.\n- **SDK**: software development kit, libraries and tools for programming a target.\n- **Flash memory**: program storage that retains its contents after power is removed.\n\n## Before / after\n\n- **Before:** Know basic C and Electronics fundamentals for robots, particularly voltage levels and circuit connections.\n- **After:** Use Intro: microcontroller, breadboard & I2C sensors to add inputs; compare FreeRTOS and Zephyr RTOS later rather than assuming every MCU runs bare metal.\n\n## Try it in an afternoon\n\n1. **Open the official Blink source** and identify initialization, pin writes, and waits before connecting additional hardware.\n2. **Follow the RedBoard upload example** with a compatible board; select the correct board and serial port.\n3. **Change both waits** and predict the new blink period before uploading; compare the observed LED behavior with your calculation.\n4. **Read the Rust bare-metal section:** list which familiar desktop services your next firmware exercise would need to replace.",
+      "resources": [
+        {
+          "title": "Collin's Lab: Arduino",
+          "url": "https://www.youtube.com/watch?v=pnf8ojsK6S4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Adafruit shows how microcontroller code, inputs, and outputs fit together."
+        },
+        {
+          "title": "RedBoard Qwiic Hookup Guide",
+          "url": "https://learn.sparkfun.com/tutorials/redboard-qwiic-hookup-guide/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Locate the MCU and upload a first blinking-LED program."
+        },
+        {
+          "title": "Blink",
+          "url": "https://raw.githubusercontent.com/arduino/arduino-examples/main/examples/01.Basics/Blink/Blink.ino",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read the official setup/loop example and its 1000-millisecond waits."
+        },
+        {
+          "title": "A no_std Rust Environment",
+          "url": "https://docs.rust-embedded.org/book/intro/no-std.html",
+          "format": "Book",
+          "level": "Intermediate",
+          "why": "Compare hosted and bare-metal environments and understand missing OS-dependent facilities."
+        }
+      ],
+      "summary": "A microcontroller runs firmware close to a robot's sensors and outputs; bare-metal firmware does this without an operating system.",
+      "sources": [
+        "https://www.youtube.com/watch?v=pnf8ojsK6S4",
+        "https://learn.sparkfun.com/tutorials/redboard-qwiic-hookup-guide/all",
+        "https://raw.githubusercontent.com/arduino/arduino-examples/main/examples/01.Basics/Blink/Blink.ino",
+        "https://docs.rust-embedded.org/book/intro/no-std.html"
+      ]
+    },
+    {
+      "node_id": "k:sensor-interfacing-signal-conditioning",
+      "type": "knowledge",
+      "name": "Sensor interfacing & signal conditioning",
+      "lesson_md": "## In one sentence\n\nSensor interfacing and signal conditioning turn a sensor's electrical output into stable, correctly scaled numbers that robot software can interpret.\n\n![Arduino Uno with analog input pins A0 through A5 highlighted](/img/lessons/knowledge_embedded_electronics-sensor-interfacing.webp)\n*The highlighted analog inputs accept voltages for conversion into numbers. Source: [SparkFun](https://learn.sparkfun.com/tutorials/analog-to-digital-conversion/all), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **A reading is not a physical unit:** an integer from a converter must be interpreted using the reference voltage and the sensor's conversion rule.\n- **Disconnected inputs can float:** without a defined voltage, a digital input may report unpredictable high or low states.\n\n> **Key idea:** Treat the electrical interface and scaling rule as part of the sensor's data contract.\n\n## How it works\n\n- **Start with the output type:** an analog sensor produces a varying voltage; a digital interface transfers encoded readings using a communication protocol.\n- **Condition the voltage:** a voltage divider uses two resistors to produce a fraction of its input; a potentiometer makes that fraction adjustable.\n- **Convert with an ADC:** an analog-to-digital converter assigns the input voltage a numeric code; SparkFun's Arduino example uses ten bits, or 1024 possible levels.\n- **Worked measurement:** SparkFun reads 334 on a 5 V system and converts it to approximately 1.63 V using `334 * 5 / 1023`.\n- **Reference voltage matters:** the same tutorial gives 512 on a 3.3 V system as approximately 1.65 V; the integer alone is ambiguous.\n- **Define digital idle states:** a pull-up resistor holds an unpressed button's input high; pressing the button connects it to ground, producing low.\n- **Smooth deliberately:** Arduino's example stores ten readings, replaces the oldest, and averages the current set to reduce erratic variation.\n- **Software analogy:** an ADC code is like a JSON field without its schema; carry the reference voltage and scaling convention before treating it as a measurement.\n\n```mermaid\nflowchart LR\n  P[\"Physical quantity\"] --> S[\"Sensor voltage\"]\n  S --> C[\"Condition signal\"]\n  C --> A[\"ADC code\"]\n  A --> V[\"Convert units\"]\n  V --> F[\"Optional smoothing\"]\n```\n\n## Key terms\n\n- **Analog signal**: a voltage that can vary continuously rather than representing only high or low.\n- **Reference voltage**: the voltage scale used to interpret an ADC result.\n- **Resolution**: the number of distinguishable conversion levels, commonly specified in bits.\n- **Pull-up**: a resistor connecting a signal to the logic supply to define its idle state.\n- **Running average**: the mean of a moving window of recent readings.\n\n## Before / after\n\n- **Before:** Learn Microcontrollers & bare-metal firmware and Communication buses (UART, I2C, SPI, CAN) to distinguish analog conversion from reading digital sensor messages.\n- **After:** Apply explicit scaling and raw-data checks in micro-ROS ESP32 sensor node and Experimental contact detection from servo telemetry.\n\n## Try it in an afternoon\n\n1. **Follow SparkFun's potentiometer circuit:** connect the adjustable voltage to the documented analog input, using the board's allowed voltage range.\n2. **Print raw ADC values** while turning the knob; convert them using the tutorial's reference-voltage convention.\n3. **Add Arduino's ten-reading average** and print both streams; compare a steady knob position with a sudden turn.\n4. **Document the interface:** record pin, reference voltage, code range, conversion rule, and averaging window alongside your captured data.",
+      "resources": [
+        {
+          "title": "Analog to Digital Conversion",
+          "url": "https://learn.sparkfun.com/tutorials/analog-to-digital-conversion/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Wire a potentiometer and convert ADC codes into voltages using worked examples."
+        },
+        {
+          "title": "Voltage Dividers",
+          "url": "https://learn.sparkfun.com/tutorials/voltage-dividers/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Use resistor ratios and potentiometers to produce suitable measurement voltages."
+        },
+        {
+          "title": "Pull-up Resistors",
+          "url": "https://learn.sparkfun.com/tutorials/pull-up-resistors/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Give button and switch inputs a defined state rather than leaving them floating."
+        },
+        {
+          "title": "Smoothing Readings From an Analog Input",
+          "url": "https://github.com/arduino/docs-content/blob/main/content/built-in-examples/03.analog/Smoothing/Smoothing.md",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Arduino's official example explains a ten-reading running average."
+        },
+        {
+          "title": "Ratiometric temperature sensors",
+          "url": "https://www.ti.com/video/6049527625001",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "TI explains sensor conditioning relative to a reference and the influence of supply variation."
+        }
+      ],
+      "summary": "Sensor interfacing and signal conditioning turn a sensor's electrical output into stable, correctly scaled numbers that robot software can interpret.",
+      "sources": [
+        "https://learn.sparkfun.com/tutorials/analog-to-digital-conversion/all",
+        "https://learn.sparkfun.com/tutorials/voltage-dividers/all",
+        "https://learn.sparkfun.com/tutorials/pull-up-resistors/all",
+        "https://github.com/arduino/docs-content/blob/main/content/built-in-examples/03.analog/Smoothing/Smoothing.md",
+        "https://www.ti.com/video/6049527625001"
+      ]
+    },
+    {
+      "node_id": "k:motor-drivers-power-electronics",
+      "type": "knowledge",
+      "name": "Motor drivers & power electronics",
+      "lesson_md": "## In one sentence\n\nA motor driver switches motor current in response to low-power control signals, keeping motor power off processor pins.\n\n![Back of a TB6612FNG motor-driver breakout with control, power, and motor pins labelled](/img/lessons/knowledge_embedded_electronics-motor-drivers.webp)\n*Separate logic, motor-power, and output connections on a driver board. Source: [SparkFun](https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/all), CC BY-SA 4.0.*\n\n## Why it matters for us\n\n- **Commands and energy take different paths:** firmware sets driver inputs; the motor supply provides motor current.\n- **Current ratings have conditions:** SparkFun lists the TB6612FNG at 1.2 A continuous and 3.2 A peak per channel; peak is not a sustained operating target.\n\n> **Key idea:** A valid software command is useful only when the driver, supply, and motor can handle the resulting current and heat.\n\n## How it works\n\n- **Switch the power path:** an H-bridge arranges electronic switches so current can flow through a brushed motor in either direction.\n- **Use PWM for modulation:** pulse-width modulation repeatedly switches a signal high and low; duty cycle is the fraction of each period spent high.\n- **Separate direction from duty:** the TB6612FNG takes direction inputs and a PWM input per channel; its standby input must also be high to drive.\n- **Software analogy:** calling `motor1.drive()` resembles sending a command to a worker process; the driver, not the caller's GPIO pin, handles the power delivery.\n- **Worked command example:** SparkFun's library uses `motor1.drive(255, 1000)`, then `motor1.drive(-255, 1000)`: opposite directions for 1000 milliseconds each.\n- **Command values are not measurements:** that library accepts speeds from -255 to 255; those numbers do not state measured shaft speed or position.\n- **Protection is device-specific:** TI's DRV8833 includes current regulation and shutdown for overcurrent, undervoltage, and overtemperature; still check package and cooling conditions.\n\n```mermaid\nflowchart LR\n  C[\"Firmware command\"] --> D[\"Driver logic\"]\n  P[\"Motor supply\"] --> H[\"Power switches\"]\n  D --> H\n  H --> M[\"Motor winding\"]\n  M --> R[\"Rotation and heat\"]\n```\n\n## Key terms\n\n- **H-bridge**: a switching circuit that can reverse the voltage applied across a motor winding.\n- **MOSFET**: a transistor used as an electronically controlled power switch.\n- **Duty cycle**: percentage of a PWM period spent high; 50% means equal high and low time.\n- **Stall current**: current drawn when a powered motor cannot turn.\n- **Continuous current**: current a driver can sustain under its specified operating conditions.\n- **Peak current**: a higher current allowed only under the manufacturer's stated transient conditions.\n\n## Before / after\n\n- **Before:** Learn Electronics fundamentals for robots and Microcontrollers & bare-metal firmware; distinguish logic signals from motor-power connections.\n- **After:** Apply driver selection in Low-cost quasi-direct-drive actuator test bench before attempting Custom BLDC driver PCB.\n\n## Try it in an afternoon\n\n1. **Trace SparkFun's hookup diagram:** identify VM motor power, VCC logic power, shared ground, direction pins, PWM, and motor outputs.\n2. **Read its example commands:** predict direction, duration, and braking behavior without assuming an exact rotational speed.\n3. **Make a compatibility table:** compare a chosen motor's rated voltage and stall current with the driver's documented limits.\n4. **Compare driver specifications:** explain why peak current alone cannot establish a continuous operating limit.\n\n> **Watch out:** A stalled motor can exceed the driver's current capability; check stall demand and protection settings before applying motor power.",
+      "resources": [
+        {
+          "title": "Driving DC Motors with Microcontrollers",
+          "url": "https://www.youtube.com/watch?v=ygrsIqWOh3Y",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "DroneBot Workshop demonstrates H-bridge drivers for motor direction and speed control."
+        },
+        {
+          "title": "TB6612FNG Hookup Guide",
+          "url": "https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Trace motor and logic power, direction inputs, PWM, and concrete drive commands."
+        },
+        {
+          "title": "Pulse Width Modulation",
+          "url": "https://learn.sparkfun.com/tutorials/pulse-width-modulation/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See how high/low timing defines duty cycle."
+        },
+        {
+          "title": "DRV8833",
+          "url": "https://www.ti.com/product/DRV8833",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect a dual-H-bridge driver's supported loads, current regulation, and protection features."
+        }
+      ],
+      "summary": "A motor driver switches motor current in response to low-power control signals, keeping motor power off processor pins.",
+      "sources": [
+        "https://www.youtube.com/watch?v=ygrsIqWOh3Y",
+        "https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/all",
+        "https://learn.sparkfun.com/tutorials/pulse-width-modulation/all",
+        "https://www.ti.com/product/DRV8833"
+      ]
     }
   ]
 }
