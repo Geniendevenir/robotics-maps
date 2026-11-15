@@ -1,0 +1,732 @@
+{
+ "batch": "knowledge_state_estimation_slam",
+ "lessons": [
+  {
+   "node_id": "k:wheel-inertial-dead-reckoning",
+   "type": "knowledge",
+   "name": "Wheel & inertial dead reckoning",
+   "summary": "Dead reckoning estimates a robot's changing position and orientation by accumulating wheel motion and inertial measurements from a known starting pose.",
+   "lesson_md": "## In one sentence\n\nDead reckoning estimates a robot's changing position and orientation by accumulating wheel motion and inertial measurements from a known starting pose.\n\n![Differential-drive robot with forward velocity, heading and world axes](/img/lessons/knowledge_state_estimation_slam-wheel.webp)\n*Forward velocity and heading of a differential-drive robot. Source: [Dellaert and Hutchinson](https://www.roboticsbook.org/S52_diffdrive_actions.html), license unknown.*\n\n## Why it matters for us\n\n- **Local motion tracking:** A wheeled base needs an estimate between external position fixes. Wheel sensors report rotation, not a guaranteed distance across the floor.\n- **A useful baseline:** Implementing dead reckoning makes drift visible before adding Kalman filtering & multisensor fusion.\n- **A concrete failure:** Wheels can spin without the chassis moving. A smooth plotted trajectory can therefore be wrong.\n\n> **Key idea:** Adding up motion also adds up motion errors; an IMU is not an absolute position reference.\n\n## How it works\n\n- **Wheel increments:** Convert rotation into travel using wheel radius. Assuming rolling without slipping, equal signed travel means straight motion; unequal travel changes heading.\n- **Heading integration:** A gyroscope measures angular velocity. Accumulate it over elapsed time to estimate orientation changes.\n- **Inertial measurements:** An inertial measurement unit, or IMU, also measures acceleration. Position integration needs gravity handling and is vulnerable to sensor offsets.\n- **Software analogy:** Treat each timestamped motion increment like an event in an event-sourced service. Replaying bad events reproducibly creates the wrong state.\n- **Worked toy example:** Assume no slipping, wheel radius 0.05 m, and both wheels rotating 2 radians. Each wheel travels 0.10 m, so the chassis advances 0.10 m.\n- **Coordinate conversion:** Forward travel follows the robot's heading, not necessarily the world's horizontal axis.\n\n```mermaid\nflowchart LR\n  W[\"Wheel increments\"] --> M[\"Motion increment\"]\n  I[\"IMU and elapsed time\"] --> M\n  M --> P[\"Integrate pose\"]\n  P --> N[\"Next estimate\"]\n  N --> P\n```\n\n## Key terms\n\n- **Pose**: position and orientation relative to a chosen coordinate frame.\n- **Encoder**: a sensor measuring wheel or shaft rotation.\n- **Bias**: a persistent offset in a sensor reading.\n- **Drift**: accumulated estimation error over time.\n\n## Before / after\n\n- **Before:** Practice Rigid-body motion & coordinate frames and integrating velocity over elapsed time.\n- **After:** Build Diff-drive odometry from scratch, then study Bayesian state estimation & uncertainty to describe confidence alongside motion.\n\n## Try it in an afternoon\n\n1. **Simulate two wheels:** Record equal wheel increments, timestamps, and a known starting pose in Python.\n2. **Replay a square:** Integrate straight sections and turns; plot the estimated path against your simulated truth.\n3. **Inject an offset:** Add a constant gyroscope error and compare final heading with the error-free replay.\n4. **Test missing data:** Reject nonpositive time intervals; plot wheel-slip and sensor-dropout cases separately instead of silently inventing measurements.",
+   "resources": [
+    {
+     "title": "Modern Robotics, Chapter 13.4:  Odometry",
+     "url": "https://www.youtube.com/watch?v=eQ9E0Zvp9jw",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See how measured wheel motion becomes chassis motion and why errors accumulate."
+    },
+    {
+     "title": "13.4. Odometry",
+     "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+     "format": "Article",
+     "level": "Beginner",
+     "why": "Read the companion transcript on integrating wheel motion and handling odometry drift."
+    },
+    {
+     "title": "5.2. Motion Model for the Differential Drive Robot",
+     "url": "https://www.roboticsbook.org/S52_diffdrive_actions.html",
+     "format": "Book",
+     "level": "Beginner",
+     "why": "Work through wheel radius, wheel speeds, heading, and world-frame velocity."
+    },
+    {
+     "title": "Preparing Your Data for Use with robot_localization",
+     "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "Check IMU axes, gravity conventions, odometry frames, and reported uncertainty."
+    }
+   ],
+   "sources": [
+    "https://www.roboticsbook.org/S52_diffdrive_actions.html",
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/preparing_sensor_data.rst",
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/state_estimation_nodes.rst",
+    "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-4-odometry/",
+    "https://www.youtube.com/watch?v=eQ9E0Zvp9jw"
+   ]
+  },
+  {
+   "node_id": "k:bayesian-state-estimation-uncertainty",
+   "type": "knowledge",
+   "name": "Bayesian state estimation & uncertainty",
+   "summary": "Bayesian state estimation maintains probabilities over possible robot states, predicting motion and updating those probabilities when measurements arrive.",
+   "lesson_md": "## In one sentence\n\nBayesian state estimation maintains probabilities over possible robot states, predicting motion and updating those probabilities when measurements arrive.\n\n![Door-localization example showing prediction, likelihood and posterior probability bars](/img/lessons/knowledge_state_estimation_slam-bayes.webp)\n*Door observations reshape a predicted location distribution. Source: [Dellaert and Hutchinson](https://www.roboticsbook.org/S44_logistics_perception.html), license unknown.*\n\n## Why it matters for us\n\n- **Sensors disagree:** A robot needs to reason about imperfect measurements rather than replacing its position with whichever sensor spoke last.\n- **Ambiguous observations:** Seeing a doorway may fit several places. Keeping alternatives avoids pretending that one observation uniquely identifies the location.\n- **Useful confidence:** Uncertainty distinguishes a well-supported estimate from an equally smooth guess made without informative measurements.\n\n> **Key idea:** A measurement changes a belief according to how compatible it is with each possible state.\n\n## How it works\n\n- **Prediction:** Move the previous belief through a motion model. Include uncertainty about the movement rather than shifting one perfectly known point.\n- **Measurement update:** Multiply each predicted state's probability by the likelihood of observing that measurement there. Normalize: divide by the total so probabilities sum to one.\n- **Software analogy:** Keep a weighted candidate list, like debugging several hypotheses. New evidence changes their weights rather than automatically deleting every alternative.\n- **Worked hallway example:** Labbe starts with ten equally likely locations. Each has probability 0.1; three locations contain doors.\n- **Perfect door detection:** If the sensor cannot make mistakes, observing a door leaves those three positions at probability 1/3 each and all others at zero.\n- **Realistic detection:** A sensor that can misfire should not eliminate every non-door location. Its likelihood model encodes those mistakes.\n\n```mermaid\nflowchart LR\n  B[\"Previous belief\"] --> P[\"Predict motion\"]\n  P --> U[\"Weight by likelihood\"]\n  Z[\"Observation\"] --> U\n  U --> N[\"Normalize\"]\n  N --> B\n```\n\n## Key terms\n\n- **State**: the hidden quantities being estimated, such as position and heading.\n- **Prior**: belief before incorporating the next measurement.\n- **Likelihood**: how probable a measurement is for a specified state.\n- **Posterior**: belief after incorporating the measurement.\n- **Covariance**: a matrix describing spread and how components vary together; it does not describe every possible distribution shape.\n\n## Before / after\n\n- **Before:** Know basic probability and distinguish the true state from a sensor observation.\n- **After:** Study Kalman filtering & multisensor fusion or Particle filtering & global localization; they implement different representations of a changing belief.\n\n## Try it in an afternoon\n\n1. **Open the hallway notebook:** Reproduce the ten-location example and plot its initial probability bars.\n2. **Apply a door observation:** Multiply by a likelihood array and divide by the sum; verify that the posterior sums to one.\n3. **Add uncertain movement:** Spread probability across nearby cells, then alternate movement and sensor updates.\n4. **Handle impossible evidence:** Detect a zero normalization sum explicitly. Test a missing observation by retaining the prediction rather than fabricating evidence.",
+   "resources": [
+    {
+     "title": "Bayes Filter  (Cyrill Stachniss)",
+     "url": "https://www.youtube.com/watch?v=0lKHFJpaZvE",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Learn the prediction/update loop and the distinction between belief and sensor likelihood."
+    },
+    {
+     "title": "Discrete Bayes Filter",
+     "url": "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+     "format": "Book",
+     "level": "Beginner",
+     "why": "Run the ten-position hallway example and inspect normalized probability arrays."
+    },
+    {
+     "title": "4.4. Localization",
+     "url": "https://www.roboticsbook.org/S44_logistics_perception.html",
+     "format": "Book",
+     "level": "Beginner",
+     "why": "Compare grid beliefs, Bayes filtering, and measurement likelihoods in a warehouse."
+    },
+    {
+     "title": "Probabilities, Gaussians, and Bayes' Theorem",
+     "url": "https://raw.githubusercontent.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/master/03-Gaussians.ipynb",
+     "format": "Book",
+     "level": "Intermediate",
+     "why": "Connect probability distributions to mean, variance, and Gaussian uncertainty."
+    },
+    {
+     "title": "Configuring robot_localization",
+     "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "See why reusing encoder-derived position and velocity as independent evidence is a mistake."
+    }
+   ],
+   "sources": [
+    "https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/02-Discrete-Bayes.ipynb",
+    "https://raw.githubusercontent.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/master/03-Gaussians.ipynb",
+    "https://www.roboticsbook.org/S44_logistics_perception.html",
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/configuring_robot_localization.rst",
+    "https://www.youtube.com/watch?v=0lKHFJpaZvE"
+   ]
+  },
+  {
+   "node_id": "k:particle-filtering-global-localization",
+   "type": "knowledge",
+   "name": "Particle filtering & global localization",
+   "summary": "Particle filtering tracks many weighted guesses of a robot's pose, allowing localization to retain several plausible places until sensor evidence separates them.",
+   "lesson_md": "## In one sentence\n\nParticle filtering tracks many weighted guesses of a robot's pose, allowing localization to retain several plausible places until sensor evidence separates them.\n\n![PythonRobotics particle-filter simulation with landmark ranges and true, estimated and dead-reckoned trajectories](/img/lessons/knowledge_state_estimation_slam-particles.webp)\n*Particle-filter localization using landmark distances. Source: [PythonRobotics](https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html), license unknown.*\n\n## Why it matters for us\n\n- **Repeated corridors:** Several poses can explain the same observation. A single bell-shaped uncertainty distribution cannot faithfully preserve separate competing locations.\n- **Unknown starting pose:** Global localization spreads hypotheses across a known map. The PythonRobotics demo instead initializes particles at the true start; broaden it yourself.\n- **A practical distinction:** Tracking near a known start is easier than recovering after somebody moves the robot unexpectedly.\n\n> **Key idea:** Particles represent competing explanations, not a collection of physical robots or guaranteed recovery routes.\n\n## How it works\n\n- **Prediction:** Move every pose guess using measured motion plus sampled motion noise. The cloud spreads where movement is uncertain.\n- **Weighting:** Compare predicted sensor readings at each pose with the actual reading. Better matches receive larger weights.\n- **Resampling:** Draw a new population according to those weights. Strong explanations tend to gain copies; weak explanations tend to disappear.\n- **Software analogy:** Imagine a randomized beam search whose candidates are robot poses, with sensor agreement determining which candidates get another iteration.\n- **Worked toy example:** Suppose two candidate regions have equal prior weight and measurement likelihoods 0.8 and 0.2. Normalized weights become 0.8 and 0.2.\n- **Recovery limitation:** Resampling only copies existing particles; it cannot introduce a missing location. Recovery requires another mechanism, such as adding fresh guesses across the map.\n\n```mermaid\nflowchart LR\n  P[\"Pose particles\"] --> M[\"Sample motion\"]\n  M --> W[\"Score observation\"]\n  W --> N[\"Normalize weights\"]\n  N --> R[\"Resample\"]\n  R --> P\n```\n\n## Key terms\n\n- **Particle**: one sampled pose hypothesis.\n- **Weight**: a hypothesis's relative importance in the estimated distribution.\n- **Multimodal belief**: a distribution with separate peaks representing distinct plausible states.\n- **Monte Carlo localization**: particle filtering applied to localization in a known map.\n- **Kidnapped robot**: a robot moved unexpectedly, making its previous pose estimate wrong.\n\n## Before / after\n\n- **Before:** Understand Bayesian state estimation & uncertainty and distinguish a map from the robot's pose inside it.\n- **After:** Build Animate particles in a repeated corridor, then Recover after a simulated robot kidnapping to test more than easy tracking.\n\n## Try it in an afternoon\n\n1. **Run the landmark demo:** Use PythonRobotics and identify true, dead-reckoned, and estimated trajectories.\n2. **Broaden initialization:** Spread pose guesses across a toy map instead of clustering around the correct start.\n3. **Create ambiguity:** Use repeated landmarks; plot the full particle cloud, not just its average position.\n4. **Test failures:** Remove observations, teleport the simulated truth, and detect zero total weight before normalization. Compare ordinary resampling with adding fresh global guesses.",
+   "resources": [
+    {
+     "title": "Particle Filter and Monte Carlo Localization (Cyrill Stachniss)",
+     "url": "https://www.youtube.com/watch?v=MsYlueVDLI0",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Understand pose hypotheses, importance weights, resampling, and global localization."
+    },
+    {
+     "title": "Particle filter localization",
+     "url": "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "See a runnable range-to-landmark localization example and its trajectory colors."
+    },
+    {
+     "title": "particle_filter.py",
+     "url": "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Inspect motion sampling, likelihood calculation, weight normalization, and resampling."
+    },
+    {
+     "title": "4.4. Localization",
+     "url": "https://www.roboticsbook.org/S44_logistics_perception.html",
+     "format": "Book",
+     "level": "Intermediate",
+     "why": "Read the Monte Carlo localization section and compare sampling with a dense probability grid."
+    }
+   ],
+   "sources": [
+    "https://atsushisakai.github.io/PythonRobotics/modules/2_localization/particle_filter_localization/particle_filter_localization.html",
+    "https://www.roboticsbook.org/S44_logistics_perception.html",
+    "https://github.com/AtsushiSakai/PythonRobotics/blob/master/Localization/particle_filter/particle_filter.py",
+    "https://www.youtube.com/watch?v=MsYlueVDLI0"
+   ]
+  },
+  {
+   "node_id": "k:factor-graphs-smoothing-pose-graph-slam",
+   "type": "knowledge",
+   "name": "Factor graphs, smoothing & pose-graph SLAM",
+   "summary": "Factor graphs connect unknown robot poses to noisy constraints, letting a smoother adjust an entire trajectory when new evidence links old and new locations.",
+   "lesson_md": "## In one sentence\n\nFactor graphs connect unknown robot poses to noisy constraints, letting a smoother adjust an entire trajectory when new evidence links old and new locations.\n\n![Five-pose factor graph with odometry factors and a red loop-closure factor](/img/lessons/knowledge_state_estimation_slam-pose-graph.webp)\n*PoseSLAM factor graph; red marks a loop constraint. Source: [GTSAM tutorial](https://gtsam.org/tutorials/intro.html), license unknown.*\n\n## Why it matters for us\n\n- **Accumulated drift:** Wheel odometry can make a closed walk look open. Revisiting a known place supplies a constraint between distant trajectory points.\n- **Historical correction:** Smoothing estimates multiple past states together, unlike filtering that focuses on the current state.\n- **A useful implementation:** GTSAM separates the graph describing evidence from the values containing a particular trajectory estimate.\n\n> **Key idea:** A loop closure can change old poses, not merely snap the newest pose onto a map.\n\n## How it works\n\n- **Variables:** For a planar pose graph, store each unknown pose as position and heading. More general factor graphs can include landmarks or other quantities.\n- **Motion factors:** Connect successive poses using measured relative motion and a noise model.\n- **Loop factors:** Connect revisited poses using a measured geometric relationship. A wrong relationship can distort the optimized trajectory.\n- **Software analogy:** Think of factors as weighted consistency tests over records. The optimizer changes records to reduce their combined disagreement, not to satisfy one test blindly.\n- **Residual minimization:** A residual is the difference between a measured relationship and the relationship predicted by current poses. Noise models determine how strongly errors count.\n- **Three-pose example:** GTSAM initializes x coordinates at 0.5, 2.3, and 4.1. A zero-position prior and two 2 m motions recover approximately 0, 2, and 4.\n- **Anchoring:** A prior ties the trajectory to a coordinate frame; relative motions alone do not determine its absolute placement.\n\n```mermaid\nflowchart LR\n  O[\"Odometry\"] --> G[\"Build factors\"]\n  L[\"Verified loop\"] --> G\n  G --> E[\"Evaluate residuals\"]\n  V[\"Initial poses\"] --> E\n  E --> S[\"Optimize trajectory\"]\n  S --> C[\"Corrected poses\"]\n```\n\n## Key terms\n\n- **Factor graph**: a graph connecting unknown variables to probabilistic constraints.\n- **Smoothing**: estimating a sequence of states using accumulated evidence.\n- **Pose graph**: a graph whose unknown variables are robot poses.\n- **Loop closure**: a constraint linking observations of a revisited place.\n- **SLAM**: simultaneous localization and mapping; pose-graph methods estimate a trajectory that aligns mapping observations.\n\n## Before / after\n\n- **Before:** Learn Bayesian state estimation & uncertainty, rigid transforms, and least squares: fitting values by minimizing squared residuals.\n- **After:** Build Close a tiny pose graph, then study Place recognition, loop closure & relocalization before trusting automatically proposed loops.\n\n## Try it in an afternoon\n\n1. **Open the GTSAM example:** Inspect its five poses, prior, odometry factors, and loop constraint.\n2. **Compare two graphs:** Optimize with and without the loop constraint using the same initial values.\n3. **Inspect uncertainty:** Plot corrected poses and their covariance ellipses, which visualize position uncertainty.\n4. **Break the evidence:** Deliberately insert an incorrect loop measurement. Remove the prior in a separate experiment and inspect the solver's failure or ambiguity.",
+   "resources": [
+    {
+     "title": "Graph-based SLAM using Pose Graphs (Cyrill Stachniss)",
+     "url": "https://www.youtube.com/watch?v=uHbRKvD8TWg",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See how relative-pose constraints become a trajectory optimization problem."
+    },
+    {
+     "title": "6.4. SLAM",
+     "url": "https://www.roboticsbook.org/S64_driving_perception.html",
+     "format": "Book",
+     "level": "Beginner",
+     "why": "Follow the five-pose loop example, initial values, optimizer, and covariance plots."
+    },
+    {
+     "title": "Factor Graphs and GTSAM",
+     "url": "https://gtsam.org/tutorials/intro.html",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "Distinguish factor graphs from values and work through motion and PoseSLAM examples."
+    },
+    {
+     "title": "Pose2SLAMExample.cpp",
+     "url": "https://raw.githubusercontent.com/borglab/gtsam/develop/examples/Pose2SLAMExample.cpp",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Read the official five-pose implementation with prior, between factors, optimization, and marginal covariances."
+    }
+   ],
+   "sources": [
+    "https://gtsam.org/tutorials/intro.html",
+    "https://www.roboticsbook.org/S64_driving_perception.html",
+    "https://raw.githubusercontent.com/borglab/gtsam/develop/examples/Pose2SLAMExample.cpp",
+    "https://www.youtube.com/watch?v=uHbRKvD8TWg"
+   ]
+  },
+  {
+   "node_id": "k:2d-lidar-slam-occupancy-mapping",
+   "type": "knowledge",
+   "name": "2D lidar SLAM & occupancy mapping",
+   "summary": "2D lidar SLAM estimates a robot's path while building a floor-plan grid from laser distances, correcting accumulated drift when scans recognize previously visited places.",
+   "lesson_md": "## In one sentence\n\n2D lidar SLAM estimates a robot's path while building a floor-plan grid from laser distances, correcting accumulated drift when scans recognize previously visited places.\n\n![SLAM Toolbox mapping screenshot with light free space, dark obstacles and unexplored background](/img/lessons/knowledge_state_estimation_slam-lidar-2d.webp)\n*An evolving floor plan from planar laser scans. Source: [SLAM Toolbox](https://github.com/SteveMacenski/slam_toolbox), license unknown.*\n\n## Why it matters for us\n\n- **A visible first demo:** SLAM Toolbox turns recorded laser scans into a map you can inspect without buying a mobile base.\n- **Recognizable output:** The ROBOTIS mapping guide shows white free space, black occupied space, and gray unknown space. Unknown does not mean safe to drive.\n- **Two different deliverables:** An occupancy image supports navigation; a serialized pose graph preserves information needed to continue mapping.\n\n> **Key idea:** A floor plan depends on estimated sensor poses, so correcting the trajectory can correct the map too.\n\n## How it works\n\n- **Planar sensing:** A 2D lidar measures distances in one scanning plane. Objects outside that plane are not represented; the grid is not a complete 3D obstacle model.\n- **Scan matching:** Align overlapping scans to estimate relative motion. Odometry supplies a starting motion estimate rather than perfect ground truth.\n- **Graph correction:** Store poses and their constraints; a loop closure connects a revisit, allowing the optimizer to reduce disagreement across the trajectory.\n- **Grid creation:** Rasterize aligned scans into square cells describing occupancy. This is a spatial summary, not a photographic reconstruction.\n- **Software analogy:** The pose graph resembles source data; the occupancy grid resembles a compiled artifact. Saving only the artifact loses useful editing information.\n- **Published configuration:** The ROS 2 asynchronous example sets `resolution: 0.05` meters and `map_update_interval: 5.0` seconds. Grid resolution is not an accuracy guarantee.\n- **Worked grid example:** At 0.05 m per cell, one meter spans 20 cells. Halving cell width makes the same floor area require four times as many cells.\n\n```mermaid\nflowchart LR\n  S[\"Laser scans\"] --> A[\"Match scans\"]\n  O[\"Odometry\"] --> A\n  A --> G[\"Pose graph\"]\n  L[\"Revisit constraints\"] --> G\n  G --> P[\"Correct poses\"]\n  P --> M[\"Occupancy grid\"]\n```\n\n## Key terms\n\n- **Occupancy grid**: square cells representing free, occupied, or unknown space.\n- **Resolution**: physical width represented by each grid cell.\n- **Scan matching**: estimating motion by aligning overlapping range observations.\n- **Serialization**: saving the graph so it can be loaded for later use.\n\n## Before / after\n\n- **Before:** Understand Wheel & inertial dead reckoning, ROS messages, and coordinate transforms.\n- **After:** Try “Grow a floor plan from a recorded laser bag”, then “Save a graph and localize a second session”.\n\n## Try it in an afternoon\n\n1. **Choose a replay:** Use a compatible recorded laser bag with odometry and transforms; follow the ROS 2 SLAM Toolbox instructions.\n2. **Inspect the grid:** Identify free, occupied, and unknown cells while scans arrive.\n3. **Compare resolutions:** Replay identical data at 0.05 m and 0.10 m; compare cell count and visible wall detail.\n4. **Test persistence:** Save both map and graph, reload the graph, and verify behavior when scans stop or a required transform is missing.",
+   "resources": [
+    {
+     "title": "Easy SLAM with ROS using slam_toolbox",
+     "url": "https://www.youtube.com/watch?v=ZaiA3hWaRzE",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Watch a beginner build and reuse a 2D laser map; use current ROS 2 configuration alongside the older video."
+    },
+    {
+     "title": "SLAM Toolbox",
+     "url": "https://github.com/SteveMacenski/slam_toolbox",
+     "format": "Repo",
+     "level": "Beginner",
+     "why": "Learn mapping modes, graph serialization, localization, and the distinction between graph and occupancy-map saving."
+    },
+    {
+     "title": "TurtleBot3",
+     "url": "https://emanual.robotis.com/docs/en/platform/turtlebot3/slam/",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "Read the SLAM section's map colors, map-saving workflow, and ROS 2 Cartographer example."
+    },
+    {
+     "title": "mapper_params_online_async.yaml",
+     "url": "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/config/mapper_params_online_async.yaml",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Inspect the actual 0.05 m resolution and 5.0 second map-update settings."
+    }
+   ],
+   "sources": [
+    "https://github.com/SteveMacenski/slam_toolbox",
+    "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/config/mapper_params_online_async.yaml",
+    "https://emanual.robotis.com/docs/en/platform/turtlebot3/slam/",
+    "https://www.youtube.com/watch?v=ZaiA3hWaRzE"
+   ]
+  },
+  {
+   "node_id": "k:3d-lidar-inertial-odometry-mapping",
+   "type": "knowledge",
+   "name": "3D lidar-inertial odometry & mapping",
+   "summary": "Lidar-inertial odometry combines 3D laser surfaces with fast inertial measurements to estimate motion and build a spatial map while accounting for movement during scanning.",
+   "lesson_md": "## In one sentence\n\nLidar-inertial odometry combines 3D laser surfaces with fast inertial measurements to estimate motion and build a spatial map while accounting for movement during scanning.\n\n![LIO-SAM demonstration showing a colored 3D point-cloud map and estimated sensor trajectory](/img/lessons/knowledge_state_estimation_slam-lidar-inertial.webp)\n*An accumulated 3D laser map from LIO-SAM. Source: [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM), license unknown.*\n\n## Why it matters for us\n\n- **Beyond a floor slice:** A point cloud records surfaces in three dimensions, making this a useful next step after 2D lidar SLAM & occupancy mapping.\n- **Motion distorts scans:** Points in one rotating scan arrive at different times. Treating them as simultaneous can bend walls when the sensor moves.\n- **Complementary evidence:** An inertial measurement unit, or IMU, predicts fast motion; laser geometry helps correct that prediction and estimate inertial offsets.\n\n> **Key idea:** A good 3D mapper needs correct timestamps and sensor alignment, not merely a large number of laser points.\n\n## How it works\n\n- **Inertial prediction:** Accumulate gyroscope and accelerometer readings to predict orientation, velocity, and movement between laser observations.\n- **Deskewing:** Use each point's capture time and predicted motion to express the scan relative to a common instant.\n- **Geometric alignment:** Match the corrected cloud against nearby mapped surfaces to refine the motion estimate.\n- **Different estimators:** FAST-LIO2 uses an iterated Kalman-filter approach; LIO-SAM uses factor graphs. Both combine lidar and inertial evidence.\n- **Loop correction:** Local odometry is not automatically a globally consistent map. LIO-SAM can incorporate loop and GPS constraints through its graph.\n- **Published sensor example:** LIO-SAM's README names a Microstrain 3DM-GX5-25 running at 500 Hz and recommends an IMU output of at least 200 Hz.\n- **Worked timing example:** For the README's 10 Hz lidar example, a scan lasts 0.1 seconds. At 500 Hz, about 50 IMU sampling intervals fit inside that scan.\n- **Software analogy:** Deskewing resembles aligning events from distributed logs before reconstructing what happened; arrival order alone is not capture time.\n\n```mermaid\nflowchart LR\n  I[\"IMU samples\"] --> P[\"Predict motion\"]\n  T[\"Timed laser points\"] --> D[\"Deskew cloud\"]\n  P --> D\n  D --> A[\"Align to local map\"]\n  A --> U[\"Update estimate\"]\n  U --> M[\"Accumulate map\"]\n  U --> P\n```\n\n## Key terms\n\n- **Point cloud**: sampled surface positions expressed as 3D coordinates.\n- **Deskewing**: compensating for movement during acquisition of one scan.\n- **Extrinsic calibration**: the position and orientation relating lidar and IMU frames.\n- **Bias**: a persistent inertial-sensor offset estimated alongside motion.\n\n## Before / after\n\n- **Before:** Learn Factor graphs, smoothing & pose-graph SLAM, rigid transforms, and point-cloud alignment.\n- **After:** Try “Replay a 3D lidar odometry baseline”, then “Compare lidar filtering and smoothing on one bag”.\n\n## Try it in an afternoon\n\n1. **Choose a supplied recording:** Start with LIO-SAM's Walking dataset and its matching configuration, not arbitrary sensor data.\n2. **Check compatibility:** The main README describes ROS 1; select its linked ROS 2 implementation if using ROS 2.\n3. **Inspect timing:** Verify per-point relative times, lidar ring identifiers, IMU rate, and sensor-frame calibration.\n4. **Test degradation:** Replay a short segment, then a copy with shifted IMU timestamps. Compare wall sharpness and trajectory; report missing timestamp fields explicitly.",
+   "resources": [
+    {
+     "title": "LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping",
+     "url": "https://www.youtube.com/watch?v=A0H8CoORZJU",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See the authors' moving sensor, reconstructed environments, and trajectory demonstrations."
+    },
+    {
+     "title": "LIO-SAM",
+     "url": "https://github.com/TixiaoShan/LIO-SAM",
+     "format": "Repo",
+     "level": "Beginner",
+     "why": "Read the supplied datasets, per-point timing requirements, IMU recommendations, and ROS 2 branch link."
+    },
+    {
+     "title": "FAST-LIO",
+     "url": "https://github.com/hku-mars/FAST_LIO",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Compare a filtering-based lidar-inertial pipeline and its synchronization requirements."
+    },
+    {
+     "title": "LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping",
+     "url": "https://arxiv.org/abs/2007.00258",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Understand IMU preintegration, scan deskewing, local scan matching, and graph constraints."
+    }
+   ],
+   "sources": [
+    "https://github.com/TixiaoShan/LIO-SAM",
+    "https://github.com/hku-mars/FAST_LIO",
+    "https://arxiv.org/abs/2007.00258",
+    "https://www.youtube.com/watch?v=A0H8CoORZJU"
+   ]
+  },
+  {
+   "node_id": "k:visual-odometry-visual-inertial-slam",
+   "type": "knowledge",
+   "name": "Visual odometry & visual-inertial SLAM",
+   "summary": "Visual odometry estimates camera motion from images; visual-inertial methods add motion sensing, while SLAM also reuses mapped places to correct drift.",
+   "lesson_md": "## In one sentence\n\nVisual odometry estimates camera motion from images; visual-inertial methods add motion sensing, while SLAM also reuses mapped places to correct drift.\n\n![ORB-SLAM3 stereo-inertial demonstration with green image features and a reconstructed trajectory](/img/lessons/knowledge_state_estimation_slam-visual-inertial.webp)\n*Tracked image features beside a reconstructed map. Source: [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3), license unknown.*\n\n## Why it matters for us\n\n- **Accessible recordings:** EuRoC provides synchronized cameras, inertial measurements, and reference trajectories, so a laptop can teach the pipeline before any hardware purchase.\n- **Complementary sensors:** Images constrain motion through scene geometry; an inertial measurement unit, or IMU, supplies fast acceleration and rotation observations.\n- **Different promises:** Odometry follows incremental motion. A SLAM system additionally recognizes mapped places and can correct its historical trajectory.\n\n> **Key idea:** Tracking features between images is not the same as knowing an accurate, globally corrected position.\n\n## How it works\n\n- **Visual tracking:** Detect distinctive image features and match them across frames. Their changing pixel positions constrain camera movement and scene structure.\n- **Inertial prediction:** Integrate motion readings between images; combine the prediction with visual constraints rather than trusting either sensor alone.\n- **Initialization:** Estimate gravity, velocity, and inertial bias before trusting the fused trajectory. A camera-only monocular reconstruction lacks absolute metric scale.\n- **Calibration:** Camera intrinsics describe image formation; camera-to-IMU calibration describes how the two sensors are positioned and oriented.\n- **Published rates:** OpenVINS documents EuRoC's two Aptina MT9V034 cameras at 20 frames per second and its ADIS16448 IMU at 200 samples per second.\n- **Worked timing example:** Images are 0.05 seconds apart; approximately ten IMU sampling intervals fit between consecutive camera frames.\n- **Concrete benchmark:** OpenVINS lists Vicon Room 1 01 as 58 m and provides corrected reference orientations; use those rather than judging a pretty path.\n- **Software analogy:** Sensor fusion resembles joining two timestamped event streams. Incorrect clock alignment pairs an image with motion from the wrong moment.\n\n```mermaid\nflowchart LR\n  C[\"Camera frames\"] --> F[\"Track features\"]\n  I[\"IMU samples\"] --> P[\"Predict motion\"]\n  F --> E[\"Fuse constraints\"]\n  P --> E\n  E --> T[\"Estimated trajectory\"]\n  T --> R[\"Recognize revisits\"]\n  R --> M[\"SLAM correction\"]\n```\n\n## Key terms\n\n- **Visual odometry**: estimating incremental camera movement from images.\n- **VIO**: visual-inertial odometry, combining camera and inertial observations.\n- **Monocular**: using one camera rather than a stereo pair.\n- **Metric scale**: converting reconstructed distances into physical units such as meters.\n- **Ground truth**: independently measured reference motion used for evaluation.\n\n## Before / after\n\n- **Before:** Learn camera geometry and Estimator calibration, timing & observability; know why inertial measurements drift.\n- **After:** Try “Replay a public visual-inertial trajectory”, then “Show where metric scale comes from”.\n\n## Try it in an afternoon\n\n1. **Use the OpenVINS tutorial:** Download the EuRoC Vicon Room 1 01 recording and use the matching configuration.\n2. **Select the ROS 2 path:** Inspect camera intrinsics, camera-to-IMU transform, and IMU noise files before replay.\n3. **Plot both streams:** Check timestamps and rates, then visualize tracked features and estimated poses.\n4. **Probe visual loss:** Replay a copy with a short image dropout; compare trajectory error and recovery against the unchanged recording.",
+   "resources": [
+    {
+     "title": "ORB-SLAM3: TUM-VI Stereo-Inertial, room1+magistrale1+magistrale5+slides1",
+     "url": "https://www.youtube.com/watch?v=HyLNq-98LRo",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Watch feature tracking, map reuse, and stereo-inertial trajectory estimation in an authors' demonstration."
+    },
+    {
+     "title": "Getting Started » Simple Tutorial",
+     "url": "https://docs.openvins.com/gs-tutorial.html",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "Replay a EuRoC recording with OpenVINS using its explicit ROS 2 instructions."
+    },
+    {
+     "title": "Getting Started » Supported Datasets",
+     "url": "https://docs.openvins.com/gs-datasets.html",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "Inspect sensor models, 20 Hz images, 200 Hz inertial data, sequence lengths, and ground-truth caveats."
+    },
+    {
+     "title": "ORB-SLAM3",
+     "url": "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Explore visual versus visual-inertial inputs, dataset replay, calibration, and multi-map SLAM."
+    },
+    {
+     "title": "ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM",
+     "url": "https://arxiv.org/abs/2007.11898",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Read how visual-inertial initialization and reusable maps extend beyond incremental visual odometry."
+    }
+   ],
+   "sources": [
+    "https://docs.openvins.com/gs-tutorial.html",
+    "https://docs.openvins.com/gs-datasets.html",
+    "https://github.com/UZ-SLAMLab/ORB_SLAM3",
+    "https://arxiv.org/abs/2007.11898",
+    "https://www.youtube.com/watch?v=HyLNq-98LRo"
+   ]
+  },
+  {
+   "node_id": "k:place-recognition-loop-closure-relocalization",
+   "type": "knowledge",
+   "name": "Place recognition, loop closure & relocalization",
+   "summary": "Place recognition proposes a revisit, geometric verification checks it, loop closure corrects accumulated drift, and relocalization recovers a pose in an existing map.",
+   "lesson_md": "## In one sentence\n\nPlace recognition proposes a revisit, geometric verification checks it, loop closure corrects accumulated drift, and relocalization recovers a pose in an existing map.\n\n![RTAB-Map study showing six lighting conditions, a mapped room layout and revisited image regions](/img/lessons/knowledge_state_estimation_slam-place-recognition.webp)\n*The same indoor environment recorded under changing illumination. Source: [RTAB-Map study](https://github.com/introlab/rtabmap/blob/master/archive/2022-IlluminationInvariant/README.md), license unknown.*\n\n## Why it matters for us\n\n- **Drift needs anchors:** A long estimated trajectory can wander. Recognizing a previously mapped place creates an opportunity to connect distant parts of that trajectory.\n- **Tracking can disappear:** After visual failure, a robot needs to estimate its pose against stored information, not simply resume integrating from its old guess.\n- **Similar is not identical:** Repeated doors and corridors can produce convincing image matches at physically different locations.\n\n> **Key idea:** Image similarity proposes a place; geometry must justify using that place to correct the robot's trajectory.\n\n## How it works\n\n- **Candidate retrieval:** Convert image features into a compact signature and search a database for similar earlier views.\n- **Visual vocabulary:** DBoW2 groups local image descriptors into visual words, analogous to indexing documents by terms in a search engine.\n- **Geometric verification:** Match individual scene points and estimate a transformation. Reject candidates whose matches cannot support a consistent spatial relationship.\n- **Different consumers:** A verified revisit can add a graph constraint for loop closure, or supply a recovered pose for relocalization.\n- **Concrete experiment:** RTAB-Map's illumination study recorded six mapping sessions at dusk and compared localization using individual versus combined session maps.\n- **Worked comparison:** Its figure shows views at 16:46 and 19:35. Testing the later images against the earlier map challenges appearance changes, not just same-light tracking.\n- **Implementation example:** ORB-SLAM3's loop-closing code explicitly performs geometric validation after bag-of-words matching; a database similarity score alone is not its acceptance rule.\n\n```mermaid\nflowchart LR\n  I[\"Current image\"] --> Q[\"Retrieve candidates\"]\n  Q --> G[\"Verify geometry\"]\n  G --> A{\"Consistent?\"}\n  A -->|Yes| P[\"Recovered pose\"]\n  A -->|Yes| L[\"Loop constraint\"]\n  A -->|No| R[\"Reject candidate\"]\n```\n\n## Key terms\n\n- **Place recognition**: retrieving previously observed locations that resemble the current observation.\n- **Loop closure**: adding a verified revisit constraint to correct a trajectory.\n- **Relocalization**: recovering a pose in a map after losing localization.\n- **Descriptor**: a compact numerical representation used to compare image features.\n- **False positive**: accepting a revisit that actually refers to another place.\n\n## Before / after\n\n- **Before:** Understand Visual odometry & visual-inertial SLAM and Factor graphs, smoothing & pose-graph SLAM.\n- **After:** Try “Film a map correction after a verified loop”, then “Build a look-alike-room loop rejection test”.\n\n## Try it in an afternoon\n\n1. **Start with saved views:** Select revisits and deliberately similar non-revisits from a public recording.\n2. **Separate pipeline outputs:** Log retrieved candidates, accepted geometric matches, and resulting pose corrections independently.\n3. **Change illumination:** Compare same-session and cross-session image pairs from the RTAB-Map study.\n4. **Include failure cases:** Test an empty database, no matching view, and repeated corridors. Count false acceptances separately from successful relocalizations.",
+   "resources": [
+    {
+     "title": "Outdoor stereo SLAM with RTAB-Map",
+     "url": "https://www.youtube.com/watch?v=qpTS7kg9J3A",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Watch the author's two-loop outdoor run and inspect how revisits affect the reconstructed map."
+    },
+    {
+     "title": "Multi-Session Visual SLAM for Illumination Invariant Re-Localization in Indoor Environments",
+     "url": "https://github.com/introlab/rtabmap/blob/master/archive/2022-IlluminationInvariant/README.md",
+     "format": "Repo",
+     "level": "Beginner",
+     "why": "Inspect the six-session lighting experiment, published figures, data formats, and reproduction scripts."
+    },
+    {
+     "title": "DBoW2",
+     "url": "https://github.com/dorian3d/DBoW2",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Understand the visual vocabulary and image database used for fast place-candidate retrieval."
+    },
+    {
+     "title": "LoopClosing.cc",
+     "url": "https://raw.githubusercontent.com/UZ-SLAMLab/ORB_SLAM3/master/src/LoopClosing.cc",
+     "format": "Repo",
+     "level": "Advanced",
+     "why": "Inspect ORB-SLAM3's explicit geometric-validation stage after candidate matching."
+    },
+    {
+     "title": "RTAB-Map | Real-Time Appearance-Based Mapping",
+     "url": "https://introlab.github.io/rtabmap/",
+     "format": "Article",
+     "level": "Beginner",
+     "why": "Learn the relationship between appearance-based hypotheses, loop constraints, and graph optimization."
+    }
+   ],
+   "sources": [
+    "https://introlab.github.io/rtabmap/",
+    "https://github.com/introlab/rtabmap/blob/master/archive/2022-IlluminationInvariant/README.md",
+    "https://github.com/dorian3d/DBoW2",
+    "https://raw.githubusercontent.com/UZ-SLAMLab/ORB_SLAM3/master/src/LoopClosing.cc",
+    "https://www.youtube.com/watch?v=qpTS7kg9J3A"
+   ]
+  },
+  {
+   "node_id": "k:gnss-aided-localization-georeferencing",
+   "type": "knowledge",
+   "name": "GNSS-aided localization & georeferencing",
+   "summary": "GNSS-aided localization combines satellite fixes with local motion estimates, while georeferencing aligns the robot's local coordinates with an Earth-referenced coordinate system.",
+   "lesson_md": "## In one sentence\n\nGNSS-aided localization combines satellite fixes with local motion estimates, while georeferencing aligns the robot's local coordinates with an Earth-referenced coordinate system.\n\n![robot_localization diagram relating UTM east and north axes to robot heading, magnetic north and the local map](/img/lessons/knowledge_state_estimation_slam-gnss.webp)\n*Connecting a local robot frame to Earth-referenced coordinates. Source: [robot_localization GPS tutorial](https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/integrating_gps.rst), license unknown.*\n\n## Why it matters for us\n\n- **Outdoor reference:** Satellite fixes can limit accumulated local-motion drift, but latitude and longitude are not immediately interchangeable with map coordinates in meters.\n- **Different update rates:** A robot moves between satellite updates. Inertial sensing can predict motion during those gaps instead of holding the latest fix unchanged.\n- **Continuous control:** REP-105 distinguishes a continuous but drifting odometry frame from a map frame that can jump when global estimates change.\n\n> **Key idea:** A satellite position becomes useful only after its coordinates, heading convention, and uncertainty agree with the local estimator.\n\n## How it works\n\n- **Three inputs:** The ROS 2 navsat transform documentation requires a satellite fix, an accurate Earth-referenced heading, and the robot's current odometry estimate.\n- **Frame alignment:** Convert geographic coordinates into a Cartesian frame, then relate that frame to the robot's local world frame.\n- **Sensor fusion:** Feed the transformed position into the state estimator alongside local motion observations; uncertainty controls how strongly each source influences the estimate.\n- **Published datum example:** The tutorial uses latitude 55.944904°, longitude -3.186693°, and heading 0.0 radians. A datum fixes the reference origin and orientation, not the sensor's accuracy.\n- **Worked heading example:** The navsat documentation expects yaw zero facing east. If an IMU instead reads zero facing north, its documented offset is pi/2, approximately 1.5707963 radians.\n- **Software analogy:** Georeferencing resembles adapting two APIs with different units and coordinate conventions. Renaming the fields is insufficient; values must actually be transformed.\n- **Absolute information:** Keep differential mode disabled for the transformed GPS position input, as the official tutorial specifies.\n\n```mermaid\nflowchart LR\n  G[\"Satellite fix\"] --> T[\"Coordinate transform\"]\n  H[\"Earth-referenced heading\"] --> T\n  O[\"Local odometry\"] --> T\n  T --> P[\"Local-frame position\"]\n  P --> F[\"Fuse with uncertainty\"]\n  O --> F\n  F --> E[\"Robot state estimate\"]\n```\n\n## Key terms\n\n- **GNSS**: global navigation satellite systems; GPS is one such system.\n- **Georeferencing**: relating a local map to Earth-referenced coordinates.\n- **Datum**: the reference origin used to establish the coordinate relationship.\n- **ENU**: east, north, up; an axis convention for local coordinates.\n- **Yaw**: heading rotation about the vertical axis.\n\n## Before / after\n\n- **Before:** Study Kalman filtering & multisensor fusion and Rigid-body motion & coordinate frames.\n- **After:** Try “Convert synthetic GNSS fixes into a local map frame”, then “Survive GNSS dropout and bad fixes in replay”.\n\n## Try it in an afternoon\n\n1. **Prepare synthetic messages:** Supply satellite fixes, Earth-referenced IMU headings, and odometry with consistent timestamps and frames.\n2. **Check heading conversion:** Test east and north orientations using the documented yaw convention and offset.\n3. **Compare coordinate outputs:** Inspect transformed positions in meters alongside the original latitude and longitude.\n4. **Inject failures:** Drop satellite messages and add an erroneous fix. Compare local continuity and global correction rather than treating every fix as truth.",
+   "resources": [
+    {
+     "title": "Understanding Sensor Fusion and Tracking, Part 3: Fusing a GPS and IMU to Estimate Pose",
+     "url": "https://www.youtube.com/watch?v=hN8dL55rP5I",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See why an IMU improves motion estimates between slower GPS observations."
+    },
+    {
+     "title": "navsat_transform_node",
+     "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/navsat_transform_node.rst",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "Check required inputs, yaw_offset, local Cartesian versus UTM coordinates, and transformed-position output."
+    },
+    {
+     "title": "Integrating GPS Data",
+     "url": "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/integrating_gps.rst",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "Follow the coordinate-alignment explanation and why GPS position must not use differential fusion."
+    },
+    {
+     "title": "REP 105 -- Coordinate Frames for Mobile Platforms",
+     "url": "https://www.ros.org/reps/rep-0105.html",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "Distinguish continuous odom coordinates from globally corrected map coordinates."
+    }
+   ],
+   "sources": [
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/navsat_transform_node.rst",
+    "https://raw.githubusercontent.com/cra-ros-pkg/robot_localization/ros2/doc/integrating_gps.rst",
+    "https://www.ros.org/reps/rep-0105.html",
+    "https://www.youtube.com/watch?v=hN8dL55rP5I"
+   ]
+  },
+  {
+   "node_id": "k:contact-aided-invariant-state-estimation",
+   "type": "knowledge",
+   "name": "Contact-aided & invariant state estimation",
+   "summary": "Contact-aided estimation tracks a walking robot's body pose and velocity from an IMU plus leg kinematics, treating a foot on the ground as a temporarily fixed point.",
+   "lesson_md": "## In one sentence\n\nContact-aided estimation tracks a walking robot's body pose and velocity from an IMU plus leg kinematics, treating a foot on the ground as a temporarily fixed point.\n\n![Colored lidar point cloud of campus stairs built from the Cassie Blue bipedal robot's InEKF pose estimate](/img/lessons/knowledge_state_estimation_slam-contact-inekf.webp)\n*Lidar mapping on the bipedal robot Cassie Blue, using poses from the invariant EKF. Source: [invariant-ekf on GitHub](https://github.com/RossHartley/invariant-ekf), license unknown.*\n\n## Why it matters for us\n\n- **No wheels to count:** A walking robot needs another way to estimate body velocity.\n- **Required sensors:** This method combines an **IMU**, measuring acceleration and angular velocity, with joint encoders and information about which feet are touching the ground.\n\n## How it works\n\n- **Propagate:** Integrate IMU measurements to predict orientation, velocity, and position. Sensor offsets make this prediction drift.\n- **Contact assumption:** A stance foot is temporarily stationary. Its position relative to the body changes as the robot moves.\n- **Kinematic measurement:** Forward kinematics converts joint angles into that relative foot position. Compare it with the stored contact point to correct the body estimate.\n- **Invariant error:** An InEKF compares estimates using the geometry of rotations and translations, rather than subtracting orientation coordinates as ordinary vectors.\n- **Theory boundary:** Without estimated IMU biases, this paper's ideal error dynamics do not depend on the estimated trajectory. Adding bias estimation removes that exact guarantee.\n- **Software analogy:** Think of a planted foot as a temporary reference record. If that reference moves, comparisons against it become misleading.\n\n```mermaid\nflowchart LR\n  I[\"IMU\"] --> P[\"Predict state\"]\n  J[\"Joint angles\"] --> K[\"Foot position\"]\n  C[\"Contact flag\"] --> U[\"Correct\"]\n  K --> U\n  P --> U\n  U --> S[\"Pose and velocity\"]\n```\n\n> **Key idea:** Contact and IMU alone cannot determine absolute position or heading about gravity; they track motion relative to an arbitrary starting frame.\n\n> **Watch out:** A slipping foot is not a fixed point; trusting a false contact flag injects a wrong measurement.\n\n## Key terms\n\n- **Stance foot**: a foot touching the ground, assumed stationary during contact.\n- **Forward kinematics**: computing foot position from joint angles and leg geometry.\n- **IMU bias**: a slowly changing sensor offset.\n- **Observability**: whether measurements can determine a quantity.\n- **Lie group**: a mathematical space for composing continuous transformations, such as rotations.\n- **InEKF**: invariant extended Kalman filter; the core theory here is by Barrau and Bonnabel.\n\n## Before / after\n\n- **Before:** Study Kalman filtering & multisensor fusion, Rigid-body motion & coordinate frames, and Forward kinematics (DH & product of exponentials).\n- **After:** Try Visualize a contact-aided inertial estimate, then Detect when a stance-foot assumption becomes false.\n\n## Try it in an afternoon\n\n1. **Build the library:** Clone invariant-ekf. Install CMake, g++, Eigen3, and Boost; create and enter a build directory, then run `cmake .. && make`.\n2. **Run bundled data:** From the build directory, run `../bin/kinematics`; its relative data path expects this working directory.\n3. **Inspect noise settings:** The example sets gyroscope noise to 0.01 and accelerometer noise to 0.1; these are example parameters, not universal sensor specifications.\n4. **Test contact errors:** Modify a copy of the data to mark a swinging foot as planted. Also test missing contacts; compare trajectories against the unchanged replay.\n",
+   "resources": [
+    {
+     "title": "Scenes of the UM Campus seen through the eyes of a bipedal robot: InEKF LiDAR mapping on Cassie Blue",
+     "url": "https://www.youtube.com/watch?v=pNyXsZ5zVZk",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See what an InEKF pose estimate makes possible on a real walking robot."
+    },
+    {
+     "title": "RossHartley/invariant-ekf",
+     "url": "https://github.com/RossHartley/invariant-ekf",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "C++ InEKF library with landmark and contact-aided examples you can build with CMake."
+    },
+    {
+     "title": "kinematics.cpp",
+     "url": "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/src/examples/kinematics.cpp",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Read how state, noise and contact measurements are fed to the filter."
+    },
+    {
+     "title": "Contact-Aided Invariant Extended Kalman Filtering for Legged Robot State Estimation",
+     "url": "https://arxiv.org/abs/1805.10410",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "The RSS 2018 paper: derivation, unobservable position and yaw, and Cassie experiments."
+    },
+    {
+     "title": "The invariant extended Kalman filter as a stable observer",
+     "url": "https://arxiv.org/abs/1410.1465",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "The core InEKF theory on Lie groups and why its error is autonomous."
+    }
+   ],
+   "sources": [
+    "https://github.com/RossHartley/invariant-ekf",
+    "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/src/examples/kinematics.cpp",
+    "https://arxiv.org/abs/1805.10410",
+    "https://arxiv.org/abs/1410.1465",
+    "https://www.youtube.com/watch?v=pNyXsZ5zVZk",
+    "https://arxiv.org/html/1805.10410v1",
+    "https://raw.githubusercontent.com/RossHartley/invariant-ekf/master/CMakeLists.txt"
+   ]
+  },
+  {
+   "node_id": "k:dense-semantic-neural-slam-maps",
+   "type": "knowledge",
+   "name": "Dense, semantic & neural SLAM maps",
+   "summary": "Dense SLAM estimates camera motion while reconstructing surfaces; semantic labels add meaning, while Gaussian maps and learned reconstruction priors can provide detailed scene models.",
+   "lesson_md": "## In one sentence\n\nDense SLAM estimates camera motion while reconstructing surfaces; semantic labels add meaning, while Gaussian maps and learned reconstruction priors can provide detailed scene models.\n\n![Top-down SplaTAM reconstruction of an office room with the estimated camera path drawn in red](/img/lessons/knowledge_state_estimation_slam-dense-splatam.webp)\n*A room rebuilt by SplaTAM from one RGB-D camera; the red line is the tracked camera path. Source: [SplaTAM on GitHub](https://github.com/spla-tam/SplaTAM), license unknown.*\n\n## Why it matters for us\n\n- **Visible maps:** sparse SLAM keeps only landmark points; a **dense map** shows walls, tables and objects.\n- **Neural examples:** SplaTAM and MASt3R-SLAM use PyTorch on a GPU, connecting mapping to familiar machine-learning tools.\n- **Phone capture:** SplaTAM's online demo streams frames from an iPhone or LiDAR iPad via the NeRFCapture app.\n\n## How it works\n\nEach new frame is used twice: once to find where the camera is, then to grow the map. The two steps alternate.\n\n- **Tracking:** render the current map from a guessed camera pose, compare with the real image, and adjust the pose.\n- **Mapping:** add or refine map elements where the image shows new or poorly known surfaces.\n- **3D Gaussians:** SplaTAM stores the scene as many small colored blobs that render fast; a **silhouette mask** shows which pixels the map already explains.\n- **Learned priors:** MASt3R-SLAM uses a two-view reconstruction network. It avoids a fixed parametric camera model but still assumes a single camera center.\n- **Semantic labels:** Kimera-Multi annotates each mesh face with a class label, so the map says \"chair\" and not just \"surface\".\n- **Software analogy:** tracking is like `git diff` between the rendered map and the new frame; mapping is the commit that updates the scene.\n\n```mermaid\nflowchart LR\n  F[\"RGB-D frame\"] --> T[\"Track pose\"]\n  M[\"Map\"] --> R[\"Render view\"]\n  R --> T\n  T --> A[\"Update map\"]\n  A --> M\n```\n\n> **Key idea:** A beautiful render does not prove the map is metrically correct; always check the trajectory against ground truth.\n\n## Key terms\n\n- **Dense map**: a surface reconstruction rather than only a sparse set of landmarks; unseen areas can remain missing.\n- **Gaussian splatting**: representing a scene as many small 3D Gaussians that are projected onto the image.\n- **RGB-D**: a color image plus a per-pixel depth image.\n- **Prior**: knowledge learned from training data that guides reconstruction.\n- **Semantic map**: geometry annotated with object or class labels.\n\n## Before / after\n\n- **Before:** Visual odometry & visual-inertial SLAM, Depth cameras: stereo, structured light & ToF, Camera models & image formation.\n- **After:** Reconstruct a recorded room with Gaussian SLAM, Compare prior-driven and classical-tracked dense maps, Measure whether loop corrections improve a dense map.\n\n## Try it in an afternoon\n\n1. **Check dependencies:** SplaTAM reports tests with Python 3.10, Torch 1.12.1 and CUDA 11.6, plus Torch 2.3.0 with CUDA 12.1.\n2. **Install:** follow the README's conda steps, or pull the `nkeetha/splatam:v1` Docker image.\n3. **Run one TUM-RGBD sequence:** use the README's TUM config and watch the map grow.\n4. **Compare:** run MASt3R-SLAM on the same TUM room with `main.py` and compare both trajectories.\n",
+   "resources": [
+    {
+     "title": "SplaTAM: Splat, Track & Map 3D Gaussians for Dense RGB-D SLAM",
+     "url": "https://www.youtube.com/watch?v=jWLI-OFp3qU",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Watch Gaussian maps and camera tracks grow frame by frame."
+    },
+    {
+     "title": "[CVPR 2025] MASt3R-SLAM: Real-Time Dense SLAM with 3D Reconstruction Priors",
+     "url": "https://www.youtube.com/watch?v=wozt71NBFTQ",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See dense monocular SLAM driven by a learned two-view prior on in-the-wild video."
+    },
+    {
+     "title": "spla-tam/SplaTAM",
+     "url": "https://github.com/spla-tam/SplaTAM",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Install steps, iPhone online demo and TUM/Replica/ScanNet benchmark scripts."
+    },
+    {
+     "title": "rmurai0610/MASt3R-SLAM",
+     "url": "https://github.com/rmurai0610/MASt3R-SLAM",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Run dense SLAM on TUM sequences, a RealSense or any MP4 video."
+    },
+    {
+     "title": "SplaTAM: Splat, Track & Map 3D Gaussians for Dense RGB-D SLAM",
+     "url": "https://arxiv.org/abs/2312.02126",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "How Gaussian maps, silhouette masks and online tracking fit together."
+    },
+    {
+     "title": "MASt3R-SLAM: Real-Time Dense SLAM with 3D Reconstruction Priors",
+     "url": "https://arxiv.org/abs/2412.12392",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Pointmap matching, loop closure and global optimisation on top of MASt3R."
+    }
+   ],
+   "sources": [
+    "https://github.com/spla-tam/SplaTAM",
+    "https://arxiv.org/abs/2312.02126",
+    "https://github.com/rmurai0610/MASt3R-SLAM",
+    "https://arxiv.org/abs/2412.12392",
+    "https://github.com/MIT-SPARK/Kimera-Multi",
+    "https://www.youtube.com/watch?v=jWLI-OFp3qU",
+    "https://www.youtube.com/watch?v=wozt71NBFTQ"
+   ]
+  },
+  {
+   "node_id": "k:estimator-calibration-timing-observability",
+   "type": "knowledge",
+   "name": "Estimator calibration, timing & observability",
+   "summary": "An estimator only works if it knows where each sensor sits, when each measurement was taken, and which quantities the available motion can actually reveal.",
+   "lesson_md": "## In one sentence\n\nAn estimator only works if it knows where each sensor sits, when each measurement was taken, and which quantities the available motion can actually reveal.\n\n![Kalibr reprojection error plot: detected target corners on the left, a cloud of pixel errors mostly within one pixel on the right](/img/lessons/knowledge_state_estimation_slam-calibration.webp)\n*Kalibr reprojection errors from a camera calibration, shown in the OpenVINS guide. Source: [OpenVINS docs](https://docs.openvins.com/gs-calibration.html), license unknown.*\n\n## Why it matters for us\n\n- **Timing matters:** Visual-inertial odometry (VIO) combines camera and inertial measurements. OpenVINS warns that relative timestamp errors quickly degrade performance during dynamic motion.\n- **Calibration can change:** LaMAria highlights time-varying sensor calibration during long sessions; one successful calibration is not a permanent guarantee.\n- **Free tools:** Kalibr and OpenVINS are open source.\n\n## How it works\n\nCalibration estimates the \"config file\" of your sensor rig. Think of it as the build settings every later algorithm silently depends on.\n\n- **Intrinsics:** camera focal length, image center and lens distortion; IMU (inertial measurement unit) noise density and **bias random walk**.\n- **Extrinsics:** the rigid transform between camera and IMU, i.e. where each sensor sits.\n- **Time offset:** the delay between camera and IMU clocks; Kalibr estimates it by default (`--no-time-calibration` turns it off).\n- **Batch fit:** Kalibr models the rig's motion with splines and fits spatial and temporal calibration parameters over one recorded ROS bag.\n- **Observability:** some quantities need specific motion. Kalibr's guide says to excite all IMU axes, both rotation and translation.\n- **Worked numbers:** Kalibr reports good results with a 20 Hz camera and 200 Hz IMU; OpenVINS calls a final reprojection error under 0.2-0.5 pixel good.\n\n```mermaid\nflowchart LR\n  A[\"Allan variance\"] --> N[\"IMU noise yaml\"]\n  C[\"Camera bag\"] --> K[\"Camera intrinsics\"]\n  N --> J[\"Camera-IMU calibration\"]\n  K --> J\n  J --> E[\"Extrinsics + time offset\"]\n  E --> V[\"VIO estimator\"]\n```\n\n> **Key idea:** Small residuals only show the model fits the data you recorded; parameters your motion never excited stay unknown.\n\n> **Watch out:** a checkerboard or circle grid is symmetric and can flip pose estimates; Kalibr recommends an Aprilgrid.\n\n## Key terms\n\n- **Extrinsic calibration**: the position and rotation of one sensor relative to another.\n- **Temporal calibration**: estimating the clock offset between sensors.\n- **Allan variance**: a plot of sensor noise over averaging time, used to get IMU noise values.\n- **Reprojection error**: pixel distance between a detected target corner and where the model predicts it.\n- **Observability**: whether the data can determine a parameter at all.\n\n## Before / after\n\n- **Before:** Rigid-body motion & coordinate frames, Camera models & image formation, Kalman filtering & multisensor fusion.\n- **After:** Audit clock offsets before running VIO, Design an observable calibration motion, Build a rigid timestamped camera-IMU rig.\n\n## Try it in an afternoon\n\n1. **Download sample data:** Kalibr's wiki links a sample `imu_april.bag` and matching yaml files.\n2. **Run the calibration:** `kalibr_calibrate_imu_camera` with `--target`, `--imu`, `--cam` and `--bag`, as in the wiki example.\n3. **Read the report:** open the generated PDF and look at reprojection errors and the estimated time offset.\n4. **Rerun without time calibration:** add `--no-time-calibration` and compare the residuals.\n",
+   "resources": [
+    {
+     "title": "Visual-Inertial Sensor Calibration -- A Complete Tutorial and Discussion",
+     "url": "https://www.youtube.com/watch?v=BtzmsuJemgI",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "A full session calibrating a RealSense camera-IMU with Kalibr and allan_variance_ros."
+    },
+    {
+     "title": "Sensor Calibration | OpenVINS",
+     "url": "https://docs.openvins.com/gs-calibration.html",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "Step-by-step offline intrinsic, IMU noise and camera-IMU calibration with target values."
+    },
+    {
+     "title": "Camera IMU calibration · ethz-asl/kalibr Wiki",
+     "url": "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "Data collection tips, command-line inputs and output files of the camera-IMU tool."
+    },
+    {
+     "title": "ethz-asl/kalibr",
+     "url": "https://github.com/ethz-asl/kalibr",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "The toolbox for multi-camera, camera-IMU, IMU-IMU and rolling-shutter calibration."
+    },
+    {
+     "title": "Benchmarking Egocentric Visual-Inertial SLAM at City Scale",
+     "url": "https://lamaria.ethz.ch/",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Shows how time-varying calibration over long sessions breaks current SLAM systems."
+    }
+   ],
+   "sources": [
+    "https://docs.openvins.com/gs-calibration.html",
+    "https://github.com/ethz-asl/kalibr",
+    "https://github.com/ethz-asl/kalibr/wiki/Camera-IMU-calibration",
+    "https://lamaria.ethz.ch/",
+    "https://www.youtube.com/watch?v=BtzmsuJemgI"
+   ]
+  },
+  {
+   "node_id": "k:multi-robot-distributed-slam",
+   "type": "knowledge",
+   "name": "Multi-robot & distributed SLAM",
+   "summary": "Multi-robot SLAM merges several robots' partial maps into one consistent map by finding places they both saw, often without a central computer.",
+   "lesson_md": "## In one sentence\n\nMulti-robot SLAM merges several robots' partial maps into one consistent map by finding places they both saw, often without a central computer.\n\n![Kimera-Multi merged campus map with colored robot trajectories above a photo of eight wheeled robots](/img/lessons/knowledge_state_estimation_slam-multi-robot.webp)\n*Trajectories of several robots fused into one map, and the robot team used. Source: [Kimera-Multi on GitHub](https://github.com/MIT-SPARK/Kimera-Multi), license unknown.*\n\n## Why it matters for us\n\n- **Bigger areas, faster:** several robots cover a campus or building in parallel.\n- **A distributed-systems problem:** peer-to-peer messages, packet loss and bandwidth limits are familiar to software students.\n- **Honest testing matters:** CU-Multi warns that naively splitting one robot's trajectory can miss viewpoint differences between robots.\n\n## How it works\n\nEach robot runs its own SLAM. When two robots can talk, they look for shared places and add links between their pose graphs.\n\n- **Local estimate:** in Kimera-Multi each robot builds a trajectory and mesh with Kimera from visual-inertial sensors.\n- **Inter-robot place recognition:** robots exchange compact **Bag-of-Words** vectors, then selected keyframes for geometric verification.\n- **Robust optimization:** a distributed pose-graph solver based on **graduated non-convexity**, an outlier-rejection method, rejects wrong loop closures caused by look-alike places.\n- **Map correction:** each robot deforms its local mesh to match the improved trajectory.\n- **Peer-to-peer:** robots talk over UDP; no robot needs all sensor streams.\n- **Software analogy:** like git across teammates; each keeps a local branch, and shared places act as merge points.\n- **Scale:** Kimera-Multi experiments include trajectories up to 800 meters per robot.\n\n```mermaid\nflowchart LR\n  A[\"Robot A SLAM\"] --> X[\"Exchange descriptors\"]\n  B[\"Robot B SLAM\"] --> X\n  X --> V[\"Verify match\"]\n  V --> O[\"Distributed optimization\"]\n  O --> M[\"Corrected maps\"]\n```\n\n> **Key idea:** One wrong inter-robot match can bend both maps, so verification and outlier rejection matter more than finding many matches.\n\n## Key terms\n\n- **Inter-robot loop closure**: a link saying two robots saw the same place.\n- **Perceptual aliasing**: different places that look the same.\n- **Frame alignment**: finding the transform between two robots' map coordinates.\n- **Distributed optimization**: solving the shared graph by exchanging messages instead of central computing.\n\n## Before / after\n\n- **Before:** Factor graphs, smoothing & pose-graph SLAM, Place recognition, loop closure & relocalization.\n- **After:** Align two recorded robot sessions, Keep cooperative maps consistent through packet loss, Design a bandwidth-budgeted cooperative mapping protocol.\n\n## Try it in an afternoon\n\n1. **Watch the demo:** see the Kimera-Multi video to picture the full system.\n2. **Check the stack:** the README targets Ubuntu 20.04 and ROS Noetic, and lists the Remote Topic Manager as coming soon.\n3. **Run the single-machine example:** the repo's examples folder replays Campus-Outdoor data with tmuxp.\n4. **Respect the demo limit:** Its single ROS master does not reproduce intermittent peer-to-peer communication; do not report it as a packet-loss test.\n5. **Plan honest tests:** read CU-Multi on why splitting one robot's trajectory misses real multi-robot viewpoint changes.\n",
+   "resources": [
+    {
+     "title": "Kimera-Multi: a System for Distributed Multi-Robot Metric-Semantic SLAM",
+     "url": "https://www.youtube.com/watch?v=G8PktlQ82uw",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See robots merge maps through inter-robot loop closures."
+    },
+    {
+     "title": "MIT-SPARK/Kimera-Multi",
+     "url": "https://github.com/MIT-SPARK/Kimera-Multi",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Architecture breakdown, module repositories and a single-machine example."
+    },
+    {
+     "title": "Kimera-Multi: Robust, Distributed, Dense Metric-Semantic SLAM for Multi-Robot Systems",
+     "url": "https://arxiv.org/abs/2106.14386",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "How distributed place recognition and robust pose-graph optimization work."
+    },
+    {
+     "title": "CU-Multi: A Dataset for Multi-Robot Data Association",
+     "url": "https://arxiv.org/abs/2505.17576",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Why realistic multi-robot datasets beat split single-robot runs for evaluation."
+    }
+   ],
+   "sources": [
+    "https://github.com/MIT-SPARK/Kimera-Multi",
+    "https://arxiv.org/abs/2106.14386",
+    "https://arxiv.org/abs/2505.17576",
+    "https://www.youtube.com/watch?v=G8PktlQ82uw"
+   ]
+  },
+  {
+   "node_id": "k:robust-dynamic-lifelong-state-estimation",
+   "type": "knowledge",
+   "name": "Robust, dynamic & lifelong state estimation",
+   "summary": "Robust and lifelong estimation keeps a robot's pose and map trustworthy when people move, furniture changes and sessions repeat, instead of assuming a frozen world.",
+   "lesson_md": "## In one sentence\n\nRobust and lifelong estimation keeps a robot's pose and map trustworthy when people move, furniture changes and sessions repeat, instead of assuming a frozen world.\n\n![DynaSLAM figure: office frames with walking people, the same frames with people masked out, and the resulting static map with camera poses](/img/lessons/knowledge_state_estimation_slam-dynamic.webp)\n*DynaSLAM removes moving people and builds a map of only the static scene. Source: [DynaSLAM on GitHub](https://github.com/BertaBescos/DynaSLAM), license unknown.*\n\n## Why it matters for us\n\n- **Real rooms are not static:** most SLAM assumes **scene rigidity**, which breaks in labs full of people.\n- **Older teaching baseline:** DynaSLAM is a 2018 system, not a claim about today's best method.\n- **Robots return tomorrow:** a lab robot needs to reuse and update yesterday's map.\n- **Silent failure is the enemy:** a wrong pose reported confidently is worse than a reported loss.\n\n## How it works\n\nTreat every measurement as possibly wrong, and treat the map as data that ages.\n\n- **Detect potentially moving things:** DynaSLAM, built on ORB-SLAM2, flags dynamic objects by multi-view geometry, deep learning (Mask R-CNN) or both.\n- **Ignore them:** features on moving objects are excluded so tracking uses only the static background.\n- **Inpaint:** with a static map, DynaSLAM fills in background hidden by moving objects.\n- **Lifelong mapping:** SLAM Toolbox saves the pose graph, reloads it later and keeps refining the same map.\n- **Relocalize:** on restart, SLAM Toolbox uses KD-tree scan matching to find the robot inside the saved graph.\n- **Software analogy:** like input validation on a web server; never trust a request just because it parsed.\n\n```mermaid\nflowchart LR\n  S[\"Sensor frame\"] --> D[\"Detect dynamic parts\"]\n  D --> T[\"Track on static parts\"]\n  T --> H{\"Pose healthy?\"}\n  H -->|yes| M[\"Update map\"]\n  H -->|no| R[\"Relocalize\"]\n  R --> T\n```\n\n> **Key idea:** A robust estimator must be able to say \"I am lost\"; reporting uncertainty is part of the output.\n\n> **Watch out:** SLAM Toolbox's node-removal \"true lifelong\" mode is described by its author as highly experimental.\n\n## Key terms\n\n- **Dynamic object**: anything that moves during or between sessions.\n- **Outlier**: a measurement or constraint inconsistent with the rest.\n- **Lifelong mapping**: refining and updating one map over many sessions.\n- **Serialization**: saving the pose graph so it can be reloaded later.\n\n## Before / after\n\n- **Before:** Place recognition, loop closure & relocalization, Kalman filtering & multisensor fusion, SLAM benchmarking, consistency & failure analysis.\n- **After:** Break a SLAM replay with moving foregrounds, Revisit a changed room without corrupting its map, Pilot a localization-health monitor across lab sessions.\n\n## Try it in an afternoon\n\n1. **Get a dynamic sequence:** download a TUM RGB-D dynamic sequence; DynaSLAM ships associations for them.\n2. **Check legacy requirements:** DynaSLAM's README requires Python 2.7 and old OpenCV versions; isolate its dependencies rather than assuming a modern environment works.\n3. **Compare detection modes:** Run `rgbd_tum` without optional paths for geometry only; add `PATH_TO_MASKS` to enable Mask R-CNN.\n4. **Score consistently:** Use evo with the same timestamps, sequence and alignment for both trajectories; report tracking gaps as well as error.\n",
+   "resources": [
+    {
+     "title": "DynaSLAM",
+     "url": "https://www.youtube.com/watch?v=EabI_goFmQs",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "See moving people detected and removed while SLAM keeps tracking."
+    },
+    {
+     "title": "Slam Toolbox",
+     "url": "https://github.com/SteveMacenski/slam_toolbox",
+     "format": "Repo",
+     "level": "Beginner",
+     "why": "Read the LifeLong Mapping and localization sections on reusing saved pose graphs."
+    },
+    {
+     "title": "BertaBescos/DynaSLAM",
+     "url": "https://github.com/BertaBescos/DynaSLAM",
+     "format": "Repo",
+     "level": "Intermediate",
+     "why": "Build steps and RGB-D, stereo and monocular examples on TUM and KITTI."
+    },
+    {
+     "title": "DynaSLAM: Tracking, Mapping and Inpainting in Dynamic Scenes",
+     "url": "https://arxiv.org/abs/1806.05620",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "How geometry and Mask R-CNN detect dynamic content, plus accuracy/speed trade-offs."
+    },
+    {
+     "title": "The LaMAria Dataset and Benchmark",
+     "url": "https://lamaria.ethz.ch/",
+     "format": "Paper",
+     "level": "Advanced",
+     "why": "Shows current systems failing on night walks, vehicles and long sessions."
+    }
+   ],
+   "sources": [
+    "https://github.com/BertaBescos/DynaSLAM",
+    "https://arxiv.org/abs/1806.05620",
+    "https://github.com/SteveMacenski/slam_toolbox",
+    "https://raw.githubusercontent.com/SteveMacenski/slam_toolbox/ros2/README.md",
+    "https://lamaria.ethz.ch/",
+    "https://www.youtube.com/watch?v=EabI_goFmQs",
+    "https://github.com/MichaelGrupp/evo/wiki/Metrics"
+   ]
+  },
+  {
+   "node_id": "k:slam-benchmarking-consistency-failure-analysis",
+   "type": "knowledge",
+   "name": "SLAM benchmarking, consistency & failure analysis",
+   "summary": "SLAM benchmarking compares an estimated trajectory with independent ground truth, measuring global error, drift, uncertainty honesty and where tracking fails.",
+   "lesson_md": "## In one sentence\n\nSLAM benchmarking compares an estimated trajectory with independent ground truth, measuring global error, drift, uncertainty honesty and where tracking fails.\n\n![evo plot of a trajectory colored by absolute error, from 0.069 m in blue to 3.588 m in red, over a dashed reference path](/img/lessons/knowledge_state_estimation_slam-benchmarking.webp)\n*evo maps the error onto the trajectory, so you see where it goes wrong. Source: [evo on GitHub](https://github.com/MichaelGrupp/evo), license unknown.*\n\n## Why it matters for us\n\n- **Turn \"it looks fine\" into numbers:** every SLAM project on this map needs a score.\n- **Easiest entry point:** only Python and public datasets are needed; `pip install evo` gets the tools.\n- **Catch hidden bugs:** wrong time association or alignment can make a broken system look good.\n\n## How it works\n\nYou need two files: the estimate and an independent reference. Then you pair poses, align frames and compute errors.\n\n- **Associate:** match poses by timestamp; TUM's `evaluate_ate.py` allows 0.02 s difference by default.\n- **Align:** Find the best rigid transform between frames; scale-ambiguous monocular estimates also need scale alignment (`evo_ape -as`, Sim(3)).\n- **ATE:** absolute trajectory error, global consistency after alignment.\n- **RPE:** relative pose error over segments, i.e. drift, e.g. `evo_rpe --delta 1 --delta_unit m`.\n- **NEES:** Compares state error with reported covariance. For a consistent 3D-position estimate, its expected value is 3 across repeated runs.\n- **Beyond accuracy:** OpenVINS also reports component timing and memory/CPU use.\n- **Software analogy:** ATE is an end-to-end test; RPE is a unit test on each short stretch.\n\n```mermaid\nflowchart LR\n  E[\"Estimate file\"] --> A[\"Associate timestamps\"]\n  G[\"Ground truth\"] --> A\n  A --> L[\"Align frames\"]\n  L --> M[\"ATE / RPE\"]\n  L --> N[\"NEES\"]\n  M --> R[\"Report\"]\n  N --> R\n```\n\n> **Key idea:** One average ATE hides failures; report drift, tracking coverage, runtime and your alignment choice too.\n\n## Key terms\n\n- **Ground truth**: a reference trajectory from an independent, more accurate system.\n- **ATE**: absolute trajectory error after alignment.\n- **RPE**: relative error over fixed segments; measures drift.\n- **Umeyama alignment**: the method evo uses to find the best transform between trajectories.\n- **Consistency**: whether an estimator's uncertainty matches its actual errors.\n\n## Before / after\n\n- **Before:** Bayesian state estimation & uncertainty, Rigid-body motion & coordinate frames.\n- **After:** Build a trajectory evaluation scorecard, Turn trajectory failures into a reproducible test suite, Audit a city-scale SLAM claim on held-out sessions.\n\n## Try it in an afternoon\n\n1. **Install:** `pip install evo` in a virtual environment (Python 3.11+).\n2. **Get data:** download one TUM RGB-D sequence plus a matching estimate.\n3. **Score globally:** `evo_ape tum reference.txt estimate.txt --align --plot`.\n4. **Score drift:** Run `evo_rpe tum reference.txt estimate.txt --delta 1 --delta_unit m`.\n5. **Stress-test timing:** shift the timestamps by 0.1 s and see how much the scores change.\n",
+   "resources": [
+    {
+     "title": "Project Aria at ICCV 2025 - Benchmarking Egocentric Visual-Intertial SLAM at City Scale",
+     "url": "https://www.youtube.com/watch?v=HD_eACowqW4",
+     "format": "Video",
+     "level": "Beginner",
+     "why": "Tutorial recording on why current benchmarks miss real failures and how LaMAria tests them."
+    },
+    {
+     "title": "Metrics · MichaelGrupp/evo Wiki",
+     "url": "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+     "format": "Docs",
+     "level": "Beginner",
+     "why": "evo_ape and evo_rpe usage, plus SE(3) and Sim(3) alignment options."
+    },
+    {
+     "title": "MichaelGrupp/evo",
+     "url": "https://github.com/MichaelGrupp/evo",
+     "format": "Repo",
+     "level": "Beginner",
+     "why": "Install the toolbox and read supported trajectory formats."
+    },
+    {
+     "title": "Computer Vision Group - Useful tools for the RGB-D benchmark",
+     "url": "https://cvg.cit.tum.de/data/datasets/rgbd-dataset/tools",
+     "format": "Docs",
+     "level": "Intermediate",
+     "why": "TUM's ATE/RPE definitions, file format and evaluation script options."
+    },
+    {
+     "title": "Filter Evaluation Metrics | OpenVINS",
+     "url": "https://docs.openvins.com/eval-metrics.html",
+     "format": "Docs",
+     "level": "Advanced",
+     "why": "Formulas for ATE, RPE, RMSE and NEES consistency checks."
+    }
+   ],
+   "sources": [
+    "https://github.com/MichaelGrupp/evo",
+    "https://github.com/MichaelGrupp/evo/wiki/Metrics",
+    "https://cvg.cit.tum.de/data/datasets/rgbd-dataset/tools",
+    "https://docs.openvins.com/eval-metrics.html",
+    "https://docs.openvins.com/evaluation.html",
+    "https://lamaria.ethz.ch/",
+    "https://lamaria.ethz.ch/tutorial",
+    "https://www.youtube.com/watch?v=HD_eACowqW4"
+   ]
+  }
+ ]
+}
