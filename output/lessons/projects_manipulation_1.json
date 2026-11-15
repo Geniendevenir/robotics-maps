@@ -1,0 +1,1092 @@
+{
+  "batch": "projects_manipulation_1",
+  "lessons": [
+    {
+      "node_id": "p:adapt-insertion-to-pose-error",
+      "type": "project",
+      "name": "Adapt insertion to pose error",
+      "summary": "Test whether a simulated peg can still enter its hole when the estimated target position and orientation are wrong.",
+      "lesson_md": "## In one sentence\n\nTest whether a simulated peg can still enter its hole when the estimated target position and orientation are wrong.\n\n![robosuite two-arm peg-in-hole setup](/img/lessons/projects_manipulation_1-insertion.webp)\n*robosuite two-arm peg-in-hole setup. Source: [robosuite: Environments](https://robosuite.ai/docs/modules/environments.html), license unknown.*\n\n## What you will learn\n\n- **Pose** means position and orientation; an error in either can turn a straight insertion into a jam.\n- **Compliance** lets contact deflect motion instead of treating the target as an immovable command.\n- **Regression testing** is the software analogy: preserve the same randomized cases when comparing controllers.\n\n> **Key idea:** Test uncertainty around the target, not just the perfectly aligned trajectory.\n\n## What you need\n\n- **Start from Insert a peg with compliance** and the map topic Force/compliant & contact-rich manipulation.\n- **Use robosuite** on your computer; this proposed experiment needs no purchased robot.\n- **Inspect TwoArmPegInHole:** its documented setup has one arm holding a board and another holding the peg, with randomized initial arm configurations.\n\n## Steps\n\n1. **Reproduce aligned insertion** and save the simulator, controller configuration, random seed, and success condition.\n2. **Add controlled pose perturbations** to the estimate, not the physical hole; label the coordinate frame and units.\n3. **Keep the baseline fixed** and compare it with one contact-aware correction, using OSC_POSE with variable stiffness during contact.\n4. **Log every attempt:** estimated pose, true pose, insertion depth, contact force, elapsed time, and termination reason.\n5. **Run paired cases** with identical offsets; include an absent hole, unreachable target, and missing observation.\n6. **Demo the comparison** with motion replay, force traces, and a failure table grouped by error magnitude.\n\nWorked example from robosuite's controller reference: **OSC_POSE** controls the gripper's position and orientation; gripper opening is a separate action.\n\n| OSC_POSE setting | Action dimensions, excluding gripper |\n|---|---|\n| Fixed impedance | 6 pose commands |\n| variable_kp | 12: pose and stiffness |\n| variable | 18: pose, stiffness, and damping |\n\nStart with fixed impedance, then compare variable_kp on identical pose-error seeds; do not pass a 6-element action to the 12-dimensional controller.\n\n```mermaid\nflowchart LR\n  S[Seeded offset] --> E[Target estimate]\n  E --> C[Compliant controller]\n  C --> P[Simulated contact]\n  P --> C\n  P --> L[Outcome log]\n```\n\n## Common pitfalls\n\n- **Changing geometry and estimates together** hides whether the controller handled perception error or merely encountered a different task.\n- **A force spike is not insertion:** check final depth and alignment, and stop on your declared force or time limit.\n\n## When it's done\n\n- **Deliver repeatable evidence:** replay successes and jams, report counts for every error group, and retain the exact seeds.\n- **State the boundary:** simulation results do not establish hardware safety or robustness.",
+      "resources": [
+        {
+          "title": "Guided Uncertainty Aware Policy Optimization",
+          "url": "https://www.youtube.com/watch?v=NwMukXa8kys",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See insertion fail under uncertain hole localization and how a local learned policy can help."
+        },
+        {
+          "title": "Environments",
+          "url": "https://robosuite.ai/docs/modules/environments.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the actual two-arm peg-in-hole setup and its reset distribution."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand stiffness, contact forces, and compliant motion before modifying insertion."
+        },
+        {
+          "title": "Controllers",
+          "url": "https://robosuite.ai/docs/modules/controllers.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Choose controller parameters deliberately rather than confusing motion commands with force limits."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/environments.html",
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://robosuite.ai/docs/modules/controllers.html",
+        "https://www.youtube.com/watch?v=NwMukXa8kys"
+      ]
+    },
+    {
+      "node_id": "p:add-failed-grasp-recovery",
+      "type": "project",
+      "name": "Add failed-grasp recovery",
+      "summary": "Make a pick-and-place controller detect a missed grasp, observe again, and retry within a fixed budget instead of continuing empty-handed.",
+      "lesson_md": "## In one sentence\n\nMake a pick-and-place controller detect a missed grasp, observe again, and retry within a fixed budget instead of continuing empty-handed.\n\n![Simulated cluttered bin of YCB objects](/img/lessons/projects_manipulation_1-grasp-recovery.webp)\n*Simulated cluttered bin of YCB objects. Source: [Robotic Manipulation, Ch. 5 (MIT)](https://manipulation.csail.mit.edu/clutter.html), license unknown.*\n\n## What you will learn\n\n- **Execution monitoring** checks what actually happened after a command, rather than trusting that a planned motion succeeded.\n- **Recovery** is a separate branch that returns to observation and replans from the current scene.\n- **Think of an API retry loop:** distinguish a retryable miss from invalid input, and cap retries.\n\n> **Key idea:** A successful motion command is not evidence that an object is in the gripper.\n\n## What you need\n\n- **Finish Build a clutter-clearing state machine** and Assemble & teleoperate an SO-101; revisit Pick-and-place pipeline.\n- **Start in ManiSkill** or your existing simulator, then use SO-101 only after the failure logic works.\n- **MoveIt 2** can supply motion plans; your higher-level controller must decide whether the grasp outcome warrants another attempt.\n- **Use the calibrated SO-101**, its camera, soft objects, and the tested stop from your assembly project; develop recovery logic in simulation first.\n\n## Steps\n\n1. **Expose states** for observe, approach, close, verify, lift, retry, and abort; display the active state beside the robot.\n2. **Define grasp evidence** using available observations; in simulation, check object motion after a small lift rather than the commanded finger position alone.\n3. **Inject a miss** by shifting the target estimate; preserve the true scene for later evaluation.\n4. **Retry from fresh observations:** retreat along a checked path, update the scene, and select a new grasp.\n5. **Test empty scenes and sensor loss:** abort explicitly when there is no target or no trustworthy observation.\n6. **Film the demo** showing the miss, detection, recovery attempt, and final outcome without editing away failures.\n\nWorked example: ManiSkill's **PickCube-v1** requires the cube to be within **0.025 m** of the goal and the robot's joint velocity below **0.2**.\n\nA closed gripper far from the goal therefore cannot count as task success; log both grasp evidence and the environment's completion checks.\n\n```mermaid\nflowchart LR\n  O[Observe] --> G[Attempt grasp]\n  G --> V[Verify hold]\n  V -->|Held| P[Place]\n  V -->|Miss| R[Retreat]\n  R -->|Budget remains| O\n  R -->|Budget exhausted| A[Abort]\n```\n\n## Common pitfalls\n\n- **Planning fallbacks are not runtime recovery:** the linked MoveIt maintainer discussion explicitly distinguishes these responsibilities.\n- **Repeated identical misses** waste attempts; log whether a new observation or grasp actually changed the next plan.\n\n> **Watch out:** On hardware, use low speed, soft objects, workspace limits, and a tested stop.\n\n## When it's done\n\n- **Show detected failures and bounded retries**, with initial successes, recovered successes, false detections, and aborts counted separately.\n- **Save the event log** and include missing targets, unreachable goals, and lost observations, not just a successful recovery clip.",
+      "resources": [
+        {
+          "title": "IROS 2018 - Tactile Regrasp: Grasp Adjustments via Simulated Tactile Transformations",
+          "url": "https://www.youtube.com/watch?v=gjn7DmfpwDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch evidence-driven grasp adjustment; this tactile research system is inspiration, not a stock SO-101 capability."
+        },
+        {
+          "title": "Table-Top 2 Finger Gripper Tasks",
+          "url": "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Use PickCube-v1's explicit position and static-robot conditions to distinguish grasp evidence from completed placement."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Study the clutter-clearing state machine and why grasp outcomes need feedback."
+        },
+        {
+          "title": "Pick and Place with MoveIt Task Constructor",
+          "url": "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate the planned approach, grasp, and lift stages that your monitor must supervise."
+        },
+        {
+          "title": "failure recovery during runtime",
+          "url": "https://github.com/moveit/moveit_task_constructor/issues/473",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read the maintainer's distinction between planning fallbacks and higher-level execution recovery."
+        }
+      ],
+      "sources": [
+        "https://manipulation.csail.mit.edu/clutter.html",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+        "https://www.youtube.com/watch?v=gjn7DmfpwDk",
+        "https://github.com/moveit/moveit_task_constructor/issues/473",
+        "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html"
+      ]
+    },
+    {
+      "node_id": "p:audit-demonstration-timing",
+      "type": "project",
+      "name": "Audit demonstration timing",
+      "summary": "Audit recorded camera and joint data so each training example pairs an image with the right moment of robot motion.",
+      "lesson_md": "## In one sentence\n\nAudit recorded camera and joint data so each training example pairs an image with the right moment of robot motion.\n\n![SO-101 follower arm used for demonstration collection](/img/lessons/projects_manipulation_1-demonstration-timing.webp)\n*SO-101 follower arm used for demonstration collection. Source: [LeRobot: SO-101 (Hugging Face)](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **A timestamp** labels when a sample was recorded; a frame index only labels its place in a sequence.\n- **Alignment** chooses which camera frame and joint sample represent a shared observation time.\n- **Treat streams like database tables:** join on time with a declared tolerance, not row number.\n\n> **Key idea:** A smooth replay can hide stale images paired with newer robot states.\n\n## What you need\n\n- **Start after Assemble & teleoperate an SO-101** and revisit Teleoperation & demonstration collection for arms.\n- **Work offline** with existing SO-101 recordings, a computer, and access to original timestamps; no new hardware is required.\n- **Compare data conventions:** LeRobot stores tabular signals and video separately; Diffusion Policy exposes explicit timestamp alignment in its real-world environment code.\n\n## Steps\n\n1. **Inventory the recording:** list camera names, joint units, episode boundaries, declared frame rate, and the meaning of each timestamp.\n2. **Preserve raw timestamps** before resampling; distinguish sensor capture time, computer receipt time, and synthesized dataset time where available.\n3. **Plot each stream** against time, marking gaps, duplicates, out-of-order samples, and camera-to-joint time differences.\n4. **Replay a short movement** with joint traces and selected frames side by side; display the age of each selected image.\n5. **Inject known faults** into a copy: remove a frame, shift one stream, and provide an empty or truncated episode.\n6. **Export an audit report** with flagged intervals, untestable properties, example replays, and the alignment rule used.\n\nWorked example: the linked Diffusion Policy implementation defaults to 30-frame-per-second capture and a 10-Hz observation grid.\n\n| Alignment detail | Audit consequence |\n|---|---|\n| **Grid spacing is 0.1 seconds** | The code selects the latest sample strictly before each grid time when one exists. |\n| **Fallback selects the first buffered sample** | Flag grid times without an earlier sample. |\n| **Your recording may differ** | Read its metadata before defining missing frames. |\n\n```mermaid\nflowchart LR\n  C[Camera timestamps] --> A[Time alignment]\n  J[Joint timestamps] --> A\n  A --> P[Plots and replay]\n  P --> F[Flag suspicious intervals]\n```\n\n## Common pitfalls\n\n- **A nominal frame rate is not a capture log:** without original timing evidence, mark physical synchronization unknown rather than certifying it.\n- **Resampling can hide gaps:** retain raw sample ages and episode boundaries alongside the aligned view.\n\n## When it's done\n\n- **Show clean and corrupted examples**, including empty input and missing-camera errors, with an explanation for every flag.\n- **Hand off audited data** to Autonomous pick-and-place with ACT; this proposal audits timing, not policy quality.",
+      "resources": [
+        {
+          "title": "Diffusion Policy: LeRobot Research Presentation #2 by Cheng Chi",
+          "url": "https://www.youtube.com/watch?v=M03sZFfW-qU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the demonstration-driven policy context from its author before auditing observation histories."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Locate timestamps, video shards, frame rates, and episode metadata before attempting a time join."
+        },
+        {
+          "title": "diffusion_policy/real_world/real_env.py",
+          "url": "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/real_world/real_env.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the actual camera and robot sample selection on a common observation grid."
+        },
+        {
+          "title": "diffusion_policy/common/timestamp_accumulator.py",
+          "url": "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/common/timestamp_accumulator.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Trace how irregular timestamps are assigned to regular time-grid slots."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/real_world/real_env.py",
+        "https://raw.githubusercontent.com/real-stanford/diffusion_policy/main/diffusion_policy/common/timestamp_accumulator.py",
+        "https://www.youtube.com/watch?v=M03sZFfW-qU"
+      ]
+    },
+    {
+      "node_id": "p:benchmark-cluttered-bin-picking",
+      "type": "project",
+      "name": "Benchmark cluttered bin picking",
+      "summary": "Execute reachability-filtered grasp candidates in a simulated cluttered bin and measure which failures remain after planning.",
+      "lesson_md": "## In one sentence\n\nExecute reachability-filtered grasp candidates in a simulated cluttered bin and measure which failures remain after planning.\n\n![Contact-GraspNet grasp proposals over a cluttered scene](/img/lessons/projects_manipulation_1-bin-picking.webp)\n*Contact-GraspNet grasp proposals over a cluttered scene. Source: [Contact-GraspNet (NVIDIA)](https://github.com/NVlabs/contact_graspnet), license unknown.*\n\n## What you will learn\n\n- **A grasp candidate** is a proposed gripper position, orientation, and opening, not a promise of successful lifting.\n- **Clutter** adds nearby objects that can block the arm, disturb a grasp, or move during contact.\n- **Think of integration tests:** a detector score is a unit-test result; the full pick tests perception, planning, contact, and execution together.\n\n> **Key idea:** Measure completed picks separately from predicted grasp quality and feasible motion plans.\n\n## What you need\n\n- **Complete Filter grasps by reachability** and revisit Learning-based grasp detection before adding execution.\n- **Use Contact-GraspNet** for candidate generation and MoveIt 2 for your existing reachability and collision-checking pipeline.\n- **Use GraspNet-1Billion** as benchmark context, not as proof that your simulated execution matches its evaluation protocol.\n- **Run on an existing computer** with a compatible simulator and model environment; this proposal requires no purchased robot.\n\n## Steps\n\n1. **Freeze a scene set** with recorded object identities, poses, bin geometry, camera settings, random seeds, and simulator version.\n2. **Generate grasp candidates** from depth observations, then retain the exact candidates surviving your existing reachability and collision checks.\n3. **Execute approach, close, lift, and transfer** using the same controller settings for every comparison.\n4. **Record outcomes** separately: no candidate, unreachable, planning failure, collision, empty grasp, slip, and completed transfer.\n5. **Test edge cases** including an empty bin, missing depth input, a fully blocked target, and a failed contact.\n6. **Present the benchmark** with success counts, runtime breakdowns, and replay clips of representative failures.\n\nWorked example from the Contact-GraspNet README: run its supplied depth examples before connecting simulated execution.\n\n```bash\npython contact_graspnet/inference.py \\\\\n  --np_path=test_data/*.npy \\\\\n  --local_regions --filter_grasps\n```\n\n**Segmentation is required:** both flags need object labels, not just depth. `local_regions` crops around object segments; `filter_grasps` keeps contacts on their surfaces. Neither replaces arm reachability or collision checks.\n\n```mermaid\nflowchart LR\n  D[Depth scene] --> G[Grasp candidates]\n  G --> F[Reachability filter]\n  F --> E[Simulated execution]\n  E --> L[Outcome and replay]\n```\n\n## Common pitfalls\n\n- **Changing scenes between methods** confounds the comparison; reuse seeds and reset objects before each paired trial.\n- **Ground truth is for evaluation:** do not feed perfect object poses to one method while another receives only noisy depth.\n- **No surviving grasps is an outcome**, not a trial to silently discard from the denominator.\n\n## When it's done\n\n- **Report the full funnel** from scenes to proposed grasps, feasible plans, lifts, and completed transfers, with explicit denominators.\n- **Show remaining failures** and state that simulated success does not establish real-world bin-picking reliability.",
+      "resources": [
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes (ICRA 2021)",
+          "url": "https://www.youtube.com/watch?v=qRLKYSLXElM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors' cluttered-scene grasping experiments and the intended execution setting."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Learn how to generate settled cluttered scenes and evaluate a complete picking loop."
+        },
+        {
+          "title": "NVlabs/contact_graspnet",
+          "url": "https://github.com/NVlabs/contact_graspnet",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Load depth inputs and inspect candidate generation, segmentation, and grasp filtering."
+        },
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes",
+          "url": "https://arxiv.org/abs/2103.14127",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish the paper's structured-clutter experiments from your own simulated protocol."
+        }
+      ],
+      "sources": [
+        "https://github.com/NVlabs/contact_graspnet",
+        "https://manipulation.csail.mit.edu/clutter.html",
+        "https://arxiv.org/abs/2103.14127",
+        "https://graspnet.net/",
+        "https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html",
+        "https://www.youtube.com/watch?v=qRLKYSLXElM"
+      ]
+    },
+    {
+      "node_id": "p:build-a-clutter-clearing-state-machine",
+      "type": "project",
+      "name": "Build a clutter-clearing state machine",
+      "summary": "Build a simulated bin-clearing loop that shows what the arm is doing and why it changes state.",
+      "lesson_md": "## In one sentence\n\nBuild a simulated bin-clearing loop that shows what the arm is doing and why it changes state.\n\n![ManiSkill cluttered YCB-object picking scene](/img/lessons/projects_manipulation_1-clutter-state-machine.webp)\n*ManiSkill cluttered YCB-object picking scene. Source: [ManiSkill: Table-Top 2 Finger Gripper Tasks](https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html), license unknown.*\n\n## What you will learn\n\n- **A finite state machine** stores one active mode and switches modes when an explicit condition becomes true.\n- **A transition guard** is a Boolean check, such as “trajectory finished” or “no objects remain.”\n- **Think of a server request lifecycle:** accepted, processing, completed, or failed; the robot needs equally visible execution states.\n\n> **Key idea:** Put task decisions in named states instead of burying them inside a long motion script.\n\n## What you need\n\n- **Complete Script a cube transfer** and review Pick-and-place pipeline before adding multiple objects.\n- **Use ManiSkill** and an existing computer; build a bin scene around your working single-object transfer.\n- **Keep roles separate:** MoveIt 2 can plan motions, while the state machine selects which motion to request.\n- **SO-101 is a later hardware target**, not a purchase needed for this simulation project.\n\n## Steps\n\n1. **Reproduce the single-object baseline** and save the simulator configuration, seed, and object model.\n2. **Create named modes:** observe, select, pick, place, done, and failed; display the active mode beside the simulation.\n3. **Add transition guards** using fresh observations and motion completion, not fixed sleep calls.\n4. **Populate a bin without overlapping objects**, let them settle, and repeat transfers into a separate destination.\n5. **Exercise empty and broken inputs:** empty bin, absent target, missing observation, and unreachable grasp; display distinct termination reasons.\n6. **Record the demo** showing the bin emptying, state changes, object counts, and a readable event log.\n\nStart with the ManiSkill quickstart's documented GUI command; it samples random actions, so replace that policy with your state machine.\n\n```bash\npython -m mani_skill.examples.demo_random_action \\\n  -e PickCube-v1 --render-mode=\"human\" --shader=\"rt-fast\"\n```\n\n| Starting point | What to take from it |\n|---|---|\n| **MIT bin-picking example** | Point clouds from **3 cameras** and a Planner system implementing a clutter-clearing state machine. |\n| **PickCube-v1 baseline** | One transfer; your extension must manage repeated transfers and the empty-bin exit. |\n\n```mermaid\nflowchart LR\n  O[Observe] --> S[Select object]\n  S --> P[Pick]\n  P --> L[Place]\n  L --> O\n  S -->|Empty| D[Done]\n  P -->|Cannot execute| F[Failed]\n```\n\n## Common pitfalls\n\n- **A timer is not a success check:** inspect where the object ended up before decrementing the remaining-object count.\n- **Never-ending selection** hides empty-bin failures; make “no valid target” an explicit result.\n\n## When it's done\n\n- **Show visible state labels** and a reproducible clearing run, including the empty-bin exit.\n- **Keep failed picks in the log**; the next node, Add failed-grasp recovery, adds detection and bounded retries.",
+      "resources": [
+        {
+          "title": "Lecture 9 | MIT 6.881 (Robotic Manipulation), Fall 2020 | Bin Picking (part 1)",
+          "url": "https://www.youtube.com/watch?v=wDsKA4iTUU8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the simulated clutter-generation problem your clearing loop must handle."
+        },
+        {
+          "title": "Quickstart",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Launch the documented PickCube-v1 GUI and understand observations, actions, and seeded resets."
+        },
+        {
+          "title": "Ch. 5 - Bin Picking",
+          "url": "https://manipulation.csail.mit.edu/clutter.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Study the three-camera grasp-selection pipeline and clutter-clearing Planner state machine."
+        },
+        {
+          "title": "Table-Top 2 Finger Gripper Tasks",
+          "url": "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the YCB-object scenes and explicit success conditions before extending the transfer baseline."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+        "https://manipulation.csail.mit.edu/clutter.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+        "https://www.youtube.com/watch?v=wDsKA4iTUU8"
+      ]
+    },
+    {
+      "node_id": "p:build-a-manipulation-behavior-tree",
+      "type": "project",
+      "name": "Build a manipulation behavior tree",
+      "summary": "Organize a simulated arm task into reusable checks and actions, with a live view of which behavior is running.",
+      "lesson_md": "## In one sentence\n\nOrganize a simulated arm task into reusable checks and actions, with a live view of which behavior is running.\n\n![ManiSkill Panda arm and red cube picking task](/img/lessons/projects_manipulation_1-behavior-tree.webp)\n*ManiSkill Panda arm and red cube picking task. Source: [ManiSkill: Table-Top 2 Finger Gripper Tasks](https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html), license unknown.*\n\n## What you will learn\n\n- **A behavior tree** repeatedly evaluates small actions and conditions rather than keeping all decisions in one script.\n- **A tick** asks a node to update; it returns SUCCESS, FAILURE, or RUNNING.\n- **A Sequence** advances after success; a **Fallback** tries another child after failure.\n- **Think of function composition with status returns:** the parent decides what to call next without rewriting each motion skill.\n\n> **Key idea:** Reuse the same grasp action under different task logic, while keeping its execution status observable.\n\n## What you need\n\n- **Start after Intro: robot anatomy & coordinate frames in sim** and review Long-horizon / task-and-motion planning.\n- **Use ManiSkill's PickCube-v1** with its Panda arm; the task places a red cube near a goal visualized as a green sphere.\n- **Use BehaviorTree.CPP** for the tree; MoveIt 2 can provide motion actions if you already have that integration.\n- **Work in simulation** on your existing computer; no physical arm is required.\n\n## Steps\n\n1. **Run a single pick-and-place** without a tree and identify its approach, close, lift, and place actions.\n2. **Wrap each skill** with explicit start, progress, success, failure, and cancellation behavior.\n3. **Build a Sequence** of checks and actions; return RUNNING while the simulated arm is still moving.\n4. **Add a Fallback** for an unavailable grasp, keeping empty-target and sensor-error outcomes distinct.\n5. **Test normal and interrupted runs:** successful pick, missing cube, unreachable goal, lost observation, and cancellation during approach.\n6. **Show the demo** with arm motion, node statuses, and transition timestamps side by side.\n\nThe first BehaviorTree.CPP tutorial uses this four-leaf sequence; its sample actions are synchronous placeholders that you replace with real skills.\n\n```xml\n<root BTCPP_format=\"4\">\n  <BehaviorTree ID=\"MainTree\">\n    <Sequence name=\"root_sequence\">\n      <CheckBattery name=\"check_battery\"/>\n      <OpenGripper name=\"open_gripper\"/>\n      <ApproachObject name=\"approach_object\"/>\n      <CloseGripper name=\"close_gripper\"/>\n    </Sequence>\n  </BehaviorTree>\n</root>\n```\n\n```mermaid\nflowchart LR\n  T[Tick root] --> C[Check target]\n  C --> A[Approach]\n  A --> G[Close gripper]\n  G --> L[Lift and place]\n  A -->|Running| T\n```\n\n## Common pitfalls\n\n- **Blocking inside tick** freezes monitoring; use asynchronous action nodes for motions that take time.\n- **Premature SUCCESS** lets the next motion start before the previous one finishes.\n\n## When it's done\n\n- **Replay status transitions** for both successful and failed attempts, without motion continuing after cancellation.\n- **Keep skills reusable** for Plan rearrangement with geometric checks; the tree executes decisions but does not prove geometric feasibility.",
+      "resources": [
+        {
+          "title": "Sebastian Castro - Robots are complex, but your systems don’t have to be",
+          "url": "https://www.youtube.com/watch?v=6uK5i8woHVY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why robotics execution benefits from modular behavior-tree orchestration."
+        },
+        {
+          "title": "Introduction to BTs",
+          "url": "https://www.behaviortree.dev/docs/learn-the-basics/BT_basics/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn ticks, statuses, Sequence, and Fallback before connecting a robot."
+        },
+        {
+          "title": "Your first Behavior Tree",
+          "url": "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build the official approach-and-gripper example and replace its dummy actions."
+        },
+        {
+          "title": "Table-Top 2 Finger Gripper Tasks",
+          "url": "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use PickCube-v1 as a concrete arm task with position and velocity completion conditions."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/tasks/table_top_gripper/index.html",
+        "https://www.behaviortree.dev/docs/learn-the-basics/BT_basics/",
+        "https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree/",
+        "https://www.youtube.com/watch?v=6uK5i8woHVY"
+      ]
+    },
+    {
+      "node_id": "p:carry-an-object-between-stations-in-simulation",
+      "type": "project",
+      "name": "Carry an object between stations in simulation",
+      "summary": "Coordinate a simulated mobile base and arm to pick an object at one station and place it at another.",
+      "lesson_md": "## In one sentence\n\nCoordinate a simulated mobile base and arm to pick an object at one station and place it at another.\n\n![Tiago mobile manipulator model in robosuite](/img/lessons/projects_manipulation_1-carry-between-stations.webp)\n*Tiago mobile manipulator model in robosuite. Source: [robosuite: Robots](https://robosuite.ai/docs/modules/robots.html), license unknown.*\n\n## What you will learn\n\n- **Mobile manipulation** combines driving with reaching; changing the base pose changes where the arm can place its gripper.\n- **A carried object** changes the space the robot occupies, so the route must fit more than the bare base.\n- **Think of a transaction across services:** picking, transport, and placement need explicit handoffs and failure states.\n\n> **Key idea:** A collision-free drive is insufficient if the arm or carried object hits the environment.\n\n## What you need\n\n- **Finish Choose reachable base poses** and review Mobile manipulation before joining stations.\n- **Use robosuite** with a mobile manipulator model and a custom two-station scene; this is not a built-in station-transfer benchmark.\n- **Tiago** is documented with **20 degrees of freedom**, meaning independently modeled motion coordinates, and a Robotiq85Gripper.\n- **Use Mobile ALOHA** as a real-world reference for coordinating a wheeled base with arm actions; this project stays in simulation.\n\n## Steps\n\n1. **Create two stations** with a source object and a destination support surface; record world-frame poses and geometry.\n2. **Select reachable approach poses** for both stations and verify arm and base clearance.\n3. **Pick and verify the object** before folding the arm into a checked transport configuration.\n4. **Drive between stations** while checking the full robot and the held object, then stop before the final reach.\n5. **Place and verify release**; handle missing objects, blocked routes, unreachable placement, and a slip during transit.\n6. **Record the complete transfer** with base trajectory, object pose, active phase, and explicit failure reasons.\n\nWorked timing example from robosuite's environment documentation:\n\n| Configuration | Meaning |\n|---|---|\n| control_freq=20 | 20 action updates per simulated second |\n| horizon=200 | 200 updates in one episode |\n| 200 divided by 20 | 10 seconds of simulated rollout |\n\nUse these settings to budget a test rollout; increase the horizon if your measured transfer needs longer.\n\n```mermaid\nflowchart LR\n  A[Approach source] --> G[Grasp and verify]\n  G --> S[Transport posture]\n  S --> D[Drive route]\n  D --> B[Approach destination]\n  B --> P[Place and verify]\n```\n\n## Common pitfalls\n\n- **Base and arm commands have different meanings:** robosuite's BASIC controller can use OSC_POSE for arms and JOINT_VELOCITY for the base.\n- **An empty gripper can complete the route:** verify object retention during transport and support after release.\n\n## When it's done\n\n- **Show an uninterrupted station transfer** plus failed trials, with full-body collision checks and object retention logged.\n- **Save scene seeds and controller settings** before extending this pipeline in Learn a mobile cabinet interaction.",
+      "resources": [
+        {
+          "title": "Mobile ALOHA - A Smart Home Robot - Compilation of Autonomous Skills",
+          "url": "https://www.youtube.com/watch?v=zMNumQ45pJ8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors' real base-and-arm coordination as a reference for your simulated transfer."
+        },
+        {
+          "title": "Robots",
+          "url": "https://robosuite.ai/docs/modules/robots.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect Tiago and the mobile-base models supported by robosuite."
+        },
+        {
+          "title": "Environments",
+          "url": "https://robosuite.ai/docs/modules/environments.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand reset, observations, control frequency, and fixed episode horizons."
+        },
+        {
+          "title": "Controllers",
+          "url": "https://robosuite.ai/docs/modules/controllers.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate arm end-effector control from base velocity control."
+        },
+        {
+          "title": "Mobile ALOHA: Learning Bimanual Mobile Manipulation with Low-Cost Whole-Body Teleoperation",
+          "url": "https://mobile-aloha.github.io/",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Study how whole-body teleoperation connects mobility with manipulation."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/robots.html",
+        "https://robosuite.ai/docs/modules/environments.html",
+        "https://robosuite.ai/docs/modules/controllers.html",
+        "https://www.youtube.com/watch?v=zMNumQ45pJ8",
+        "https://mobile-aloha.github.io/"
+      ]
+    },
+    {
+      "node_id": "p:choose-reachable-base-poses",
+      "type": "project",
+      "name": "Choose reachable base poses",
+      "summary": "Display where a simulated mobile robot can park so its arm reaches a shelf target without colliding.",
+      "lesson_md": "## In one sentence\n\nDisplay where a simulated mobile robot can park so its arm reaches a shelf target without colliding.\n\n![Omron wheeled mobile-base component available in robosuite](/img/lessons/projects_manipulation_1-reachable-base-poses.webp)\n*Omron wheeled mobile-base component available in robosuite. Source: [robosuite: Robots](https://robosuite.ai/docs/modules/robots.html), license unknown.*\n\n## What you will learn\n\n- **A base pose** combines planar position and heading; two nearby parking positions can give the arm very different access.\n- **Inverse kinematics**, or IK, searches for joint angles that put the gripper at a requested position and orientation.\n- **Think of constraint filtering:** generate candidate configurations, reject invalid ones, then display the survivors.\n\n> **Key idea:** A target inside the arm's rough reach can still be impossible because of orientation, joint limits, or shelf collisions.\n\n## What you need\n\n- **Start after Intro: robot anatomy & coordinate frames in sim** and review Mobile manipulation.\n- **Use robosuite** with a supported mobile robot, shelf geometry, and a fixed target grasp.\n- **Inspect the robot model:** robosuite separates arm, gripper, and base components; the pictured Omron base is one available component.\n- **Use Mobile ALOHA** as motivation for mobile reaching, not as a requirement to buy or reproduce its hardware.\n\n## Steps\n\n1. **Create a shelf target** with a specified gripper position and orientation in the world frame.\n2. **Sample base positions and headings** around the shelf, retaining a reproducible list of candidates.\n3. **Express each target in the IK API's required frame**, accounting for the candidate base pose; retain the solver seed and timeout.\n4. **Reject joint-limit and collision violations**, including base-to-shelf, arm-to-shelf, and self-collision.\n5. **Color the candidates** by result and show a robot configuration for every accepted parking pose.\n6. **Demo valid and invalid targets**, including an empty target list, a fully blocked shelf, and a solver timeout.\n\nThe MoveIt robot-state tutorial demonstrates this IK call with a **0.1-second** timeout; it assumes the robot state and target transform already exist.\n\n```cpp\ndouble timeout = 0.1;\nbool found_ik = robot_state->setFromIK(\n    joint_model_group, end_effector_state, timeout);\n```\n\n| Result | Interpretation |\n|---|---|\n| **IK search timed out** | No solution found within this search, not proof that none exists. |\n| **IK solution found** | Still check joint limits and full-robot/environment collisions using planning-scene queries. |\n\n```mermaid\nflowchart LR\n  B[Base candidates] --> T[Transform grasp]\n  T --> I[IK search]\n  I --> J[Joint bounds]\n  J --> C[Collision checks]\n  C --> V[Display feasible poses]\n```\n\n## Common pitfalls\n\n- **Mixing coordinate frames** shifts the target when the base rotates; inspect transformed axes beside the robot.\n- **End-state reachability is not a route:** an accepted parking pose still needs a collision-free approach.\n\n## When it's done\n\n- **Show accepted and rejected base poses** with rejection reasons and reproducible solver settings.\n- **Pass the feasible poses** to Carry an object between stations in simulation, keeping navigation feasibility as a separate check.",
+      "resources": [
+        {
+          "title": "Mobile ALOHA - A Smart Home Robot - Compilation of Autonomous Skills",
+          "url": "https://www.youtube.com/watch?v=zMNumQ45pJ8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why a mobile manipulator must place its base before reaching into workspaces."
+        },
+        {
+          "title": "Robots",
+          "url": "https://robosuite.ai/docs/modules/robots.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Choose a documented mobile robot or inspect arm/base composition."
+        },
+        {
+          "title": "Robot Model and Robot State",
+          "url": "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn frame transforms, joint bounds, and the concrete setFromIK call."
+        },
+        {
+          "title": "Planning Scene",
+          "url": "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Reject candidate configurations that collide with the shelf or the robot itself."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/robots.html",
+        "https://mobile-aloha.github.io/",
+        "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+        "https://www.youtube.com/watch?v=zMNumQ45pJ8"
+      ]
+    },
+    {
+      "node_id": "p:compare-fingertip-pads",
+      "type": "project",
+      "name": "Compare fingertip pads",
+      "summary": "Compare how changing simulated fingertip friction and contact softness affects whether a gripper keeps hold of an object.",
+      "lesson_md": "## In one sentence\n\nCompare how changing simulated fingertip friction and contact softness affects whether a gripper keeps hold of an object.\n\n![Panda parallel-jaw gripper model in robosuite](/img/lessons/projects_manipulation_1-fingertip-pads.webp)\n*Panda parallel-jaw gripper model in robosuite. Source: [robosuite: Robots](https://robosuite.ai/docs/modules/robots.html), license unknown.*\n\n## What you will learn\n\n- **Friction** resists sliding at a contact; it depends on the normal force pressing the surfaces together.\n- **Contact softness** controls how the simulator resolves deformation-like motion at contact; it is not automatically a measured rubber material.\n- **Think of an A/B test:** change one pad parameter while keeping the object, grip command, and lift trajectory identical.\n\n> **Key idea:** Compare retention under matched motion, not how convincing the contact looks in a video.\n\n## What you need\n\n- **Start after Intro: robot anatomy & coordinate frames in sim** and review Grippers & end-effectors.\n- **Use MuJoCo** with a parallel-jaw gripper model, such as the pictured Panda gripper; no fabricated pads are needed.\n- **Keep SO-101** as a later hardware comparison, not an assumption that its real pads match your simulation.\n- **Save the model XML**, solver settings, timestep, and object mass alongside each result.\n\n## Steps\n\n1. **Establish a repeatable lift** with one object and a fixed starting pose, approach, closure, and lift speed.\n2. **Locate fingertip collision geoms**, the geometric shapes used for contact, rather than editing only visible meshes.\n3. **Vary sliding friction alone**, then vary contact solver parameters separately; keep a copy of the baseline model.\n4. **Replay identical trajectories** and log contact force, object displacement relative to the gripper, and retention after lifting.\n5. **Test missing and failed contacts:** absent object, initial misalignment, and a deliberate slip; report simulation instability separately.\n6. **Show synchronized comparisons** with parameter values on screen and retained-versus-dropped counts.\n\nMuJoCo's XML reference gives this default geom friction vector:\n\n```xml\n<geom friction=\"1 0.005 0.0001\"/>\n```\n\n| Coefficient | Meaning |\n|---|---|\n| 1 | Sliding friction |\n| 0.005 | Torsional friction around the contact normal |\n| 0.0001 | Rolling friction |\n\nThese are simulator defaults, not measured pad properties; edit the existing fingertip geom rather than treating this fragment as a full model.\n\n```mermaid\nflowchart LR\n  P[Pad parameters] --> G[Grasp]\n  G --> L[Matched lift]\n  L --> R[Retention measurement]\n  R --> C[Compare trials]\n```\n\n## Common pitfalls\n\n- **Both surfaces matter:** with equal priority, MuJoCo combines friction using the element-wise maximum; the object's value can mask your pad change.\n- **Contact dimension matters:** MuJoCo's default `condim=3` uses sliding friction only; torsional friction needs `condim=4`, and rolling friction needs `condim=6`.\n- **Softness is not just friction:** `solref` and `solimp` control contact response; record them separately and inspect actual penetration.\n\n## When it's done\n\n- **Deliver retention plots and failure clips** with identical initial conditions and complete parameter records.\n- **Explain which effect changed** before continuing to Simulate suction versus pinch; do not identify a real material from an uncalibrated parameter alone.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 12.2.1:  Friction",
+          "url": "https://www.youtube.com/watch?v=FY92f7gssWc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the normal-force and friction relationship behind object retention."
+        },
+        {
+          "title": "12.2.1. Friction",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the Coulomb friction explanation and contact-force limits."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand how two contacting geoms combine friction and solver parameters."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-geom",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Find the exact friction-vector order and contact-softness attributes to edit."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/robots.html",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-geom",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html#contact-parameters",
+        "https://www.youtube.com/watch?v=FY92f7gssWc",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/"
+      ]
+    },
+    {
+      "node_id": "p:compare-language-conditioned-policies-on-held-out-objects",
+      "type": "project",
+      "name": "Compare language-conditioned policies on held-out objects",
+      "summary": "Compare language-conditioned robot policies on the same unseen-object trials, recording task completion, mistaken targets, and failures.",
+      "lesson_md": "## In one sentence\n\nCompare language-conditioned robot policies on the same unseen-object trials, recording task completion, mistaken targets, and failures.\n\n![OpenVLA robot manipulation setups and example tasks](/img/lessons/projects_manipulation_1-held-out-policies.webp)\n*OpenVLA robot manipulation setups and example tasks. Source: [OpenVLA project](https://openvla.github.io/), license unknown.*\n\n## What you will learn\n\n- **Language conditioning** means the policy receives an instruction alongside robot observations to choose actions.\n- **Held-out objects** are objects excluded from your adaptation data; they test generalization beyond the examples you supplied.\n- **Think of a test split in machine learning:** freeze the split before tuning, and never optimize on the final evaluation outcomes.\n\n> **Key idea:** Compare policies on matched observations, tasks, and object splits rather than comparing unrelated showcase videos.\n\n## What you need\n\n- **Finish Fine-tune a policy on one tabletop task** and review Generalist manipulation policies / VLAs.\n- **Select compatible checkpoints** from OpenVLA, Octo, and π0 / π0.5; begin with two that support your simulated robot and task.\n- **Use an existing simulator and GPU resources**; record checkpoint revision, action normalization, camera mapping, and adaptation data.\n- **Inspect the published scales:** OpenVLA has **7B parameters** and pretraining on **970k episodes**; Octo-Base has **93M parameters** and uses **800k episodes**.\n\n## Steps\n\n1. **Freeze object and instruction splits**, distinguishing new object identity from a new color, pose, or paraphrase.\n2. **Validate action adapters** so units, gripper conventions, control frequency, image views, and action horizons match the simulator.\n3. **Run a familiar-object baseline** before interpreting poor unseen-object performance as a generalization failure.\n4. **Evaluate matched scene seeds** for every policy, preserving the same instruction text and reset geometry.\n5. **Include rejection cases:** absent requested object, empty scene, missing camera, and unreachable goal; log refusal or failure instead of silently retrying.\n6. **Present paired replay clips** and per-split counts for completion, wrong-object picks, timeouts, and invalid actions.\n\nThe openpi README gives this LIBERO data-conversion command; it shows where a shared dataset adapter enters the experiment.\n\n```bash\nuv run examples/libero/convert_libero_data_to_lerobot.py \\\n  --data_dir /path/to/your/libero/data\n```\n\n| Split check | Required record |\n|---|---|\n| **Adaptation exclusion** | Keep the object list and verify no adaptation episode contains the held-out objects. |\n| **Pretraining exposure** | Mark unknown unless documented; adaptation-held-out does not mean unseen during all pretraining. |\n\n```mermaid\nflowchart LR\n  S[Frozen trial split] --> O[Matched observations]\n  O --> A[Policy A]\n  O --> B[Policy B]\n  A --> E[Same evaluator]\n  B --> E\n  E --> R[Counts and failure clips]\n```\n\n## Common pitfalls\n\n- **Different action adapters** can dominate the result; test known motions and gripper commands before comparing learned behavior.\n- **Bigger is not an experimental control:** training mixtures, sensor inputs, and adaptation differ between these model families.\n\n## When it's done\n\n- **Report denominators for every split**, retain unsuccessful rollouts, and show familiar-object results beside held-out-object results.\n- **Publish the protocol and adapters** so another student can reproduce the comparison without choosing easier objects.",
+      "resources": [
+        {
+          "title": "OpenVLA: LeRobot Research Presentation #5 by Moo Jin Kim",
+          "url": "https://www.youtube.com/watch?v=-0s0v3q7mBk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear the author explain generalist policy evaluation and adaptation."
+        },
+        {
+          "title": "OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://openvla.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect tasks, model scale, training data, and the distinction between zero-shot and fine-tuned rollouts."
+        },
+        {
+          "title": "Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://octo-models.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Compare observation flexibility, language conditioning, and Octo model sizes."
+        },
+        {
+          "title": "openvla/openvla",
+          "url": "https://github.com/openvla/openvla",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use documented simulation evaluation and action-normalization interfaces."
+        },
+        {
+          "title": "Physical-Intelligence/openpi",
+          "url": "https://github.com/Physical-Intelligence/openpi",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect LIBERO data conversion and policy-specific input/output adapters."
+        }
+      ],
+      "sources": [
+        "https://openvla.github.io/",
+        "https://octo-models.github.io/",
+        "https://github.com/Physical-Intelligence/openpi",
+        "https://www.youtube.com/watch?v=-0s0v3q7mBk",
+        "https://github.com/openvla/openvla"
+      ]
+    },
+    {
+      "node_id": "p:compare-moveit-and-curobo-paths",
+      "type": "project",
+      "name": "Compare MoveIt and cuRobo paths",
+      "summary": "Compare two motion-planning setups on identical simulated scenes, measuring valid paths and runtime rather than trusting a smoother animation.",
+      "lesson_md": "## In one sentence\n\nCompare two motion-planning setups on identical simulated scenes, measuring valid paths and runtime rather than trusting a smoother animation.\n\n![cuRobo arm moving around obstacles in its published demonstration](/img/lessons/projects_manipulation_1-moveit-curobo-paths.webp)\n*cuRobo arm moving around obstacles in its published demonstration. Source: [Project documentation](https://curobo.org/), license unknown.*\n\n## What you will learn\n\n- **A path** describes joint configurations; a trajectory adds timing, so path length and execution duration are different measurements.\n- **MoveIt 2** is a planning framework; name its selected planner when comparing it with cuRobo, a GPU-accelerated motion-generation library.\n- **Think of benchmarking databases:** identical queries are essential, but cache state, hardware, and configuration still affect the comparison.\n\n> **Key idea:** Compare reproducible configurations, not product names or hand-picked successful replays.\n\n## What you need\n\n- **Complete Plan around a tabletop obstacle** and review Collision-free arm motion generation before connecting the second planner.\n- **Use one robot model** and matching joint limits, obstacle geometry, start configurations, and goal tolerances in both systems.\n- **Budget existing computing resources:** no robot purchase is needed; cuRobo requires a compatible GPU environment, whose cost is excluded here.\n- **Pin versions:** cuRobo's repository warns that its newer API differs from the older v1 examples.\n\n## Steps\n\n1. **Freeze the benchmark scenes:** include clear space, a tabletop obstacle, a narrow passage, and an unreachable goal.\n2. **Choose the MoveIt planner explicitly** and export both systems' collision geometry for visual inspection before timing anything.\n3. **Separate setup from requests:** record initialization and GPU warm-up separately, then time repeated planning calls with completion synchronization.\n4. **Validate returned trajectories** against a shared collision-checking protocol; record joint-limit violations and missing solutions as failures.\n5. **Test empty and invalid requests:** no obstacles should work; a missing goal or invalid start must produce a readable error.\n6. **Show paired replays** with runtime distributions, path lengths, validation outcomes, and all failures retained in the report.\n\nWorked example from MoveIt's OMPL documentation: `longest_valid_segment_fraction = 0.01` permits edges shorter than one hundredth of state-space extent without intermediate checks.\n\n**Interpret that setting correctly:** it is not a distance in metres; document collision-checking resolution rather than equating waypoint counts with safety.\n\n```mermaid\nflowchart LR\n  S[Same scene and request] --> M[MoveIt planner]\n  S --> C[cuRobo]\n  M --> V[Shared validation]\n  C --> V\n  V --> R[Metrics and replay]\n```\n\n## Common pitfalls\n\n- **Different collision models** can explain apparent speedups; inspect attached geometry and self-collision settings as well as visible obstacles.\n- **Timing asynchronous GPU submission** measures dispatch rather than completed work; state your timer boundaries.\n\n## When it's done\n\n- **Another student can rerun** the saved scene set and see both successful and failed requests with explicit denominators.\n- **Keep claims local** to your hardware and settings; use the result before Replan a carried object through clutter.",
+      "resources": [
+        {
+          "title": "cuRobo: CUDA Accelerated Robot Motion Generation",
+          "url": "https://www.youtube.com/watch?v=Ux9tFBRLR-A",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch cuRobo's authors show GPU-accelerated collision-free motion generation before defining your own paired scenes."
+        },
+        {
+          "title": "OMPL Planner",
+          "url": "https://moveit.picknik.ai/main/doc/examples/ompl_interface/ompl_interface_tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the MoveIt planner selection and discretized collision checks."
+        },
+        {
+          "title": "Planning Scene",
+          "url": "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check collisions and constraints in the MoveIt scene before comparing returned paths."
+        },
+        {
+          "title": "NVlabs/curobo",
+          "url": "https://github.com/NVlabs/curobo",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check version compatibility and the warm-up-and-reuse integration guidance."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Ux9tFBRLR-A",
+        "https://moveit.picknik.ai/main/doc/examples/ompl_interface/ompl_interface_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+        "https://github.com/NVlabs/curobo"
+      ]
+    },
+    {
+      "node_id": "p:compare-policies-across-cloth-materials",
+      "type": "project",
+      "name": "Compare policies across cloth materials",
+      "summary": "Evaluate cloth-manipulation policies on held-out simulated material settings and report coverage, alignment, and failures separately.",
+      "lesson_md": "## In one sentence\n\nEvaluate cloth-manipulation policies on held-out simulated material settings and report coverage, alignment, and failures separately.\n\n![Cloth Funnels evaluation comparing garment configurations across manipulation methods](/img/lessons/projects_manipulation_1-cloth-materials.webp)\n*Cloth Funnels evaluation comparing garment configurations across manipulation methods. Source: [Project documentation](https://clothfunnels.cs.columbia.edu/), license unknown.*\n\n## What you will learn\n\n- **A policy** maps observations to actions; here it selects cloth-manipulation moves rather than text or class labels.\n- **Coverage** measures how spread out the cloth is; **alignment** measures whether it faces the intended direction and location.\n- **Canonicalization** means reaching a chosen standard shape, including garment parts such as sleeves, not merely exposing more fabric.\n- **Think of a test split:** changing simulated materials tests generalization only if those settings were excluded from training and tuning.\n\n> **Key idea:** A policy can unfold a garment yet fail to arrange it for the next task.\n\n## What you need\n\n- **Complete Reproduce a cloth unfolding primitive** and review Deformable object manipulation before comparing learned policies.\n- **Use Cloth Funnels** and its documented simulator environment; keep dependency versions and checkpoints with the experiment manifest.\n- **Start without hardware:** use an existing compatible computer; computing costs and any future cloth-handling robot are separate.\n- **Label settings honestly:** simulator stiffness or friction values are not measured cotton or silk properties without calibration data.\n\n## Steps\n\n1. **Reproduce a supplied evaluation** before editing material parameters; save the checkpoint, cloth mesh, seed, and initial configuration.\n2. **Define held-out material settings** using parameters actually exposed by your simulator; document units and leave physical-material identities unknown.\n3. **Compare fixed policies** on identical starting configurations, with the same action budget and observation access for each paired trial.\n4. **Measure coverage and alignment separately**, recording failed grasps, cloth leaving the workspace, and episodes that exhaust their action budget.\n5. **Exercise empty and broken inputs:** missing cloth, absent observations, and failed contact should terminate with explicit recorded reasons.\n6. **Show held-out replays** beside a results table grouped by material setting, keeping unsuccessful trials in the denominator.\n\nWorked example from the authors' comparison: **Flingbot** can increase coverage while missing alignment; **aligned pick-and-place** cannot efficiently unfold the cloth.\n\n**Use that contrast as a baseline:** compare a fixed unfolding primitive with the combined policy, without presenting your extension as a published material benchmark.\n\n```mermaid\nflowchart LR\n  S[Held-out cloth settings] --> O[Observation]\n  O --> P[Fixed policy]\n  P --> A[Cloth action]\n  A --> O\n  A --> E[Coverage and alignment]\n```\n\n## Common pitfalls\n\n- **Changing mesh and material together** confounds shape generalization with material generalization; change one factor before combining them.\n- **Flat is not ready to fold:** spread-out sleeves can still face the wrong direction or remain in the wrong arrangement.\n\n## When it's done\n\n- **Publish the held-out configuration list**, paired outcomes, failure clips, and metric definitions so another student can repeat the comparison.\n- **State the boundary:** this is a simulation robustness study, not evidence that an uncalibrated policy transfers across real fabrics.",
+      "resources": [
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why unfolding, alignment, and canonicalization need different checks."
+        },
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://clothfunnels.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the baseline comparisons and real garment outcomes that motivate your metrics."
+        },
+        {
+          "title": "real-stanford/cloth-funnels",
+          "url": "https://github.com/real-stanford/cloth-funnels",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reproduce the simulation and evaluation setup before adding held-out settings."
+        },
+        {
+          "title": "Cloth Funnels: Canonicalized-Alignment for Multi-Purpose Garment Manipulation",
+          "url": "https://arxiv.org/abs/2210.09347",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the objective and evaluation assumptions before designing a material-shift study."
+        }
+      ],
+      "sources": [
+        "https://clothfunnels.cs.columbia.edu/",
+        "https://www.youtube.com/watch?v=TkUn0b7mbj0",
+        "https://github.com/real-stanford/cloth-funnels",
+        "https://arxiv.org/abs/2210.09347"
+      ]
+    },
+    {
+      "node_id": "p:connect-pose-tracking-to-a-grasp",
+      "type": "project",
+      "name": "Connect pose tracking to a grasp",
+      "summary": "Turn a tracked object pose into a gripper target, then execute and evaluate the grasp in simulation.",
+      "lesson_md": "## In one sentence\n\nTurn a tracked object pose into a gripper target, then execute and evaluate the grasp in simulation.\n\n![FoundationPose robotic manipulation demonstration tracking a mustard bottle](/img/lessons/projects_manipulation_1-pose-to-grasp.webp)\n*FoundationPose robotic manipulation demonstration tracking a mustard bottle. Source: [Project documentation](https://nvlabs.github.io/FoundationPose/), license unknown.*\n\n## What you will learn\n\n- **A pose** describes position and orientation; a tracked pose updates that estimate as new camera frames arrive.\n- **An object-frame grasp** stores the gripper's desired pose relative to the object, so the grasp can follow a moving object.\n- **A transform** converts coordinates between frames; composing transforms is like composing typed functions whose output and input types must match.\n\n> **Key idea:** A tracker estimates where the object is; it does not decide whether the robot can grasp it.\n\n## What you need\n\n- **Complete Overlay tracked object axes** and review Object pose estimation for manipulation before sending any gripper commands.\n- **Use FoundationPose** with a supported object representation and camera inputs; use ManiSkill for a simulated arm and matching object.\n- **Record camera calibration:** the robot needs the camera's pose relative to its base, not just a visually convincing overlay.\n- **Use existing compatible computing hardware:** no physical arm is required; GPU requirements and computing costs still apply.\n\n## Steps\n\n1. **Load one known object** and save its model scale, camera calibration, and a grasp pose defined in the object's coordinates.\n2. **Track rendered camera observations** and display estimated object axes beside simulator ground truth, reserving ground truth for evaluation.\n3. **Compose frame transforms** to express the object-relative grasp in robot-base coordinates; display the target before attempting motion.\n4. **Check reachability and collisions**, then execute approach, close, and lift using the simulator's documented controller conventions.\n5. **Test missing targets and sensor loss:** stale or absent pose input must block new grasp execution rather than reuse an unchecked target.\n6. **Show a paired replay** with the tracked pose, gripper target, executed motion, lift outcome, and recorded failure reason.\n\nWorked example: let `T_BC` map camera coordinates into the base, `T_CO` map object into camera, and `T_OG` map gripper into object.\n\n```python\nT_BG = T_BC @ T_CO @ T_OG\n```\n\n**Read right to left:** this composition converts a gripper-frame point into base coordinates; verify it with a known stationary pose first.\n\n```mermaid\nflowchart LR\n  I[Camera inputs] --> T[Object tracker]\n  T --> F[Compose grasp transform]\n  F --> C[Reachability and collisions]\n  C --> G[Approach close lift]\n  G --> E[Outcome and replay]\n```\n\n## Common pitfalls\n\n- **Correct-looking axes can hide scale errors:** match model units and camera depth units before blaming the motion planner.\n- **Quaternion conventions differ:** inspect each API's component ordering; controller commands are not necessarily absolute poses.\n\n## When it's done\n\n- **Demonstrate repeatable simulated grasps** from changed object poses, with separate tracking, planning, and contact failures.\n- **Save calibration and logs** before extending the pipeline in Test recovery after occlusion; simulation success does not establish hardware reliability.",
+      "resources": [
+        {
+          "title": "[CVPR 2024 highlight] FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects",
+          "url": "https://www.youtube.com/watch?v=Ip_yWsGUF6c",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the FoundationPose authors' overview of 6D pose estimation and tracking of novel objects."
+        },
+        {
+          "title": "Ch. 3 - Basic Pick and Place",
+          "url": "https://manipulation.csail.mit.edu/pick.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Learn frame composition and object-relative grasp poses before connecting the tracker."
+        },
+        {
+          "title": "NVlabs/FoundationPose",
+          "url": "https://github.com/NVlabs/FoundationPose",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect model inputs, pose-estimation output, and tracking demonstration code."
+        },
+        {
+          "title": "Controllers / Action Spaces",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/controllers.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose a simulator controller and check action-frame and delta-command conventions."
+        },
+        {
+          "title": "FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects",
+          "url": "https://arxiv.org/abs/2312.08344",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the estimator and tracker assumptions rather than treating a pose as guaranteed truth."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Ip_yWsGUF6c",
+        "https://manipulation.csail.mit.edu/pick.html",
+        "https://github.com/NVlabs/FoundationPose",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/controllers.html",
+        "https://arxiv.org/abs/2312.08344"
+      ]
+    },
+    {
+      "node_id": "p:coordinate-two-simulated-grippers",
+      "type": "project",
+      "name": "Coordinate two simulated grippers",
+      "summary": "Script two simulated grippers to lift one object together, checking coordination, contact, and collisions throughout the motion.",
+      "lesson_md": "## In one sentence\n\nScript two simulated grippers to lift one object together, checking coordination, contact, and collisions throughout the motion.\n\n![robosuite two-arm lifting sequence with grippers sharing a handled object](/img/lessons/projects_manipulation_1-two-grippers.webp)\n*robosuite two-arm lifting sequence with grippers sharing a handled object. Source: [Project documentation](https://robosuite.ai/docs/modules/environments.html), license unknown.*\n\n## What you will learn\n\n- **Bimanual manipulation** means using two robot arms on the same task; here they share one object's weight and motion.\n- **Coordination** means choosing compatible targets and timing, not simply starting two independent scripts at once.\n- **Think of a transaction barrier:** neither worker advances to the lift stage until both grippers satisfy their readiness checks.\n\n> **Key idea:** Plan around the shared object, then derive compatible motions for both hands.\n\n## What you need\n\n- **Complete Intro: robot anatomy & coordinate frames in sim** and revisit Bimanual manipulation before adding shared contact.\n- **Use robosuite's TwoArmLift task**, which provides a two-arm lifting scene and configurable robot combinations.\n- **Use an existing computer:** this simulation project requires no robot purchase; ALOHA 2 supplies a separate real-world bimanual reference.\n- **Keep the controller configuration** and action layout beside the script so left-arm commands cannot silently reach the right arm.\n\n## Steps\n\n1. **Load the documented lifting scene** and inspect the object, handles, arm bases, gripper frames, and action dimensions.\n2. **Move each gripper separately** to a collision-free approach pose, then verify both targets in a common world frame.\n3. **Add synchronized phases:** approach, close, verify both grasps, lift, lower, and release; display the current phase on screen.\n4. **Generate targets from shared object motion**, maintaining each gripper's intended offset instead of moving one hand arbitrarily.\n5. **Exercise missing objects and failed contact:** stop if either grasp fails; record arm-arm collisions and invalid observations separately.\n6. **Film the coordinated lift** with object height, phase labels, collision results, and failure clips from the fixed test set.\n\nWorked example from the robosuite environment guide: create an opposed pair using `robots=[\"Sawyer\", \"Panda\"]` and `env_configuration=\"opposed\"` in `TwoArmLift`.\n\n**Interpret opposed literally:** the arms face each other, so copying the same local-axis displacement to both does not define a shared world-frame motion.\n\n```mermaid\nflowchart LR\n  A[Approach handles] --> C[Close both grippers]\n  C --> V[Verify both grasps]\n  V -->|Ready| L[Coordinated lift]\n  V -->|Failed| S[Stop and log]\n  L --> D[Lower and release]\n```\n\n## Common pitfalls\n\n- **Two successful reaches do not imply a lift:** the arms may pull against each other after contact.\n- **Object success alone hides collisions:** verify arm-arm and arm-table contacts rather than reporting only the task reward.\n\n## When it's done\n\n- **Show the object moving with both hands** without unwanted collisions, then returning to the table before release.\n- **Save seeds and outcomes** for successful, empty, and failed-contact cases; use the baseline before Teleoperate a two-arm handover.",
+      "resources": [
+        {
+          "title": "ALOHA 2: An Enhanced Low-Cost Hardware for Bimanual Teleoperation",
+          "url": "https://www.youtube.com/watch?v=PHXQFE-Rteo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official ALOHA 2 bimanual demonstrations and distinguish the real hardware from your simulator."
+        },
+        {
+          "title": "Environments",
+          "url": "https://robosuite.ai/docs/modules/environments.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Create TwoArmLift and inspect the opposed Sawyer-and-Panda configuration."
+        },
+        {
+          "title": "Demo Showcases",
+          "url": "https://robosuite.ai/docs/demos.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect controller and environment demos before writing the synchronized script."
+        },
+        {
+          "title": "Controllers",
+          "url": "https://robosuite.ai/docs/modules/controllers.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the action representation and coordinate-frame conventions for each arm."
+        }
+      ],
+      "sources": [
+        "https://robosuite.ai/docs/modules/environments.html",
+        "https://www.youtube.com/watch?v=PHXQFE-Rteo",
+        "https://robosuite.ai/docs/demos.html",
+        "https://robosuite.ai/docs/modules/controllers.html"
+      ]
+    },
+    {
+      "node_id": "p:design-a-compliant-fingertip",
+      "type": "project",
+      "name": "Design a compliant fingertip",
+      "summary": "Fabricate a fingertip that deforms on contact, then compare gentle lifts against a rigid baseline with documented force measurements.",
+      "lesson_md": "## In one sentence\n\nFabricate a fingertip that deforms on contact, then compare gentle lifts against a rigid baseline with documented force measurements.\n\n![Yale OpenHand Model O hand with pivot-flexure fingers and compliant contact pads](/img/lessons/projects_manipulation_1-compliant-fingertip.webp)\n*Yale OpenHand Model O hand with pivot-flexure fingers and compliant contact pads. Source: [Project documentation](https://www.eng.yale.edu/grablab/openhand/model_o.html), Creative Commons Attribution-NonCommercial 3.0 Unported.*\n\n## What you will learn\n\n- **Compliance** means deformation under load; a compliant fingertip changes shape at contact rather than behaving like a rigid jaw.\n- **A flexure** is a bending part that permits motion without a conventional pin joint; a soft pad supplies a deformable contact surface.\n- **Think of an adapter layer:** keep the arm-side mounting interface fixed while swapping the contact geometry for a controlled comparison.\n\n> **Key idea:** Judge the fingertip by measured contact and lifting behavior, not by how soft it feels in your hand.\n\n## What you need\n\n- **Complete Simulate suction versus pinch** and Assemble & teleoperate an SO-101; review Grippers & end-effectors before changing the contact hardware.\n- **Reuse an existing SO-101** with a removable mount, fabrication access, a rigid reference fingertip, and a force-measurement device with recorded range and resolution.\n- **Budget locally:** fabrication and sensing are not free; material, tooling, and hardware costs are unknown until you obtain actual quotes.\n- **Use MuJoCo optionally** to check geometry and motion first; simulated contact is not a substitute for measuring the fabricated part.\n\n## Steps\n\n1. **Define a low-force lift test** with a soft object, fixed lift path, workspace limits, and a force threshold chosen before trials.\n2. **Design a removable fingertip** that preserves the existing mounting interface; document pad shape, attachment, and clearance through the full opening range.\n3. **Fabricate and inspect the part**, following the selected material's handling instructions; test deformation and retention without powered arm motion first.\n4. **Measure contact force** for rigid and compliant tips using the same object and approach; do not label motor commands as measured force.\n5. **Run paired lifts**, including empty grasps, slip, detached pads, and missing force readings; stop trials that exceed your declared threshold.\n6. **Film a low-force lift** with force traces, dimensions, material identity, mounting files, and failed trials alongside the successful result.\n\nWorked fabrication reference: Yale OpenHand's HDM guide uses **PMC-780** for flexure joints and **Vytaflex 30** for pads; these serve different roles.\n\n**Adapt the process, not an assumed recipe:** verify the chosen material's instructions and compatibility before fabricating your own mounted fingertip.\n\n```mermaid\nflowchart LR\n  D[Mount and pad design] --> F[Fabricate]\n  F --> B[Unpowered inspection]\n  B --> M[Measure contact force]\n  M --> L[Paired lift tests]\n  L --> R[Video and results]\n```\n\n## Common pitfalls\n\n- **Soft does not mean secure:** a compliant pad can detach or slip; inspect retention and record dropped objects.\n\n> **Watch out:** Keep hands outside the powered gripper workspace, use low speed and soft objects, and test the stop before lifting.\n\n## When it's done\n\n- **Show the fabricated fingertip lifting** below your declared measured-force threshold, with rigid-baseline comparisons and explicit failure counts.\n- **Release the design and test protocol**, including measurement uncertainty; do not infer object safety from a successful lift alone.",
+      "resources": [
+        {
+          "title": "OpenHand HDM Finger Mold Quickstart Guide",
+          "url": "https://www.youtube.com/watch?v=dEJJMax7hs0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch Yale fabricate compliant fingers using printed molds and cast material."
+        },
+        {
+          "title": "Yale OpenHand Project - Hybrid Deposition Manufacturing",
+          "url": "https://www.eng.yale.edu/grablab/openhand/hdm.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Separate printed structure, flexures, and pads when planning fabrication."
+        },
+        {
+          "title": "Yale OpenHand Project - Model O",
+          "url": "https://www.eng.yale.edu/grablab/openhand/model_o.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect a published compliant finger design and its linked fabrication guides."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the actual gripper assembly and calibration before designing a removable attachment."
+        }
+      ],
+      "sources": [
+        "https://www.eng.yale.edu/grablab/openhand/model_o.html",
+        "https://www.youtube.com/watch?v=dEJJMax7hs0",
+        "https://www.eng.yale.edu/grablab/openhand/hdm.html",
+        "https://huggingface.co/docs/lerobot/so101"
+      ]
+    },
+    {
+      "node_id": "p:detect-slip-from-tactile-sequences",
+      "type": "project",
+      "name": "Detect slip from tactile sequences",
+      "summary": "Detect object sliding from recorded tactile image sequences, then evaluate the detector on held-out contact episodes.",
+      "lesson_md": "## In one sentence\n\nDetect object sliding from recorded tactile image sequences, then evaluate the detector on held-out contact episodes.\n\n![GelSight Mini marker-tracking display with motion vectors under contact](/img/lessons/projects_manipulation_1-tactile-slip.webp)\n*GelSight Mini marker-tracking display with motion vectors under contact. Source: [Published reference](https://github.com/gelsightinc/gsrobotics), license unknown.*\n\n## What you will learn\n\n- **Slip** is relative motion between an object and its contacting surface; gel deformation alone does not prove the object is sliding.\n- **A tactile sequence** is an ordered stream of touch-sensor observations; motion across frames supplies evidence unavailable in a single image.\n- **Think of log anomaly detection:** preserve event order, label episodes, and test on unseen sessions rather than randomly splitting adjacent records.\n\n> **Key idea:** Separate true object slip from elastic deformation, changing contact, and missing sensor data.\n\n## What you need\n\n- **Complete Visualize gel contact images** and review Tactile sensing for manipulation before adding temporal classification.\n- **Use GelSight Mini recordings** with visible contact and independently labelled slip events; new contact capture requires procuring a sensor, not just downloading software.\n- **Use the official marker-tracking demo** to save movement sequences; sensor and mounting costs are unknown until quoted.\n- **Keep external video for labels** if available, but do not feed it to a tactile-only detector or claim multimodal paper results as yours.\n\n## Steps\n\n1. **Collect stable and slipping episodes** with object identity, session, timestamps, contact onset, and an independent slip label saved beside every clip.\n2. **Inspect marker movement** and contact images; establish a simple motion-feature baseline before attempting a learned sequence classifier.\n3. **Split entire episodes and objects** into training, validation, and held-out tests; choose thresholds only on the validation split.\n4. **Compare predicted events with labels**, reporting missed slips, false alarms, detection delay, and the number of evaluated episodes.\n5. **Test empty and broken inputs:** no contact, lost frames, missing files, and lost marker tracks must produce explicit status labels.\n6. **Show held-out clip replays** with synchronized tactile frames, detector output, ground-truth labels, and representative false alarms.\n\nWorked data example from the Mini SDK: each saved marker-data row contains successive **x, y pairs** for all markers; the first row is descriptive metadata.\n\n**Preserve that structure:** parse the header separately, retain marker identity across frames, and store your measured timestamps rather than inventing a constant frame interval.\n\n```mermaid\nflowchart LR\n  C[Recorded touch clips] --> Q[Check contact and data]\n  Q --> F[Temporal features]\n  F --> D[Slip decision]\n  D --> E[Held-out event evaluation]\n```\n\n## Common pitfalls\n\n- **Neighbouring frames leak information** when split randomly; a near-duplicate test frame does not demonstrate generalization to another object.\n- **Published sensors differ:** the cited research uses earlier GelSight setups, so reproduce the idea without assuming identical Mini performance.\n\n## When it's done\n\n- **Publish the held-out outcomes** and failure clips, including no-contact and sensor-loss cases rather than silently dropping them.\n- **Keep this stage offline:** Use touch to adjust grip during lift adds the separate control and hardware-validation problem.",
+      "resources": [
+        {
+          "title": "Slip Detection with Combined Tactile and Visual Information",
+          "url": "https://www.youtube.com/watch?v=kyyh0GWTil0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a conference demonstration of the slip-detection task and its use of two sensing modalities."
+        },
+        {
+          "title": "gelsightinc/gsrobotics",
+          "url": "https://github.com/gelsightinc/gsrobotics",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Record Mini tactile clips and marker displacement sequences for your own detector."
+        },
+        {
+          "title": "Improved GelSight Tactile Sensor for Measuring Geometry and Slip",
+          "url": "https://arxiv.org/abs/1708.00922",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand relative surface motion and shear distortion as evidence for slip."
+        },
+        {
+          "title": "Slip Detection with Combined Tactile and Visual Information",
+          "url": "https://arxiv.org/abs/1802.10153",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish tactile-only baselines from a combined tactile-and-camera method."
+        }
+      ],
+      "sources": [
+        "https://github.com/gelsightinc/gsrobotics",
+        "https://www.youtube.com/watch?v=kyyh0GWTil0",
+        "https://arxiv.org/abs/1708.00922",
+        "https://arxiv.org/abs/1802.10153"
+      ]
+    },
+    {
+      "node_id": "p:draw-friction-cones",
+      "type": "project",
+      "name": "Draw friction cones",
+      "summary": "Animate the contact-force directions that a simple friction model allows as the surface normal and friction coefficient change.",
+      "lesson_md": "## In one sentence\n\nAnimate the contact-force directions that a simple friction model allows as the surface normal and friction coefficient change.\n\n![Published illustration comparing circular and linearized friction cones](/img/lessons/projects_manipulation_1-friction-cones.webp)\n*Published illustration comparing circular and linearized friction cones. Source: [Published reference](https://scaron.info/robotics/friction-cones.html), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **The contact normal** points perpendicular to the touching surface; tangential directions lie along that surface.\n- **A friction cone** describes allowable contact forces, not a cone-shaped volume that the gripper must move through.\n- **The friction coefficient** scales available tangential force relative to compressive normal force in the approximate Coulomb model.\n- **Think of a validator:** given a contact and candidate force, your code returns allowed, outside the model's limit, or invalid input.\n\n> **Key idea:** Rotate the cone with the contact normal; change its opening with friction, not with drawing scale.\n\n## What you need\n\n- **Complete Intro: robot anatomy & coordinate frames in sim** and review Grasp mechanics before rendering forces in different frames.\n- **Use a plotting library** already available on your computer; the basic animation needs no purchased hardware.\n- **Use MuJoCo optionally** to obtain simulated contacts, keeping the simulator's contact conventions distinct from your introductory point-contact model.\n- **Label friction as an input assumption**, not a measured property of an unspecified material pair.\n\n## Steps\n\n1. **Define a contact point and unit normal**, displaying the surface, normal arrow, and a candidate force in one common coordinate frame.\n2. **Construct a circular cone** around the normal and show its planar cross-section with the two boundary rays.\n3. **Add friction and normal controls**, updating the cone orientation, opening, and force classification whenever either input changes.\n4. **Compare an inscribed polygonal approximation** with the circular cone; mark forces the approximation excludes instead of pretending the boundaries coincide.\n5. **Test limiting and invalid cases:** zero friction becomes a ray; no contact hides the cone; reject negative friction and zero-length normals.\n6. **Record the animation** while rotating the normal, changing friction, and moving a force from inside to outside the displayed cone.\n\nWorked geometric example from Modern Robotics: the cone's half-angle is the inverse tangent of the friction coefficient, written `alpha = atan(mu)`.\n\n**Keep units explicit:** convert angles only for display; cone height is a visualization choice, while the opening represents the force ratio.\n\n```mermaid\nflowchart LR\n  I[Contact and friction inputs] --> V[Validate and normalize]\n  V --> G[Construct local cone]\n  G --> W[Rotate into world frame]\n  W --> A[Animate and classify force]\n```\n\n## Common pitfalls\n\n- **Forces cannot pull through unilateral contact:** a negative compressive normal component lies outside this model even if its sideways component is small.\n- **A contact cone is not force closure:** balancing an entire object requires considering all contacts and their moments.\n\n## When it's done\n\n- **Show labelled axes and boundary cases**, with the cone following a moving normal rather than remaining fixed in world coordinates.\n- **Save the input cases** and prepare to combine contacts in Test force closure numerically; this visualization is not a physical slip guarantee.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 12.2.1:  Friction",
+          "url": "https://www.youtube.com/watch?v=FY92f7gssWc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch contact forces become a cone and see its planar cross-section."
+        },
+        {
+          "title": "12.2.1. Friction",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the transcript defining cone angle, compressive force, and polygonal approximation."
+        },
+        {
+          "title": "Friction cones",
+          "url": "https://scaron.info/robotics/friction-cones.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Connect circular cones with the linearized representation your animation can overlay."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html#friction-cones",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect the Friction cones section and distinguish MuJoCo contact dimensions from the simple force cone."
+        }
+      ],
+      "sources": [
+        "https://scaron.info/robotics/friction-cones.html",
+        "https://www.youtube.com/watch?v=FY92f7gssWc",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html#friction-cones"
+      ]
+    },
+    {
+      "node_id": "p:evaluate-novel-object-instructions-with-safety-rejection",
+      "type": "project",
+      "name": "Evaluate novel object instructions with safety rejection",
+      "summary": "Test a language-conditioned manipulation pipeline on unseen object instructions, rejecting invalid requests before simulated execution and recording why.",
+      "lesson_md": "## In one sentence\n\nTest a language-conditioned manipulation pipeline on unseen object instructions, rejecting invalid requests before simulated execution and recording why.\n\n![ReKep published pipeline from visual keypoints and instructions to constrained robot motion](/img/lessons/projects_manipulation_1-instruction-rejection.webp)\n*ReKep published pipeline from visual keypoints and instructions to constrained robot motion. Source: [Published reference](https://rekep-robot.github.io/), license unknown.*\n\n## What you will learn\n\n- **Open-vocabulary manipulation** accepts object descriptions beyond a fixed menu; that flexibility does not establish that an instruction is executable or safe.\n- **A keypoint constraint** describes a required relationship between selected scene points; ReKep expresses these relationships as Python cost functions.\n- **Rejection** means withholding motion and returning a reason, not letting execution fail and relabelling the failure afterward.\n- **Think of API validation:** parse intent, validate against trusted rules, then authorize execution; generated text must not authorize itself.\n\n> **Key idea:** Evaluate the rejection gate independently from the language model's willingness to attempt a task.\n\n## What you need\n\n- **Complete Solve a keypoint-constrained manipulation task** and review Open-vocabulary & affordance manipulation before adding novel instructions.\n- **Start with ReKep's simulated demo** and inspect VoxPoser as a related language-to-motion approach, not a certified safety layer.\n- **Use existing compatible compute:** no physical robot is required; simulator, GPU, model access, and API costs remain separate and unknown.\n- **Document privileged inputs:** ReKep's released simulation accesses scene information directly and omits the real-world perception pipeline.\n\n## Steps\n\n1. **Freeze permitted task families**, object identities, workspace limits, and a human-labelled instruction set before evaluating any new prompts.\n2. **Hold out objects and paraphrases** from development; include valid requests, missing targets, ambiguous references, and requests outside your declared task scope.\n3. **Insert a deterministic gate** for target presence, fresh observations, supported actions, workspace bounds, and motion feasibility before any execution command.\n4. **Treat generated constraints as untrusted**, validating their interface and isolating execution rather than granting arbitrary Python access to the host.\n5. **Run accepted requests in simulation**, recording false accepts, false rejects, planning failures, collisions, and completed tasks as separate outcomes.\n6. **Show accepted and rejected examples** with instruction text, gate reason, simulated replay where applicable, and the complete test-set denominator.\n\nWorked baseline from ReKep: `python main.py --use_cached_query` replays its cached language-model query for the pen-in-holder demonstration.\n\n**Use cached output for debugging:** verify the gate can reject a deliberately invalid target even when the generated constraint sequence itself is unchanged.\n\n```mermaid\nflowchart LR\n  I[Instruction and scene] --> P[Proposed constraints]\n  P --> G[Independent validation gate]\n  G -->|Reject| R[Reason and no motion]\n  G -->|Accept| S[Simulated execution]\n  S --> L[Outcome log]\n```\n\n## Common pitfalls\n\n- **Rejection rate alone rewards refusing everything:** report valid-task completion and false rejections alongside unsafe or invalid acceptances.\n- **Perfect simulator state hides perception errors:** inject missing or stale observations explicitly and label the evaluation's assumptions.\n\n## When it's done\n\n- **Publish the labelled test set** and accepted/rejected confusion counts, plus execution outcomes for every accepted request.\n- **State the scope clearly:** this is a tested software rejection policy under declared simulation assumptions, not a hardware safety certification.",
+      "resources": [
+        {
+          "title": "ReKep | Spatio-Temporal Reasoning of Relational Keypoint Constraints for Robotic Manipulation",
+          "url": "https://www.youtube.com/watch?v=2S8YhBdLdww",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how language and visual keypoints generate multi-stage manipulation behavior."
+        },
+        {
+          "title": "VoxPoser",
+          "url": "https://voxposer.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand affordance and constraint maps before defining an independent acceptance gate."
+        },
+        {
+          "title": "huangwl18/ReKep",
+          "url": "https://github.com/huangwl18/ReKep",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reproduce the cached simulated demo and inspect privileged scene inputs and known limitations."
+        },
+        {
+          "title": "ReKep: Spatio-Temporal Reasoning of Relational Keypoint Constraints for Robotic Manipulation",
+          "url": "https://arxiv.org/abs/2409.01652",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Separate the published constraint-generation method from your additional rejection experiment."
+        }
+      ],
+      "sources": [
+        "https://rekep-robot.github.io/",
+        "https://www.youtube.com/watch?v=2S8YhBdLdww",
+        "https://voxposer.github.io/",
+        "https://github.com/huangwl18/ReKep",
+        "https://arxiv.org/abs/2409.01652"
+      ]
+    },
+    {
+      "node_id": "p:filter-grasps-by-reachability",
+      "type": "project",
+      "name": "Filter grasps by reachability",
+      "summary": "Reject proposed grasps that fail robot kinematics or collision checks, while keeping the reason for every rejected candidate visible.",
+      "lesson_md": "## In one sentence\n\nReject proposed grasps that fail robot kinematics or collision checks, while keeping the reason for every rejected candidate visible.\n\n![Contact-GraspNet published grasp-generation demonstration over observed objects](/img/lessons/projects_manipulation_1-grasp-reachability.webp)\n*Contact-GraspNet published grasp-generation demonstration over observed objects. Source: [Published reference](https://github.com/NVlabs/contact_graspnet), license unknown.*\n\n## What you will learn\n\n- **A grasp candidate** proposes a gripper pose and opening; it is not yet a valid command for your particular arm.\n- **Inverse kinematics**, or **IK**, searches for joint angles that place the gripper at a requested position and orientation.\n- **Collision checking** tests whether robot geometry intersects itself or the environment at a specified configuration.\n- **Think of a compiler pipeline:** candidate generation proposes programs; successive validation passes reject them with specific diagnostics before execution.\n\n> **Key idea:** A high grasp score cannot compensate for an unreachable or colliding robot configuration.\n\n## What you need\n\n- **Complete Visualize grasp candidates** and review Learning-based grasp detection before adding robot-specific filtering.\n- **Use Contact-GraspNet** for proposals and MoveIt 2 for the arm model, joint limits, IK, and planning-scene checks.\n- **Use existing compatible computing hardware:** this offline or simulated stage needs no purchased robot; model inference may still require GPU resources.\n- **Keep GraspNet-1Billion as benchmark context**, not a substitute for checking your arm's own geometry and camera-to-base calibration.\n\n## Steps\n\n1. **Freeze one scene and proposal set**, saving depth inputs, camera calibration, grasp scores, and the robot's starting joint configuration.\n2. **Transform grasp poses into the robot frame**, accounting for the difference between the detector's grasp frame and the configured gripper tool frame.\n3. **Attempt IK for each candidate**, retaining joint-limit-valid solutions and marking search failures explicitly rather than silently dropping them.\n4. **Check full robot collisions** for surviving configurations, including the table, nearby objects, and self-collision pairs.\n5. **Test empty and error cases:** no proposals, missing calibration, an out-of-reach target, and a blocked grasp must produce distinct recorded results.\n6. **Show colour-coded candidates** with proposed, IK-surviving, and collision-free counts, plus replayable examples of each rejection reason.\n\nWorked API example from MoveIt's robot-state tutorial: `robot_state->setFromIK(joint_model_group, end_effector_state, timeout)` returns whether its IK search found a solution.\n\n**Interpret failure narrowly:** a timed-out search is not a mathematical proof that no solution exists; save the timeout and seed configuration with the outcome.\n\n```mermaid\nflowchart LR\n  G[Grasp proposals] --> T[Frame conversion]\n  T --> I[IK and joint limits]\n  I --> C[Full collision check]\n  C --> V[Visible surviving set]\n  I --> R[Reasoned rejections]\n  C --> R\n```\n\n## Common pitfalls\n\n- **A reachable endpoint does not guarantee a clear approach:** motion planning and grasp execution remain separate checks after this filter.\n- **Target contact needs explicit treatment:** configure intended finger-object contacts without disabling unrelated table or arm collisions.\n\n## When it's done\n\n- **Retain every candidate's provenance**, solution status, and rejection reason, including an explicit empty surviving set.\n- **Show filtering rather than successful lifting:** Benchmark cluttered bin picking adds the execution-level evaluation that this project deliberately leaves out.",
+      "resources": [
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes (ICRA 2021)",
+          "url": "https://www.youtube.com/watch?v=qRLKYSLXElM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the grasp proposals that need arm-specific feasibility checks."
+        },
+        {
+          "title": "NVlabs/contact_graspnet",
+          "url": "https://github.com/NVlabs/contact_graspnet",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Load saved grasp proposals and inspect their pose, score, and input conventions."
+        },
+        {
+          "title": "Robot Model and Robot State",
+          "url": "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect setFromIK and joint bounds for the configured arm."
+        },
+        {
+          "title": "Planning Scene",
+          "url": "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish self-collision from full environment collision checking and inspect allowed contacts."
+        }
+      ],
+      "sources": [
+        "https://github.com/NVlabs/contact_graspnet",
+        "https://www.youtube.com/watch?v=qRLKYSLXElM",
+        "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html"
+      ]
+    },
+    {
+      "node_id": "p:fine-tune-a-policy-on-one-tabletop-task",
+      "type": "project",
+      "name": "Fine-tune a policy on one tabletop task",
+      "summary": "Adapt a pretrained robot policy to one simulated tabletop task, then evaluate saved checkpoints on held-out starts and failure cases.",
+      "lesson_md": "## In one sentence\n\nAdapt a pretrained robot policy to one simulated tabletop task, then evaluate saved checkpoints on held-out starts and failure cases.\n\n![Octo published evaluation setups used for adapting a generalist robot policy](/img/lessons/projects_manipulation_1-tabletop-finetuning.webp)\n*Octo published evaluation setups used for adapting a generalist robot policy. Source: [Published reference](https://octo-models.github.io/), license unknown.*\n\n## What you will learn\n\n- **Fine-tuning** updates pretrained weights using target-task demonstrations instead of training from scratch.\n- **A checkpoint** saves model state; evaluate it separately rather than treating training curves as completed tasks.\n- **An action head** converts the model's internal representation into robot commands; a new robot can require a different output interface.\n- **Think of adapting a library:** preserve reusable internals, replace incompatible interfaces, and run integration tests against the actual environment.\n\n> **Key idea:** Data, action conventions, and simulator interfaces must agree before improved training loss can mean improved robot behavior.\n\n## What you need\n\n- **Complete Inspect a generalist policy action output** and review Generalist manipulation policies / VLAs before changing model weights.\n- **Choose Octo for this reproduction:** its examples provide a simulated ALOHA cube-handover fine-tuning and rollout pair.\n- **Treat OpenVLA and π0 / π0.5 as alternatives**, not interchangeable checkpoints; do not mix their preprocessing or action conventions into this run.\n- **Use compatible existing compute** and the documented dataset; no physical robot is required, but training resources and storage are not cost-free.\n\n## Steps\n\n1. **Reproduce the supplied dataset loader** and inspect camera keys, robot-state inputs, language instructions, action units, and episode boundaries before training.\n2. **Reserve whole episodes and start configurations** for validation and testing; fit normalization statistics using only the training data.\n3. **Run a small fine-tuning job** using the example's compatible action head, saving configuration, pretrained checkpoint identity, random seed, and output checkpoints.\n4. **Evaluate checkpoints with the paired rollout example**, selecting a model using validation outcomes rather than the held-out test set.\n5. **Test empty and broken inputs:** missing camera frames, absent cubes, malformed actions, failed grasps, and timeouts need explicit labels or validation errors.\n6. **Show the simulated task completing**, alongside held-out success counts, failure clips, and a comparison against the same adapted architecture before training.\n\nWorked interface example from Octo's fine-tuning script: it uses **256 × 256** primary images, **14-dimensional** bimanual actions, and chunks of **50 actions**.\n\n**Keep those numbers task-specific:** its rollout wrapper also executes chunks of 50; a different robot or controller requires deliberately changing both sides of the interface.\n\n```mermaid\nflowchart LR\n  D[Task demonstrations] --> S[Episode split]\n  S --> F[Adapt and fine-tune]\n  F --> C[Saved checkpoint]\n  C --> E[Held-out simulated rollouts]\n  E --> R[Successes and failures]\n```\n\n## Common pitfalls\n\n- **New action-head weights start untrained:** report that architecture change rather than comparing incompatible raw pretrained commands with adapted commands.\n- **Training loss is not task success:** verify actual object transfer, and keep unsuccessful episodes in the denominator.\n\n## When it's done\n\n- **Publish a reproducible simulated completion** plus dataset split, normalization statistics, checkpoint identity, and all test outcomes.\n- **Keep the claim task-specific:** Compare language-conditioned policies on held-out objects asks a broader generalization question than this single-task adaptation.",
+      "resources": [
+        {
+          "title": "Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://www.youtube.com/watch?v=99667VDGWMg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See examples of adapting the generalist policy to downstream manipulation tasks."
+        },
+        {
+          "title": "octo/examples/02_finetune_new_observation_action.py",
+          "url": "https://github.com/octo-models/octo/blob/main/examples/02_finetune_new_observation_action.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the exact simulated ALOHA dataset, camera preprocessing, and replacement action head."
+        },
+        {
+          "title": "octo/examples/03_eval_finetuned.py",
+          "url": "https://github.com/octo-models/octo/blob/main/examples/03_eval_finetuned.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Pair the saved checkpoint with the matching simulator and action-chunk wrapper."
+        },
+        {
+          "title": "octo-models/octo",
+          "url": "https://github.com/octo-models/octo",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Check installation, checkpoint loading, and supported fine-tuning modes."
+        }
+      ],
+      "sources": [
+        "https://octo-models.github.io/",
+        "https://www.youtube.com/watch?v=99667VDGWMg",
+        "https://github.com/octo-models/octo/blob/main/examples/02_finetune_new_observation_action.py",
+        "https://github.com/octo-models/octo/blob/main/examples/03_eval_finetuned.py",
+        "https://github.com/octo-models/octo",
+        "https://raw.githubusercontent.com/octo-models/octo/main/examples/02_finetune_new_observation_action.py",
+        "https://raw.githubusercontent.com/octo-models/octo/main/examples/03_eval_finetuned.py"
+      ]
+    },
+    {
+      "node_id": "p:insert-a-peg-with-compliance",
+      "type": "project",
+      "name": "Insert a peg with compliance",
+      "summary": "Insert a simulated peg using a yielding contact controller, showing how stiffness and damping change motion and contact-force traces.",
+      "lesson_md": "## In one sentence\n\nInsert a simulated peg using a yielding contact controller, showing how stiffness and damping change motion and contact-force traces.\n\n![Peg and hole contact geometry from the manipulator-control notes](/img/lessons/projects_manipulation_1-peg-compliance.webp)\n*Peg and hole contact geometry from the manipulator-control notes. Source: [Published reference](https://manipulation.csail.mit.edu/force.html), license unknown.*\n\n## What you will learn\n\n- **Compliance** means yielding under load instead of rigidly enforcing a commanded position; here the yielding comes from a software controller.\n- **Stiffness** sets the restoring response to displacement; **damping** resists motion so the peg need not bounce repeatedly after contact.\n- **Impedance control** specifies a relationship between motion and force, rather than independently demanding arbitrary values of both.\n- **Think of feedback middleware:** each update corrects motion from measured state while a separate monitor decides whether the attempt may continue.\n\n> **Key idea:** Tune the response to contact before asking the system to cope with uncertain target poses.\n\n## What you need\n\n- **Complete Admittance hand-guiding in simulation** and review Force/compliant & contact-rich manipulation before implementing a contact controller.\n- **Use robosuite with MuJoCo**, a simple peg-and-hole scene, controller access, and synchronized motion and force logging; no purchased robot is required.\n- **Keep geometry and target estimates fixed:** Adapt insertion to pose error is the later uncertainty experiment, not this stiffness-and-damping comparison.\n- **Declare force-sensor conventions:** a MuJoCo force sensor reports interaction between its body and parent, expressed in the sensor's local coordinate frame.\n\n## Steps\n\n1. **Establish a slow approach**, fixed contact geometry, insertion-depth success condition, and explicit force, workspace, and time termination limits.\n2. **Implement compliant contact response**, with separate approach, contact, insertion, and retreat states; record every transition alongside the robot state.\n3. **Compare stiffness settings** on identical starts, keeping the nominal motion, geometry, and termination conditions unchanged.\n4. **Vary damping separately**, plotting displacement, insertion depth, and measured forces against the same time axis to expose oscillation and settling.\n5. **Exercise failure cases:** absent hole, unreachable target, missing force reading, jam, and excessive load must terminate with distinct reasons.\n6. **Replay the insertion comparison** with force and motion traces visible, including unsuccessful attempts and the saved controller configurations.\n\nWorked model from the control notes: a virtual spring-and-damper contributes `F = kp * (target - position) - kd * velocity` along one axis.\n\n**Read the signs physically:** the spring pulls toward the target and damping opposes velocity; this expression alone is not a complete gravity-compensated robot controller.\n\n```mermaid\nflowchart LR\n  S[Pose and force readings] --> C[Compliant controller]\n  C --> P[Simulated peg contact]\n  P --> S\n  S --> M[Termination monitor]\n  M --> L[Traces and outcome]\n```\n\n## Common pitfalls\n\n- **A wrist reading includes more than peg contact:** mounting frame, gravity, and other external loads affect its interpretation.\n- **Low stiffness is not automatic success:** insufficient support can prevent progress; low damping can turn yielding into oscillation.\n\n## When it's done\n\n- **Show actual insertion depth** together with force traces and success/failure counts; a small force alone could mean the peg never touched anything.\n- **Publish the fixed test conditions**, separating this controller demonstration from later claims about pose-error tolerance or physical hardware.",
+      "resources": [
+        {
+          "title": "Compliant Peg in Hole Demonstration",
+          "url": "https://www.youtube.com/watch?v=9_VyaI1td60",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a peg grasped, manipulated and inserted into a hole using a contact control framework."
+        },
+        {
+          "title": "Ch. 8 - Manipulator Control",
+          "url": "https://manipulation.csail.mit.edu/force.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the stiffness, impedance, and peg-in-hole sections before designing the contact response."
+        },
+        {
+          "title": "XML Reference",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html#sensor-force",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Interpret the force sensor frame and body-to-parent interaction before plotting its readings."
+        },
+        {
+          "title": "robosuite/robosuite/controllers/parts/arm/osc.py",
+          "url": "https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/controllers/parts/arm/osc.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect stiffness, damping, and supported impedance modes in the actual controller implementation."
+        }
+      ],
+      "sources": [
+        "https://manipulation.csail.mit.edu/force.html",
+        "https://www.youtube.com/watch?v=9_VyaI1td60",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html#sensor-force",
+        "https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/controllers/parts/arm/osc.py"
+      ]
+    },
+    {
+      "node_id": "p:inspect-a-generalist-policy-action-output",
+      "type": "project",
+      "name": "Inspect a generalist policy action output",
+      "summary": "Inspect a pretrained policy on recorded images and instructions, decoding its action fields and normalization without connecting it to hardware.",
+      "lesson_md": "## In one sentence\n\nInspect a pretrained policy on recorded images and instructions, decoding its action fields and normalization without connecting it to hardware.\n\n![OpenVLA architecture showing image and language inputs and tokenized robot-action outputs](/img/lessons/projects_manipulation_1-policy-action-output.webp)\n*OpenVLA architecture showing image and language inputs and tokenized robot-action outputs. Source: [Published reference](https://openvla.github.io/), license unknown.*\n\n## What you will learn\n\n- **A policy** maps observations to action proposals; a generalist policy learns across multiple tasks.\n- **Action tokens** are discrete symbols decoded into numerical commands; readable numbers do not automatically identify their coordinate frame or physical units.\n- **Unnormalization** restores dataset-specific numerical scales; normalized values are dimensionless, not directly metres, radians, or motor commands.\n- **Think of deserializing an API response:** validate schema and units before consuming the payload.\n\n> **Key idea:** An action vector is meaningful only together with its checkpoint, dataset statistics, field definitions, and controller convention.\n\n## What you need\n\n- **Complete Intro: robot anatomy & coordinate frames in sim** and review Generalist manipulation policies / VLAs before interpreting motion commands.\n- **Use OpenVLA's documented inference interface** with recorded workspace images, instructions, a compatible checkpoint, and the corresponding dataset statistics.\n- **Keep this offline:** no robot purchase is needed, but GPU and storage costs remain separate.\n- **Treat Octo and π0 / π0.5 as alternatives**, not interchangeable action schemas; inspect one model and one dataset convention first.\n\n## Steps\n\n1. **Select a recorded episode**, displaying its image, preprocessing result, instruction, checkpoint, and dataset key beside each prediction.\n2. **Run inference without an execution adapter**, saving outputs and metadata to disk; never instantiate a hardware client just to inspect numbers.\n3. **Decode the schema:** show translation, rotation, and gripper fields separately, distinguishing normalized outputs from values restored with dataset statistics.\n4. **Audit units**, rotation representation, reference frame, delta-versus-absolute commands, and gripper meaning; display unknown for conventions not established by the selected adapter.\n5. **Test malformed and empty inputs:** missing image, blank instruction, wrong statistics key, and non-finite outputs must receive explicit statuses rather than plausible-looking plots.\n6. **Demo the offline inspector** on valid and missing-target scenes, showing decoded fields, units or unknowns, and validation outcomes without claiming task success.\n\nWorked OpenVLA example: `vla.predict_action(**inputs, unnorm_key=\"bridge_orig\", do_sample=False)` selects the BridgeData statistics for decoding.\n\n| Output field group | Model-card meaning |\n|---|---|\n| First three values | x, y, z end-effector deltas |\n| Next three values | roll, pitch, yaw deltas |\n| Final value | gripper command |\n\n```mermaid\nflowchart LR\n  I[Recorded image and instruction] --> P[Preprocessing]\n  P --> V[Policy inference]\n  V --> D[Decode and unnormalize]\n  D --> A[Schema and unit audit]\n  A --> L[Offline display only]\n```\n\n## Common pitfalls\n\n- **Different statistics can produce different decoded scales:** retain the dataset key with every saved prediction, not merely the checkpoint name.\n- **A missing target need not stop a policy proposing motion:** inspection is not a certified rejection or reachability system.\n\n## When it's done\n\n- **Show recorded observations and labelled outputs**, including unresolved conventions; normalized numbers must never masquerade as verified physical units.\n- **Export a reproducible log** before Fine-tune a policy on one tabletop task, which evaluates simulated outcomes.",
+      "resources": [
+        {
+          "title": "OpenVLA: LeRobot Research Presentation #5 by Moo Jin Kim",
+          "url": "https://www.youtube.com/watch?v=-0s0v3q7mBk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear the OpenVLA author explain how images and instructions become action tokens before inspecting outputs."
+        },
+        {
+          "title": "openvla/openvla-7b · Hugging Face",
+          "url": "https://huggingface.co/openvla/openvla-7b",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read the seven-field output schema and the need for dataset-specific unnormalization."
+        },
+        {
+          "title": "openvla/experiments/robot/bridge/bridgev2_utils.py",
+          "url": "https://github.com/openvla/openvla/blob/main/experiments/robot/bridge/bridgev2_utils.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect image preprocessing and saved observation/action records without invoking its hardware-creation functions."
+        },
+        {
+          "title": "openvla/openvla",
+          "url": "https://github.com/openvla/openvla",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use the Getting Started predict_action example, stopping before the robot.act execution call."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=-0s0v3q7mBk",
+        "https://huggingface.co/openvla/openvla-7b",
+        "https://github.com/openvla/openvla/blob/main/experiments/robot/bridge/bridgev2_utils.py",
+        "https://github.com/openvla/openvla"
+      ]
+    },
+    {
+      "node_id": "p:learn-a-mobile-cabinet-interaction",
+      "type": "project",
+      "name": "Learn a mobile cabinet interaction",
+      "summary": "Learn a simulated cabinet interaction that coordinates base and arm motion, then demonstrate labelled failures and repeatable resets.",
+      "lesson_md": "## In one sentence\n\nLearn a simulated cabinet interaction that coordinates base and arm motion, then demonstrate labelled failures and repeatable resets.\n\n![Mobile ALOHA cabinet interaction from the creators' published skill video](/img/lessons/projects_manipulation_1-mobile-cabinet.webp)\n*Mobile ALOHA cabinet interaction from the creators' published skill video. Source: [Published reference](https://mobile-aloha.github.io/), license unknown.*\n\n## What you will learn\n\n- **Mobile manipulation** combines locomotion with object interaction; moving a base changes the arm's reachable workspace and its relation to the cabinet.\n- **Whole-body coordination** treats base and arm commands as one task, including during handle contact.\n- **Behavior cloning** imitates recorded expert actions; it does not automatically teach recovery from unseen mistakes.\n- **Think of a distributed transaction:** keep observations and base/arm commands synchronized, and define a rollback procedure when an episode fails.\n\n> **Key idea:** A cabinet-opening replay is incomplete evidence unless the base contributes and failed attempts reset consistently.\n\n## What you need\n\n- **Complete Carry an object between stations in simulation** and review Mobile manipulation before adding learned contact with an articulated cabinet.\n- **Use RoboCasa, built on robosuite**, for simulated kitchens and demonstrations; Mobile ALOHA supplies the real-world reference, not a drop-in simulated cabinet policy.\n- **Budget compute and storage:** no purchased robot is required; GPU costs remain unknown until provisioned.\n- **Plan integration:** RoboCasa labels OpenCabinet non-mobile; extend its task/reset and collect whole-body demonstrations rather than claiming the stock task solves navigation.\n\n## Steps\n\n1. **Reproduce cabinet interaction locally**, then define a bounded approach-plus-open task with recorded base travel, cabinet opening, collision, and timeout criteria.\n2. **Add a mobile start distribution**, validating reachable handles, base motion, synchronized arm/base control, and consistent observations before collecting demonstrations.\n3. **Record whole-body demonstrations**, saving camera inputs, robot state, cabinet state, commands, and termination labels; reserve entire episodes for held-out evaluation.\n4. **Train one imitation policy**, preserving its action schema and normalization; compare with the same task using your demonstrated or scripted baseline.\n5. **Exercise failure and reset paths:** missing handle, blocked base, unreachable cabinet, stale observations, and lost contact must stop the episode and restore documented initial conditions.\n6. **Show successful and failed rollouts**, plotting base trajectory and cabinet opening, followed by a fresh reset and the complete held-out outcome counts.\n\nWorked starting command from RoboCasa's Basic Usage: `python -m robocasa.demos.demo_tasks` replays a selected recorded demonstration.\n\n**Distinguish playback from learning:** your extended task, policy rollout, and reset checks are separate deliverables.\n\n```mermaid\nflowchart LR\n  D[Whole-body demonstrations] --> T[Policy training]\n  T --> P[Base and arm policy]\n  O[Simulated observations] --> P\n  P --> E[Cabinet interaction]\n  E --> O\n  E --> R[Outcome and reset]\n  R --> O\n```\n\n## Common pitfalls\n\n- **Starting within arm reach can hide immobility:** report base displacement and test starts that genuinely require the base to move.\n- **A reset must restore cabinet joints too:** resetting only the robot leaves later attempts with an already-open target.\n\n## When it's done\n\n- **Deliver a learned simulated interaction**, visible base contribution, failure labels, and repeatable full-scene resets across the declared test set.\n- **Separate platforms and claims:** simulation evidence is not reproduction of Mobile ALOHA's physical cabinet result or proof of hardware robustness.",
+      "resources": [
+        {
+          "title": "Mobile ALOHA: Your Housekeeping Robot",
+          "url": "https://www.youtube.com/watch?v=HaaZ8ss-HP4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the real-world whole-body manipulation reference, including household interactions."
+        },
+        {
+          "title": "Basic Usage",
+          "url": "https://robocasa.ai/docs/build/html/introduction/basic_usage.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Replay task demonstrations and explore the simulator before adding mobile resets."
+        },
+        {
+          "title": "Creating Datasets",
+          "url": "https://robocasa.ai/docs/build/html/use_cases/creating_datasets.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Collect demonstrations and extract image observations for policy learning."
+        },
+        {
+          "title": "Atomic Tasks",
+          "url": "https://robocasa.ai/docs/build/html/tasks/atomic_tasks.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the cabinet task and its mobile attribute so the proposed extension remains explicit."
+        },
+        {
+          "title": "Policy Learning Algorithms",
+          "url": "https://robocasa.ai/docs/build/html/benchmarking/policy_learning_algorithms.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Select a supported training/evaluation workflow and check its compute requirements."
+        }
+      ],
+      "sources": [
+        "https://mobile-aloha.github.io/",
+        "https://www.youtube.com/watch?v=HaaZ8ss-HP4",
+        "https://robocasa.ai/docs/build/html/introduction/basic_usage.html",
+        "https://robocasa.ai/docs/build/html/use_cases/creating_datasets.html",
+        "https://robocasa.ai/docs/build/html/tasks/atomic_tasks.html",
+        "https://robocasa.ai/docs/build/html/benchmarking/policy_learning_algorithms.html",
+        "https://robocasa.ai/docs/build/html/static/atomic_task_attributes.js",
+        "https://raw.githubusercontent.com/robocasa/robocasa/main/robocasa/environments/kitchen/atomic/kitchen_doors.py"
+      ]
+    },
+    {
+      "node_id": "p:learn-coordinated-box-opening",
+      "type": "project",
+      "name": "Learn coordinated box opening",
+      "summary": "Train a two-arm imitation policy to stabilize and open a soft box, then show successful openings alongside coordinated-motion failures.",
+      "lesson_md": "## In one sentence\n\nTrain a two-arm imitation policy to stabilize and open a soft box, then show successful openings alongside coordinated-motion failures.\n\n![ALOHA 2 workcell and two-arm manipulation setup](/img/lessons/projects_manipulation_1-box-opening.webp)\n*ALOHA 2 workcell and two-arm manipulation setup. Source: [Published reference](https://aloha-2.github.io/), license unknown.*\n\n## What you will learn\n\n- **Bimanual manipulation** uses two arms together: one stabilizes the box while the other lifts its lid.\n- **Teleoperation** provides human-controlled behavior; **imitation learning** trains a policy to predict actions from those demonstrations.\n- **Action chunking** predicts future command sequences, helping preserve coordinated maneuvers rather than treating each arm independently.\n- **Think of a shared-state protocol:** premature release by one arm can invalidate the other's command.\n\n> **Key idea:** Learn the timing between stabilization and opening, not just two independent arm trajectories.\n\n## What you need\n\n- **Complete Teleoperate a two-arm handover** and review Bimanual manipulation before collecting coordinated contact demonstrations.\n- **Use ALOHA 2 or another available two-arm platform**, synchronized cameras, robot-state recording, and a resettable soft box without cutting tools.\n- **Use ACT as a learning reference:** its released simulation tasks are cube transfer and insertion; box opening needs your own task configuration and demonstrations.\n- **Budget hardware separately:** obtain quotes for arms, fixtures, cameras, and grippers; planning bands are not vendor prices.\n\n> **Watch out:** Use low speed, bounded workspaces, soft props, and a tested stop; keep hands outside both arms' swept workspaces during learned execution.\n\n## Steps\n\n1. **Define observable success**, requiring the lid or flap to reach a declared open state while the box remains stabilized; record collision and timeout conditions.\n2. **Collect synchronized demonstrations**, saving both arms, grippers, camera frames, timestamps, and failed contacts; include the transition from grasping to opening.\n3. **Split complete episodes**, preserving held-out box starts and avoiding adjacent-frame leakage between training and evaluation.\n4. **Train a joint two-arm policy**, checking action order, normalization, camera alignment, and execution timing against replayed demonstrations before enabling motion.\n5. **Test bounded failures:** absent box, missing camera, unreachable flap, dropped grasp, and inter-arm interference must stop or label the attempt explicitly.\n6. **Demo learned openings and failures**, showing both arms and the box, followed by reset, held-out outcome counts, and representative unsuccessful attempts.\n\nWorked ACT example from the paper: an action chunk has shape **k × 14**, where k is the number of future steps and 14 covers both arms' commands.\n\n**Preserve vector order:** verify arm and gripper fields against the hardware adapter before replay.\n\n```mermaid\nflowchart LR\n  D[Two-arm demonstrations] --> T[Joint policy training]\n  T --> P[Coordinated action chunk]\n  O[Cameras and joint state] --> P\n  P --> B[Stabilize then open box]\n  B --> O\n  B --> E[Outcome and reset]\n```\n\n## Common pitfalls\n\n- **Cup opening is related, not identical:** the cited ALOHA demonstration opens a condiment cup; it does not establish performance on your box geometry.\n- **A scripted success is not a learned result:** distinguish human demonstrations, policy-controlled attempts, and operator interventions in every saved video.\n\n## When it's done\n\n- **Show policy-controlled physical opening** and failed attempts, keeping every declared test case in the reported denominator.\n- **Publish the task configuration**, checkpoint, split, synchronized recordings, reset procedure, and failure labels; a simulator-only rehearsal remains an intermediate milestone.",
+      "resources": [
+        {
+          "title": "ALOHA and ACT: LeRobot Research Presentation #1 by Alexander Soare",
+          "url": "https://www.youtube.com/watch?v=ft73x0LfGpM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear ALOHA and ACT explained, then use the bimanual hardware and chunked actions as a coordination reference."
+        },
+        {
+          "title": "tonyzhaozh/act",
+          "url": "https://github.com/tonyzhaozh/act",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect ACT training, episode visualization, and the distinction between supplied simulation tasks and your new physical task."
+        },
+        {
+          "title": "aloha/aloha2",
+          "url": "https://github.com/tonyzhaozh/aloha/tree/main/aloha2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the ALOHA 2 hardware release before adapting the teleoperation and recording setup."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand joint two-arm action chunks and why learned timing matters in contact-rich manipulation."
+        }
+      ],
+      "sources": [
+        "https://aloha-2.github.io/",
+        "https://www.youtube.com/watch?v=ft73x0LfGpM",
+        "https://github.com/tonyzhaozh/act",
+        "https://github.com/tonyzhaozh/aloha/tree/main/aloha2",
+        "https://arxiv.org/abs/2304.13705",
+        "https://arxiv.org/html/2304.13705"
+      ]
+    }
+  ]
+}
