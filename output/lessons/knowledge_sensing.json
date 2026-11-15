@@ -1,0 +1,264 @@
+{
+  "batch": "knowledge_sensing",
+  "lessons": [
+    {
+      "node_id": "k:2d-3d-lidar-hardware",
+      "type": "knowledge",
+      "name": "2D & 3D LiDAR hardware",
+      "summary": "LiDAR measures distances with laser light, giving a robot a planar scan or a three-dimensional cloud of nearby surfaces.",
+      "lesson_md": "## In one sentence\n\nLiDAR measures distances with laser light, giving a robot a planar scan or a three-dimensional cloud of nearby surfaces.\n\n![RPLIDAR A1 scanner and its surrounding measurement plane](/img/lessons/knowledge_sensing-lidar.webp)\n*RPLIDAR A1 scanner and its surrounding measurement plane. Source: [SLAMTEC](https://www.slamtec.com/en/Lidar/A1), license unknown.*\n\n## Why it matters for us\n\n- **Distance before recognition:** a mobile robot needs to know where surfaces are, even before assigning labels such as chair or person.\n- **Coverage changes the answer:** a planar scan describes one slice; objects above or below that slice need another sensing direction.\n- **Hardware is not mapping:** a point cloud is a collection of measured locations, not automatically a map or the robot's position.\n\n> **Key idea:** Check which space the sensor actually observes before trusting an empty scan as evidence of free space.\n\n## How it works\n\n- **A spinning example:** RPLIDAR A1 rotates to sample a full 360° plane. Its ranging principle is laser triangulation, using viewing geometry rather than pulse travel time.\n- **Three-dimensional coverage:** Livox Mid-360 samples horizontal and vertical directions. Different scan patterns distribute measurements differently over time.\n- **Think of a streaming API:** each sample needs a distance, direction, and time. A complete rotation is not an instantaneous photograph.\n- **Worked geometry:** an illustrative 2 m return at 0 radians becomes `(x,y)=(2,0)`; at a quarter-turn it becomes `(0,2)` in the scan plane.\n- **Preserve missing returns:** ROS LaserScan specifies range limits; discard out-of-range readings rather than converting them into nearby obstacles.\n\n```mermaid\nflowchart LR\n  L[Laser illumination] --> S[Surface return]\n  S --> R[Range and direction]\n  R --> P[Scan or point cloud]\n```\n\n## Key terms\n\n- **Triangulation**: recovering distance from known geometry and a measured viewing angle.\n- **Field of view**: the directions a sensor can observe, not a guarantee that every surface returns a measurement.\n- **Point cloud**: a set of measured spatial points.\n- **Scan timestamp**: in ROS LaserScan, the acquisition time of the first ray.\n\n## Before / after\n\n- **Before:** Study Sensor characteristics, uncertainty & noise and Rigid-body motion & coordinate frames before interpreting range data.\n- **After:** Use Planar LiDAR scan geometry and blind-zone bench to test coverage before attempting navigation.\n\n## Try it in an afternoon\n\n1. **Create synthetic returns** at four quarter-turn angles with radius 2 m; label them as invented exercise inputs, not sensor measurements.\n2. **Plot Cartesian coordinates** using sine and cosine; remove one return and keep the gap visible.\n3. **Inspect LaserScan fields** and write down which fields preserve units, frame, timing, and validity limits.",
+      "resources": [
+        {
+          "title": "Getting Started with Lidar Acquisition in MATLAB",
+          "url": "https://www.mathworks.com/videos/getting-started-with-lidar-acquisition-in-matlab-1563511401517.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See physical LiDAR wiring and live point clouds; the demonstration uses paid MATLAB tooling."
+        },
+        {
+          "title": "RPLIDAR-A1 Cost-Effective 360° Lidar Sensor | SLAMTEC",
+          "url": "https://www.slamtec.com/en/Lidar/A1",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand a rotating planar scanner and its triangulation principle."
+        },
+        {
+          "title": "Livox Mid-360",
+          "url": "https://www.livoxtech.com/mid-360",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Compare a three-dimensional field of view with a planar scanner."
+        },
+        {
+          "title": "LaserScan",
+          "url": "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/LaserScan.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the precise ROS scan timing, angles, units, and range validity contract."
+        }
+      ],
+      "sources": [
+        "https://www.mathworks.com/videos/getting-started-with-lidar-acquisition-in-matlab-1563511401517.html",
+        "https://www.slamtec.com/en/Lidar/A1",
+        "https://www.livoxtech.com/mid-360",
+        "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/LaserScan.html"
+      ]
+    },
+    {
+      "node_id": "k:depth-cameras-stereo-structured-light-tof",
+      "type": "knowledge",
+      "name": "Depth cameras: stereo, structured light & ToF",
+      "summary": "Depth cameras attach distance measurements to image pixels using stereo geometry, a projected pattern, or the travel of light.",
+      "lesson_md": "## In one sentence\n\nDepth cameras attach distance measurements to image pixels using stereo geometry, a projected pattern, or the travel of light.\n\n![RealSense D405 short-range stereo depth camera](/img/lessons/knowledge_sensing-depth-cameras.webp)\n*RealSense D405 short-range stereo depth camera. Source: [RealSense](https://www.realsenseai.com/depth-camera-d405/), license unknown.*\n\n## Why it matters for us\n\n- **Color is not distance:** a red object can be close or far away. A depth image adds geometry that a gripper or obstacle detector can use.\n- **Choose the working distance:** the D405 is a compact stereo example with a published ideal range of 7–50 cm, not a room-scale promise.\n- **Invalid pixels matter:** shiny surfaces, weak texture, or hidden surfaces can leave missing measurements. Do not silently treat holes as zero distance.\n\n> **Key idea:** A depth pixel is a measurement with a viewing geometry and validity conditions, not a guaranteed three-dimensional truth.\n\n## How it works\n\n- **Stereo compares two views:** corresponding image features shift horizontally. That shift, called disparity, combines with camera spacing and focal length to estimate distance.\n- **Structured light projects clues:** a known pattern gives the camera something recognizable whose deformation reveals scene geometry.\n- **Time-of-flight, or ToF, measures light timing:** the camera estimates distance from returning illumination rather than matching natural image features.\n- **Think of aligned arrays:** a color array and a depth array need matching coordinates before their elements describe the same physical point.\n- **Worked stereo example:** with illustrative focal length 100 pixels, baseline 0.1 m, and disparity 10 pixels, depth is `100*0.1/10 = 1 m`.\n\n```mermaid\nflowchart LR\n  S[Scene and illumination] --> M[Image measurements]\n  M --> D[Depth estimation]\n  D --> V[Validity mask]\n  V --> P[Depth image]\n```\n\n## Key terms\n\n- **Baseline**: distance between the two stereo viewpoints.\n- **Disparity**: pixel displacement of the same feature between the two images; smaller displacement means farther away in the stereo model.\n- **Occlusion**: a surface hidden from one viewpoint, making matching impossible there.\n- **Registration**: aligning measurements from different images into a shared coordinate system.\n\n## Before / after\n\n- **Before:** Learn RGB cameras & intrinsic calibration and Sensor characteristics, uncertainty & noise before treating depth values as metric geometry.\n- **After:** Build Depth camera failure atlas, then connect the observations to Extrinsic & multi-sensor calibration for multi-camera alignment.\n\n## Try it in an afternoon\n\n1. **Compute the stereo example** in a notebook, then double disparity while holding the other inputs fixed.\n2. **Compare the results** and explain why a nearby object has a larger displacement between views.\n3. **Inspect the published depth examples** and list surfaces or image regions you would test for missing data before commanding a grasp.",
+      "resources": [
+        {
+          "title": "Robotics navigation with Intel® RealSense™ Tracking Camera T265 and Depth Camera D435",
+          "url": "https://www.youtube.com/watch?v=LBMsWJJxLXQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See real depth acquisition used on a moving robot; distinguish the depth view from tracking."
+        },
+        {
+          "title": "Beginner's guide to depth (Updated)",
+          "url": "https://www.realsenseai.com/beginners-guide-to-depth/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Compare stereo, projected patterns, and time-of-flight intuitively."
+        },
+        {
+          "title": "Depth Sensing Overview",
+          "url": "https://www.stereolabs.com/docs/depth-sensing",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand stereo disparity, depth maps, and depth accuracy."
+        },
+        {
+          "title": "D405",
+          "url": "https://www.realsenseai.com/depth-camera-d405/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read a concrete stereo camera’s working range and physical dimensions."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=LBMsWJJxLXQ",
+        "https://www.realsenseai.com/beginners-guide-to-depth/",
+        "https://www.stereolabs.com/docs/depth-sensing",
+        "https://www.realsenseai.com/depth-camera-d405/"
+      ]
+    },
+    {
+      "node_id": "k:event-cameras-asynchronous-acquisition",
+      "type": "knowledge",
+      "name": "Event cameras & asynchronous acquisition",
+      "summary": "An event camera reports individual pixel brightness changes with timestamps instead of repeatedly sending complete images.",
+      "lesson_md": "## In one sentence\n\nAn event camera reports individual pixel brightness changes with timestamps instead of repeatedly sending complete images.\n\n![Event-camera data shown in image coordinates and time](/img/lessons/knowledge_sensing-event-cameras.webp)\n*Event-camera data shown in image coordinates and time. Source: [Prophesee](https://docs.prophesee.ai/stable/concepts.html), license unknown.*\n\n## Why it matters for us\n\n- **Fast changes become explicit:** moving edges generate events when brightness changes at pixels; a static scene is not repeatedly transmitted as ordinary video frames.\n- **The data structure changes:** code receives a stream of small records rather than one dense array per frame.\n- **Start without a camera:** Prophesee publishes recordings for examining event timing and visualization before choosing hardware.\n\n> **Key idea:** The frame you display is a chosen summary of the event stream, not the camera’s native acquisition unit.\n\n## How it works\n\n- **Each pixel acts independently:** a contrast detector emits an event when its light-level change exceeds a threshold.\n- **Records carry four values:** Prophesee describes `(X,Y,P,T)`, meaning pixel position, change polarity, and timestamp in microseconds.\n- **Think of event-driven servers:** a callback handles a change when it occurs instead of polling every pixel on a fixed schedule.\n- **Rendering accumulates events:** choose a time window and color pixels according to positive or negative brightness changes.\n- **Worked display example:** the documentation pairs a 1 ms accumulation window with 1000 generated frames per second; each frame summarizes that interval.\n- **Keep acquisition separate:** changing visualization accumulation time does not change the events stored in the RAW recording.\n\n```mermaid\nflowchart LR\n  B[Brightness change] --> C[Pixel threshold]\n  C --> E[Timestamped event]\n  E --> W[Chosen time window]\n  W --> I[Displayed image]\n```\n\n## Key terms\n\n- **Asynchronous**: pixels need not wait for a common frame boundary to report changes.\n- **Polarity**: whether brightness increased or decreased; Prophesee uses 1 for ON and 0 for OFF events.\n- **Accumulation time**: duration of events combined into a displayed image.\n- **Event rate**: number of events arriving per unit time, rather than a fixed number of full images.\n\n## Before / after\n\n- **Before:** Review RGB cameras & intrinsic calibration and Time synchronization & timestamping; pixel coordinates alone do not describe the stream.\n- **After:** Try Recorded event-stream polarity and time microscope before investigating Event-camera illumination-flicker throughput envelope.\n\n## Try it in an afternoon\n\n1. **Choose a sample recording** from the published dataset page and note its scene description and file format.\n2. **Inspect timestamped events** with the available viewer or SDK; separate ON and OFF events in your notes.\n3. **Change the display window** and compare edge trails, while keeping the same input recording.\n4. **Write a data contract** listing coordinate bounds, polarity convention, and timestamp units for a future parser.",
+      "resources": [
+        {
+          "title": "Metavision Training Videos | Introduction to Event-Based Vision Sensor",
+          "url": "https://www.youtube.com/watch?v=SPrdvhuAISk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The sensor maker explains asynchronous pixels and their event output."
+        },
+        {
+          "title": "Event-Based Concepts",
+          "url": "https://docs.prophesee.ai/stable/concepts.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn event tuples and the difference between acquisition and frame accumulation."
+        },
+        {
+          "title": "Recordings and Datasets",
+          "url": "https://docs.prophesee.ai/stable/datasets.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Find recorded event scenes for a hardware-free first experiment."
+        },
+        {
+          "title": "OpenEB",
+          "url": "https://github.com/prophesee-ai/openeb",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Explore the open event-camera software modules and their installation guidance."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=SPrdvhuAISk",
+        "https://docs.prophesee.ai/stable/concepts.html",
+        "https://docs.prophesee.ai/stable/datasets.html",
+        "https://github.com/prophesee-ai/openeb"
+      ]
+    },
+    {
+      "node_id": "k:extrinsic-multi-sensor-calibration",
+      "type": "knowledge",
+      "name": "Extrinsic & multi-sensor calibration",
+      "summary": "Extrinsic calibration estimates the rotation and translation that let measurements from different sensor frames describe the same physical scene.",
+      "lesson_md": "## In one sentence\n\nExtrinsic calibration estimates the rotation and translation that let measurements from different sensor frames describe the same physical scene.\n\n![Rigid multi-camera sensor rig used in the Kalibr dataset](/img/lessons/knowledge_sensing-extrinsic-calibration.webp)\n*Rigid multi-camera sensor rig used in the Kalibr dataset. Source: [ETH ASL](https://github.com/ethz-asl/kalibr/wiki/multiple-camera-calibration), license unknown.*\n\n## Why it matters for us\n\n- **Mounting creates geometry:** two cameras bolted to one rig still have different origins and axes. Their measurements cannot simply be concatenated.\n- **A wrist camera moves:** hand-eye calibration relates the camera to the robot tool, so a detection can eventually become a target in robot coordinates.\n- **Time also matters:** a camera and IMU can observe different moments. Kalibr estimates spatial and temporal alignment for that sensor combination.\n\n> **Key idea:** Calibrate the relationship between frames, then validate it on observations that were not used to fit it.\n\n## How it works\n\n- **Observe shared structure:** Kalibr’s multi-camera tool uses overlapping views of a calibration target to estimate camera parameters and relative poses.\n- **Keep the rig fixed:** move the target through varied visible poses while the relative camera mounting stays unchanged.\n- **Think of an API adapter:** a transform converts coordinates from one sensor’s convention into another’s without changing the physical point.\n- **Worked translation example:** if aligned camera axes have origin `(0.1,0,0)` m in the base frame, camera point `(0,0,1)` becomes `(0.1,0,1)` m.\n- **Rotation needs more:** real mounts also turn axes. Use the full rigid transform and its inverse; do not just add an offset.\n- **Inspect the output:** Kalibr writes a PDF report, a text summary, and YAML calibration parameters; a generated file alone does not prove a good fit.\n\n```mermaid\nflowchart LR\n  T[Shared target observations] --> F[Fit sensor relationship]\n  F --> X[Rotation and translation]\n  X --> V[Validate new observations]\n```\n\n## Key terms\n\n- **Extrinsics**: pose of one sensor frame relative to another.\n- **Intrinsics**: parameters inside a camera model, such as focal length and lens distortion.\n- **Hand-eye calibration**: estimating the relationship between a robot hand and its camera.\n- **Temporal offset**: difference between the times assigned to corresponding sensor observations.\n\n## Before / after\n\n- **Before:** Learn RGB cameras & intrinsic calibration, Rigid-body motion & coordinate frames, and Time synchronization & timestamping before fitting a sensor rig.\n- **After:** Apply the result in Camera-IMU calibration with Kalibr or Hand-eye calibration in sim; check the transform direction explicitly.\n\n## Try it in an afternoon\n\n1. **Read the Kalibr example** and identify the image topics, camera models, target description, and recording input.\n2. **Calculate the translation example** forward and backward in a notebook; verify that inverse conversion recovers the original point.\n3. **Inspect a sample calibration report** and record what observations you would reserve for independent validation.",
+      "resources": [
+        {
+          "title": "DIY Indoor Autonomous Drone! - Part 2 (Kalibr & Calibration)",
+          "url": "https://www.youtube.com/watch?v=puNXsnrYWTY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A practical calibration walkthrough linked by the Kalibr maintainers."
+        },
+        {
+          "title": "Multiple camera calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/multiple-camera-calibration",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See the required overlapping views, input topics, and calibration output files."
+        },
+        {
+          "title": "Camera IMU calibration",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand spatial and temporal calibration inputs and motion requirements."
+        },
+        {
+          "title": "3.3.1. Homogeneous Transformation Matrices",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Learn how rigid transforms move coordinates between frames."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=puNXsnrYWTY",
+        "https://github.com/ethz-asl/kalibr/wiki/multiple-camera-calibration",
+        "https://github.com/ethz-asl/kalibr/wiki/camera-imu-calibration",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/"
+      ]
+    },
+    {
+      "node_id": "k:force-torque-sensing-current-based-torque-estimation",
+      "type": "knowledge",
+      "name": "Force/torque sensing & current-based torque estimation",
+      "summary": "A force/torque sensor measures mechanical loads, while motor current provides an indirect estimate of motor torque rather than tool contact force.",
+      "lesson_md": "## In one sentence\n\nA force/torque sensor measures mechanical loads, while motor current provides an indirect estimate of motor torque rather than tool contact force.\n\n![ATI Mini45 wrist force and torque transducer](/img/lessons/knowledge_sensing-force-torque.webp)\n*ATI Mini45 wrist force and torque transducer. Source: [ATI Industrial Automation](https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45), license unknown.*\n\n## Why it matters for us\n\n- **Contact changes the task:** reaching a position is different from pushing, inserting, or holding something gently. Load measurements expose what the robot is pressing against.\n- **Two signals are different:** a wrist transducer measures loads at its mounting interface; current estimates torque produced by the motor.\n- **A real part has limits:** ATI’s Mini45 reports three force and three torque components. Its usable ranges depend on the selected calibration.\n\n> **Key idea:** Motor torque and contact force are related by mechanics; they are not interchangeable sensor readings.\n\n## How it works\n\n- **A transducer senses deformation:** ATI uses strain gauges, electrical elements whose signals change with mechanical loading, to recover the six load components.\n- **Current supplies an estimate:** ODrive uses a torque constant to convert between motor current and torque. Transmission losses and other loads still separate this from contact force.\n- **Think of indirect instrumentation:** CPU usage can suggest server load, but it is not a direct count of completed requests; current likewise needs a model.\n- **Worked lever example:** an illustrative 10 N force acting perpendicular to a 0.1 m lever produces `10*0.1 = 1 N·m` of torque.\n- **Location changes torque:** the same force applied at a different distance changes the twisting effect about the sensor origin.\n\n```mermaid\nflowchart LR\n  L[Mechanical load] --> S[Wrist transducer]\n  S --> W[Forces and torques]\n  I[Motor current] --> K[Torque constant]\n  K --> M[Estimated motor torque]\n```\n\n## Key terms\n\n- **Force**: a push or pull, measured in newtons, abbreviated N.\n- **Torque**: twisting effect about an origin, measured in newton-metres, abbreviated N·m.\n- **Wrench**: six values grouping three torque components and three force components; software must document ordering and coordinate frame.\n- **Torque constant**: conversion factor relating motor current to motor torque, not a universal tool-force calibration.\n\n## Before / after\n\n- **Before:** Learn Sensor characteristics, uncertainty & noise and Rigid-body motion & coordinate frames; identify the origin about which torque is reported.\n- **After:** Try Six-axis wrench units and lever-arm replay before Motor-current torque estimate versus an independent load reference.\n\n## Try it in an afternoon\n\n1. **Draw a lever** and calculate torque for the illustrative force at two different perpendicular distances.\n2. **Create a six-component record** and label every component’s unit, sign, frame, and ordering.\n3. **Compare measurement contracts** for an ATI calibration and an ODrive torque estimate; list what each cannot directly tell you about tool contact.",
+      "resources": [
+        {
+          "title": "3.4. Wrenches",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-4-wrenches/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A wrist-sensor example explains forces, moments, and the six-component wrench."
+        },
+        {
+          "title": "ATI Industrial Automation: F/T Sensor Mini45",
+          "url": "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See a real strain-gauge sensor and its calibration-dependent measurement ranges."
+        },
+        {
+          "title": "Controller",
+          "url": "https://docs.odriverobotics.com/v/latest/manual/control.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Locate the conversion between commanded torque and motor current."
+        },
+        {
+          "title": "Component Selection",
+          "url": "https://docs.odriverobotics.com/v/latest/articles/component-selection.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read how motor characteristics and torque constants affect current-based estimates."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-4-wrenches/",
+        "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+        "https://docs.odriverobotics.com/v/latest/manual/control.html",
+        "https://docs.odriverobotics.com/v/latest/articles/component-selection.html"
+      ]
+    },
+    {
+      "node_id": "k:gnss-rtk-receiver-hardware",
+      "type": "knowledge",
+      "name": "GNSS & RTK receiver hardware",
+      "summary": "GNSS receivers use satellite radio signals for outdoor position and time; RTK adds reference corrections to improve positioning under suitable conditions.",
+      "lesson_md": "## In one sentence\n\nGNSS receivers use satellite radio signals for outdoor position and time; RTK adds reference corrections to improve positioning under suitable conditions.\n\n![SparkFun ZED-F9P GNSS receiver breakout board](/img/lessons/knowledge_sensing-gnss-rtk.webp)\n*SparkFun ZED-F9P GNSS receiver breakout board. Source: [SparkFun](https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all), license unknown.*\n\n## Why it matters for us\n\n- **Outdoor robots need a reference:** satellite positioning connects a route to geographic coordinates instead of only measuring motion since startup.\n- **The receiver is not the system:** an antenna, clear sky view, power, communication link, and correction source all affect the usable result.\n- **Corrections can disappear:** centimetre-level RTK claims are conditional. Log solution status alongside coordinates rather than trusting every decimal place equally.\n\n> **Key idea:** Treat positioning quality and correction availability as data that travels with every reported location.\n\n## How it works\n\n- **Receive satellite signals:** the antenna feeds a GNSS module, which estimates position and time. GPS is one satellite navigation system, not the entire GNSS category.\n- **Add a reference:** RTK uses observations from a reference station or correction service to refine the rover’s solution.\n- **Transport correction messages:** SparkFun’s ZED-F9P guide feeds RTCM correction data to a receiver port while reading position messages back.\n- **Think of a network dependency:** position output may continue when its correction service disappears, just as an API can return degraded results without going offline.\n- **Worked logging example:** store `(time, latitude, longitude, fix_status, correction_age)` as one record; compare stationary traces with corrections available and absent.\n- **Keep units explicit:** the hookup guide shows NMEA coordinates in degrees-and-minutes format. Do not parse that number as plain decimal degrees.\n\n```mermaid\nflowchart LR\n  S[Satellite signals] --> R[Rover receiver]\n  B[Reference station] --> C[Correction link]\n  C --> R\n  R --> P[Position time and status]\n```\n\n## Key terms\n\n- **GNSS**: global navigation satellite systems, the umbrella term for satellite-based navigation.\n- **RTK**: real-time kinematic positioning using reference information to refine a rover solution.\n- **Rover**: the receiver whose changing position you want to measure.\n- **RTCM**: a standard message format used to transport correction data.\n- **Multipath**: reflected radio signals reaching the antenna by extra paths, complicating accurate positioning.\n\n## Before / after\n\n- **Before:** Study Sensor characteristics, uncertainty & noise and Time synchronization & timestamping before interpreting position logs.\n- **After:** Use RTK stationary receiver and correction-outage logbook to test quality changes before combining GNSS with other motion sensors.\n\n## Try it in an afternoon\n\n1. **Read the hookup example** and draw separate arrows for satellite reception, correction input, and position output.\n2. **Parse its sample NMEA coordinate** by separating degrees from minutes, then dividing minutes by 60 to obtain decimal degrees.\n3. **Design a stationary log** that retains timestamps, solution status, and correction availability; define how your software marks degraded positioning without inventing measurements.",
+      "resources": [
+        {
+          "title": "Miles of RTK Accuracy Using LoRa",
+          "url": "https://www.youtube.com/watch?v=zlcgN53kcnU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "SparkFun demonstrates a real reference-to-rover correction link and its status display."
+        },
+        {
+          "title": "What is GPS RTK?",
+          "url": "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand reference stations, correction streams, and receiver hardware."
+        },
+        {
+          "title": "GPS-RTK2 Hookup Guide",
+          "url": "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow antenna, communication, correction-input, and NMEA-format details."
+        },
+        {
+          "title": "ZED-F9P module",
+          "url": "https://www.u-blox.com/en/product/zed-f9p-module",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect a concrete multi-band RTK receiver family without confusing a module with a complete rover."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=zlcgN53kcnU",
+        "https://learn.sparkfun.com/tutorials/what-is-gps-rtk/all",
+        "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
+        "https://www.u-blox.com/en/product/zed-f9p-module"
+      ]
+    }
+  ],
+  "skipped": []
+}
