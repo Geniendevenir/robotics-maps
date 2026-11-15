@@ -1,0 +1,360 @@
+{
+  "batch": "projects_hri_safety_2",
+  "lessons": [
+    {
+      "node_id": "p:mode-switcher-separation-monitoring-to-force-limiting",
+      "type": "project",
+      "name": "Mode switcher: separation monitoring to force limiting",
+      "summary": "Build a simulated arm that changes from distance-based speed control to a reduced-force contact mode as a person approaches.",
+      "lesson_md": "## In one sentence\n\nBuild a simulated arm that changes from distance-based speed control to a reduced-force contact mode as a person approaches.\n\n![KUKA arm and human operator in the separation-monitoring research setup](/img/lessons/projects_hri_safety_2-mode-switcher.webp)\n*KUKA arm and human operator in the separation-monitoring research setup. Source: [Published setup](https://arxiv.org/html/1908.03046v2), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **Separation monitoring** means adjusting motion according to the distance between robot and person, rather than treating the whole room as occupied.\n- **Power and force limiting** constrains contact consequences; merely displaying a slower speed is not evidence that contact forces are limited.\n- **Software analogy:** implement a state machine, like a server changing between normal operation, rate limiting and refusing requests.\n\n> **Key idea:** Choosing a mode and enforcing its physical limits are separate responsibilities.\n\n## What you need\n\n- **Starting knowledge:** finish Intro: write a risk assessment for the lab robot; connect this exercise to Collaborative operation modes (cobots).\n- **Tools:** MuJoCo, Python and a human proxy; optionally use MediaPipe Pose Landmarker for camera input. No physical robot purchase is required.\n- **Research anchor:** the published setup combines a KUKA LBR iiwa, Intel RealSense depth camera and OpenPose; your simulation is an adaptation, not that experiment.\n\n## Steps\n\n1. **Create a baseline** with a repeating arm motion and a movable human proxy. Log simulated time, joint state and nearest body-part distance.\n2. **Define the modes:** normal, reduced-contact and stop. Choose demo thresholds explicitly; do not present them as certified human-contact limits.\n3. **Implement transitions:** slow when the nearest body part approaches; stop when the head enters its exclusion zone or tracking becomes unavailable.\n4. **Model contact response:** constrain simulated actuation in the reduced mode and plot measured contact forces alongside commanded speed.\n5. **Exercise the boundary:** move the proxy inward and outward, then hide it. Demonstrate the selected mode and recorded force trace side by side.\n\n```mermaid\nflowchart LR\n  A[\"Track person\"] --> B[\"Measure separation\"] --> C[\"Select mode\"] --> D[\"Command arm\"] --> E[\"Log contact\"]\n```\n\n## Common pitfalls\n\n- **Camera coordinates are not robot coordinates:** a pixel distance is not a physical separation; use simulator geometry until a calibrated depth pipeline exists.\n- **Boundary chatter** means repeatedly switching modes near a threshold. Add separate entry and exit conditions, and document this engineering choice.\n\n> **Watch out:** Keep this project in simulation: its tracking and mode logic are not certified protective functions.\n\n## When it's done\n\n- **Illustrative unit test:** choose demo boundaries at 1.0 m and 0.5 m; synthetic distances 1.2, 0.8 and 0.3 m should select normal, reduced-contact and stop.\n- **Deliverable:** publish the baseline/composite-mode video, thresholds, tracking-loss behavior and force plots; relate the result to Speed & separation monitoring implementation.",
+      "resources": [
+        {
+          "title": "Safe physical human-robot interaction",
+          "url": "https://www.youtube.com/watch?v=-TC4WsdJJAM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the authors demonstrate separation monitoring and force-limited operation."
+        },
+        {
+          "title": "Python - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/python.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build the simulator loop and collect state for the mode-switching demo."
+        },
+        {
+          "title": "Safe physical HRI: Toward a unified treatment of speed and separation monitoring together with power and force limiting",
+          "url": "https://arxiv.org/abs/1908.03046",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the actual combined-mode experiment and its sensing setup."
+        },
+        {
+          "title": "Safety of human-robot interaction through tactile sensors and peripersonal space representations",
+          "url": "https://arxiv.org/abs/1805.07256",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the distinction between protective space and contact sensing."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/html/1908.03046v2",
+        "https://www.youtube.com/watch?v=-TC4WsdJJAM",
+        "https://mujoco.readthedocs.io/en/stable/python.html",
+        "https://arxiv.org/abs/1908.03046",
+        "https://arxiv.org/abs/1805.07256"
+      ]
+    },
+    {
+      "node_id": "p:momentum-observer-collision-detection-in-sim",
+      "type": "project",
+      "name": "Momentum-observer collision detection in sim",
+      "summary": "Detect unexpected contact on a simulated arm by comparing measured motion with a dynamics-based momentum prediction, then demonstrate a reaction.",
+      "lesson_md": "## In one sentence\n\nDetect unexpected contact on a simulated arm by comparing measured motion with a dynamics-based momentum prediction, then demonstrate a reaction.\n\n![Published MOB and LSTM signal comparisons from the momentum-observer research](/img/lessons/projects_hri_safety_2-momentum-observer.webp)\n*Published MOB and LSTM signal comparisons from the momentum-observer research. Source: [Published setup](https://daegyulim.github.io/icra2021), license unknown.*\n\n## What you will learn\n\n- **Momentum** describes motion weighted by the robot’s mass distribution; joint configuration changes how that mass contributes to motion.\n- **Observer** means a running estimate of an unmeasured quantity. Here it estimates disturbance torque without directly measuring joint acceleration.\n- **Residual** is the mismatch signal used to flag contact; friction and model errors can also create it, as the Lim research explains.\n- **Software analogy:** monitor the difference between expected and observed service behavior, not just whether a request returned successfully.\n\n> **Key idea:** A residual measures unexplained dynamics, not contact alone.\n\n## What you need\n\n- **Preparation:** Intro: write a risk assessment for the lab robot and Collision detection & reaction (power and force limiting).\n- **Tools:** MuJoCo, Python, an arm model and plots sharing the simulator clock. No physical robot purchase is needed.\n- **Model access:** record joint position, velocity, applied actuation and dynamics terms; reserve simulator contact information for evaluation, not detector input.\n\n## Steps\n\n1. **Record nominal motion** with no external contact. Plot joint velocity and torque so you understand normal changes during acceleration.\n2. **Implement the basic observer** from the research equations. Keep its internal state between simulation steps; document units, integration interval and gain.\n3. **Set detection thresholds** using contact-free runs, then freeze them before evaluation. Begin with the basic observer, not the paper’s learned uncertainty correction.\n4. **Inject controlled contact** at known simulated times and compare residual crossings with contact ground truth. Include an incorrect-payload run.\n5. **Compare reactions:** stop the commanded trajectory versus a yielding controller, which permits displacement under disturbance. Finish with synchronized video and residual plots.\n\n```mermaid\nflowchart LR\n  A[\"Joint state\"] --> B[\"Momentum observer\"] --> C[\"Residual threshold\"] --> D[\"Stop or yield\"] --> E[\"Record outcome\"]\n```\n\n## Common pitfalls\n\n- **Unmodeled load is not necessarily collision:** report false alarms separately from missed contacts rather than adjusting thresholds after every failure.\n- **Ground-truth leakage:** reading the simulator contact flag inside the detector turns this into a contact-sensor demo, not an observer experiment.\n\n## When it's done\n\n- **Illustrative timing calculation:** contact at 1.00 s and alarm at 1.04 s means 40 ms detection delay; substitute your measured timestamps, not these example values.\n- **Deliverable:** include ordinary motion, an empty-contact run and a model-error failure; save configurations so another student can reproduce the plots.",
+      "resources": [
+        {
+          "title": "(ICRA 2021) Momentum Observer-Based Collision Detection Using LSTM for Model Uncertainty Learning",
+          "url": "https://www.youtube.com/watch?v=N1wEeLZaGRI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the collision-detection experiments that motivate the simulator exercise."
+        },
+        {
+          "title": "Momentum Observer-Based Collision Detection Using LSTM for Model Uncertainty Learning",
+          "url": "https://daegyulim.github.io/icra2021",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Understand why model uncertainty contaminates momentum-observer estimates."
+        },
+        {
+          "title": "Computation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Locate the simulator dynamics quantities used by the observer."
+        },
+        {
+          "title": "Momentum Observer-Based Collision Detection Using LSTM for Model Uncertainty Learning",
+          "url": "https://daegyulim.github.io/assets/ICRA2021.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Use the observer formulation before considering its learned correction."
+        }
+      ],
+      "sources": [
+        "https://daegyulim.github.io/icra2021",
+        "https://www.youtube.com/watch?v=N1wEeLZaGRI",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+        "https://daegyulim.github.io/assets/ICRA2021.pdf"
+      ]
+    },
+    {
+      "node_id": "p:multi-person-pose-benchmark-for-the-lab-space",
+      "type": "project",
+      "name": "Multi-person pose benchmark for the lab space",
+      "summary": "Compare MediaPipe and YOLO pose estimates on the same lab videos, measuring missed people and keypoints under crowding, occlusion and poor light.",
+      "lesson_md": "## In one sentence\n\nCompare MediaPipe and YOLO pose estimates on the same lab videos, measuring missed people and keypoints under crowding, occlusion and poor light.\n\n![Human body keypoints overlaid by a YOLO pose model](/img/lessons/projects_hri_safety_2-pose-benchmark.webp)\n*Human body keypoints overlaid by a YOLO pose model. Source: [Published setup](https://docs.ultralytics.com/tasks/pose/), license unknown.*\n\n## What you will learn\n\n- **Pose estimation** locates body landmarks, such as shoulders and wrists; it does not establish who a person is.\n- **Fair benchmarking** means giving both systems the same decoded frames and evaluating against human annotations rather than attractive skeleton overlays.\n- **Software analogy:** treat each video as a regression-test fixture, with frozen inputs, expected outputs and separate timing measurements.\n\n> **Key idea:** A benchmark tests the same evidence under the same rules, not which overlay looks more convincing.\n\n## What you need\n\n- **Map links:** start with Intro: write a risk assessment for the lab robot and Human detection & body-pose tracking for HRI.\n- **Tools:** MediaPipe Pose Landmarker, Ultralytics YOLO26 Pose, a computer and consented recorded footage; use an existing camera to avoid a hardware purchase.\n- **Annotation plan:** MediaPipe describes 33 body landmarks; the standard YOLO human layout uses 17. Compare named shared joints, not array indices.\n\n## Steps\n\n1. **Record scene categories:** one person, crossing people, partial occlusion, dim lighting and an empty room. Keep the camera fixed for the first comparison.\n2. **Label selected frames** with visible people and shared joints. Mark hidden joints explicitly so guesses are not treated as visible ground truth.\n3. **Run both models** on identical frames. Configure MediaPipe’s maximum pose count deliberately rather than leaving a single-person setting in a crowded test.\n4. **Compute separate metrics:** person miss rate, shared-joint position error and processing time. Define matching rules and confidence cutoffs before examining results.\n5. **Build the demo:** synchronize original footage and both overlays; show a table by scene category and inspect the largest disagreements together.\n\n```mermaid\nflowchart LR\n  A[\"Recorded frames\"] --> B[\"Pose models\"] --> C[\"Match annotations\"] --> D[\"Measure misses\"] --> E[\"Compare clips\"]\n```\n\n## Common pitfalls\n\n- **Different coordinates:** convert normalized positions and pixel coordinates to one convention before measuring error; do not compare image positions with world coordinates.\n- **Missing is not zero:** store absent detections explicitly; drawing a joint at the image corner can hide a detector failure.\n\n## When it's done\n\n- **Illustrative score:** missing 2 of 10 annotated people gives a 20% person miss rate; this is arithmetic, not a measured model result.\n- **Deliverable:** save model identifiers, frame selections, landmark mapping and a failure montage. Explain where each system fails instead of declaring a universal winner.",
+      "resources": [
+        {
+          "title": "How to Run Real-Time Pose Estimation with Ultralytics YOLO26 | Tracking & Keypoints Extraction 🕺",
+          "url": "https://www.youtube.com/watch?v=4VTuqfrOIws",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See human keypoint extraction and the visible output to benchmark."
+        },
+        {
+          "title": "Pose Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect MediaPipe’s landmarks and output coordinate systems."
+        },
+        {
+          "title": "Pose Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Configure pose count and process recorded video with timestamps."
+        },
+        {
+          "title": "Pose Estimation with Ultralytics YOLO",
+          "url": "https://docs.ultralytics.com/tasks/pose/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read YOLO keypoint outputs, layout and prediction examples."
+        }
+      ],
+      "sources": [
+        "https://docs.ultralytics.com/tasks/pose/",
+        "https://www.youtube.com/watch?v=4VTuqfrOIws",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python"
+      ]
+    },
+    {
+      "node_id": "p:nav2-robot-among-simulated-pedestrians",
+      "type": "project",
+      "name": "Nav2 robot among simulated pedestrians",
+      "summary": "Run a Nav2-driven robot through HuNavSim pedestrians and report navigation success alongside human-proximity and collision metrics.",
+      "lesson_md": "## In one sentence\n\nRun a Nav2-driven robot through HuNavSim pedestrians and report navigation success alongside human-proximity and collision metrics.\n\n![Simulated people and robot in a HuNavSim Gazebo scenario](/img/lessons/projects_hri_safety_2-nav2-pedestrians.webp)\n*Simulated people and robot in a HuNavSim Gazebo scenario. Source: [Published setup](https://github.com/robotics-upo/hunav_gazebo_wrapper), license unknown.*\n\n## What you will learn\n\n- **Nav2** plans and executes robot navigation; **HuNavSim** supplies moving human agents with configurable behavior, rather than just static obstacles.\n- **Wrapper** means integration code connecting HuNavSim to a particular simulator. The Gazebo wrapper exchanges human states and motion updates.\n- **Software analogy:** this is an integration test with concurrent clients; success depends on timing and interaction, not only a valid final response.\n\n> **Key idea:** Reaching the goal is only one part of navigating well around people.\n\n## What you need\n\n- **Preparation:** Intro: write a risk assessment for the lab robot and Social & human-aware navigation.\n- **Tools:** ROS 2, Nav2, HuNavSim and a compatible Gazebo wrapper. No physical robot purchase is needed.\n- **Compatibility:** record the exact ROS distribution, wrapper branch and simulator together. Do not mix a Gazebo Classic example with modern Gazebo launch instructions.\n\n## Steps\n\n1. **Validate empty-world navigation** first: set the robot’s initial pose and goal, then confirm that it reaches the destination without pedestrians.\n2. **Load the wrapper scenario** and inspect agent starting poses and goals. Save the configuration rather than moving pedestrians manually between benchmark runs.\n3. **Verify perception:** show whether moving people appear in the robot’s obstacle representation; visible actors in Gazebo do not prove Nav2 senses them.\n4. **Run controlled crossings:** keep robot start and goal fixed while varying pedestrian behavior. Record the simulator state and navigation outcome.\n5. **Export evaluation results** with HuNavSim’s evaluator. Finish with a Gazebo clip, route overlay and table including unsuccessful or stalled runs.\n\n```mermaid\nflowchart LR\n  A[\"Configure agents\"] --> B[\"Simulate crossings\"] --> C[\"Update obstacles\"] --> D[\"Navigate\"] --> E[\"Evaluate\"]\n```\n\n## Common pitfalls\n\n- **Collision-free is not comfortable:** distinguish avoiding contact from spending time too close to people; HuNavSim exposes separate social-navigation metrics.\n- **Incompatible examples waste time:** the wrapper’s cafe launch is a starting point, not a promise that every current Nav2 distribution runs unchanged.\n\n## When it's done\n\n- **Illustrative result table:** 4 completed goals in 5 trials gives 80% completion; separately report collision counts and elapsed times, rather than hiding the unsuccessful trial.\n- **Deliverable:** preserve agent configuration, package revisions and evaluator files; explain one failure, not just the most successful video take.",
+      "resources": [
+        {
+          "title": "Practical Demonstration of New User-Requested Nav2 Features | Steve Macenski | ROSDevDay 2021",
+          "url": "https://www.youtube.com/watch?v=BmyCi2lcdJY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn Nav2 navigation behavior from its project lead’s demonstrations; this does not cover HuNavSim installation."
+        },
+        {
+          "title": "GitHub - robotics-upo/hunav_gazebo_wrapper: A ROS2 wrapper to use the HuNavSim with the Gazebo Simulator",
+          "url": "https://github.com/robotics-upo/hunav_gazebo_wrapper",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Start from the documented Gazebo scenarios and wrapper launch examples."
+        },
+        {
+          "title": "Quickstart - Nav2 Docs",
+          "url": "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn the initial-pose and navigation-goal workflow; use instructions matching your chosen distribution."
+        },
+        {
+          "title": "GitHub - robotics-upo/hunav_sim: A simulator of human navigation behaviors for Robotics based on ROS2",
+          "url": "https://github.com/robotics-upo/hunav_sim",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Configure human agents, behavior and simulator integration."
+        },
+        {
+          "title": "Hunav Evaluator",
+          "url": "https://raw.githubusercontent.com/robotics-upo/hunav_sim/v2.0/hunav_evaluator/README.md",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Select metrics and understand the generated experiment files."
+        }
+      ],
+      "sources": [
+        "https://github.com/robotics-upo/hunav_gazebo_wrapper",
+        "https://www.youtube.com/watch?v=BmyCi2lcdJY",
+        "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+        "https://github.com/robotics-upo/hunav_sim",
+        "https://raw.githubusercontent.com/robotics-upo/hunav_sim/v2.0/hunav_evaluator/README.md"
+      ]
+    },
+    {
+      "node_id": "p:preference-feedback-for-comfortable-motion",
+      "type": "project",
+      "name": "Preference feedback for comfortable motion",
+      "summary": "Collect pairwise judgments of simulated robot motions, learn a scoring function and test whether its chosen motions match held-out human preferences.",
+      "lesson_md": "## In one sentence\n\nCollect pairwise judgments of simulated robot motions, learn a scoring function and test whether its chosen motions match held-out human preferences.\n\n![First-person virtual workstation with a co-working robot in an HRC feedback study](/img/lessons/projects_hri_safety_2-preference-feedback.webp)\n*First-person virtual workstation with a co-working robot in an HRC feedback study. Source: [Published setup](https://arxiv.org/html/2610.09891), CC BY 4.0.*\n\n## What you will learn\n\n- **Preference feedback** asks which of two motions someone prefers, instead of requiring a demonstration or a hand-written reward.\n- **Reward** is a numerical score used to rank behavior. A score learned from comfort judgments is not a physical safety guarantee.\n- **Software analogy:** build a ranking service from A/B feedback, then test it on comparisons it has never trained on.\n\n> **Key idea:** Learned comfort ranks already-allowed motions; it should not decide which motions are physically safe.\n\n## What you need\n\n- **Map links:** connect Learning from human feedback & corrections with HRI foundations & user-study methods; start from Intro: write a risk assessment for the lab robot.\n- **Tools:** Python, prerecorded MuJoCo motion clips and a simple comparison interface. No physical robot purchase is needed; record any computing costs separately.\n- **Reference baseline:** APReL demonstrates preference queries and feature-based reward learning. Its MountainCar example is an onboarding exercise, not a robot-comfort result.\n\n## Steps\n\n1. **Generate motion alternatives** reaching the same target. Deliberately vary proposed features such as travel time and distance from a virtual person.\n2. **Define the question** precisely: ask which clip feels more comfortable. Randomize left/right presentation and retain participant and motion identifiers.\n3. **Collect pairwise answers** with consent. Permit uncertainty rather than forcing a choice when clips look equivalent.\n4. **Fit a feature-based score** from training comparisons. Keep some participants and motion pairs separate for evaluation before tuning the model.\n5. **Rank new alternatives** using the learned score, then ask for fresh judgments. Finish with preferred-motion clips and held-out agreement results.\n\n```mermaid\nflowchart LR\n  A[\"Motion pairs\"] --> B[\"Human choices\"] --> C[\"Learn score\"] --> D[\"Rank new clips\"] --> E[\"Check agreement\"]\n```\n\n## Common pitfalls\n\n- **Correlated features** can obscure what was learned: APReL’s example explains why several different feature weights can favor similar behavior.\n- **Preferences differ:** show disagreements rather than averaging them away, and do not generalize a small lab study to every user.\n\n## When it's done\n\n- **Worked starter:** APReL creates 10 MountainCar trajectories and updates its model over 10 preference queries; reproduce that loop before replacing trajectories with arm clips.\n- **Deliverable:** show held-out agreement, participant counts, unanswered comparisons and a case where predicted comfort disagrees with a human; keep physical constraints outside the learned ranker.",
+      "resources": [
+        {
+          "title": "APReL: A Library for Active Preference-based Reward Learning Algorithms",
+          "url": "https://www.youtube.com/watch?v=HvwlBNy3l40",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the preference-query loop before adapting it to motion clips."
+        },
+        {
+          "title": "Example — APReL 1.0.0 documentation",
+          "url": "https://aprel.readthedocs.io/en/latest/example.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Work through trajectory features, pairwise responses and reward updates."
+        },
+        {
+          "title": "Perceived Safety in Physical Human Robot Interaction -- A Survey",
+          "url": "https://arxiv.org/abs/2105.14499",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Separate comfort and perceived safety from physical safety measurements."
+        },
+        {
+          "title": "A Scoping Review and Experimental Study on Reinforcement Learning from Human Feedback for Human-Robot Collaboration",
+          "url": "https://arxiv.org/abs/2610.09891",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read how feedback collection and timing affect HRC evaluation."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/html/2610.09891",
+        "https://www.youtube.com/watch?v=HvwlBNy3l40",
+        "https://aprel.readthedocs.io/en/latest/example.html",
+        "https://arxiv.org/abs/2105.14499",
+        "https://arxiv.org/abs/2610.09891"
+      ]
+    },
+    {
+      "node_id": "p:reach-target-prediction-for-collaboration",
+      "type": "project",
+      "name": "Reach-target prediction for collaboration",
+      "summary": "Use the beginning of a wrist trajectory to predict which bin a person will reach for, displaying uncertainty before the hand arrives.",
+      "lesson_md": "## In one sentence\n\nUse the beginning of a wrist trajectory to predict which bin a person will reach for, displaying uncertainty before the hand arrives.\n\n![EgoPAT3Dv2 setup for anticipating human action targets in a shared robot workspace](/img/lessons/projects_hri_safety_2-reach-target.webp)\n*EgoPAT3Dv2 setup for anticipating human action targets in a shared robot workspace. Source: [Published setup](https://ai4ce.github.io/EgoPAT3Dv2/), Creative Commons Attribution-ShareAlike 4.0 International License.*\n\n## What you will learn\n\n- **Target prediction** estimates the intended destination; it differs from drawing the hand’s current location or forecasting a complete future skeleton.\n- **Partial trajectory** means only the movement observed so far. Feeding later frames into training inputs would leak the answer.\n- **Software analogy:** predict the destination of a request stream from its prefix, while leaving the caller free to change their mind.\n\n> **Key idea:** Earlier predictions are more useful only when uncertainty and mistakes remain visible.\n\n## What you need\n\n- **Preparation:** Intro: write a risk assessment for the lab robot and Human motion & intention prediction.\n- **Tools:** an existing camera, MediaPipe Pose Landmarker, Python and labeled reaching clips. Keep this first version as a screen overlay, without robot actuation.\n- **Research context:** EgoPAT3Dv2 demonstrates action-target anticipation from a wearer’s camera; your fixed-camera bin classifier is a simpler, different setup.\n\n## Steps\n\n1. **Mark target bins** in the image and record repeated reaches. Include pauses, ambiguous starts and aborted reaches; label the intended destination explicitly.\n2. **Extract wrist histories** with timestamps and visibility. Save missing observations rather than silently treating them as real hand positions.\n3. **Build a baseline** that selects the bin nearest the current wrist. Compare it with a small classifier using recent motion history.\n4. **Split by recording session** before extracting overlapping windows. Evaluate earlier and later prefixes separately, and include a held-out person where possible.\n5. **Display the prediction** with confidence and an unknown state. End with a video showing predictions before arrival and errors when intentions change.\n\n```mermaid\nflowchart LR\n  A[\"Camera frames\"] --> B[\"Wrist history\"] --> C[\"Predict bin\"] --> D[\"Show uncertainty\"] --> E[\"Compare label\"]\n```\n\n## Common pitfalls\n\n- **Data leakage:** adjacent frames from one reach cannot be independent training and test examples; hold out whole reaches or sessions.\n- **Coordinates drift:** a camera move changes image-space bin positions. Re-register the setup instead of blaming the classifier for every error.\n\n## When it's done\n\n- **Illustrative evaluation:** predicting at 0.4 s when arrival occurs at 1.0 s gives 0.6 s lead time; count correct and incorrect predictions separately.\n- **Deliverable:** plot accuracy against observed motion fraction, include the nearest-bin baseline, and show empty-frame and changed-target failures without replacing them with confident guesses.",
+      "resources": [
+        {
+          "title": "EgoPAT3Dv2",
+          "url": "https://ai4ce.github.io/EgoPAT3Dv2/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creator-hosted overview and robot demo of action-target anticipation."
+        },
+        {
+          "title": "Pose Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Extract timestamped body landmarks for wrist-history inputs."
+        },
+        {
+          "title": "EgoPAT3Dv2: Predicting 3D Action Target from 2D Egocentric Vision for Human-Robot Interaction",
+          "url": "https://arxiv.org/abs/2403.05046",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study target anticipation and its shared-workspace robot demonstration."
+        },
+        {
+          "title": "Human Motion Prediction for Human-Robot Collaboration",
+          "url": "https://arxiv.org/abs/2609.32346",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Compare this small classifier with broader human-motion forecasting approaches."
+        }
+      ],
+      "sources": [
+        "https://ai4ce.github.io/EgoPAT3Dv2/",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python",
+        "https://arxiv.org/abs/2403.05046",
+        "https://arxiv.org/abs/2609.32346"
+      ]
+    },
+    {
+      "node_id": "p:record-a-motion-by-moving-the-arm-by-hand",
+      "type": "project",
+      "name": "Record a motion by moving the arm by hand",
+      "summary": "Record a supported SO-101 arm’s joint positions while motor torque is disabled, then replay the recorded path with hands clear.",
+      "lesson_md": "## In one sentence\n\nRecord a supported SO-101 arm’s joint positions while motor torque is disabled, then replay the recorded path with hands clear.\n\n![SO-101 follower arm used as the hardware starting point for recording joint positions](/img/lessons/projects_hri_safety_2-hand-guiding.webp)\n*SO-101 follower arm used as the hardware starting point for recording joint positions. Source: [Published setup](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Joint position** is the measured configuration of a rotating connection; a recording stores these measurements with time, not just an end-point pose.\n- **Torque disabled** means the motors are not actively holding the arm. This is different from a compliant controller that actively responds to contact.\n- **Software analogy:** record and replay an event log; timestamps and consistent field names matter as much as the event values.\n\n> **Key idea:** A recorded position path is a motion script, not a force-aware teaching controller.\n\n## What you need\n\n- **Prerequisites:** Assemble & teleoperate an SO-101 and Intro: write a risk assessment for the lab robot; review Physical HRI: hand-guiding & kinesthetic teaching.\n- **Hardware:** an assembled, calibrated SO-101, its specified power and communication hardware, and support for the arm during recording. Additional purchase cost depends on existing equipment.\n- **Software:** LeRobot’s motor-bus interface exposes torque enable/disable and position reads/writes. Pin your implementation revision; this needs a custom recorder, not an invented CLI command.\n\n## Steps\n\n1. **Verify joint naming** and calibration against your working teleoperation setup. Save the configuration and joint limits with the recording.\n2. **Support the arm**, disable motor torque through the configured bus, and confirm position readings remain available before attempting a demonstration.\n3. **Record a small motion** by hand, saving timestamps and every named joint position. Keep the gripper path clear and avoid supporting weight through cables.\n4. **Validate the file** for missing samples, duplicate times and out-of-range positions. Preview the trajectory before enabling replay.\n5. **Prepare replay** near the starting pose, remove hands and enable actuation. Advance conservatively through the time-indexed positions; finish with teach/replay comparison video.\n\n```mermaid\nflowchart LR\n  A[\"Disable torque\"] --> B[\"Move supported arm\"] --> C[\"Record joints\"] --> D[\"Validate path\"] --> E[\"Replay clear\"]\n```\n\n## Common pitfalls\n\n- **Disabling torque is not unplugging power:** communication must remain available to read positions; verify behavior on your configured hardware.\n- **First-sample jumps:** a recording starting far from the current pose can command abrupt motion. Reject that start rather than blindly seeking it.\n\n> **Watch out:** Support the arm before disabling torque: it can fall; keep hands outside its reachable area during powered replay.\n\n## When it's done\n\n- **Illustrative log timing:** samples at 0.00 s, 0.02 s and 0.04 s are 20 ms apart; preserve measured intervals rather than replaying every row immediately.\n- **Deliverable:** compare taught and replayed joint traces, report timing gaps, and show rejection of an empty or invalid file before progressing to Mixed-reality kinesthetic teaching.",
+      "resources": [
+        {
+          "title": "SO-101 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Confirm the actual arm, calibration and supported setup before writing the recorder."
+        },
+        {
+          "title": "【Assembly Tutorial】Waveshare SO-ARM100/101 Kit,Open-Source Ai Robot Arm #LeRobot #huggingface",
+          "url": "https://www.youtube.com/watch?v=rVP1XQ0PeM4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Identify the physical arm and its assembly constraints; this is not a torque-off recorder tutorial."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish LeRobot’s documented teleoperated recording workflow from this custom hand-guiding project."
+        },
+        {
+          "title": "motors_bus.py",
+          "url": "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/motors/motors_bus.py",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect disable_torque, position reading and position writing interfaces."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=rVP1XQ0PeM4",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/motors/motors_bus.py"
+      ]
+    },
+    {
+      "node_id": "p:red-team-day-jailbreak-our-own-robot-agent",
+      "type": "project",
+      "name": "Red-team day: jailbreak our own robot agent",
+      "summary": "Evaluate your own simulated language-controlled robot against a frozen set of adversarial requests, then compare unsafe actions before and after a guardrail.",
+      "lesson_md": "## In one sentence\n\nEvaluate your own simulated language-controlled robot against a frozen set of adversarial requests, then compare unsafe actions before and after a guardrail.\n\n![Published RoboPAIR figure showing language-controlled robot architecture](/img/lessons/projects_hri_safety_2-red-team.webp)\n*Published RoboPAIR figure showing language-controlled robot architecture. Source: [Published setup](https://arxiv.org/html/2410.13691), arXiv.org perpetual non-exclusive license.*\n\n## What you will learn\n\n- **Red teaming** means authorized testing intended to reveal failures; here the target is only the lab’s isolated simulator and agent.\n- **Guardrail** means a separate check between a language-generated plan and execution. A reassuring text answer does not prove that the executed plan is acceptable.\n- **Software analogy:** put an authorization middleware layer in front of robot actions, then regression-test both denied requests and legitimate workflows.\n\n> **Key idea:** Judge the actions that reach execution, not the politeness of the generated explanation.\n\n## What you need\n\n- **Preparation:** Intro: write a risk assessment for the lab robot and Semantic safety & guardrails for LLM/VLA-controlled robots.\n- **Tools:** your existing simulated agent, a resettable scene and structured action logs. No physical robot purchase is needed; model/API costs depend on your deployment.\n- **Research anchors:** RoboPAIR studies robot-specific jailbreaks; RoboGuard checks contextual safety rules against generated plans. A small local action validator is not their full implementation.\n\n## Steps\n\n1. **Define allowed behavior** as inspectable scene rules: permitted objects, destinations and actions. Use harmless virtual fixtures rather than real hazards or connected hardware.\n2. **Freeze the test set** with benign requests and authorized adversarial paraphrases. Version prompts, scene state and the expected allowed/blocked outcome together.\n3. **Run the baseline** after resetting the scene for each case. Log proposed plans, executed actions, refusals and incomplete runs separately.\n4. **Insert an action gate** that validates structured plans against scene rules before dispatch. Treat unknown actions and malformed plans as rejected inputs.\n5. **Repeat the same cases** and reserve unseen cases for evaluation. End with paired recordings and a before/after results table, including legitimate tasks blocked accidentally.\n\n```mermaid\nflowchart LR\n  A[\"Owned test request\"] --> B[\"Agent plan\"] --> C[\"Independent action gate\"] --> D[\"Simulated execution\"] --> E[\"Score traces\"]\n```\n\n## Common pitfalls\n\n- **Prompt-only defenses** can leave execution unchecked; inspect the action trace even when the assistant says it will behave safely.\n- **Changing denominators** hides failures: report total cases, unsafe executions, blocked benign cases and invalid outputs instead of a success percentage alone.\n\n> **Watch out:** Keep actuator bridges disconnected: run this authorized evaluation only against your own isolated simulated agent.\n\n## When it's done\n\n- **Illustrative score:** 2 unsafe executions among 10 adversarial cases gives 20%; count blocked benign cases separately. These example numbers are not a benchmark result.\n- **Deliverable:** preserve reproducible traces and one remaining failure; do not transplant published RoboPAIR or RoboGuard performance numbers onto your own agent.",
+      "resources": [
+        {
+          "title": "RoboPAIR",
+          "url": "https://robopair.org/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors’ embedded robot demonstration and inspect the evaluation overview."
+        },
+        {
+          "title": "GitHub - arobey1/robopair",
+          "url": "https://github.com/arobey1/robopair",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the original evaluation project while restricting your tests to your own simulator."
+        },
+        {
+          "title": "Jailbreaking LLM-Controlled Robots",
+          "url": "https://arxiv.org/abs/2410.13691",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the robot-specific threat model and experimental settings."
+        },
+        {
+          "title": "Safety Guardrails for LLM-Enabled Robots",
+          "url": "https://arxiv.org/abs/2503.07885",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study contextual rule grounding and plan checking in RoboGuard."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/html/2410.13691",
+        "https://robopair.org/",
+        "https://github.com/arobey1/robopair",
+        "https://arxiv.org/abs/2410.13691",
+        "https://arxiv.org/abs/2503.07885"
+      ]
+    }
+  ]
+}
