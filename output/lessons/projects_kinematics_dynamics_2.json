@@ -309,6 +309,229 @@
         "https://github.com/giacomoran/teleop-android",
         "https://raw.githubusercontent.com/huggingface/lerobot/main/docs/source/phone_teleop.mdx"
       ]
+    },
+    {
+      "node_id": "p:quaternion-pitfalls-benchmark",
+      "type": "project",
+      "name": "Quaternion pitfalls benchmark",
+      "summary": "Build a small notebook that reproduces gimbal lock, quaternion double cover and bad interpolation on a simulated wrist, then fixes each bug.",
+      "lesson_md": "## In one sentence\n\nBuild a small notebook that reproduces gimbal lock, quaternion double cover and bad interpolation on a simulated wrist, then fixes each bug.\n\n![Animated plane whose rotation rings line up in gimbal lock](/img/lessons/projects_kinematics_dynamics_2-quaternion.webp)\n*Gimbal lock: two rotation rings line up and one turning direction disappears. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Gimbal_Lock_Plane.gif), CC0.*\n\n## What you will learn\n\n- **Euler angles:** Three stacked rotations, such as roll, pitch and yaw; at some angles two axes align, which is **gimbal lock**.\n- **Unit quaternion:** Four numbers for one rotation; MuJoCo stores angle a about unit axis (x, y, z) as (cos(a/2), sin(a/2)·(x, y, z)).\n- **Double cover:** A quaternion q and its negative −q describe the same orientation, so naive comparisons can disagree.\n- **Software analogy:** Like comparing two URLs that differ only by a trailing slash; normalize to a canonical form before comparing.\n\n> **Key idea:** Pick one convention, normalize every quaternion, and test every conversion with round trips.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim and skim Rigid-body motion & coordinate frames.\n- **Python stack:** MuJoCo and SciPy; Robotics Toolbox for Python is optional for plotting frames. No hardware.\n- **Wrist model:** A tiny simulated wrist with three revolute joints, written as MJCF or taken from an existing arm.\n\n## Steps\n\n1. **Write the conventions down:** MuJoCo puts the scalar first (w, x, y, z); SciPy `Rotation` expects scalar-last by default.\n2. **Reproduce gimbal lock:** Set the middle Euler angle to 90 degrees; show that the first and third angles now turn the wrist the same way.\n3. **Reproduce double cover:** Convert q and −q to rotation matrices, assert they match, then show a raw vector distance says they differ.\n4. **Break interpolation:** Blend raw quaternion components linearly between two poses; plot the norm drifting below one.\n5. **Apply the fixes:** Normalize, flip the sign when the dot product is negative, and switch to spherical interpolation (SciPy `Slerp`).\n6. **Count failures:** Run one fixed list of target orientations and record failures before and after each fix.\n\n```python\nfrom scipy.spatial.transform import Rotation as R\nq_mj = [1.0, 0.0, 0.0, 0.0]               # MuJoCo order: w, x, y, z\nr = R.from_quat(q_mj, scalar_first=True)  # tell SciPy the order\n```\n\n```mermaid\nflowchart LR\n  N0[\"Fix conventions\"] --> N1\n  N1[\"Reproduce bug\"] --> N2\n  N2[\"Apply fix\"] --> N3\n  N3[\"Count failures\"]\n```\n\n## Common pitfalls\n\n- **Silent order swap:** Passing a MuJoCo quaternion to SciPy without `scalar_first=True` gives a valid but wrong rotation.\n- **Euler sequence mix-up:** SciPy treats lowercase axes as extrinsic and uppercase as intrinsic; record the exact sequence string.\n\n> **Watch out:** A unit-norm check passes for both q and −q, so it never catches a sign flip.\n\n## When it's done\n\n- **Short video:** Side-by-side wrist clips of each bug and its fix.\n- **Results table:** Failure counts per bug, before and after the fix, on the same trial list.\n- **Reusable helper:** One tested function that converts between MuJoCo and SciPy quaternions.\n",
+      "resources": [
+        {
+          "title": "Quaternions and 3d rotation, explained interactively",
+          "url": "https://www.youtube.com/watch?v=zjMuIxRvygQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for how four numbers encode a 3D rotation."
+        },
+        {
+          "title": "Euler Angles and Gimbal Lock, Explained",
+          "url": "https://www.youtube.com/watch?v=BczeMqU_u2Y",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See gimbal lock animated before you reproduce it in code."
+        },
+        {
+          "title": "Rotation",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check quaternion order, Euler sequences and the Slerp helper."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read how MJCF orientations become unit quaternions internally."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=zjMuIxRvygQ",
+        "https://www.youtube.com/watch?v=BczeMqU_u2Y",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html"
+      ]
+    },
+    {
+      "node_id": "p:retarget-human-arm-video-to-the-so-101",
+      "type": "project",
+      "name": "Retarget human arm video to the SO-101",
+      "summary": "Track a person's arm in a video, turn the wrist path into bounded targets, and make an SO-101 follow it with differential inverse kinematics.",
+      "lesson_md": "## In one sentence\n\nTrack a person's arm in a video, turn the wrist path into bounded targets, and make an SO-101 follow it with differential inverse kinematics.\n\n![MediaPipe pose landmarks drawn over a moving person](/img/lessons/projects_kinematics_dynamics_2-arm-video.webp)\n*MediaPipe Pose Landmarker finds body keypoints in each video frame. Source: [Google AI Edge](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker), CC BY 4.0.*\n\n## What you will learn\n\n- **Pose estimation:** A model finds body keypoints in images; MediaPipe Pose Landmarker returns **33 landmarks** per person.\n- **World landmarks:** Those keypoints in meters, centered on the midpoint of the hips, instead of image pixels.\n- **Retargeting:** Mapping motion from one body to another body with different sizes and joints.\n- **Differential IK:** Repeatedly solve for small joint motions that shrink the gap to a target pose; mink does this on MuJoCo models.\n- **Software analogy:** Like porting an API between two languages; concepts map, but some calls have no equivalent and must fail loudly.\n\n> **Key idea:** Copy the hand's path, not the human joint angles, and let the robot's IK decide what is reachable.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101; read Human-to-robot motion retargeting and Differential IK & redundancy resolution (QP-based).\n- **Software:** Python, MediaPipe, MuJoCo, mink and the Menagerie SO-101 model.\n- **Input clips:** A few short, well-lit videos of one arm moving slowly.\n\n## Steps\n\n1. **Extract landmarks:** Run Pose Landmarker on each frame and save shoulder, elbow and wrist world landmarks with timestamps.\n2. **Rescale the arm:** Express the wrist relative to the shoulder, then scale by the ratio of robot reach to human arm length.\n3. **Clamp targets:** Keep each target inside a box you know the SO-101 can reach; mark clamped frames.\n4. **Solve IK in simulation:** Feed targets to a mink position task with joint limits; log residual error per frame.\n5. **Count failures:** On a fixed clip set, report frames that are unreachable, hit limits or exceed an error threshold.\n6. **Replay on hardware:** Only after the simulated replay is clean, play the joint trajectory slowly on the real arm.\n\n```mermaid\nflowchart LR\n  N0[\"Video\"] --> N1\n  N1[\"Pose landmarks\"] --> N2\n  N2[\"Scaled wrist target\"] --> N3\n  N3[\"mink IK\"] --> N4\n  N4[\"SO-101\"]\n```\n\n## Common pitfalls\n\n- **Jittery keypoints:** Raw landmarks wobble between frames; smooth them before IK or the arm vibrates.\n- **Mirrored sides:** Left and right swap easily between camera view and robot frame; test with one labeled arm.\n\n> **Watch out:** Never stream raw video targets straight to motors; limit speed and keep a stop key ready.\n\n## When it's done\n\n- **Side-by-side video:** Person and robot moving together, with clamped or failed frames highlighted.\n- **Failure report:** Counts of unreachable targets and limit hits over the fixed clip set.\n",
+      "resources": [
+        {
+          "title": "Pose Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn the 33 landmarks and the world-coordinate output."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the mink demo and copy its differential-IK loop."
+        },
+        {
+          "title": "GitHub - kevinzakka/mink: Python inverse kinematics based on MuJoCo.",
+          "url": "https://github.com/kevinzakka/mink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reuse example scripts for tasks, limits and mocap targets."
+        },
+        {
+          "title": "mujoco_menagerie/robotstudio_so101 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Get the official SO-101 MuJoCo model to retarget onto."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+        "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+        "https://github.com/kevinzakka/mink",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101"
+      ]
+    },
+    {
+      "node_id": "p:retarget-your-own-dance-to-a-humanoid",
+      "type": "project",
+      "name": "Retarget your own dance to a humanoid",
+      "summary": "Film a short dance, turn it into human motion data, retarget it with GMR, and play it on a simulated Unitree G1.",
+      "lesson_md": "## In one sentence\n\nFilm a short dance, turn it into human motion data, retarget it with GMR, and play it on a simulated Unitree G1.\n\n![GMR banner showing human motion retargeted to several humanoid robots](/img/lessons/projects_kinematics_dynamics_2-dance.webp)\n*GMR retargets human motion onto many humanoid robot models. Source: [GMR on GitHub](https://github.com/YanjieZe/GMR), MIT.*\n\n## What you will learn\n\n- **Motion capture data:** Recorded human joint motion, stored in formats such as SMPL-X, BVH or FBX.\n- **Retargeting:** Converting that human motion into robot joint angles while respecting the robot's own size and limits.\n- **GMR:** General Motion Retargeting, an open-source tool that retargets human motion to humanoids in real time on a CPU.\n- **Retargeting artifacts:** Errors such as **foot sliding**, self-penetration and physically impossible poses, named in the GMR paper.\n- **Software analogy:** Like transcoding a video to a new resolution; the content survives, but artifacts appear if settings are wrong.\n\n> **Key idea:** A retargeted clip only looks right if the feet stay planted and the joints stay inside their limits.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Human-to-robot motion retargeting.\n- **Software:** GMR, MuJoCo and the Unitree G1 model, which GMR and MuJoCo Menagerie both provide.\n- **Video input:** A phone clip of yourself, converted to human motion with GVHMR, which GMR supports.\n\n## Steps\n\n1. **Run a known clip first:** Retarget a public LAFAN1 BVH file with `bvh_to_robot.py --format lafan1` to confirm the setup works.\n2. **Recover your motion:** Run GVHMR on your dance video to get human motion from a single camera.\n3. **Retarget to the G1:** Run `scripts/gvhmr_to_robot.py --robot unitree_g1 --record_video`.\n4. **Show both skeletons:** Put the human and robot side by side and mark frames where joints reach limits.\n5. **Flag foot skating:** Measure how far a foot moves while it should be on the ground; count frames above a threshold.\n\n```mermaid\nflowchart LR\n  N0[\"Dance video\"] --> N1\n  N1[\"GVHMR human motion\"] --> N2\n  N2[\"GMR retarget\"] --> N3\n  N3[\"Simulated G1\"] --> N4\n  N4[\"Artifact check\"]\n```\n\n## Common pitfalls\n\n- **Quaternion order:** GMR follows MuJoCo's w-first order; mixing orders twists the whole body.\n- **Fast moves:** Spins and jumps break retargeting more often; start with a slow, standing motion.\n\n> **Watch out:** A clip that plays kinematically is not proof a real G1 could balance through it.\n\n## When it's done\n\n- **Short clip:** Your dance next to the simulated G1 performing it.\n- **Artifact table:** Joint-limit hits and foot-skating frames, ready for Retargeting-quality study on BeyondMimic.\n",
+      "resources": [
+        {
+          "title": "GitHub - YanjieZe/GMR",
+          "url": "https://github.com/YanjieZe/GMR",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Install GMR and run the LAFAN1 and GVHMR retargeting scripts."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read why retargeting artifacts matter and how GMR reduces them."
+        },
+        {
+          "title": "Retargeting Human Mocap to a Unitree G1 — LAFAN1 Dance with Live IK Error",
+          "url": "https://www.youtube.com/watch?v=nf13R8rtytg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a dance retargeted to a G1 with its IK error shown."
+        },
+        {
+          "title": "GitHub - zju3dv/GVHMR",
+          "url": "https://github.com/zju3dv/GVHMR",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Recover world-grounded human motion from your own video."
+        },
+        {
+          "title": "mujoco_menagerie/unitree_g1 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the G1 model, its joints and its standing keyframe."
+        }
+      ],
+      "sources": [
+        "https://github.com/YanjieZe/GMR",
+        "https://arxiv.org/abs/2510.02252",
+        "https://www.youtube.com/watch?v=nf13R8rtytg",
+        "https://github.com/zju3dv/GVHMR",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1"
+      ]
+    },
+    {
+      "node_id": "p:retargeting-quality-study-on-beyondmimic",
+      "type": "project",
+      "name": "Retargeting-quality study on BeyondMimic",
+      "summary": "Train BeyondMimic tracking policies for a simulated Unitree G1 on motions from two retargeters and compare success rates and artifact counts.",
+      "lesson_md": "## In one sentence\n\nTrain BeyondMimic tracking policies for a simulated Unitree G1 on motions from two retargeters and compare success rates and artifact counts.\n\n![GMR pipeline diagram from human motion to robot motion](/img/lessons/projects_kinematics_dynamics_2-retarget-study.webp)\n*The GMR pipeline turns human motion into robot motion step by step. Source: [GMR on GitHub](https://github.com/YanjieZe/GMR), MIT.*\n\n## What you will learn\n\n- **Motion tracking policy:** A neural network trained with reinforcement learning (RL) to make a simulated robot follow a reference motion.\n- **BeyondMimic:** A humanoid tracking framework whose authors trained many motion clips with the same setup and hyperparameters.\n- **Controlled experiment:** Change only the retargeter, keep everything else fixed, then compare results.\n- **Artifacts as inputs:** The GMR paper reports that foot sliding, self-penetration and infeasible poses hurt tracking.\n- **Software analogy:** Like an A/B test where only one dependency version differs between two builds.\n\n> **Key idea:** Hold the training recipe fixed so any difference in tracking comes from the retargeted data.\n\n## What you need\n\n- **Map preparation:** Finish Retarget your own dance to a humanoid; read Humanoid motion imitation & retargeting and Floating-base & centroidal dynamics (legged/humanoid).\n- **Compute:** An NVIDIA GPU machine; the BeyondMimic code targets Isaac Lab (see Isaac Sim / Isaac Lab).\n- **Motion data:** The same clips retargeted by GMR and by a second source, such as Unitree's retargeted LAFAN1 release.\n\n## Steps\n\n1. **Pick clips:** Choose a few LAFAN1 motions available from both retargeters; freeze the list.\n2. **Export references:** Convert GMR output to CSV with its batch script, then to BeyondMimic's format with `csv_to_npz.py --input_fps 30`.\n3. **Train twice:** Train one tracking policy per retargeter per clip with identical settings and seeds.\n4. **Score tracking:** Measure pose error, falls and unwanted ground contacts over a fixed number of rollouts.\n5. **Count artifacts:** Measure foot sliding and self-collisions in each reference before training.\n6. **Compare:** Plot artifact counts against tracking success for both retargeters.\n\n```mermaid\nflowchart LR\n  N0[\"Same clips\"] --> N1\n  N1[\"Two retargeters\"] --> N2\n  N2[\"Same training\"] --> N3\n  N3[\"Rollouts\"] --> N4\n  N4[\"Compare scores\"]\n```\n\n## Common pitfalls\n\n- **Changed recipe:** Tweaking rewards for one retargeter breaks the comparison.\n- **Too few seeds:** RL results vary between runs; report the spread, not one lucky run.\n\n> **Watch out:** The original BeyondMimic repository notes it has moved to mjlab; check which codebase you follow.\n\n## When it's done\n\n- **Comparison table:** Success rate, falls and artifact counts per retargeter and clip.\n- **Short video:** The same clip tracked using both references, side by side.\n- **Next step:** Use the setup for Compare nominal and residual-dynamics tracking.\n",
+      "resources": [
+        {
+          "title": "BeyondMimic: From Motion Tracking to Versatile Humanoid Control via Guided Diffusion",
+          "url": "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See what BeyondMimic tracking policies achieve on a humanoid."
+        },
+        {
+          "title": "BeyondMimic",
+          "url": "https://beyondmimic.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read the project page describing the tracking framework and results."
+        },
+        {
+          "title": "GitHub - HybridRobotics/whole_body_tracking",
+          "url": "https://github.com/HybridRobotics/whole_body_tracking",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Follow the motion preprocessing and training commands."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Copy the paper's method for comparing retargeters with BeyondMimic."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+        "https://beyondmimic.github.io/",
+        "https://github.com/HybridRobotics/whole_body_tracking",
+        "https://arxiv.org/abs/2510.02252"
+      ]
+    },
+    {
+      "node_id": "p:rnea-vs-aba-timing-notebook",
+      "type": "project",
+      "name": "RNEA vs ABA timing notebook",
+      "summary": "Time inverse and forward dynamics with Pinocchio on arms and a humanoid, and plot how the cost grows with the number of joints.",
+      "lesson_md": "## In one sentence\n\nTime inverse and forward dynamics with Pinocchio on arms and a humanoid, and plot how the cost grows with the number of joints.\n\n![Rendered Franka Panda arm model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-rnea.webp)\n*Menagerie arm models make good test robots for timing. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie), license unknown.*\n\n## What you will learn\n\n- **Inverse dynamics:** Given joint positions, velocities and accelerations, compute the torques; Pinocchio's **RNEA** does this.\n- **Forward dynamics:** Given torques, compute accelerations; Pinocchio's **ABA** (Articulated-Body Algorithm) does this.\n- **Recursive algorithms:** Both sweep along the robot's link chain instead of building large matrices, following Featherstone's methods.\n- **Benchmarking:** Repeat a call many times, discard warm-up runs and report medians.\n- **Software analogy:** Like profiling two sorting functions on growing input sizes to see their complexity curve.\n\n> **Key idea:** RNEA answers \"what torque do I need?\", ABA answers \"what motion will this torque cause?\"\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Efficient dynamics algorithms & analytical derivatives.\n- **Software:** Python with Pinocchio (`pip install pin`), NumPy and Jupyter.\n- **Robot files:** Several models from MuJoCo Menagerie; Pinocchio reads URDF, SDF and MJCF files.\n\n## Steps\n\n1. **Load models:** Build Pinocchio models for a few arms and a humanoid; print each model's `nv` (velocity dimension).\n2. **Draw random states:** Sample valid q, v and a, plus torques tau, with fixed seeds.\n3. **Time both calls:** Time `pin.rnea(model, data, q, v, a)` and `pin.aba(model, data, q, v, tau)` over many repeats.\n4. **Check consistency:** Feed RNEA's torque into ABA and confirm you recover the same acceleration.\n5. **Plot scaling:** Plot median time against `nv`; check whether growth looks roughly linear.\n\n```python\nimport pinocchio as pin\ntau = pin.rnea(model, data, q, v, a)    # inverse dynamics\na2 = pin.aba(model, data, q, v, tau)    # forward dynamics\n```\n\n```mermaid\nflowchart LR\n  N0[\"Load models\"] --> N1\n  N1[\"Random states\"] --> N2\n  N2[\"Time RNEA and ABA\"] --> N3\n  N3[\"Check round trip\"] --> N4\n  N4[\"Plot vs joints\"]\n```\n\n## Common pitfalls\n\n- **Python overhead:** Tiny calls are dominated by binding overhead; note it rather than blaming the algorithm.\n- **Floating base:** Humanoid `q` has more entries than `v` because of the base quaternion; size arrays from the model.\n\n## When it's done\n\n- **Notebook:** Timing tables and one scaling plot for every model.\n- **Sanity check:** The RNEA-ABA round trip error is near zero for all samples.\n",
+      "resources": [
+        {
+          "title": "Robotics3D Lec10d: Recursive Newton Euler Algorithm, RNEA (Spring 2025)",
+          "url": "https://www.youtube.com/watch?v=nPJPJQMMfPw",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Follow the recursive steps of RNEA before timing it."
+        },
+        {
+          "title": "GitHub - stack-of-tasks/pinocchio",
+          "url": "https://github.com/stack-of-tasks/pinocchio",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install Pinocchio and find RNEA, ABA and model loaders."
+        },
+        {
+          "title": "Pinocchio",
+          "url": "https://stack-of-tasks.github.io/pinocchio/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Browse the official documentation and Python examples."
+        },
+        {
+          "title": "GitHub - google-deepmind/mujoco_menagerie",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Pick arm and humanoid models to benchmark."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=nPJPJQMMfPw",
+        "https://github.com/stack-of-tasks/pinocchio",
+        "https://stack-of-tasks.github.io/pinocchio/",
+        "https://github.com/google-deepmind/mujoco_menagerie"
+      ]
     }
   ]
 }
