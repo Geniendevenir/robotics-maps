@@ -1024,6 +1024,254 @@
         "https://www.youtube.com/watch?v=UBCOBzOkMS0",
         "https://www.youtube.com/watch?v=SxT_G-Im_CA"
       ]
+    },
+    {
+      "node_id": "p:measured-short-range-sensor-response-versus-simulated-rays",
+      "type": "project",
+      "name": "Measured short-range sensor response versus simulated rays",
+      "summary": "Sweep a flat target along a ruler in front of a real VL53L1X, rebuild the same setup in Gazebo with ray sensors, and plot real-minus-simulated range residuals against distance.",
+      "lesson_md": "## In one sentence\n\nSweep a flat target along a ruler in front of a real VL53L1X, rebuild the same setup in Gazebo with ray sensors, and plot real-minus-simulated range residuals against distance.\n\n![Pololu VL53L1X time-of-flight distance sensor carrier](/img/lessons/projects_sensing_1-sim-rays.webp)\n*Pololu VL53L1X carrier board. Source: [Pololu product 3415](https://www.pololu.com/product/3415), license unknown.*\n\n## What you will learn\n\n- **Simulated rays:** Gazebo's lidar sensor casts rays with a set number of `samples`, angle limits and `<min>`/`<max>` range.\n- **Real ToF behaviour:** Pololu says long mode reaches 4 m but ambient light cuts range; short mode is limited to about 1.3 m.\n- **Residuals:** Real minus simulated range at each distance, like diffing a mock's output against the production service.\n\n> **Key idea:** A simulator matches reality only where you have measured it; residual plots show where it does not.\n\n## What you need\n\n- **A VL53L1X carrier:** Pololu 3415, read over I²C; its full field of view is 27° with all elements enabled.\n- A matte target on a sliding mount, a 2 m ruler, a microcontroller, and Gazebo Harmonic on a laptop.\n\n## Steps\n\n1. **Measure real data:** target at 10 cm steps, 100 readings each, logging invalid or missing readings.\n2. **Build the virtual fixture:** a box at the same distances and a ray sensor with matching `<min>`, `<max>` and angles.\n3. **Echo simulated ranges** with `gz topic -e -t /lidar` and log them per distance.\n4. **Plot residuals** and valid-return rate versus distance for both.\n5. **Document mismatches:** blind zone near the sensor, dark targets, and ambient light the sim does not model.\n\n```python\nimport numpy as np\nreal = np.array([0.11, 0.20, 0.31, 0.40])   # metres, medians\nsim  = np.array([0.10, 0.20, 0.30, 0.40])\nres_mm = (real - sim) * 1000                # [10, 0, 10, 0]\nprint(res_mm.round())\n```\n\n```mermaid\nflowchart LR\n  R[\"Ruler sweep\"] --> V[\"VL53L1X readings\"]\n  R --> G[\"Gazebo ray sensor\"]\n  V --> D[\"Real minus sim residual\"]\n  G --> D\n  D --> P[\"Residual vs distance plot\"]\n```\n\n## Common pitfalls\n\n- **Tuning on evaluation points:** keep some distances out of any noise-model tuning to test it honestly.\n- **Ignoring invalid returns:** count them; a sim that always returns a range hides blind zones.\n- This is **sensor-model validation**, not SO-101 policy sim-to-real.\n\n## When it's done\n\n- **A split-screen video exists:** real ruler sweep beside the virtual fixture, with residual plots, an empty-target run and a disconnected sensor.\n- Builds on the **Gazebo noise-model fingerprint with known ground truth**; read **Sensor simulation & noise models** and **Short-range ranging: ultrasonic, infrared & ToF**.",
+      "resources": [
+        {
+          "title": "Time of Flight Sensor",
+          "url": "https://www.youtube.com/watch?v=mxMhFZYyAjQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 50-second picture of how time-of-flight ranging works."
+        },
+        {
+          "title": "Pololu - VL53L1X Time-of-Flight Distance Sensor Carrier with Voltage Regulator, 400cm Max",
+          "url": "https://www.pololu.com/product/3415",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distance modes, field of view and ambient-light limits."
+        },
+        {
+          "title": "Arduino code for VL53L1X Time-of-Flight 400cm Laser distance sensor - RJT232",
+          "url": "https://www.youtube.com/watch?v=Sc_iVfeocvg",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Wiring and reading this exact sensor."
+        },
+        {
+          "title": "Sensors — Gazebo harmonic documentation",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How to add and echo a simulated ray sensor."
+        },
+        {
+          "title": "Gazebo Sensors: GaussianNoiseModel Class Reference",
+          "url": "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The noise model you may add to the simulated rays."
+        }
+      ],
+      "sources": [
+        "https://www.pololu.com/product/3415",
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://gazebosim.org/api/sensors/8/classgz_1_1sensors_1_1GaussianNoiseModel.html",
+        "https://www.youtube.com/watch?v=mxMhFZYyAjQ",
+        "https://www.youtube.com/watch?v=Sc_iVfeocvg"
+      ]
+    },
+    {
+      "node_id": "p:measurement-truth-versus-resolution-a-sensor-error-notebook",
+      "type": "project",
+      "name": "Measurement truth versus resolution: a sensor-error notebook",
+      "summary": "Build a notebook that generates a known signal, then toggles bias, quantization and random noise one at a time so you can see each error separately.",
+      "lesson_md": "## In one sentence\n\nBuild a notebook that generates a known signal, then toggles bias, quantization and random noise one at a time so you can see each error separately.\n\n![Plot of a signal, its quantized version and the quantization error](/img/lessons/projects_sensing_1-truth-resolution.webp)\n*Quantization error example. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Quantization_error.png), Gregory Maxwell, CC BY 3.0.*\n\n## What you will learn\n\n- **Truth:** The value you generated, known exactly because you wrote the code.\n- **Resolution:** The smallest step a reading can change by; a fine step does not mean the reading is correct.\n- **Bias and noise:** Kalibr's model splits sensor error into fast **white noise** and a slowly varying **bias**.\n\n> **Key idea:** Resolution, bias and random error are different problems; a sensor can be precise and still wrong.\n\n## What you need\n\n- **A Python notebook:** NumPy and Matplotlib, nothing else.\n- Optionally an IMU log to compare against later with the Allan Variance ROS tool.\n\n## Steps\n\n1. **Generate truth:** a slow sine plus a flat segment and a gap of missing samples.\n2. **Add one error at a time:** constant bias, then rounding to a step, then Gaussian noise.\n3. **Plot error versus truth** for each toggle and compute mean and standard deviation.\n4. **Combine all three** and check you can still recover each from the statistics.\n5. **Handle failures:** flat input, all-NaN input and a stuck value should be reported, not averaged.\n\n```python\nimport numpy as np\nt = np.linspace(0, 10, 1000)\ntruth = np.sin(t)\nbias, step, sigma = 0.05, 0.1, 0.02\nmeas = np.round((truth + bias + np.random.normal(0, sigma, t.size)) / step) * step\nerr = meas - truth\nprint(err.mean(), err.std())   # mean ~ bias; std mixes step and sigma\n```\n\n```mermaid\nflowchart LR\n  T[\"Known truth\"] --> B[\"+ bias\"]\n  B --> N[\"+ white noise\"]\n  N --> Q[\"Quantize to step\"]\n  Q --> E[\"Error = meas - truth\"]\n  E --> P[\"Mean, std, plots\"]\n```\n\n## Common pitfalls\n\n- **Confusing resolution with accuracy:** a 0.01 step on a biased sensor is still biased.\n- **Scaling noise wrongly:** Kalibr notes the discrete noise scales as σ/√Δt with the sample interval.\n- This is an **error-model lesson**, not a robot-state estimator.\n\n## When it's done\n\n- **A screen recording exists:** each error toggled independently with error plots, including flat and missing-signal cases.\n- Then try **ToF range validity across target color and ambient light**, and read **Sensor characteristics, uncertainty & noise**.",
+      "resources": [
+        {
+          "title": "Accuracy and Precision | It's Easy!",
+          "url": "https://www.youtube.com/watch?v=KEeSQvMCPLg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Two-minute intro to accuracy versus precision."
+        },
+        {
+          "title": "5. Quantization - Digital Audio Fundamentals",
+          "url": "https://www.youtube.com/watch?v=1KBLguIXL30",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Visual explanation of rounding a signal to steps."
+        },
+        {
+          "title": "ADC : Offset Error and Gain Error Explained",
+          "url": "https://www.youtube.com/watch?v=G7jkCyGipc8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "How bias-like errors appear in real converters."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "White noise and bias random walk, with equations."
+        },
+        {
+          "title": "ori-drs/allan_variance_ros",
+          "url": "https://github.com/ori-drs/allan_variance_ros",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Tool that estimates these noise terms from real IMU logs."
+        }
+      ],
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Quantization_error.png",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://github.com/ori-drs/allan_variance_ros",
+        "https://www.youtube.com/watch?v=KEeSQvMCPLg",
+        "https://www.youtube.com/watch?v=1KBLguIXL30",
+        "https://www.youtube.com/watch?v=G7jkCyGipc8"
+      ]
+    },
+    {
+      "node_id": "p:microphone-channel-ordering-and-geometry-clap-board",
+      "type": "project",
+      "name": "Microphone channel ordering and geometry clap board",
+      "summary": "Label each microphone on a ReSpeaker array, clap next to one at a time, and use per-channel waveforms to prove which USB channel is which raw microphone.",
+      "lesson_md": "## In one sentence\n\nLabel each microphone on a ReSpeaker array, clap next to one at a time, and use per-channel waveforms to prove which USB channel is which raw microphone.\n\n![ReSpeaker Mic Array v2.0 hardware overview with labelled parts](/img/lessons/projects_sensing_1-mic-clap.webp)\n*ReSpeaker Mic Array v2.0 hardware overview. Source: [Seeed Studio ReSpeaker wiki](https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/), license unknown.*\n\n## What you will learn\n\n- **Firmware decides channels:** The 1-channel firmware outputs processed audio only; the 6-channel factory firmware adds raw mics.\n- **Channel map:** Seeed lists channel 0 as processed audio, channels 1–4 as raw mic1–mic4, channel 5 as merged playback.\n- **Interleaving:** Six channels arrive mixed in one stream, like fields packed in one byte buffer.\n\n> **Key idea:** Never assume a USB audio channel is a raw microphone until a physical test proves it.\n\n## What you need\n\n- **A ReSpeaker USB 4-Mic Array v2.0** with the 6-channel firmware, a laptop with Python and `pyaudio`.\n- A card with each mic position labelled from the wiki's hardware overview, and a quiet room.\n\n## Steps\n\n1. **Check the firmware** and record six channels at 16000 Hz with Seeed's `record.py` example.\n2. **Clap safely** about 10 cm from mic1, then each other mic, announcing the label on camera.\n3. **Split channels** with `[X::6]` slicing and plot all six waveforms aligned.\n4. **Confirm the loudest channel** matches the labelled mic for every clap.\n5. **Run controls:** a quiet recording, and a mic covered or the device unplugged.\n\n```python\nimport numpy as np\ndata = np.frombuffer(raw, dtype=np.int16)   # 2-byte samples\nch = [data[i::6] for i in range(6)]\npeaks = [np.abs(c).max() for c in ch]\nprint(np.argmax(peaks[1:5]) + 1)            # loudest raw mic channel\n```\n\n```mermaid\nflowchart LR\n  C[\"Clap near labelled mic\"] --> A[\"Mic array\"]\n  A --> U[\"6-channel USB stream\"]\n  U --> S[\"Split with X::6\"]\n  S --> W[\"Per-channel waveforms\"]\n  W --> M[\"Verified channel map\"]\n```\n\n## Common pitfalls\n\n- **Treating channel 0 as raw:** it is processed audio for speech recognition.\n- **Wrong firmware loaded:** the 1-channel firmware gives a single processed stream.\n- Adding **source localization** now mixes two questions; keep this to channel mapping.\n\n## When it's done\n\n- **A video exists:** labelled mic positions, safe claps, and per-channel waveforms confirming ordering, plus quiet and disconnected cases.\n- Next, the **Long-recording microphone sample-clock drift audit**; read **Microphone arrays & robot audio acquisition**.",
+      "resources": [
+        {
+          "title": "ReSpeaker Mic Array v2.0 Unboxing",
+          "url": "https://www.youtube.com/watch?v=1zJwrD5yURM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the board and its four microphones."
+        },
+        {
+          "title": "Seeed Studio ReSpeaker Mic Array 2.0 - First Hands-on And Tests!",
+          "url": "https://www.youtube.com/watch?v=1YH9pMCC4SE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hands-on setup and recording tests."
+        },
+        {
+          "title": "reSpeaker USB 4-Mic Array XVF3000 v2.0 | Seeed Studio Wiki",
+          "url": "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Firmware channel table and Python recording example."
+        },
+        {
+          "title": "What is Sample Rate? | iZotope Pro Audio Essentials",
+          "url": "https://www.youtube.com/watch?v=fZzMXdxbOes",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Background on what each channel's samples represent."
+        }
+      ],
+      "sources": [
+        "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+        "https://www.youtube.com/watch?v=1zJwrD5yURM",
+        "https://www.youtube.com/watch?v=1YH9pMCC4SE",
+        "https://www.youtube.com/watch?v=fZzMXdxbOes"
+      ]
+    },
+    {
+      "node_id": "p:motor-current-torque-estimate-versus-an-independent-load-reference",
+      "type": "project",
+      "name": "Motor-current torque estimate versus an independent load reference",
+      "summary": "Hold an ODrive-driven motor in a guarded static fixture, convert its current into an estimated torque, and compare that curve against an independent force/torque sensor.",
+      "lesson_md": "## In one sentence\n\nHold an ODrive-driven motor in a guarded static fixture, convert its current into an estimated torque, and compare that curve against an independent force/torque sensor.\n\n![ODrive diagram of the region of allowed current versus velocity in torque mode](/img/lessons/projects_sensing_1-motor-torque.webp)\n*ODrive torque-mode current and velocity limits. Source: [ODrive controller documentation](https://docs.odriverobotics.com/v/latest/manual/control.html), license unknown.*\n\n## What you will learn\n\n- **Torque constant:** ODrive converts between current and torque with `torque_constant`, approximately 8.27 / Kv, with Kv in rpm/V.\n- **Estimate versus reference:** Current-derived torque is a model; a separate sensor checks it, like comparing a cached value with the database.\n- **Hysteresis:** Loading up and unloading can give different readings at the same torque.\n\n> **Key idea:** Motor current tells you what the motor thinks it pushes; only an independent sensor tells you what reaches the load.\n\n## What you need\n\n- **ODrive setup:** An ODrive S1 / Pro with a supported motor, conservative current and velocity limits, and a supervisor's review.\n- **Load reference:** For example an ATI Mini45; ATI lists 5 Nm Tz range and 1/1504 Nm resolution for SI-145-5.\n- A rated, restrained lever-arm fixture with a guard.\n\n## Steps\n\n1. **Lock the fixture** so the shaft cannot spin, then set `ControlMode.TORQUE_CONTROL`.\n2. **Step `input_torque`** up in small increments, holding each, then step back down.\n3. **Log both** the current-derived torque and the reference sensor at every step.\n4. **Plot the two curves separately,** then their difference, rising versus falling.\n5. **Run controls:** zero command (no-signal) and a disconnected reference sensor.\n\n```python\nKv = 150                       # rpm/V, from the ODrive example\nkt = 8.27 / Kv                 # 0.0551 Nm/A\nest_nm = kt * 2.0              # 2 A -> 0.110 Nm at the motor\nref_nm = 0.098                 # reference sensor reading\nprint(est_nm - ref_nm)         # 0.012 Nm gap to explain\n```\n\n```mermaid\nflowchart LR\n  C[\"input_torque command\"] --> M[\"ODrive + motor\"]\n  M --> I[\"Measured current\"]\n  I --> K[\"x torque_constant\"]\n  M --> F[\"Restrained lever arm\"]\n  F --> R[\"Independent F/T sensor\"]\n  K --> P[\"Two separate curves\"]\n  R --> P\n```\n\n## Common pitfalls\n\n- **Forgetting the gearbox:** ODrive says to adjust the torque constant for gear ratios.\n- **Lever-arm mistakes:** the reference reads torque at its own axis; measure the arm length.\n- This is **static calibration**, not a safety function or contact detector; Feetech load feedback is not current.\n\n## When it's done\n\n- **A guarded video exists:** current-derived and reference torque curves shown separately, with zero-command and disconnected-sensor trials.\n- Builds on **Six-axis wrench units and lever-arm replay**; read **Force/torque sensing & current-based torque estimation**.",
+      "resources": [
+        {
+          "title": "Torque constant and back-EMF constant (Motors #4)",
+          "url": "https://www.youtube.com/watch?v=9eUxWdtOrik",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Why motor current is proportional to torque."
+        },
+        {
+          "title": "Controller — ODrive Documentation 0.6.12 documentation",
+          "url": "https://docs.odriverobotics.com/v/latest/manual/control.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Torque control mode and the torque_constant setting."
+        },
+        {
+          "title": "Brushless Motor Torque Test for Robots (ODrive Controller)",
+          "url": "https://www.youtube.com/watch?v=bKqYYjGzpCY",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A real bench test of ODrive motor torque."
+        },
+        {
+          "title": "ODrive S1 - Torque Control Mode - LA8308 motor",
+          "url": "https://www.youtube.com/watch?v=fmVHYnsHvM8",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Short clip of torque mode on real hardware."
+        },
+        {
+          "title": "ATI Industrial Automation: F/T Sensor Mini45",
+          "url": "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Ranges and resolutions of a lab-grade reference sensor."
+        }
+      ],
+      "sources": [
+        "https://docs.odriverobotics.com/v/latest/manual/control.html",
+        "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45",
+        "https://www.youtube.com/watch?v=9eUxWdtOrik",
+        "https://www.youtube.com/watch?v=bKqYYjGzpCY",
+        "https://www.youtube.com/watch?v=fmVHYnsHvM8"
+      ]
+    },
+    {
+      "node_id": "p:multi-camera-usb-topology-and-capture-bandwidth-atlas",
+      "type": "project",
+      "name": "Multi-camera USB topology and capture-bandwidth atlas",
+      "summary": "Plug two USB cameras into known host ports, step through resolutions, and build a dashboard of real capture rate and device identity per port.",
+      "lesson_md": "## In one sentence\n\nPlug two USB cameras into known host ports, step through resolutions, and build a dashboard of real capture rate and device identity per port.\n\n![LeRobot dataset folder layout with one video folder per camera key](/img/lessons/projects_sensing_1-usb-cameras.webp)\n*LeRobotDataset v2.1 versus v3.0 file layout, with videos stored per camera key. Source: [LeRobotDataset v3.0 docs](https://huggingface.co/docs/lerobot/lerobot-dataset-v3), license unknown.*\n\n## What you will learn\n\n- **Device identity:** LeRobot warns camera identifiers may change after rebooting or re-plugging, depending on your OS.\n- **Requested versus delivered:** `OpenCVCameraConfig` asks for width, height and fps; the camera may deliver less.\n- **Topology:** Which physical port and hub each camera uses, like mapping services to the network links they share.\n\n> **Key idea:** A camera config is a request; only measured frame rates per port tell you what your rig delivers.\n\n## What you need\n\n- **Two USB webcams** and a Linux laptop with LeRobot and `v4l2-ctl` installed.\n- Labels for every host port and hub, and a printed timer or clock in view.\n\n## Steps\n\n1. **Discover cameras** with `lerobot-find-cameras opencv` and `v4l2-ctl --list-devices`, noting each `/dev/videoX`.\n2. **Label topology:** which port, hub and camera; photograph it.\n3. **Sweep resolutions:** for each camera, request 640×480 at 30 fps, then larger modes, alone and together.\n4. **Measure delivered fps** with `async_read`, counting timeouts as dropped frames.\n5. **Replug and reboot,** then record whether identities moved; also test a camera covered and one unplugged.\n\n```python\nimport time\nn, t0 = 0, time.time()\nwhile time.time() - t0 < 10:\n    try:\n        cam.async_read(timeout_ms=200); n += 1\n    except TimeoutError:\n        print(\"frame timeout\")\nprint(n / 10, \"fps delivered\")\n```\n\n```mermaid\nflowchart LR\n  P[\"Labelled USB ports\"] --> C[\"Camera A + B\"]\n  C --> F[\"lerobot-find-cameras\"]\n  F --> R[\"Resolution sweep\"]\n  R --> M[\"Delivered fps\"]\n  F --> I[\"Identity after replug\"]\n  M --> D[\"Atlas dashboard\"]\n  I --> D\n```\n\n## Common pitfalls\n\n- **Trusting indices:** `index_or_path=0` may point to a different camera after a replug.\n- **Single-camera testing:** shared hubs can behave differently when both stream.\n- This characterizes the **acquisition rig**, not timestamp alignment or dataset training.\n\n## When it's done\n\n- **A video exists:** two cameras, their ports, and a dashboard of capture rate and identity across resolutions and replug tests.\n- Then try the **Quick-release wrist-camera remount calibration fixture**; read **Wrist cameras & multi-camera data-collection rigs** and the **LeRobot** docs.",
+      "resources": [
+        {
+          "title": "Using multiple USB webcams in Linux (3 Solutions!!)",
+          "url": "https://www.youtube.com/watch?v=q_omtqPABZI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short look at multi-webcam issues on Linux."
+        },
+        {
+          "title": "Cameras · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/cameras",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Finding cameras, configs and read modes in LeRobot."
+        },
+        {
+          "title": "SO 101 LeRobot AI Robot Learning Setup | Complete DIY Build, Cameras, Lighting and ACT",
+          "url": "https://www.youtube.com/watch?v=pbd-qDRHLnM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "A real SO-101 rig with its camera setup."
+        },
+        {
+          "title": "LeRobotDataset v3.0 · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How per-camera video ends up in a dataset."
+        },
+        {
+          "title": "How to Train an AI Robotic Arm With No Code (Hugging Face LeRobot + SO-101)",
+          "url": "https://www.youtube.com/watch?v=7tGT8hqRSAo",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "Long end-to-end walkthrough including camera setup."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/cameras",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://www.youtube.com/watch?v=q_omtqPABZI",
+        "https://www.youtube.com/watch?v=pbd-qDRHLnM",
+        "https://www.youtube.com/watch?v=7tGT8hqRSAo"
+      ]
     }
   ]
 }
