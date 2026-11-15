@@ -1,0 +1,972 @@
+{
+  "batch": "projects_kinematics_dynamics_2",
+  "lessons": [
+    {
+      "node_id": "p:intro-robot-anatomy-coordinate-frames-in-sim",
+      "type": "project",
+      "name": "Intro: robot anatomy & coordinate frames in sim",
+      "summary": "Move a simulated arm with code and display the coordinate frames that explain where its links and gripper are.",
+      "lesson_md": "## In one sentence\n\nMove a simulated arm with code and display the coordinate frames that explain where its links and gripper are.\n\n![Gray and red Puma 560 stick models with coordinate axes in a three-dimensional plot](/img/lessons/projects_kinematics_dynamics_2-anatomy.webp)\n*Puma 560 model in two configurations; the small axes mark link frames. Source: [Robotics Toolbox](https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html), license unknown.*\n\n## What you will learn\n\n- **Links and joints:** A link is a rigid part; a joint allows relative motion between parts. Your viewer should make that chain visible.\n- **Coordinate frames:** Each frame is an origin with axes. A pose describes position and orientation relative to another frame, not an address in universal space.\n- **Software analogy:** A transform is an adapter between coordinate APIs; composing adapters lets a gripper point travel into the base frame.\n\n> **Key idea:** A position is incomplete until you say which frame expresses it.\n\n## What you need\n\n- **Simulated setup:** Use a computer, Python, and Robotics Toolbox for Python with its plotting backend; no robot hardware purchase is needed.\n- **Map foundations:** Read Rigid-body motion & coordinate frames, then use this exercise before Forward kinematics three ways.\n\n## Steps\n\n1. **Load a known model:** Start with the documented Puma 560 model rather than measuring a physical arm.\n2. **Inspect the chain:** Label the base, links, joints, and tool; display their axes and change one joint at a time.\n3. **Evaluate forward kinematics:** Convert joint coordinates into the tool pose. Run the example below and compare its matrix with the viewer.\n4. **Add a target:** Solve inverse kinematics, which finds joints for a requested tool pose; use the previous solution as the next initial guess.\n5. **Demo frame reasoning:** Replay several reachable poses, reject an unreachable target, and explain one deliberately reversed transform.\n\n```python\nimport roboticstoolbox as rtb\nrobot = rtb.models.DH.Puma560()\nq = robot.qn\nprint(robot.fkine(q))\nrobot.teach(q)\n```\n\n```mermaid\nflowchart LR\n  N0[\"Joint angles\"] --> N1\n  N1[\"Link transforms\"] --> N2\n  N2[\"Tool pose\"] --> N3\n  N3[\"Viewer and target check\"]\n```\n\n## Common pitfalls\n\n- **Order matters:** Reversing transform multiplication changes its meaning; label source and destination frames before debugging the matrix entries.\n- **Units matter:** Keep internal angles in radians and lengths in metres; label any degree conversion at the user interface.\n\n## When it's done\n\n- **Visible evidence:** Save a short replay with named axes and a table comparing requested and achieved tool positions.\n- **Reproducible handoff:** Include model name, joint vectors, frame convention, and failed targets so another student can rerun the same checks.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 3.3.1:  Homogeneous Transformation Matrices",
+          "url": "https://www.youtube.com/watch?v=vlb3P7arbkU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how one matrix carries a frame's orientation and position."
+        },
+        {
+          "title": "Elementary transform sequences",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/ets.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build a chain from elementary rotations and translations."
+        },
+        {
+          "title": "Superclasses",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Use fkine, plot, and teach to inspect a simulated arm."
+        },
+        {
+          "title": "Modern Robotics, Chapter 6.2:  Numerical Inverse Kinematics (Part 1 of 2)",
+          "url": "https://www.youtube.com/watch?v=VhUA0jf7tI8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand iterative target reaching and why some requests fail."
+        }
+      ],
+      "sources": [
+        "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+        "https://www.youtube.com/watch?v=vlb3P7arbkU",
+        "https://petercorke.github.io/robotics-toolbox-python/ets.html",
+        "https://www.youtube.com/watch?v=VhUA0jf7tI8",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics/"
+      ]
+    },
+    {
+      "node_id": "p:jacobian-transpose-force-estimation",
+      "type": "project",
+      "name": "Jacobian-transpose force estimation",
+      "summary": "Estimate a restricted tip force from joint effort estimates, then compare it with a scale instead of treating servo telemetry as ground truth.",
+      "lesson_md": "## In one sentence\n\nEstimate a restricted tip force from joint effort estimates, then compare it with a scale instead of treating servo telemetry as ground truth.\n\n![SO-101 follower arm with its gripper open](/img/lessons/projects_kinematics_dynamics_2-force.webp)\n*SO-101 follower, the proposed force-estimation platform; no force-estimation result is shown. Source: [LeRobot](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Student proposal:** Build a static experiment, not a certified force sensor. Begin with simulated torques before adapting SO-101 telemetry.\n- **Jacobian:** This matrix maps joint speeds to tip motion; its transpose maps a tip wrench, meaning force plus moment, to joint torques.\n- **Software analogy:** This is an inverse problem like recovering inputs from logs; incomplete or biased measurements can make the answer ambiguous.\n\n> **Key idea:** The transpose relation predicts joint effort; recovering force also needs calibrated effort and enough independent measurements.\n\n## What you need\n\n- **Prerequisites:** Complete Assemble & teleoperate an SO-101 and study Velocity kinematics, Jacobians & singularities; use Pinocchio for model calculations.\n- **Bench equipment:** Use a clamped SO-101, its model, a kitchen scale, and synchronized joint logs. Hardware cost and achievable accuracy are unknown.\n- **Telemetry contract:** Establish the available load signal's units and torque calibration first; without that mapping, report relative load rather than newtons.\n\n## Steps\n\n1. **Restrict the experiment:** Begin with one known force direction, a stationary arm, and a model with consistent force and torque signs.\n2. **Validate the equation:** In simulation, apply a known tip force and check that the Jacobian transpose predicts the corresponding joint torques.\n3. **Work a toy example:** A hypothetical 0.1 m moment arm and 0.2 N·m torque imply 2 N of perpendicular force; this is not a servo calibration.\n4. **Measure a baseline:** Record unloaded effort at each posture; account for gravity before comparing gentle scale contacts at those same postures.\n5. **Demo the comparison:** Plot estimated versus reference force, including unloaded trials, repeated contacts, and rejected near-singular postures.\n\n```mermaid\nflowchart LR\n  N0[\"Joint readings\"] --> N1\n  N1[\"Effort calibration\"] --> N2\n  N2[\"Gravity subtraction\"] --> N3\n  N3[\"Force fit\"] --> N4\n  N4[\"Scale comparison\"]\n```\n\n## Common pitfalls\n\n- **Singular geometry:** Some force components cannot be distinguished from the available joint torques; do not blindly invert a rectangular or rank-deficient matrix.\n- **Unmodelled effort:** Friction and motion can contaminate contact estimates; static tests isolate the simpler relationship before dynamic experiments.\n\n> **Watch out:** Keep fingers outside the powered arm's reach and stop before pushing beyond the scale or fixture's limits.\n\n## When it's done\n\n- **Honest result:** Report errors across postures and a no-contact baseline, with calibration data and rejected trials preserved.\n- **Failure is informative:** If effort calibration fails, deliver the validated simulation and explain why physical force estimates remain unverified.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.2:  Statics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=eBti6XIoR5U",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the joint-torque and tip-wrench relationship."
+        },
+        {
+          "title": "5.2. Statics of Open Chains",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-2-statics-of-open-chains/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the derivation and its frame conventions."
+        },
+        {
+          "title": "Kinematics algorithms",
+          "url": "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/f-kinematic.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Locate model-based Jacobian computations."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify and calibrate the actual arm before collecting telemetry."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=eBti6XIoR5U",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-2-statics-of-open-chains/",
+        "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/f-kinematic.html"
+      ]
+    },
+    {
+      "node_id": "p:leader-arm-fk-pose-streamer",
+      "type": "project",
+      "name": "Leader-arm FK pose streamer",
+      "summary": "Turn SO-101 leader joint readings into a live gripper pose and display that pose in a three-dimensional viewer.",
+      "lesson_md": "## In one sentence\n\nTurn SO-101 leader joint readings into a live gripper pose and display that pose in a three-dimensional viewer.\n\n![SO-101 leader arm with handle and trigger](/img/lessons/projects_kinematics_dynamics_2-leader-fk.webp)\n*SO-101 leader with its hand-operated handle, the input device for the proposed streamer. Source: [LeRobot](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Student proposal:** The deliverable is a measured-joint-to-viewer pipeline, not a claim that this exact streamer already exists.\n- **Forward kinematics:** Given joint angles and link geometry, compute the gripper's position and orientation. Unlike inverse kinematics, there is no target-search step.\n- **Software analogy:** Treat each timestamped joint sample as an event; a pure geometry function transforms it into a pose event for the renderer.\n\n> **Key idea:** Stream a pose computed from measured joints, not a pose guessed from the last command.\n\n## What you need\n\n- **Hardware:** Use a calibrated SO-101 leader, its serial interface, and a computer; a powered follower is unnecessary for the first viewer demo.\n- **Model contract:** Obtain leader geometry and joint conventions; do not silently substitute follower offsets or assume normalized motor values are radians.\n- **Related nodes:** Start after Assemble & teleoperate an SO-101; connect Forward kinematics (DH & product of exponentials) with Robotics Toolbox for Python.\n- **Budget:** Reuse the lab's leader where possible; current acquisition cost is unknown.\n\n## Steps\n\n1. **Prototype offline:** Feed saved model joint vectors through forward kinematics and verify the viewer agrees with the computed tool frame.\n2. **Exercise a documented model:** Run the Puma example below to understand the API before replacing it with the leader's validated model.\n3. **Read measured joints:** Calibrate the leader using its documented workflow; map names, signs, offsets, and units explicitly.\n4. **Publish pose samples:** Include timestamp, base frame, tool frame, position, and orientation; mark missing or stale joint samples rather than extrapolating silently.\n5. **Demo live motion:** Move one leader joint at a time, then replay a recording and compare the same poses.\n\n```python\nimport roboticstoolbox as rtb\nrobot = rtb.models.DH.Puma560()\nfor q in (robot.qz, robot.qn):\n    pose = robot.fkine(q)\n    print(pose)\n```\n\n```mermaid\nflowchart LR\n  N0[\"Leader readings\"] --> N1\n  N1[\"Named joint vector\"] --> N2\n  N2[\"Forward kinematics\"] --> N3\n  N3[\"Pose message\"] --> N4\n  N4[\"Viewer\"]\n```\n\n## Common pitfalls\n\n- **Wrong frame:** The last link's origin need not be the handle or gripper point; record the fixed tool offset.\n- **False smoothness:** An attractive animation can hide dropped readings; display sample age alongside motion.\n\n## When it's done\n\n- **Repeatable demonstration:** Save joint logs and a viewer recording with visible base and tool axes, including an intentional stream interruption.\n- **Acceptance evidence:** Check repeat poses, show the joint mapping, and separate geometry validation from rendering performance.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 4.1.1:  Product of Exponentials Formula in the Space Frame",
+          "url": "https://www.youtube.com/watch?v=hE_Duih_7JE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how a joint chain becomes an end-effector pose."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the leader-specific calibration procedure."
+        },
+        {
+          "title": "Superclasses",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Use fkine and viewer helpers for an offline pose-streaming prototype."
+        },
+        {
+          "title": "4.1.1. Product of Exponentials Formula in the Space Frame",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/4-1-1-product-of-exponentials-formula-in-the-space-frame/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Review the transform chain before implementing the physical leader model."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=hE_Duih_7JE",
+        "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/4-1-1-product-of-exponentials-formula-in-the-space-frame/"
+      ]
+    },
+    {
+      "node_id": "p:live-manipulability-ellipsoid",
+      "type": "project",
+      "name": "Live manipulability ellipsoid",
+      "summary": "Draw a simulated arm's velocity ellipsoid live so students can see which directions become difficult near a singular posture.",
+      "lesson_md": "## In one sentence\n\nDraw a simulated arm's velocity ellipsoid live so students can see which directions become difficult near a singular posture.\n\n![Velocity ellipses of a planar arm flattening as it nears a singularity, with Jacobian equations](/img/lessons/projects_kinematics_dynamics_2-ellipsoid.webp)\n*Velocity ellipses go from round to a flat line as the arm approaches a singularity. Source: [J-PARSE paper (arXiv)](https://arxiv.org/html/2505.00306v6), CC BY-NC-ND 4.0.*\n\n## What you will learn\n\n- **Velocity ellipsoid:** Map a unit sphere of joint speeds through the Jacobian; the resulting stretched shape shows the available tip velocities.\n- **Singularity:** A posture loses an independent motion direction when the relevant Jacobian loses rank; an ellipsoid axis then collapses.\n- **Software analogy:** Think of a local sensitivity visualization for a function: some input changes strongly affect output, while others barely move it.\n\n> **Key idea:** The ellipsoid describes local velocity capability at one posture, not the robot's entire reachable workspace.\n\n## What you need\n\n- **Simulated setup:** Use Python and Robotics Toolbox for Python with its PyPlot viewer; no physical arm or additional hardware is required.\n- **Map route:** Complete Intro: robot anatomy & coordinate frames in sim, then study Velocity kinematics, Jacobians & singularities.\n- **Consistent task:** Start with translation only, meaning tip movement along three axes; keep orientation capability separate rather than mixing metres and angular units.\n\n## Steps\n\n1. **Choose the model:** Load the documented Puma 560 and display its nominal posture with the base and tool axes visible.\n2. **Enable the overlay:** Use the toolbox's velocity-ellipsoid plotting option; keep its drawing scale fixed across posture changes.\n3. **Inspect the matrix:** Compute the translational Jacobian and compare its independent motion directions with the displayed ellipsoid.\n4. **Sweep toward degeneracy:** Move joints gradually toward a rank-deficient posture; log the shrinking axis rather than dividing by its length.\n5. **Demo the contrast:** Replay a well-conditioned and a near-singular posture side by side, explaining the direction that becomes unavailable.\n\n```python\nimport roboticstoolbox as rtb\nrobot = rtb.models.DH.Puma560()\nJ_translation = robot.jacob0(robot.qn)[:3, :]\nprint(J_translation.shape)\nrobot.teach(robot.qn, vellipse=True, backend=\"pyplot\")\n```\n\n```mermaid\nflowchart LR\n  N0[\"Joint sliders\"] --> N1\n  N1[\"Jacobian\"] --> N2\n  N2[\"Velocity ellipsoid\"] --> N3\n  N3[\"Viewer and axis log\"]\n```\n\n## Common pitfalls\n\n- **Scale confusion:** The overlay uses a drawing scale; label that multiplier so students do not mistake it for a physical volume.\n- **Different ellipsoids:** A force ellipsoid answers a different question; do not label a velocity plot as payload capacity.\n- **Hidden normalization:** Unit joint-speed assumptions are not measured motor speed limits; explain the chosen normalization in the demo.\n\n## When it's done\n\n- **Observable collapse:** Save a replay and matrix log showing a shrinking translational direction, including the singular case without a renderer crash.\n- **Explain the limitation:** State the selected frame, Jacobian rows, scaling, and normalization so another student can reproduce the same shape.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.4:  Manipulability",
+          "url": "https://www.youtube.com/watch?v=8VSrYDi_cs0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch velocity and force ellipsoids change with arm posture."
+        },
+        {
+          "title": "5.4.  Manipulability",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the explanation of axes, singularities, and separate angular and linear motion."
+        },
+        {
+          "title": "Superclasses",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Use jacob0, vellipse, and teach for a live viewer."
+        },
+        {
+          "title": "Elementary transform sequences",
+          "url": "https://petercorke.github.io/robotics-toolbox-python/ets.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the chain representation underlying the Jacobian."
+        }
+      ],
+      "sources": [
+        "https://petercorke.github.io/robotics-toolbox-python/arm_superclass.html",
+        "https://www.youtube.com/watch?v=8VSrYDi_cs0",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+        "https://petercorke.github.io/robotics-toolbox-python/ets.html"
+      ]
+    },
+    {
+      "node_id": "p:marker-free-self-calibration",
+      "type": "project",
+      "name": "Marker-free self-calibration",
+      "summary": "Prototype arm-and-camera calibration from ordinary RGB-D observations, then measure held-out alignment errors without claiming an unverified SO-101 reproduction.",
+      "lesson_md": "## In one sentence\n\nPrototype arm-and-camera calibration from ordinary RGB-D observations, then measure held-out alignment errors without claiming an unverified SO-101 reproduction.\n\n![RealSense D405 mounted above a robot gripper](/img/lessons/projects_kinematics_dynamics_2-self-calibration.webp)\n*Official RealSense D405 wrist-mount example, a candidate RGB-D arrangement for the proposed low-cost adaptation. Source: [TheRobotStudio](https://github.com/TheRobotStudio/SO-ARM100), Apache-2.0.*\n\n## What you will learn\n\n- **Research starting point:** Lee, Kim, and You's Robot Arm Self-Calibration Using RGB-D Camera describes joint arm/camera calibration without external markers, evaluated on a Franka Emika Panda.\n- **Student adaptation:** That result does not establish SO-101 performance. The public abstract describes learned image correspondences; full implementation details and reproducibility remain unverified here.\n- **RGB-D:** A sensor supplies colour and depth images; camera parameters turn depth samples into three-dimensional points.\n- **Software analogy:** Calibration resembles fitting configuration parameters against integration-test observations; reserve unseen observations to detect overfitting.\n\n> **Key idea:** Removing markers does not remove the need for independent evidence that the fitted geometry is correct.\n\n## What you need\n\n- **Map preparation:** Complete Camera-to-arm hand-eye calibration for the SO-101 and review Kinematic & hand-eye calibration before removing the calibration target.\n- **Candidate setup:** Use an SO-101 model, a rigidly mounted RGB-D camera, synchronized joint logs, and a textured static scene; total cost is unknown.\n- **Scope boundary:** Begin with simulated observations and a fixed arm model; only extend to joint geometric parameter fitting after validating camera alignment.\n\n## Steps\n\n1. **Record varied views:** Save colour, depth, joints, timestamps, and frame conventions; reserve entire poses for evaluation before fitting.\n2. **Build point clouds:** Follow Open3D's RGBD images example; inspect missing depth and scale before trusting geometric distances.\n3. **Establish an alignment baseline:** Use known simulated transforms first; Open3D ICP refines a rough initial alignment but is not itself full arm self-calibration.\n4. **Work the reference example:** Reproduce Open3D's ICP threshold of 0.02 in its example's coordinate units; report both overlap fitness and inlier distance error.\n5. **Demo held-out evaluation:** Compare initial and fitted alignment on unseen views; show rejected observations and failures alongside successful overlays.\n\n```mermaid\nflowchart LR\n  N0[\"RGB-D and joints\"] --> N1\n  N1[\"Correspondence checks\"] --> N2\n  N2[\"Parameter fit\"] --> N3\n  N3[\"Held-out views\"] --> N4\n  N4[\"Residual report\"]\n```\n\n## Common pitfalls\n\n- **Insufficient evidence:** A textureless scene or repeated similar poses may fail to constrain the fit; collect varied observations rather than merely more frames.\n- **Misleading residuals:** Low error on selected correspondences alone does not prove accurate arm geometry or reliable camera alignment.\n\n## When it's done\n\n- **Concrete handoff:** Deliver data, transforms, overlays, error distributions, and failure counts; distinguish the implemented baseline from the paper's unverified details.\n- **Honest stopping point:** If full reproduction is blocked, document the missing information instead of presenting an ICP demo as the published method.",
+      "resources": [
+        {
+          "title": "Direct Linear Transform for Camera Calibration and Localization (Cyrill Stachniss)",
+          "url": "https://www.youtube.com/watch?v=3NcQbZu6xt8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the camera calibration and localization problem before attempting marker-free joint fitting."
+        },
+        {
+          "title": "RGBD images",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Convert colour and depth observations into calibrated point clouds."
+        },
+        {
+          "title": "ICP registration",
+          "url": "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build a geometric alignment baseline and inspect overlap and residual metrics."
+        },
+        {
+          "title": "Robot Arm Self-Calibration Using RGB-D Camera",
+          "url": "https://aiconfpaper.com/paper/ral-2025-LeeKY25",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Read the freely accessible abstract; this is not an open full-text implementation."
+        }
+      ],
+      "sources": [
+        "https://github.com/TheRobotStudio/SO-ARM100",
+        "https://www.youtube.com/watch?v=3NcQbZu6xt8",
+        "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+        "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+        "https://aiconfpaper.com/paper/ral-2025-LeeKY25",
+        "https://api.crossref.org/works/10.1109/lra.2025.3600169",
+        "https://kistrobot.vision/publications/"
+      ]
+    },
+    {
+      "node_id": "p:model-based-torque-feedforward-on-the-so-101",
+      "type": "project",
+      "name": "Model-based torque feedforward on the SO-101",
+      "summary": "Compare simulated SO-101 tracking with and without inverse-dynamics feedforward, then assess whether the physical actuator interface can support an honest hardware comparison.",
+      "lesson_md": "## In one sentence\n\nCompare simulated SO-101 tracking with and without inverse-dynamics feedforward, then assess whether the physical actuator interface can support an honest hardware comparison.\n\n![SO-101 follower with visible servo joints and open gripper](/img/lessons/projects_kinematics_dynamics_2-feedforward.webp)\n*SO-101 follower, the proposed platform; the picture is not evidence of torque-control support. Source: [LeRobot](https://huggingface.co/docs/lerobot/so101), license unknown.*\n\n## What you will learn\n\n- **Feedforward:** Predict the effort needed for a planned motion before tracking error appears; feedback still corrects deviations between desired and measured joints.\n- **Inverse dynamics:** A rigid-body model converts joint positions, velocities, and accelerations into required torques, meaning turning efforts.\n- **Software analogy:** Feedforward is a predicted baseline workload; feedback is the correction loop when actual execution differs from that prediction.\n- **Student proposal:** No improvement on a physical SO-101 is established here; actuator modelling and command compatibility are part of the experiment.\n\n> **Key idea:** A predicted joint torque is useful only if the actuator model and command interface agree on what it means.\n\n## What you need\n\n- **Map preparation:** Build SO-101 digital twin from URDF with Pinocchio and review Dynamic parameter identification & actuator models.\n- **Simulation stack:** Use Pinocchio for inverse dynamics and a simulator with explicit actuator limits; BAM (Better Actuator Models) provides identified servo friction models.\n- **Hardware boundary:** LeRobot's Feetech mode enum lists position, velocity, PWM, and step, not a torque-setpoint mode; do not confuse torque enable with commanded newton-metres.\n- **Budget:** Simulation requires no arm purchase; the physical setup and identification cost are unknown.\n\n## Steps\n\n1. **Validate the model:** Check geometry, masses, gravity direction, and joint conventions before comparing any controller traces.\n2. **Start with gravity:** Request zero velocity, zero acceleration, and no external wrench; inverse dynamics then isolates gravity effort before fast trajectories.\n3. **Create matched trials:** Replay the same feasible motion, timestep, feedback gains, and actuator limits with feedforward disabled and enabled.\n4. **Measure tracking:** Log desired and measured joints, torque predictions, saturation, and errors; include stationary and deliberately unreachable requests.\n5. **Gate hardware deployment:** Identify a validated torque-to-command mapping first; otherwise retain the simulated comparison and explicitly report the physical limitation.\n6. **Demo the evidence:** Present paired tracking plots and failure counts, not only the fastest successful motion.\n\n```mermaid\nflowchart LR\n  N0[\"Planned motion\"] --> N1\n  N1[\"Inverse dynamics\"] --> N2\n  N2[\"Feedforward plus feedback\"] --> N3\n  N3[\"Actuator model\"] --> N4\n  N4[\"Tracking comparison\"]\n```\n\n## Common pitfalls\n\n- **Friction mismatch:** Rigid-body dynamics alone does not identify servo friction; BAM addresses effects that simpler simulator models omit.\n- **Unequal baselines:** Retuning feedback only for the feedforward run prevents a clean explanation of what caused the change.\n\n> **Watch out:** Keep the first physical trials slow and unloaded, with the workspace clear and a stop method ready.\n\n## When it's done\n\n- **Reproducible comparison:** Save model parameters, trajectories, controller settings, error summaries, and actuator limits for both conditions.\n- **Transparent conclusion:** Report whether feedforward helped, hurt, or hit limits; separate simulation evidence from any hardware result.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.3:  Newton-Euler Inverse Dynamics",
+          "url": "https://www.youtube.com/watch?v=ZASVKAlegfQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand the model's forward and backward passes."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the physical arm configuration and calibration."
+        },
+        {
+          "title": "Dynamics algorithms",
+          "url": "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/g-dynamic.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use RNEA and its gravity-only special case."
+        },
+        {
+          "title": "Rhoban/bam",
+          "url": "https://github.com/Rhoban/bam",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect identified actuator models, including Feetech STS3215."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://www.youtube.com/watch?v=ZASVKAlegfQ",
+        "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/g-dynamic.html",
+        "https://github.com/Rhoban/bam",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-3-newton-euler-inverse-dynamics/",
+        "https://raw.githubusercontent.com/huggingface/lerobot/main/src/lerobot/motors/feetech/feetech.py"
+      ]
+    },
+    {
+      "node_id": "p:phone-pose-teleoperation-of-the-so-101",
+      "type": "project",
+      "name": "Phone-pose teleoperation of the SO-101",
+      "summary": "Map a phone's changing pose to bounded SO-101 gripper targets, first in simulation and then through a validated physical control pipeline.",
+      "lesson_md": "## In one sentence\n\nMap a phone's changing pose to bounded SO-101 gripper targets, first in simulation and then through a validated physical control pipeline.\n\n![Phone held beside a robot arm to illustrate teleoperation orientation](/img/lessons/projects_kinematics_dynamics_2-phone.webp)\n*LeRobot's phone orientation guide aligns the handheld controller with the robot. Source: [LeRobot](https://huggingface.co/docs/lerobot/phone_teleop), license unknown.*\n\n## What you will learn\n\n- **Pose input:** Position and orientation describe how the phone moves; they are not joint commands for the robot.\n- **Differential inverse kinematics:** Repeatedly compute small joint velocities that reduce target-pose error, then integrate them into the next joint configuration.\n- **Software analogy:** Treat the phone as an untrusted network client; validate and bound its requests before forwarding commands to hardware.\n- **Existing foundations:** LeRobot documents phone control using Placo; using mink for this map's proposed differential-IK pipeline is an adaptation, not that documented implementation.\n\n> **Key idea:** A phone requests motion; the robot-side controller decides which bounded motion is feasible.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101 and study Differential IK & redundancy resolution (QP-based).\n- **Input setup:** LeRobot documents HEBI Mobile I/O on iOS and WebXR on Android; use a compatible phone, computer, robot model, and local network.\n- **Robot setup:** Supply the matching URDF, a robot-description file containing joints and links; physical control also needs the calibrated arm and serial connection.\n- **Cost boundary:** Reuse available devices; current phone and arm acquisition costs are unknown.\n\n## Steps\n\n1. **Preview disconnected input:** Display phone axes and timestamps with robot commands disconnected; verify each translation and rotation direction.\n2. **Capture a reference:** Hold the documented enable control to anchor motion; release it before repositioning the phone.\n3. **Bound the target:** Apply workspace and per-update limits before solving IK; begin with position-only control in simulation.\n4. **Work a scaling example:** LeRobot's example scales translation by 0.5 relative to the captured reference; a 0.10 m phone displacement requests 0.05 m before safety clamping.\n5. **Handle infeasible requests:** Use mink tasks and limits; log residual error and stop on stale input or solver failure rather than chasing an impossible target.\n6. **Demo controlled motion:** Replay small simulated motions, then test the physical pipeline slowly, including release, reconnect, and unreachable-target cases.\n\n```mermaid\nflowchart LR\n  N0[\"Phone pose\"] --> N1\n  N1[\"Reference and bounds\"] --> N2\n  N2[\"Differential IK\"] --> N3\n  N3[\"Joint limits\"] --> N4\n  N4[\"Robot and feedback\"]\n```\n\n## Common pitfalls\n\n- **Solver substitution:** Replacing Placo with mink requires matching models, frames, units, and joint ordering; changing an import is insufficient.\n- **Enable semantics:** LeRobot's gripper input remains active while arm motion is disabled; test gripper behavior separately.\n\n> **Watch out:** Keep hands outside the powered workspace, including during startup and shutdown homing motions.\n\n## When it's done\n\n- **Observable contract:** Save phone input, bounded targets, achieved poses, and rejected commands with timestamps.\n- **Acceptance demo:** Show axis alignment, controlled motion, and a release that freezes arm targets without a reconnect jump.",
+      "resources": [
+        {
+          "title": "Phone",
+          "url": "https://huggingface.co/docs/lerobot/phone_teleop",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow platform setup, reference capture, mapping, and safety processors."
+        },
+        {
+          "title": "Modern Robotics, Chapter 6:  Inverse Kinematics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=nin2TbMuhR0",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See how iterative inverse kinematics finds joint angles for a target pose."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the mink quickstart and reproduce the differential-IK loop."
+        },
+        {
+          "title": "kevinzakka/mink",
+          "url": "https://github.com/kevinzakka/mink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect tasks, limits, integration, and solver failure handling."
+        },
+        {
+          "title": "giacomoran/teleop-android",
+          "url": "https://github.com/giacomoran/teleop-android",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Compare a concrete Android SO-101 implementation and its simulation-first workflow."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/phone_teleop",
+        "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+        "https://github.com/kevinzakka/mink",
+        "https://github.com/giacomoran/teleop-android",
+        "https://raw.githubusercontent.com/huggingface/lerobot/main/docs/source/phone_teleop.mdx",
+        "https://www.youtube.com/watch?v=nin2TbMuhR0"
+      ]
+    },
+    {
+      "node_id": "p:quaternion-pitfalls-benchmark",
+      "type": "project",
+      "name": "Quaternion pitfalls benchmark",
+      "summary": "Build a small notebook that reproduces gimbal lock, quaternion double cover and bad interpolation on a simulated wrist, then fixes each bug.",
+      "lesson_md": "## In one sentence\n\nBuild a small notebook that reproduces gimbal lock, quaternion double cover and bad interpolation on a simulated wrist, then fixes each bug.\n\n![Animated plane whose rotation rings line up in gimbal lock](/img/lessons/projects_kinematics_dynamics_2-quaternion.webp)\n*Gimbal lock: two rotation rings line up and one turning direction disappears. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Gimbal_Lock_Plane.gif), CC0.*\n\n## What you will learn\n\n- **Euler angles:** Three stacked rotations, such as roll, pitch and yaw; at some angles two axes align, which is **gimbal lock**.\n- **Unit quaternion:** Four numbers for one rotation; MuJoCo stores angle a about unit axis (x, y, z) as (cos(a/2), sin(a/2)·(x, y, z)).\n- **Double cover:** A quaternion q and its negative −q describe the same orientation, so naive comparisons can disagree.\n- **Software analogy:** Like comparing two URLs that differ only by a trailing slash; normalize to a canonical form before comparing.\n\n> **Key idea:** Pick one convention, normalize every quaternion, and test every conversion with round trips.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim and skim Rigid-body motion & coordinate frames.\n- **Python stack:** MuJoCo and SciPy; Robotics Toolbox for Python is optional for plotting frames. No hardware.\n- **Wrist model:** A tiny simulated wrist with three revolute joints, written as MJCF or taken from an existing arm.\n\n## Steps\n\n1. **Write the conventions down:** MuJoCo puts the scalar first (w, x, y, z); SciPy `Rotation` expects scalar-last by default.\n2. **Reproduce gimbal lock:** Use the `xyz` Euler sequence with middle angle 90 degrees; show that the first and third rotation axes become dependent.\n3. **Reproduce double cover:** Convert q and −q to rotation matrices, assert they match, then show a raw vector distance says they differ.\n4. **Break interpolation:** Blend raw quaternion components linearly between two poses; plot the norm drifting below one.\n5. **Apply the fixes:** Normalize, flip the sign when the dot product is negative, and switch to spherical interpolation (SciPy `Slerp`).\n6. **Count failures:** Run one fixed list of target orientations and record failures before and after each fix.\n\n```python\nfrom scipy.spatial.transform import Rotation as R\nq_mj = [1.0, 0.0, 0.0, 0.0]               # MuJoCo order: w, x, y, z\nr = R.from_quat(q_mj, scalar_first=True)  # tell SciPy the order\n```\n\n```mermaid\nflowchart LR\n  N0[\"Fix conventions\"] --> N1\n  N1[\"Reproduce bug\"] --> N2\n  N2[\"Apply fix\"] --> N3\n  N3[\"Count failures\"]\n```\n\n## Common pitfalls\n\n- **Silent order swap:** Passing a MuJoCo quaternion to SciPy without `scalar_first=True` gives a valid but wrong rotation.\n- **Euler sequence mix-up:** SciPy treats lowercase axes as extrinsic and uppercase as intrinsic; record the exact sequence string.\n\n> **Watch out:** A unit-norm check passes for both q and −q, so it never catches a sign flip.\n\n## When it's done\n\n- **Short video:** Side-by-side wrist clips of each bug and its fix.\n- **Results table:** Failure counts per bug, before and after the fix, on the same trial list.\n- **Reusable helper:** One tested function that converts between MuJoCo and SciPy quaternions.\n",
+      "resources": [
+        {
+          "title": "Quaternions and 3d rotation, explained interactively",
+          "url": "https://www.youtube.com/watch?v=zjMuIxRvygQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for how four numbers encode a 3D rotation."
+        },
+        {
+          "title": "Euler Angles and Gimbal Lock, Explained",
+          "url": "https://www.youtube.com/watch?v=BczeMqU_u2Y",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See gimbal lock animated before you reproduce it in code."
+        },
+        {
+          "title": "Rotation",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check quaternion order, Euler sequences and the Slerp helper."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read how MJCF orientations become unit quaternions internally."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=zjMuIxRvygQ",
+        "https://www.youtube.com/watch?v=BczeMqU_u2Y",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.from_quat.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.from_euler.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_euler.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Slerp.html"
+      ]
+    },
+    {
+      "node_id": "p:retarget-human-arm-video-to-the-so-101",
+      "type": "project",
+      "name": "Retarget human arm video to the SO-101",
+      "summary": "Track a person's arm in a video, turn the wrist path into bounded targets, and make an SO-101 follow it with differential inverse kinematics.",
+      "lesson_md": "## In one sentence\n\nTrack a person's arm in a video, turn the wrist path into bounded targets, and make an SO-101 follow it with differential inverse kinematics.\n\n![MediaPipe pose landmarks drawn over a moving person](/img/lessons/projects_kinematics_dynamics_2-arm-video.webp)\n*MediaPipe Pose Landmarker finds body keypoints in each video frame. Source: [Google AI Edge](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker), CC BY 4.0.*\n\n## What you will learn\n\n- **Pose estimation:** A model finds body keypoints in images; MediaPipe Pose Landmarker returns **33 landmarks** per person.\n- **World landmarks:** Those keypoints in meters, centered on the midpoint of the hips, instead of image pixels.\n- **Retargeting:** Mapping motion from one body to another body with different sizes and joints.\n- **Differential IK:** Repeatedly solve for small joint motions that shrink the gap to a target pose; mink does this on MuJoCo models.\n- **Software analogy:** Like porting an API between two languages; concepts map, but some calls have no equivalent and must fail loudly.\n\n> **Key idea:** Copy the hand's path, not the human joint angles, and let the robot's IK decide what is reachable.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101; read Human-to-robot motion retargeting and Differential IK & redundancy resolution (QP-based).\n- **Software:** Python, MediaPipe, MuJoCo, mink and the Menagerie SO-101 model.\n- **Input clips:** A few short, well-lit videos of one arm moving slowly.\n\n## Steps\n\n1. **Extract landmarks:** Run Pose Landmarker on each frame and save shoulder, elbow and wrist world landmarks with timestamps.\n2. **Rescale the arm:** Express the wrist relative to the shoulder, rotate into robot-base axes, then scale by the ratio of robot reach to human arm length.\n3. **Clamp targets:** Keep each target inside a box you know the SO-101 can reach; mark clamped frames.\n4. **Solve IK in simulation:** Feed targets to a mink `FrameTask` with zero orientation cost and explicit joint limits; log position error per frame.\n5. **Count failures:** On a fixed clip set, report frames that are unreachable, hit limits or exceed an error threshold.\n6. **Replay on hardware:** Only after the simulated replay is clean, play the joint trajectory slowly on the real arm.\n\n```mermaid\nflowchart LR\n  N0[\"Video\"] --> N1\n  N1[\"Pose landmarks\"] --> N2\n  N2[\"Scaled wrist target\"] --> N3\n  N3[\"mink IK\"] --> N4\n  N4[\"SO-101\"]\n```\n\n## Common pitfalls\n\n- **Jittery keypoints:** Raw landmarks wobble between frames; smooth them before IK or the arm vibrates.\n- **Mirrored sides:** Left and right swap easily between camera view and robot frame; test with one labeled arm.\n\n> **Watch out:** Never stream raw video targets straight to motors; limit speed and keep a stop key ready.\n\n## When it's done\n\n- **Side-by-side video:** Person and robot moving together, with clamped or failed frames highlighted.\n- **Failure report:** Counts of unreachable targets and limit hits over the fixed clip set.\n",
+      "resources": [
+        {
+          "title": "Pose Landmarker",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn the 33 landmarks and the world-coordinate output."
+        },
+        {
+          "title": "MuJoCo Lec6: Jacobian and its use for Inverse Kinematics (Spring 2022)",
+          "url": "https://www.youtube.com/watch?v=ZspzVxFAreQ",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Learn how a Jacobian turns target errors into joint updates in MuJoCo."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the mink quickstart and copy its differential-IK loop."
+        },
+        {
+          "title": "GitHub - kevinzakka/mink: Python inverse kinematics based on MuJoCo.",
+          "url": "https://github.com/kevinzakka/mink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reuse example scripts for tasks, limits and mocap targets."
+        },
+        {
+          "title": "mujoco_menagerie/robotstudio_so101 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Get the official SO-101 MuJoCo model to retarget onto."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
+        "https://kevinzakka.github.io/mink/tutorial/quickstart.html",
+        "https://github.com/kevinzakka/mink",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+        "https://www.youtube.com/watch?v=ZspzVxFAreQ"
+      ]
+    },
+    {
+      "node_id": "p:retarget-your-own-dance-to-a-humanoid",
+      "type": "project",
+      "name": "Retarget your own dance to a humanoid",
+      "summary": "Film a short dance, turn it into human motion data, retarget it with GMR, and play it on a simulated Unitree G1.",
+      "lesson_md": "## In one sentence\n\nFilm a short dance, turn it into human motion data, retarget it with GMR, and play it on a simulated Unitree G1.\n\n![GVHMR teaser frames showing a person in video and the recovered 3D human motion](/img/lessons/projects_kinematics_dynamics_2-dance.webp)\n*GVHMR recovers 3D human motion from one video, the input GMR retargets. Source: [GVHMR on GitHub](https://github.com/zju3dv/GVHMR), non-commercial research license.*\n\n## What you will learn\n\n- **Motion capture data:** Recorded human joint motion, stored in formats such as SMPL-X, BVH or FBX.\n- **Retargeting:** Converting that human motion into robot joint angles while respecting the robot's own size and limits.\n- **GMR:** General Motion Retargeting, an open-source tool that retargets human motion to humanoids in real time on a CPU.\n- **Retargeting artifacts:** Errors such as **foot sliding**, self-penetration and physically impossible poses, named in the GMR paper.\n- **Software analogy:** Like transcoding a video to a new resolution; the content survives, but artifacts appear if settings are wrong.\n\n> **Key idea:** A retargeted clip only looks right if the feet stay planted and the joints stay inside their limits.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Human-to-robot motion retargeting.\n- **Software:** GMR, MuJoCo and the Unitree G1 model, which GMR and MuJoCo Menagerie both provide.\n- **Video input:** A phone clip of yourself, converted to human motion with GVHMR, which GMR supports.\n\n## Steps\n\n1. **Run a known clip first:** Substitute your BVH path in `uv run scripts/bvh_to_robot.py --bvh_file motion.bvh --robot unitree_g1 --format lafan1`.\n2. **Recover your motion:** Run GVHMR on your dance video to get human motion from a single camera.\n3. **Retarget to the G1:** Run `uv run scripts/gvhmr_to_robot.py --gvhmr_pred_file hmr4d_results.pt --robot unitree_g1 --record_video` with your prediction file.\n4. **Show both skeletons:** Put the human and robot side by side and mark frames where joints reach limits.\n5. **Flag foot skating:** Measure how far a foot moves while it should be on the ground; count frames above a threshold.\n\n```mermaid\nflowchart LR\n  N0[\"Dance video\"] --> N1\n  N1[\"GVHMR human motion\"] --> N2\n  N2[\"GMR retarget\"] --> N3\n  N3[\"Simulated G1\"] --> N4\n  N4[\"Artifact check\"]\n```\n\n## Common pitfalls\n\n- **Quaternion order:** GMR uses w-first quaternions internally, but these scripts save `root_rot` scalar-last; check the boundary before loading saved motion.\n- **Fast moves:** Start with a slow, standing motion; inspect artifacts before attempting spins or jumps.\n\n> **Watch out:** A clip that plays kinematically is not proof a real G1 could balance through it.\n\n## When it's done\n\n- **Short clip:** Your dance next to the simulated G1 performing it.\n- **Artifact table:** Joint-limit hits and foot-skating frames, ready for Retargeting-quality study on BeyondMimic.\n",
+      "resources": [
+        {
+          "title": "GitHub - YanjieZe/GMR",
+          "url": "https://github.com/YanjieZe/GMR",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Install GMR and run the LAFAN1 and GVHMR retargeting scripts."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read why retargeting artifacts matter and how GMR reduces them."
+        },
+        {
+          "title": "Retargeting Human Mocap to a Unitree G1 — LAFAN1 Dance with Live IK Error",
+          "url": "https://www.youtube.com/watch?v=nf13R8rtytg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a dance retargeted to a G1 with its IK error shown."
+        },
+        {
+          "title": "GitHub - zju3dv/GVHMR",
+          "url": "https://github.com/zju3dv/GVHMR",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Recover world-grounded human motion from your own video."
+        },
+        {
+          "title": "mujoco_menagerie/unitree_g1 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the G1 model, its joints and its standing keyframe."
+        }
+      ],
+      "sources": [
+        "https://github.com/YanjieZe/GMR",
+        "https://arxiv.org/abs/2510.02252",
+        "https://www.youtube.com/watch?v=nf13R8rtytg",
+        "https://github.com/zju3dv/GVHMR",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+        "https://raw.githubusercontent.com/YanjieZe/GMR/master/scripts/bvh_to_robot.py",
+        "https://raw.githubusercontent.com/YanjieZe/GMR/master/scripts/gvhmr_to_robot.py"
+      ]
+    },
+    {
+      "node_id": "p:retargeting-quality-study-on-beyondmimic",
+      "type": "project",
+      "name": "Retargeting-quality study on BeyondMimic",
+      "summary": "Train BeyondMimic tracking policies for a simulated Unitree G1 on motions from two retargeters and compare success rates and artifact counts.",
+      "lesson_md": "## In one sentence\n\nTrain BeyondMimic tracking policies for a simulated Unitree G1 on motions from two retargeters and compare success rates and artifact counts.\n\n![GMR pipeline diagram from human motion to robot motion](/img/lessons/projects_kinematics_dynamics_2-retarget-study.webp)\n*The GMR pipeline turns human motion into robot motion step by step. Source: [GMR on GitHub](https://github.com/YanjieZe/GMR), MIT.*\n\n## What you will learn\n\n- **Motion tracking policy:** A neural network trained with reinforcement learning (RL) to make a simulated robot follow a reference motion.\n- **BeyondMimic:** A humanoid tracking framework whose authors trained many motion clips with the same setup and hyperparameters.\n- **Controlled experiment:** Change only the retargeter, keep everything else fixed, then compare results.\n- **Artifacts as inputs:** The GMR paper reports that foot sliding, self-penetration and infeasible poses hurt tracking.\n- **Software analogy:** Like an A/B test where only one dependency version differs between two builds.\n\n> **Key idea:** Hold the training recipe fixed so any difference in tracking comes from the retargeted data.\n\n## What you need\n\n- **Map preparation:** Finish Retarget your own dance to a humanoid; read Humanoid motion imitation & retargeting and Floating-base & centroidal dynamics (legged/humanoid).\n- **Compute:** An NVIDIA GPU machine; the retired BeyondMimic repository targets Isaac Lab. Pin that codebase to reproduce these commands, not mjlab.\n- **Motion data:** The same clips retargeted by GMR and by a second source, such as Unitree's retargeted LAFAN1 release.\n\n## Steps\n\n1. **Pick clips:** Choose a few LAFAN1 motions available from both retargeters; freeze the list.\n2. **Export references:** Convert GMR pickles with `scripts/batch_gmr_pkl_to_csv.py`; verify sampling rate and joint ordering.\n3. **Import references:** For 30 FPS CSV, run `python scripts/csv_to_npz.py --input_file motion.csv --input_fps 30 --output_name motion --headless`; use the actual rate otherwise.\n4. **Train twice:** Train one tracking policy per retargeter per clip with identical settings and seeds.\n5. **Score tracking:** Measure pose error, falls and unwanted ground contacts over a fixed number of rollouts.\n6. **Count artifacts:** Measure foot sliding and self-collisions in each reference before training.\n7. **Compare:** Plot artifact counts against tracking success for both retargeters.\n\n```mermaid\nflowchart LR\n  N0[\"Same clips\"] --> N1\n  N1[\"Two retargeters\"] --> N2\n  N2[\"Same training\"] --> N3\n  N3[\"Rollouts\"] --> N4\n  N4[\"Compare scores\"]\n```\n\n## Common pitfalls\n\n- **Changed recipe:** Tweaking rewards for one retargeter breaks the comparison.\n- **Too few seeds:** RL results vary between runs; report the spread, not one lucky run.\n\n> **Watch out:** The original BeyondMimic repository notes it has moved to mjlab; check which codebase you follow.\n\n## When it's done\n\n- **Comparison table:** Success rate, falls and artifact counts per retargeter and clip.\n- **Short video:** The same clip tracked using both references, side by side.\n- **Next step:** Use the setup for Compare nominal and residual-dynamics tracking.\n",
+      "resources": [
+        {
+          "title": "BeyondMimic: From Motion Tracking to Versatile Humanoid Control via Guided Diffusion",
+          "url": "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See what BeyondMimic tracking policies achieve on a humanoid."
+        },
+        {
+          "title": "BeyondMimic",
+          "url": "https://beyondmimic.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read the project page describing the tracking framework and results."
+        },
+        {
+          "title": "GitHub - HybridRobotics/whole_body_tracking",
+          "url": "https://github.com/HybridRobotics/whole_body_tracking",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Follow the motion preprocessing and training commands."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Copy the paper's method for comparing retargeters with BeyondMimic."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RS_MtKVIAzY",
+        "https://beyondmimic.github.io/",
+        "https://github.com/HybridRobotics/whole_body_tracking",
+        "https://arxiv.org/abs/2510.02252",
+        "https://github.com/YanjieZe/GMR",
+        "https://raw.githubusercontent.com/YanjieZe/GMR/master/scripts/batch_gmr_pkl_to_csv.py",
+        "https://raw.githubusercontent.com/HybridRobotics/whole_body_tracking/main/scripts/csv_to_npz.py",
+        "https://huggingface.co/datasets/lvhaidong/LAFAN1_Retargeting_Dataset",
+        "https://arxiv.org/html/2510.02252v1"
+      ]
+    },
+    {
+      "node_id": "p:rnea-vs-aba-timing-notebook",
+      "type": "project",
+      "name": "RNEA vs ABA timing notebook",
+      "summary": "Time inverse and forward dynamics with Pinocchio on arms and a humanoid, and plot how the cost grows with the number of joints.",
+      "lesson_md": "## In one sentence\n\nTime inverse and forward dynamics with Pinocchio on arms and a humanoid, and plot how the cost grows with the number of joints.\n\n![Rendered Franka Panda arm model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-rnea.webp)\n*Menagerie arm models make good test robots for timing. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie), license unknown.*\n\n## What you will learn\n\n- **Inverse dynamics:** Given joint positions, velocities and accelerations, compute the torques; Pinocchio's **RNEA** does this.\n- **Forward dynamics:** Given joint configuration, velocity and torques, compute accelerations; Pinocchio's **ABA** (Articulated-Body Algorithm) does this.\n- **Recursive algorithms:** Both sweep along the robot's link chain instead of building large matrices, following Featherstone's methods.\n- **Benchmarking:** Repeat a call many times, discard warm-up runs and report medians.\n- **Software analogy:** Like profiling two sorting functions on growing input sizes to see their complexity curve.\n\n> **Key idea:** RNEA answers \"what torque do I need?\", ABA answers \"what motion will this torque cause?\"\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Efficient dynamics algorithms & analytical derivatives.\n- **Software:** Python with Pinocchio (`pip install pin` on Linux, per its README), NumPy and Jupyter.\n- **Robot files:** Several models from MuJoCo Menagerie; Pinocchio reads URDF, SDF and MJCF files.\n\n## Steps\n\n1. **Load models:** Build Pinocchio models for a few arms and a humanoid; print each model's `nv` (velocity dimension).\n2. **Draw random states:** Sample valid q, v and a, plus torques tau, with fixed seeds.\n3. **Time both calls:** Time `pin.rnea(model, data, q, v, a)` and `pin.aba(model, data, q, v, tau)` over many repeats.\n4. **Check consistency:** Feed RNEA's torque into ABA with the same model, state and external-force assumptions; confirm you recover the same acceleration.\n5. **Plot scaling:** Plot median time against `nv`; check whether growth looks roughly linear.\n\n```python\nimport pinocchio as pin\ntau = pin.rnea(model, data, q, v, a)    # inverse dynamics\na2 = pin.aba(model, data, q, v, tau)    # forward dynamics\n```\n\n```mermaid\nflowchart LR\n  N0[\"Load models\"] --> N1\n  N1[\"Random states\"] --> N2\n  N2[\"Time RNEA and ABA\"] --> N3\n  N3[\"Check round trip\"] --> N4\n  N4[\"Plot vs joints\"]\n```\n\n## Common pitfalls\n\n- **Python overhead:** Measure binding overhead separately; do not assume short Python timings represent only the dynamics algorithm.\n- **Floating base:** Humanoid `q` has more entries than `v` because of the base quaternion; size arrays from the model.\n\n## When it's done\n\n- **Notebook:** Timing tables and one scaling plot for every model.\n- **Sanity check:** The RNEA-ABA round trip error is near zero for all samples.\n",
+      "resources": [
+        {
+          "title": "Robotics3D Lec10d: Recursive Newton Euler Algorithm, RNEA (Spring 2025)",
+          "url": "https://www.youtube.com/watch?v=nPJPJQMMfPw",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Follow the recursive steps of RNEA before timing it."
+        },
+        {
+          "title": "GitHub - stack-of-tasks/pinocchio",
+          "url": "https://github.com/stack-of-tasks/pinocchio",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install Pinocchio and find RNEA, ABA and model loaders."
+        },
+        {
+          "title": "Dynamics algorithms",
+          "url": "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/g-dynamic.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare the inputs and roles of RNEA and ABA before benchmarking them."
+        },
+        {
+          "title": "GitHub - google-deepmind/mujoco_menagerie",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Pick arm and humanoid models to benchmark."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=nPJPJQMMfPw",
+        "https://github.com/stack-of-tasks/pinocchio",
+        "https://stack-of-tasks.github.io/pinocchio/",
+        "https://github.com/google-deepmind/mujoco_menagerie",
+        "https://docs.ros.org/en/rolling/p/pinocchio/doc/a-features/g-dynamic.html",
+        "https://raw.githubusercontent.com/stack-of-tasks/pinocchio/devel/examples/inverse-dynamics.py",
+        "https://raw.githubusercontent.com/stack-of-tasks/pinocchio/devel/bindings/python/algorithm/expose-aba.cpp"
+      ]
+    },
+    {
+      "node_id": "p:singularity-aware-teleop-for-the-so-101",
+      "type": "project",
+      "name": "Singularity-aware teleop for the SO-101",
+      "summary": "Drive the SO-101 gripper with keyboard or gamepad velocity commands that slow down and warn near singularities, and compare it with a naive Jacobian inverse.",
+      "lesson_md": "## In one sentence\n\nDrive the SO-101 gripper with keyboard or gamepad velocity commands that slow down and warn near singularities, and compare it with a naive Jacobian inverse.\n\n![SO-101 follower arm](/img/lessons/projects_kinematics_dynamics_2-singularity.webp)\n*The SO-101 follower arm you will drive in Cartesian space. Source: [TheRobotStudio SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100), Apache-2.0.*\n\n## What you will learn\n\n- **Cartesian teleop:** You command gripper motion, such as \"move 1 cm/s forward\", and software converts it to joint motion.\n- **Jacobian:** The matrix that maps joint velocities to gripper velocity; it changes with the arm's pose.\n- **Singularity:** A pose where the Jacobian loses rank, so the gripper cannot move in some direction, as Modern Robotics 5.3 explains.\n- **Naive inverse:** A Jacobian pseudo-inverse can demand huge joint speeds near a singularity.\n- **Software analogy:** Like dividing by a number close to zero; you need a guard before the result explodes.\n\n> **Key idea:** Measure how close the arm is to a singularity every cycle and scale the command down before it gets there.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101; read Velocity kinematics, Jacobians & singularities and Differential IK & redundancy resolution (QP-based).\n- **Software:** MuJoCo, mink and the Menagerie SO-101 model.\n- **Input device:** A keyboard or a gamepad readable from Python.\n\n## Steps\n\n1. **Map keys to velocities:** Start with three-axis translation only; turn each key or stick axis into a small gripper velocity in the base frame.\n2. **Build the naive baseline:** Compute joint velocities with a pseudo-inverse of the Jacobian and integrate them in simulation.\n3. **Add a closeness score:** Compute the smallest singular value of the translational Jacobian each cycle (Live manipulability ellipsoid shows a related measure).\n4. **Scale and warn:** Below a threshold, shrink the command smoothly and print a warning; also try mink with joint limits.\n5. **Run fixed trials:** Drive both controllers along the same scripted paths, including through a stretched-out arm pose.\n6. **Count failures:** Log joint-speed spikes, limit violations and unreachable targets for each controller.\n\n```mermaid\nflowchart LR\n  N0[\"Key command\"] --> N1\n  N1[\"Jacobian\"] --> N2\n  N2[\"Closeness score\"] --> N3\n  N3[\"Scaled velocity\"] --> N4\n  N4[\"Joint command\"]\n```\n\n## Common pitfalls\n\n- **Wrong frame:** Mixing base-frame and gripper-frame commands makes keys feel reversed.\n- **Hard cut-off:** Stopping abruptly at a threshold feels jerky; ramp the scale down instead.\n\n> **Watch out:** Test the naive baseline only in simulation; its speed spikes can damage a real arm.\n\n## When it's done\n\n- **Comparison video:** Both controllers driven through the same near-singular path.\n- **Results table:** Speed spikes, warnings and limit hits per controller over the fixed trials.\n",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.3:  Singularities",
+          "url": "https://www.youtube.com/watch?v=vjJgTvnQpBs",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Understand why the Jacobian loses rank at certain poses."
+        },
+        {
+          "title": "What are robot singularities?",
+          "url": "https://www.youtube.com/watch?v=lD2HQcxeNoA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See singularities on a real industrial arm in a short clip."
+        },
+        {
+          "title": "5.3. Singularities",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Read the matching textbook section with figures."
+        },
+        {
+          "title": "GitHub - kevinzakka/mink: Python inverse kinematics based on MuJoCo.",
+          "url": "https://github.com/kevinzakka/mink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reuse its IK loop with joint limits for the safe controller."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=vjJgTvnQpBs",
+        "https://www.youtube.com/watch?v=lD2HQcxeNoA",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-3-singularities/",
+        "https://github.com/kevinzakka/mink",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101"
+      ]
+    },
+    {
+      "node_id": "p:smoothing-learned-policy-actions",
+      "type": "project",
+      "name": "Smoothing learned-policy actions",
+      "summary": "Pass an ACT policy's action chunks through Ruckig so the SO-101 moves smoothly, then measure jitter and task success with and without it.",
+      "lesson_md": "## In one sentence\n\nPass an ACT policy's action chunks through Ruckig so the SO-101 moves smoothly, then measure jitter and task success with and without it.\n\n![Ruckig example plot of position, velocity, acceleration and jerk](/img/lessons/projects_kinematics_dynamics_2-smoothing.webp)\n*Ruckig plans motions that respect velocity, acceleration and jerk limits. Source: [Ruckig on GitHub](https://github.com/pantor/ruckig), MIT.*\n\n## What you will learn\n\n- **Action chunking:** ACT predicts a short sequence of future actions at once instead of one step at a time.\n- **Jitter:** Small, fast back-and-forth changes in commands; they waste motor effort and can shake the gripper.\n- **Jerk:** The rate of change of acceleration; limiting it gives smoother motion.\n- **Ruckig:** An open-source library that computes time-optimal motions within velocity, acceleration and jerk limits, in real time.\n- **Software analogy:** Like debouncing noisy input events before they reach your UI.\n\n> **Key idea:** Treat each policy action as a target, and let Ruckig choose a smooth path to it within limits.\n\n## What you need\n\n- **Map preparation:** Complete Autonomous pick-and-place with ACT; read Trajectory generation & time scaling.\n- **Software:** LeRobot with a trained ACT policy, and Ruckig (`pip install ruckig`).\n- **Robot:** A simulated SO-101 first; the real arm only after the simulated comparison.\n- **Snippet inputs:** Initialize six-element `q`, `v`, `a` and validated `vmax`, `amax`, `jmax` arrays in consistent units; `action` is the next position target.\n\n## Steps\n\n1. **Record a baseline:** Run the policy for a fixed set of episodes and log every commanded joint position.\n2. **Set limits:** Choose per-joint velocity, acceleration and jerk limits that are lower than the arm's safe limits.\n3. **Wrap the output:** Initialize Ruckig from the current state and limits; each cycle, update the target, check the result, send the next position and copy state.\n4. **Measure jitter:** Compute the average absolute jerk of commanded positions for both versions.\n5. **Measure success:** Repeat the same episodes and count task successes, failures and timeouts.\n\n```python\nfrom ruckig import Ruckig, InputParameter, OutputParameter, Result\notg = Ruckig(6, 0.01)  # illustrative 10 ms control period\ninp, out = InputParameter(6), OutputParameter(6)\ninp.current_position, inp.current_velocity, inp.current_acceleration = q, v, a\ninp.max_velocity, inp.max_acceleration, inp.max_jerk = vmax, amax, jmax\ninp.target_velocity = [0.0] * 6\ninp.target_acceleration = [0.0] * 6\ninp.target_position = action\nresult = otg.update(inp, out)\nif result not in (Result.Working, Result.Finished): raise RuntimeError(result)\nsend_to_robot(out.new_position)  # your own robot write\nout.pass_to_input(inp)\n```\n\n```mermaid\nflowchart LR\n  N0[\"ACT chunk\"] --> N1\n  N1[\"Ruckig target\"] --> N2\n  N2[\"Smooth step\"] --> N3\n  N3[\"SO-101\"] --> N4\n  N4[\"Jitter and success\"]\n```\n\n## Common pitfalls\n\n- **Over-smoothing:** Very low limits make the arm lag the policy and fail grasps.\n- **Stale state:** Use `pass_to_input` to advance the planned state; replace it with measured state when actual motion deviates.\n- **Command units:** Convert policy outputs and motor commands consistently; Ruckig's position, velocity, acceleration and jerk limits must use matching units.\n\n## When it's done\n\n- **Comparison video:** Raw and smoothed rollouts of the same task side by side.\n- **Results table:** Jitter and success counts for both versions over the fixed episodes.\n",
+      "resources": [
+        {
+          "title": "RSS 2021, Spotlight Talk 24: Jerk-limited Real-time Trajectory Generation with Arbitrary Target...",
+          "url": "https://www.youtube.com/watch?v=b6y_3JvGFJo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Hear the Ruckig authors explain jerk-limited online planning."
+        },
+        {
+          "title": "GitHub - pantor/ruckig",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install Ruckig and copy the Python control-loop example."
+        },
+        {
+          "title": "ACT (Action Chunking with Transformers)",
+          "url": "https://huggingface.co/docs/lerobot/act",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Train and run the ACT policy whose actions you will smooth."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read where action chunking comes from and why it helps."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=b6y_3JvGFJo",
+        "https://github.com/pantor/ruckig",
+        "https://huggingface.co/docs/lerobot/act",
+        "https://arxiv.org/abs/2304.13705",
+        "https://raw.githubusercontent.com/pantor/ruckig/main/examples/01_position.py"
+      ]
+    },
+    {
+      "node_id": "p:so-101-on-wheels-base-arm-kinematics",
+      "type": "project",
+      "name": "SO-101 on wheels: base + arm kinematics",
+      "summary": "Mount an SO-101 on a differential-drive base and reach a target that needs both the wheels and the arm to move.",
+      "lesson_md": "## In one sentence\n\nMount an SO-101 on a differential-drive base and reach a target that needs both the wheels and the arm to move.\n\n![LeKiwi mobile robot from the LeRobot documentation](/img/lessons/projects_kinematics_dynamics_2-wheels.webp)\n*LeRobot's LeKiwi is a documented mobile robot you can study as a reference. Source: [LeRobot LeKiwi docs](https://huggingface.co/docs/lerobot/lekiwi), license unknown.*\n\n## What you will learn\n\n- **Differential drive:** A base with two driven wheels; it moves forward and turns but cannot slide sideways.\n- **Nonholonomic constraint:** That \"no sideways slide\" rule, modeled with base pose (heading, x, y) in Modern Robotics 13.3.1.\n- **Mobile manipulation:** Combining base and arm motion; Modern Robotics 13.5 covers drive-then-reach and coordinated control.\n- **Forward kinematics:** Multiply the world-to-base transform, fixed base-to-arm mounting transform and arm kinematics to obtain the gripper's world pose.\n- **Software analogy:** Like nested coordinate systems in a game engine; a child sprite moves when its parent moves.\n\n> **Key idea:** Include the fixed mounting transform between base and arm when computing the gripper's world pose.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101; read Wheeled mobile robot kinematics and Forward kinematics (DH & product of exponentials).\n- **Software:** MuJoCo and mink; its TidyBot example illustrates mobile manipulation, but you must implement the differential-drive constraint.\n- **Custom part:** A mount for the arm on a diff-drive base; build it only after simulation works.\n- **Reference distinction:** The pictured LeKiwi can move sideways; it is not the differential-drive base modeled here.\n\n## Steps\n\n1. **Model the base:** Add a planar base to the SO-101 MJCF and drive it with wheel speeds.\n2. **Chain the frames:** Include the fixed arm mount between base pose and arm forward kinematics; check against the simulator.\n3. **Try drive-then-reach:** Drive close, stop, then solve arm IK; count reachable targets.\n4. **Try coordinated motion:** Let IK move base and arm together, respecting the no-slide rule.\n5. **Run fixed trials:** Place targets out of arm reach, inside reach and fully unreachable; log success and limit hits.\n\n```mermaid\nflowchart LR\n  N0[\"Target\"] --> N1\n  N1[\"Base motion\"] --> N2\n  N2[\"Arm IK\"] --> N3\n  N3[\"Gripper world pose\"] --> N4\n  N4[\"Success check\"]\n```\n\n## Common pitfalls\n\n- **Sideways commands:** A no-slip diff-drive model cannot execute lateral velocity; use wheel-speed controls and plan turns instead.\n- **Wheel slip:** Real wheels slip, so odometry drifts; re-check target position before reaching.\n\n> **Watch out:** A moving base with an extended arm can tip; keep the arm low while driving.\n\n## When it's done\n\n- **Demo video:** The robot drives and reaches a target the arm alone could not reach.\n- **Results table:** Success and failure counts for both strategies, ready for Fetch-by-name with a mobile manipulator.\n",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 13.3.1:  Modeling of Nonholonomic Wheeled Mobile Robots",
+          "url": "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Learn the diff-drive model and its no-slide constraint."
+        },
+        {
+          "title": "Modern Robotics, Chapter 13.5:  Mobile Manipulation",
+          "url": "https://www.youtube.com/watch?v=1MgpqD7v2x0",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See how base and arm motion combine for one gripper goal."
+        },
+        {
+          "title": "LeKiwi",
+          "url": "https://huggingface.co/docs/lerobot/lekiwi",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Study LeRobot's SO-101 mobile integration; unlike this project's diff-drive base, LeKiwi also moves sideways."
+        },
+        {
+          "title": "Example Gallery",
+          "url": "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Find the TidyBot mobile-manipulation example to adapt, adding differential-drive constraints yourself."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=fPHVhlRFFCk",
+        "https://www.youtube.com/watch?v=1MgpqD7v2x0",
+        "https://huggingface.co/docs/lerobot/lekiwi",
+        "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-3-1-modeling-of-nonholonomic-wheeled-mobile-robots/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/13-5-mobile-manipulation/"
+      ]
+    },
+    {
+      "node_id": "p:sts3215-actuator-model-for-sim-to-real",
+      "type": "project",
+      "name": "STS3215 actuator model for sim-to-real",
+      "summary": "Validate BAM's pre-identified Feetech STS3215 model on your SO-101 servos across loads, comparing simulated and real trajectories while recording temperature separately.",
+      "lesson_md": "## In one sentence\n\nValidate BAM's pre-identified Feetech STS3215 model on your SO-101 servos across loads, comparing simulated and real trajectories while recording temperature separately.\n\n![BAM experiment comparing simple and extended friction models](/img/lessons/projects_kinematics_dynamics_2-sts3215.webp)\n*The BAM paper compares a simple and an extended friction model against real measurements. Source: [arXiv 2410.08650](https://arxiv.org/abs/2410.08650), arXiv non-exclusive distribution license.*\n\n## What you will learn\n\n- **Actuator model:** Equations that predict a motor's response; BAM focuses on extended friction models.\n- **Coulomb-viscous friction:** The usual simple model; the BAM authors argue it misses effects such as **Stribeck** and load dependence.\n- **BAM:** Better Actuator Models, an open-source tool to identify and simulate extended friction models; its library includes the Feetech STS3215.\n- **Sim-to-real gap:** The difference between simulated and real motion; better actuator models aim to shrink it.\n- **Software analogy:** Like replacing a mock server with a recorded-traffic replay that behaves like production.\n\n> **Key idea:** Trust a servo model only after it predicts real motion on inputs it never saw during fitting.\n\n## What you need\n\n- **Map preparation:** Finish Identify friction and inertia of one joint and Recover hidden simulated pendulum damping; read Dynamic parameter identification & actuator models.\n- **Software:** BAM, MuJoCo and Python plotting tools.\n- **Hardware:** One SO-101 joint, a pendulum load like BAM's test bench, and logging over the servo bus.\n\n## Steps\n\n1. **Load the library model:** Use BAM's pre-identified STS3215 parameters in a MuJoCo joint.\n2. **Record real motion:** Log bounded single-joint motions with several loads and note motor temperature.\n3. **Fit or validate:** Use BAM's identification tools on your logs; compare with the library parameters.\n4. **Test an unseen input:** Play a new trajectory on both robot and simulation and overlay them.\n5. **Report the error:** Give tracking error for the simple and extended models across loads and temperatures.\n\n```mermaid\nflowchart LR\n  N0[\"Library model\"] --> N1\n  N1[\"Real logs\"] --> N2\n  N2[\"BAM fit\"] --> N3\n  N3[\"Unseen input\"] --> N4\n  N4[\"Sim vs real overlay\"]\n```\n\n## Common pitfalls\n\n- **Fitting on test data:** Using the same trajectory for fitting and checking hides overfitting.\n- **Temperature limitation:** BAM's paper does not model temperature; logging it does not add a thermal model.\n\n> **Watch out:** Keep motions bounded and the pendulum guarded; a loose load can swing hard.\n\n## When it's done\n\n- **Overlay video:** Simulated and real joint motion on the unseen input.\n- **Parameter card:** Fitted values and errors, reusable for Sim-to-real transfer on the SO-101.\n",
+      "resources": [
+        {
+          "title": "Extended Friction Models for the Physics Simulation of Servo Actuators",
+          "url": "https://www.youtube.com/watch?v=5XPEEKDnQEM",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Watch the BAM authors present the friction models and results."
+        },
+        {
+          "title": "GitHub - Rhoban/bam: Identify and simulate extended friction models for servo-actuators",
+          "url": "https://github.com/Rhoban/bam",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Install BAM and find the pre-identified actuator library."
+        },
+        {
+          "title": "Identification",
+          "url": "https://bam.readthedocs.io/en/latest/identification/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow BAM’s pendulum test-bench, data-logging and friction-fitting workflow."
+        },
+        {
+          "title": "Extended Friction Models for the Physics Simulation of Servo Actuators",
+          "url": "https://arxiv.org/abs/2410.08650",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the model definitions and experiments behind BAM."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=5XPEEKDnQEM",
+        "https://github.com/Rhoban/bam",
+        "https://bam.readthedocs.io/en/latest/identification/index.html",
+        "https://arxiv.org/abs/2410.08650",
+        "https://arxiv.org/html/2410.08650v4",
+        "https://bam.readthedocs.io/en/latest/usage/index.html"
+      ]
+    },
+    {
+      "node_id": "p:time-optimal-so-101-drawing",
+      "type": "project",
+      "name": "Time-optimal SO-101 drawing",
+      "summary": "Use TOPP-RA to time a smooth SO-101 drawing path under chosen joint velocity and acceleration limits, comparing it with a slower rest-to-rest baseline.",
+      "lesson_md": "## In one sentence\n\nUse TOPP-RA to time a smooth SO-101 drawing path under chosen joint velocity and acceleration limits, comparing it with a slower rest-to-rest baseline.\n\n![TOPP-RA illustration of a path and its time parameterization](/img/lessons/projects_kinematics_dynamics_2-time-optimal.webp)\n*TOPP-RA finds how fast a robot can move along a fixed path. Source: [toppra documentation](https://hungpham2511.github.io/toppra/), license unknown.*\n\n## What you will learn\n\n- **Path:** The geometric shape the pen follows, with no timing attached.\n- **Time scaling:** Deciding how fast to move along that path at each point.\n- **Time-optimal:** The fastest timing of the chosen path under the constraints supplied, not a search for a better drawing path.\n- **TOPP-RA:** A library that solves this with reachability analysis, a sequence of small linear programs.\n- **Software analogy:** Like a video player choosing playback speed per scene without dropping frames.\n\n> **Key idea:** Keep the drawing shape fixed and optimize only the speed along it.\n\n## What you need\n\n- **Map preparation:** Complete Assemble & teleoperate an SO-101; read Trajectory generation & time scaling.\n- **Software:** MuJoCo, an IK solver and `toppra`.\n- **Code inputs:** `ss` holds increasing path parameters; `way_pts` holds joint waypoints. `vlims` and `alims` contain per-joint lower/upper bounds in consistent units.\n- **Hardware:** A pen holder for the gripper and paper fixed to the table, after simulation works.\n\n## Steps\n\n1. **Draw the shape:** Sample a smooth curve, solve IK on one continuous branch, then verify the interpolated joint spline follows the intended pen path.\n2. **Build the baseline:** Time that same spline conservatively, starting and ending at rest; check both velocity and acceleration limits.\n3. **Set limits:** Pick conservative joint velocity and acceleration limits.\n4. **Run TOPP-RA:** Use the code below to get a rest-to-rest time-optimal trajectory.\n5. **Compare:** Measure total time and pen-path error for both versions over repeated runs.\n\n```python\nimport toppra as ta, toppra.constraint as constraint, toppra.algorithm as algo\npath = ta.SplineInterpolator(ss, way_pts)\npc_vel = constraint.JointVelocityConstraint(vlims)\npc_acc = constraint.JointAccelerationConstraint(alims)\ntraj = algo.TOPPRA([pc_vel, pc_acc], path).compute_trajectory(0, 0)\nif traj is None:\n    raise RuntimeError(\"No feasible trajectory returned\")\n```\n\n```mermaid\nflowchart LR\n  N0[\"Shape\"] --> N1\n  N1[\"IK waypoints\"] --> N2\n  N2[\"Spline path\"] --> N3\n  N3[\"TOPP-RA timing\"] --> N4\n  N4[\"Pen drawing\"]\n```\n\n## Common pitfalls\n\n- **Optimistic limits:** Datasheet-level limits can make the real arm lag and smear the line.\n- **Constraint scope:** This example does not constrain actuator torque, jerk or pen-contact force; verify the timed motion in simulation before hardware.\n\n> **Watch out:** Test speed increases in simulation first, then on hardware at reduced limits.\n\n## When it's done\n\n- **Side-by-side video:** Conservative and time-optimal timings of the same spline.\n- **Results table:** Drawing time and path error for both versions, plus any limit violations.\n",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 9.4:  Time-Optimal Time Scaling (Part 1 of 3)",
+          "url": "https://www.youtube.com/watch?v=DRFA_iwH_HQ",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Learn the idea of fastest timing along a fixed path."
+        },
+        {
+          "title": "Time-Optimal Path Tracking via Reachability Analysis",
+          "url": "https://www.youtube.com/watch?v=o-p1EmpLIV8",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "See the TOPP-RA method presented at ICRA 2018."
+        },
+        {
+          "title": "toppra documentation",
+          "url": "https://hungpham2511.github.io/toppra/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Copy the quickstart that builds and solves a time-optimal problem."
+        },
+        {
+          "title": "A New Approach to Time-Optimal Path Parameterization based on Reachability Analysis",
+          "url": "https://arxiv.org/abs/1707.07239",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read why reachability analysis is fast and robust."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=DRFA_iwH_HQ",
+        "https://www.youtube.com/watch?v=o-p1EmpLIV8",
+        "https://hungpham2511.github.io/toppra/",
+        "https://arxiv.org/abs/1707.07239",
+        "https://hungpham2511.github.io/toppra/auto_examples/plot_kinematics.html",
+        "https://hungpham2511.github.io/toppra/python_api.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-4-time-optimal-time-scaling-part-1-of-3/"
+      ]
+    },
+    {
+      "node_id": "p:trajectory-optimized-motions-as-rl-references",
+      "type": "project",
+      "name": "Trajectory-optimized motions as RL references",
+      "summary": "Generate a humanoid jump with Crocoddyl trajectory optimization, train a simulated Unitree G1 to track it with reinforcement learning, and compare it with retargeted human jumps.",
+      "lesson_md": "## In one sentence\n\nGenerate a humanoid jump with Crocoddyl trajectory optimization, train a simulated Unitree G1 to track it with reinforcement learning, and compare it with retargeted human jumps.\n\n![Highly dynamic robot maneuvers produced with optimal control](/img/lessons/projects_kinematics_dynamics_2-trajopt.webp)\n*Optimal control can produce highly dynamic whole-body maneuvers. Source: [Crocoddyl on GitHub](https://github.com/loco-3d/crocoddyl), license unknown.*\n\n## What you will learn\n\n- **Trajectory optimization:** Solving for a whole motion that minimizes a cost while obeying the robot's dynamics.\n- **Crocoddyl:** An optimal control library for robots under a contact sequence; its DDP-based solvers return trajectories and feedback gains, using Pinocchio for dynamics.\n- **Reference motion:** A target motion that an RL tracking policy learns to follow, as in BeyondMimic-style tracking.\n- **Physical consistency:** Check solver convergence and dynamics/contact residuals before treating an optimized jump as model-feasible; GMR reports physically infeasible artifacts in retargeted references.\n- **Software analogy:** Like generating test fixtures from a schema instead of copying production data with odd values.\n\n> **Key idea:** Swap only the reference source and keep the tracking setup fixed to see which references are easier to learn.\n\n## What you need\n\n- **Map preparation:** Complete Humanoid jump with Crocoddyl; read Floating-base & centroidal dynamics (legged/humanoid) and Human-to-robot motion retargeting.\n- **Software:** Crocoddyl, a G1 model and MuJoCo Warp, which runs MuJoCo on NVIDIA GPUs for many parallel rollouts.\n- **Comparison data:** Human jump clips retargeted to the G1, for example with GMR.\n- **Integration work:** Implement reference conversion and an RL training environment; Crocoddyl and MuJoCo Warp are not a ready-made G1 tracking pipeline.\n\n## Steps\n\n1. **Export the jump:** Save base pose, joint positions and needed velocities at a fixed rate; document coordinate frames, quaternion order and sampling rate.\n2. **Match the models:** Check joint order, masses and limits between the Crocoddyl model and the simulated G1.\n3. **Prepare human references:** Retarget a few human jumps to the same format.\n4. **Train trackers:** Train one tracking policy per reference with identical rewards, settings and seeds.\n5. **Evaluate:** Over fixed rollouts, count falls, landing failures and joint-limit hits; measure tracking error.\n\n```mermaid\nflowchart LR\n  N0[\"Crocoddyl jump\"] --> N1\n  N1[\"Reference file\"] --> N2\n  N2[\"RL tracking\"] --> N3\n  N3[\"GPU rollouts\"] --> N4\n  N4[\"Compare with human jumps\"]\n```\n\n## Common pitfalls\n\n- **Model mismatch:** Different joint ordering or masses between the two models make the reference look infeasible.\n- **Single seed:** One RL run can mislead; repeat training and report the spread.\n\n> **Watch out:** An optimized jump can exploit modeling errors, so success in simulation is not proof for hardware.\n\n## When it's done\n\n- **Comparison video:** The G1 tracking the optimized jump and a human jump.\n- **Results table:** Falls, tracking error and limit hits for each reference source.\n",
+      "resources": [
+        {
+          "title": "Crocoddyl: An Efficient and Versatile Framework for Multi-Contact Optimal Control",
+          "url": "https://www.youtube.com/watch?v=SoCsDIUQR3E",
+          "format": "Video",
+          "level": "Advanced",
+          "why": "See Crocoddyl generate multi-contact motions before you build a jump."
+        },
+        {
+          "title": "GitHub - loco-3d/crocoddyl: Crocoddyl is an optimal control library for robot control under contact sequence. Its solver is based on various efficient Differential Dynamic Programming (DDP)-like algorithms",
+          "url": "https://github.com/loco-3d/crocoddyl",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Install Crocoddyl and study its optimal-control building blocks before constructing the G1 jump problem."
+        },
+        {
+          "title": "GitHub - google-deepmind/mujoco_warp: GPU-optimized version of the MuJoCo physics simulator, designed for NVIDIA hardware.",
+          "url": "https://github.com/google-deepmind/mujoco_warp",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run many simulated G1 rollouts on a GPU for RL training."
+        },
+        {
+          "title": "Retargeting Matters: General Motion Retargeting for Humanoid Motion Tracking",
+          "url": "https://arxiv.org/abs/2510.02252",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Reuse its method for comparing reference sources by tracking quality."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=SoCsDIUQR3E",
+        "https://github.com/loco-3d/crocoddyl",
+        "https://github.com/google-deepmind/mujoco_warp",
+        "https://arxiv.org/abs/2510.02252"
+      ]
+    },
+    {
+      "node_id": "p:urdf-mjcf-linter-for-student-robots",
+      "type": "project",
+      "name": "URDF/MJCF linter for student robots",
+      "summary": "Build a tool that checks inertias, joint-limit settings, zero-length axes and mesh paths in URDF and MJCF, and test it on MuJoCo Menagerie models.",
+      "lesson_md": "## In one sentence\n\nBuild a tool that checks inertias, joint-limit settings, zero-length axes and mesh paths in URDF and MJCF, and test it on MuJoCo Menagerie models.\n\n![URDF link diagram showing joint, link origin, visual, collision and inertial frames](/img/lessons/projects_kinematics_dynamics_2-linter.webp)\n*One URDF link has separate visual, collision and inertial parts, each a linter target. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:URDF_Link_Layout.png), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **URDF:** An XML robot description used in ROS, made of links (rigid parts) and joints connecting them.\n- **MJCF:** MuJoCo's XML format for robots and scenes; **SDF** is the format Gazebo uses for worlds and models.\n- **Inertia check:** MuJoCo's docs state a valid diagonal inertia must satisfy A+B≥C for every ordering of its three values.\n- **Inferred inertia:** With the default `inertiafromgeom=\"auto\"`, MuJoCo infers mass and inertia from geoms when the body's inertial element is absent.\n- **Software analogy:** This is ESLint for robot files: fast rules that catch mistakes before the simulator runs.\n\n> **Key idea:** Every rule must point to a concrete physical or format problem, not a style preference.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Robot description formats (URDF / MJCF).\n- **Software:** Python's XML parser, MuJoCo for cross-checking, and optionally Gazebo for SDF files.\n- **Test set:** A local clone of MuJoCo Menagerie plus a few deliberately broken copies.\n\n## Steps\n\n1. **Parse files:** Resolve includes, MJCF defaults and geom-derived inertias before building common body, joint and mesh records; cross-check with MuJoCo's compiled model.\n2. **Write five rules:** Negative mass, invalid principal inertia, inconsistent limit settings, zero-length hinge/slide axis and unresolved mesh path.\n3. **Add a unit warning:** Flag masses or link lengths far outside the range of the other models.\n4. **Run on Menagerie:** Count findings per model and review each one by hand.\n5. **Break and repair:** Inject known errors into copies, confirm the linter catches each, then show the fixed file.\n\n```mermaid\nflowchart LR\n  N0[\"Robot file\"] --> N1\n  N1[\"Parser\"] --> N2\n  N2[\"Rules\"] --> N3\n  N3[\"Findings report\"] --> N4\n  N4[\"Repaired file\"]\n```\n\n## Common pitfalls\n\n- **Format defaults:** MJCF and URDF fill missing values differently; read the spec before calling a value missing.\n- **False alarms:** Unlimited MJCF hinges and some zero-mass bodies are valid; distinguish warnings from errors and allow intentional exceptions.\n- **Axis direction:** XML alone cannot reveal an inverted axis; compare with a trusted model or a measured positive-joint motion.\n- **Principal inertia:** For a full inertia tensor, test its eigenvalues, not its diagonal entries in an arbitrary frame.\n\n## When it's done\n\n- **CLI tool:** One command prints findings with file, element and rule name.\n- **Test report:** Caught and missed counts for injected errors, plus findings on Menagerie models.\n",
+      "resources": [
+        {
+          "title": "How do we describe a robot? With URDF! | Getting Ready to build Robots with ROS #7",
+          "url": "https://www.youtube.com/watch?v=CwdbsvcpOHM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn links, joints and inertia tags before you lint them."
+        },
+        {
+          "title": "GitHub - ros/urdf_tutorial",
+          "url": "https://github.com/ros/urdf_tutorial",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Build example URDF files step by step to use as test inputs."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check MJCF defaults, joint limits and inertia rules."
+        },
+        {
+          "title": "SDF worlds",
+          "url": "https://gazebosim.org/docs/harmonic/sdf_worlds/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "See how Gazebo describes worlds if you extend the linter to SDF."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=CwdbsvcpOHM",
+        "https://github.com/ros/urdf_tutorial",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://gazebosim.org/docs/harmonic/sdf_worlds/"
+      ]
+    },
+    {
+      "node_id": "p:whole-body-reach-on-a-simulated-humanoid",
+      "type": "project",
+      "name": "Whole-body reach on a simulated humanoid",
+      "summary": "Pose a simulated Unitree G1 to reach with one hand using mink, while measuring foot drift and center-of-mass error against fixed standing targets.",
+      "lesson_md": "## In one sentence\n\nPose a simulated Unitree G1 to reach with one hand using mink, while measuring foot drift and center-of-mass error against fixed standing targets.\n\n![Rendered Unitree G1 humanoid model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-whole-body.webp)\n*The Unitree G1 model from MuJoCo Menagerie. Source: [MuJoCo Menagerie Unitree G1](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1), BSD-3-Clause.*\n\n## What you will learn\n\n- **Whole-body IK:** Solving for all humanoid joints at once so the hands, feet and torso meet several goals together.\n- **Center of mass (CoM):** The mass-weighted average position; a standing target places its horizontal projection within the feet's support area.\n- **Task costs:** mink's G1 example weighs a CoM task, foot and hand frame tasks, and a posture task with different costs.\n- **Redundancy:** A humanoid has more joints than one hand needs, so the solver can use spare joints for balance.\n- **Software analogy:** Like a CSS layout engine resolving many constraints, some weighted more than others.\n\n> **Key idea:** Reaching is easy; reaching while the feet stay put and the CoM stays over them is the real task.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Differential IK & redundancy resolution (QP-based) and Floating-base & centroidal dynamics (legged/humanoid).\n- **Software:** MuJoCo and mink's bundled G1 scene; use Menagerie as a model reference, not a drop-in replacement for the example's named sites.\n\n## Steps\n\n1. **Run the example:** Start mink's `humanoid_g1.py` and move its hand and foot targets in the viewer.\n2. **Hold foot targets:** Keep both foot frame targets at their starting poses; weighted tasks can retain error, so measure drift.\n3. **Place the CoM target:** Put its horizontal position midway between the feet while retaining its initial height; measure the resulting error.\n4. **Script a reach:** Move one hand target toward an object in steps, from near to beyond arm's length.\n5. **Log and count:** Record hand error, CoM horizontal offset and joint-limit hits; count reached, failed and unreachable targets.\n\n```mermaid\nflowchart LR\n  N0[\"Hand target\"] --> N1\n  N1[\"Foot and CoM tasks\"] --> N2\n  N2[\"mink solve\"] --> N3\n  N3[\"G1 pose\"] --> N4\n  N4[\"Offset and error log\"]\n```\n\n## Common pitfalls\n\n- **Soft objectives:** `ComTask` and foot `FrameTask` costs penalize errors; they do not impose hard balance or fixed-contact constraints.\n- **Drifting feet:** Without foot tasks the solver slides the feet to help the hand.\n\n> **Watch out:** This is kinematic balance only; it ignores forces, so a dynamic robot could still fall.\n\n## When it's done\n\n- **Demo video:** The G1 reaching while its CoM marker stays over the feet.\n- **Results table:** Reach success, CoM offset and limit hits over the fixed target list.\n",
+      "resources": [
+        {
+          "title": "Solving whole body humanoid motion with Pinocchio and pink",
+          "url": "https://www.youtube.com/watch?v=r6k0OMjiKvo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "See whole-body humanoid IK with tasks, a close cousin of mink."
+        },
+        {
+          "title": "mink/examples/humanoid_g1.py",
+          "url": "https://github.com/kevinzakka/mink/blob/main/examples/humanoid_g1.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Start from the G1 example with CoM, foot, hand and posture tasks."
+        },
+        {
+          "title": "mujoco_menagerie/unitree_g1 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the G1 model, its joints and its standing keyframe."
+        },
+        {
+          "title": "Example Gallery",
+          "url": "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Find mink’s whole-body G1 example and its task-based setup."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=r6k0OMjiKvo",
+        "https://github.com/kevinzakka/mink/blob/main/examples/humanoid_g1.py",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
+        "https://kevinzakka.github.io/mink/tutorial/example_gallery.html",
+        "https://raw.githubusercontent.com/kevinzakka/mink/main/examples/humanoid_g1.py"
+      ]
+    },
+    {
+      "node_id": "p:write-an-mjcf-for-the-so-101-from-scratch",
+      "type": "project",
+      "name": "Write an MJCF for the SO-101 from scratch",
+      "summary": "Write an MJCF model of the SO-101 by hand, then compare its joint axes and limits side by side with the official MuJoCo Menagerie model.",
+      "lesson_md": "## In one sentence\n\nWrite an MJCF model of the SO-101 by hand, then compare its joint axes and limits side by side with the official MuJoCo Menagerie model.\n\n![Rendered SO-101 model from MuJoCo Menagerie](/img/lessons/projects_kinematics_dynamics_2-mjcf.webp)\n*The official SO-101 MuJoCo model you will compare against. Source: [MuJoCo Menagerie SO-101](https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101), Apache-2.0.*\n\n## What you will learn\n\n- **MJCF:** MuJoCo's XML format; bodies nest inside bodies, like folders, to form the robot's kinematic tree.\n- **Joint elements:** A `hinge` rotates about its local `axis`; `range` enables limits when compiler `autolimits` is true, otherwise set `limited=\"true\"` explicitly.\n- **Geoms and inertia:** Under the default `inertiafromgeom=\"auto\"`, MuJoCo infers mass and inertia from geoms if the body's inertial element is absent.\n- **Orientation:** Every frame orientation becomes a unit quaternion internally, whatever form you write.\n- **Software analogy:** Writing MJCF is like writing a nested HTML DOM where every child moves with its parent.\n\n> **Key idea:** Build one joint at a time and check it in the viewer before adding the next one.\n\n## What you need\n\n- **Map preparation:** Finish Intro: robot anatomy & coordinate frames in sim; read Robot description formats (URDF / MJCF).\n- **Software:** MuJoCo with its viewer; the Menagerie SO-101 needs MuJoCo 3.1.3 or newer.\n- **Reference files:** The Menagerie model, which its README says was derived from a public `so101_new_calib.xml` MJCF.\n\n## Steps\n\n1. **Sketch the tree:** List base, each moving link and the gripper as nested bodies.\n2. **Add one joint:** Write the base and first hinge, load it and move the joint slider.\n3. **Grow the chain:** Add the remaining joints one by one with axis and range.\n4. **Add simple shapes:** Use capsules or boxes instead of meshes; let MuJoCo infer inertia.\n5. **Compare side by side:** Load both models, sweep each joint and compare axes, limits and gripper positions.\n\n```xml\n<!-- Illustrative values, not SO-101 measurements -->\n<mujoco>\n  <compiler angle=\"degree\" autolimits=\"true\"/>\n  <worldbody>\n    <body name=\"upper_arm\" pos=\"0 0 0.1\">\n      <joint name=\"shoulder_lift\" type=\"hinge\" axis=\"0 1 0\" range=\"-90 90\"/>\n      <geom type=\"capsule\" fromto=\"0 0 0 0 0 0.11\" size=\"0.02\"/>\n    </body>\n  </worldbody>\n</mujoco>\n```\n\n```mermaid\nflowchart LR\n  N0[\"Kinematic tree\"] --> N1\n  N1[\"One joint\"] --> N2\n  N2[\"Full chain\"] --> N3\n  N3[\"Simple shapes\"] --> N4\n  N4[\"Compare with official\"]\n```\n\n## Common pitfalls\n\n- **Angle units:** MJCF angles default to degrees unless `<compiler angle=\"radian\"/>` is set; URDF always uses radians.\n- **Flipped axes:** A sign error in `axis` makes a joint move backwards; compare directions joint by joint.\n\n## When it's done\n\n- **Side-by-side video:** Your model and the official one moving through the same joint sweep.\n- **Difference table:** Axis, limit and gripper-position mismatches for every joint.\n",
+      "resources": [
+        {
+          "title": "Reinforcement Learning for Robotics Part 1: Import a Robot CAD Model into MuJoCo | DigiKey",
+          "url": "https://www.youtube.com/watch?v=kGish1q_WC8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a robot model being built and loaded in MuJoCo."
+        },
+        {
+          "title": "XML Reference - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Look up body, joint, geom and compiler attributes as you write."
+        },
+        {
+          "title": "Modeling - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand the kinematic tree, frames and defaults in MJCF."
+        },
+        {
+          "title": "mujoco_menagerie/robotstudio_so101 at main",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Read the official SO-101 model you compare against."
+        },
+        {
+          "title": "GitHub - TheRobotStudio/SO-ARM100: Standard Open Arm 100",
+          "url": "https://github.com/TheRobotStudio/SO-ARM100",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Find the original SO-101 description and hardware files."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=kGish1q_WC8",
+        "https://mujoco.readthedocs.io/en/stable/XMLreference.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotstudio_so101",
+        "https://github.com/TheRobotStudio/SO-ARM100"
+      ]
+    }
+  ]
+}
