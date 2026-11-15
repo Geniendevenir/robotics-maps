@@ -1,0 +1,448 @@
+{
+  "batch": "projects_robot_learning_1",
+  "lessons": [
+    {
+      "node_id": "p:action-coordinate-mismatch-detective",
+      "type": "project",
+      "name": "Action-coordinate mismatch detective",
+      "summary": "Build a simulator gate that catches wrong action coordinates before a learned policy moves the robot.",
+      "lesson_md": "## In one sentence\n\nBuild a simulator gate that catches wrong action coordinates before a learned policy moves the robot.\n\n![Simulated arm lifting a cube in robomimic](/img/lessons/projects_robot_learning_1-action-coordinate-mismatch-detective.webp)\n*Simulated arm lifting a cube in robomimic. Source: [Published project media](https://robomimic.github.io/docs/introduction/overview.html), license unknown.*\n\n## What you will learn\n\n- **Action contract:** a command needs a meaning, unit, coordinate frame and ordering, not merely an array of numbers.\n- **Coordinate frame:** the reference axes used to describe motion; robot-relative movement can differ from world-relative movement.\n- **Software analogy:** treat the adapter like a typed API boundary that rejects invalid requests instead of silently reinterpreting them.\n\n> **Key idea:** An action array can be numerically valid and still describe the wrong physical movement.\n\n## What you need\n\n- **Setup:** use robomimic, a compatible simulator and a recorded lifting episode; no physical robot purchase is needed.\n- **Skills:** Python arrays, assertions and plotting; read Robot learning problem formulation: observations, actions, policies before interpreting commands.\n- **Cost:** the map estimates €0 hardware for simulation; local compute, storage and any rented GPU remain separate expenses.\n\n## Steps\n\n1. **Describe the contract:** inspect the checkpoint and controller configuration. Record every action component, its normalization, unit, frame and valid range.\n2. **Build explicit adapters:** distinguish absolute positions from changes in position. Use names and metadata, not vector length, to select conversions.\n3. **Create fault cases:** deliberately swap two axes, change units and remove an observation. Preserve the unmodified stream as your control.\n4. **Test invariants:** check finite values, expected shape and declared units. A swapped pair can remain in range; require provenance or directional tests too.\n5. **Replay in simulation:** compare accepted commands with actual end-effector motion, the movement of the robot’s tool. Include an absent target and log refusal.\n6. **Film the demo:** show nominal motion, a rejected wrong-unit packet and a swapped-axis failure caught by a directional test, before execution.\n\n**Worked test:** declare a toy translation contract in metres. A packet labelled centimetres must be converted explicitly or rejected, never accepted by shape alone.\n\n```mermaid\nflowchart LR\n  A[\"Policy output\"] --> B\n  B[\"Contract gate\"] --> C\n  C[\"Controller\"] --> D\n  D[\"Observed motion\"]\n```\n\n## Common pitfalls\n\n- **Range checks alone:** two plausible coordinates can be reversed without violating numerical limits; validation is not proof of task success.\n- **Hidden conversions:** normalizing twice or confusing radians with degrees can invalidate an otherwise correctly shaped command.\n- **Unsupported metadata:** reject an unknown frame or missing camera input; do not replace it with an apparently successful default.\n\n## When it's done\n\n- **Deliverable:** a typed adapter, property tests and a side-by-side video explain each accepted or rejected action stream.\n- **Scorecard:** report invalid-command detection separately from task completion, including false rejections and failures that passed the gate.",
+      "resources": [
+        {
+          "title": "Video Overview",
+          "url": "https://robomimic.github.io/assets/robomimic_video.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the simulated manipulation setup whose action streams you will inspect."
+        },
+        {
+          "title": "Action Configuration",
+          "url": "https://robomimic.github.io/docs/tutorials/action_configs.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read how action keys, normalization and representations are configured."
+        },
+        {
+          "title": "Overview",
+          "url": "https://robomimic.github.io/docs/datasets/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Locate observations and actions in demonstration datasets."
+        },
+        {
+          "title": "What Matters in Learning from Offline Human Demonstrations for Robot Manipulation",
+          "url": "https://arxiv.org/abs/2108.03298",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the offline manipulation benchmark behind the experiment."
+        }
+      ],
+      "sources": [
+        "https://robomimic.github.io/docs/introduction/overview.html",
+        "https://robomimic.github.io/assets/robomimic_video.mp4",
+        "https://robomimic.github.io/docs/tutorials/action_configs.html",
+        "https://robomimic.github.io/docs/datasets/overview.html",
+        "https://arxiv.org/abs/2108.03298"
+      ]
+    },
+    {
+      "node_id": "p:adapter-merge-versus-forgetting-benchmark",
+      "type": "project",
+      "name": "Adapter merge versus forgetting benchmark",
+      "summary": "Compare ways of adapting a robot policy, then test whether each method preserves its earlier skills.",
+      "lesson_md": "## In one sentence\n\nCompare ways of adapting a robot policy, then test whether each method preserves its earlier skills.\n\n![LIBERO manipulation tasks used to compare retained skills](/img/lessons/projects_robot_learning_1-adapter-merge-versus-forgetting-benchmark.webp)\n*LIBERO manipulation tasks used to compare retained skills. Source: [Published project media](https://github.com/Lifelong-Robot-Learning/LIBERO), license unknown.*\n\n## What you will learn\n\n- **Adapter:** a small trainable addition to an otherwise frozen model; LoRA learns low-rank weight updates instead of updating every weight.\n- **Forgetting:** performance on an earlier task drops after training on a later task; measure it rather than assuming adaptation always helps.\n- **Software analogy:** adapters resemble feature branches; combining their patches can create conflicts even when each branch works alone.\n\n> **Key idea:** A successful new skill does not show that an adapted policy still remembers the old ones.\n\n## What you need\n\n- **Setup:** a LeRobot policy supported by its PEFT integration, compatible simulated tasks and separate demonstrations for each skill.\n- **Skills:** checkpoint loading and evaluation; finish Normalization and camera adaptation clinic before comparing learned updates.\n- **Cost:** no robot hardware is required. Estimate GPU time and disk space with a small pilot before scheduling the full benchmark.\n\n## Steps\n\n1. **Freeze the baseline:** save the original checkpoint, preprocessing configuration and untouched test episodes; evaluate every skill before training.\n2. **Match the budget:** allocate the same demonstrations and gradient-update budget to separate adapters, sequential tuning and your proposed adapter composition.\n3. **Train controlled variants:** keep the backbone, data ordering and evaluation seeds documented. Include a no-update reference to detect evaluation drift.\n4. **Distinguish merge operations:** merging LoRA into its base is not the same experiment as combining two task adapters; name each method precisely.\n5. **Evaluate retention:** after every adaptation stage, replay all old and new skills. Add absent targets and corrupt observations; log a stop instead of improvising.\n6. **Demonstrate the trade-off:** film identical resets across variants and publish old-skill loss alongside new-skill gains, training cost and inference cost.\n\n**Worked report:** use columns `base`, `after skill A`, `after skill B`; evaluate skill A in every column, including after the second update.\n\n```mermaid\nflowchart LR\n  A[\"Frozen checkpoint\"] --> B\n  B[\"Adaptation variants\"] --> C\n  C[\"All-skill evaluation\"] --> D\n  D[\"Retention table\"]\n```\n\n## Common pitfalls\n\n- **Incompatible bases:** only combine adapters whose base weights, target modules and action interfaces match; otherwise the comparison is undefined.\n- **More training wins:** an adapter composition with extra task data or updates has an unfair advantage over the sequential reference.\n- **Unproven robotics results:** PEFT supplies merging tools, not a guarantee that composed robot skills will remain reliable.\n\n## When it's done\n\n- **Deliverable:** a reproducible comparison of separate, sequential, composed and unchanged policies, with an explicit recipe for the proposed composition.\n- **Retention table:** show performance before and after updates per skill, not only a pooled average that can hide forgetting.",
+      "resources": [
+        {
+          "title": "Fine-tuning LLMs with PEFT and LoRA",
+          "url": "https://www.youtube.com/watch?v=Us5ZFp16PaU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn the PEFT/LoRA mechanism used by the adapters; the walkthrough uses language models, not a robot benchmark."
+        },
+        {
+          "title": "Parameter efficient fine-tuning with 🤗 PEFT",
+          "url": "https://huggingface.co/docs/lerobot/peft_training",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Configure supported parameter-efficient robot-policy adaptation."
+        },
+        {
+          "title": "Model merging",
+          "url": "https://huggingface.co/docs/peft/developer_guides/model_merging",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish merging into a base model from combining task adapters."
+        },
+        {
+          "title": "LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+          "url": "https://arxiv.org/abs/2306.03310",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Learn how lifelong robot-learning evaluations expose forgetting."
+        }
+      ],
+      "sources": [
+        "https://github.com/Lifelong-Robot-Learning/LIBERO",
+        "https://www.youtube.com/watch?v=Us5ZFp16PaU",
+        "https://huggingface.co/docs/lerobot/peft_training",
+        "https://huggingface.co/docs/peft/developer_guides/model_merging",
+        "https://arxiv.org/abs/2306.03310"
+      ]
+    },
+    {
+      "node_id": "p:affordance-grounded-plan-ranking-lab",
+      "type": "project",
+      "name": "Affordance-grounded plan ranking lab",
+      "summary": "Rank simulated robot skills by both instruction relevance and feasibility, including requests the robot cannot satisfy.",
+      "lesson_md": "## In one sentence\n\nRank simulated robot skills by both instruction relevance and feasibility, including requests the robot cannot satisfy.\n\n![SayCan simulated tabletop with blocks and bowls](/img/lessons/projects_robot_learning_1-affordance-grounded-plan-ranking-lab.webp)\n*SayCan simulated tabletop with blocks and bowls. Source: [Published project media](https://say-can.github.io/), license unknown.*\n\n## What you will learn\n\n- **Skill:** a callable robot behaviour such as picking up an object, with stated inputs and a success condition.\n- **Affordance:** whether the robot can carry out a skill in its current situation; language plausibility alone does not establish this.\n- **Software analogy:** a planner resembles a service router: an endpoint can match a request but still fail its availability checks.\n\n> **Key idea:** A useful instruction must be both relevant to the goal and executable in the current scene.\n\n## What you need\n\n- **Setup:** a small simulated scene and a fixed skill library. A table-based language scorer is enough for the first version.\n- **Skills:** Python dictionaries, ranking and tests; read Skill-API hallucination test stage alongside the map nodes SayCan and KnowNo.\n- **Cost:** no robot purchase; use a local toy scorer to avoid API costs, which are separate from the map’s hardware estimate.\n\n## Steps\n\n1. **Define skill contracts:** list supported verbs, required objects, preconditions and completion checks. Include an explicit stop or request-clarification outcome.\n2. **Make paired requests:** include achievable commands, impossible commands, an absent object and an ambiguous object name in the same frozen test set.\n3. **Build the language baseline:** rank skills using only how well their descriptions fit the instruction; record its choice before executing anything.\n4. **Add feasibility:** follow SayCan’s combination of language and skill-value scores. For a toy implementation, label precondition checks as hand-written estimates.\n5. **Handle uncertainty:** refuse missing observations and ask for clarification when the target is ambiguous; a high relative score need not mean any skill is valid.\n6. **Film matched trials:** show the same request under language-only and grounded selection, highlighting infeasible choices, valid alternatives and deliberate stops.\n\n**Worked example:** for “bring the mug,” compare `pick_mug` and `open_drawer`; when no mug exists, neither a fluent description nor a high rank authorizes motion.\n\n```mermaid\nflowchart LR\n  A[\"Instruction\"] --> B\n  B[\"Candidate skills\"] --> C\n  C[\"Feasibility scores\"] --> D\n  D[\"Select or clarify\"]\n```\n\n## Common pitfalls\n\n- **Invented capabilities:** a language model naming a skill does not create an implementation; reject calls outside the declared library.\n- **Misleading probabilities:** hand-written feasibility values are not calibrated probabilities. Record their construction and evaluate their mistakes.\n- **Forced ranking:** choosing the least impossible action still fails an impossible request; include a no-action outcome.\n\n## When it's done\n\n- **Deliverable:** a visible score table, selected skill and outcome for each request, including impossible and ambiguous cases.\n- **Next step:** use the tested skill contracts in Generated robot-code contract arena rather than exposing unrestricted robot commands.",
+      "resources": [
+        {
+          "title": "Supplementary video for Do As I Can, Not As I Say: Grounding Language in Robotic Affordances",
+          "url": "https://www.youtube.com/watch?v=ysFav0b472w",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch language instructions grounded in robot skill feasibility."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand the language-score and value-score combination."
+        },
+        {
+          "title": "Code as Policies: Language Model Programs for Embodied Control",
+          "url": "https://code-as-policies.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See how a declared robot API can support language-conditioned programs."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://arxiv.org/abs/2307.01928",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Learn why uncertainty can require asking for help instead of acting."
+        }
+      ],
+      "sources": [
+        "https://say-can.github.io/",
+        "https://www.youtube.com/watch?v=ysFav0b472w",
+        "https://code-as-policies.github.io/",
+        "https://arxiv.org/abs/2307.01928"
+      ]
+    },
+    {
+      "node_id": "p:augmentation-label-validity-microscope",
+      "type": "project",
+      "name": "Augmentation label-validity microscope",
+      "summary": "Inspect whether visual data augmentations preserve the action labels attached to robot demonstrations.",
+      "lesson_md": "## In one sentence\n\nInspect whether visual data augmentations preserve the action labels attached to robot demonstrations.\n\n![Random camera crops illustrated by robomimic](/img/lessons/projects_robot_learning_1-augmentation-label-validity-microscope.webp)\n*Random camera crops illustrated by robomimic. Source: [Published project media](https://robomimic.github.io/docs/modules/models.html), license unknown.*\n\n## What you will learn\n\n- **Augmentation:** an intentional change to training data, such as an image crop, used to create varied inputs.\n- **Action label:** the command recorded with a demonstration frame; it is valid only for the observation and coordinate convention it describes.\n- **Software analogy:** changing an API request while keeping its cached response is safe only when the change preserves the request’s meaning.\n\n> **Key idea:** A transformed picture is useful training data only when its paired action still has the intended meaning.\n\n## What you need\n\n- **Setup:** recorded robomimic camera frames and action traces, Python image tools and a side-by-side viewer; physical hardware is unnecessary.\n- **Skills:** image arrays and coordinate systems; start after Intro: run a pretrained policy in simulation.\n- **Cost:** the hardware plan is €0 for offline inspection. Storage and any later policy training consume separate computer resources.\n\n## Steps\n\n1. **Inspect unmodified episodes:** identify the target, camera viewpoint and action frame. Keep original timestamps so every transformed image retains its corresponding command.\n2. **Apply visual changes:** make separate crop, colour and camera-transform experiments. Save transformation parameters rather than hiding randomness inside the loader.\n3. **Check semantic validity:** ask whether the same action remains correct and inferable from the transformed image; label obscured targets separately from changed geometry.\n4. **Audit camera transforms:** distinguish a real viewpoint change from mirroring pixels. Test whether action coordinates require a matching transformation before accepting labels.\n5. **Build a rejection gallery:** include crops removing the target, corrupt images and missing frames. Preserve reasons for rejection instead of silently deleting examples.\n6. **Film the microscope:** replay original and augmented frames beside the unchanged action trace, highlighting accepted examples and visibly invalid label pairings.\n\n**Worked example:** if an action is expressed in camera-image coordinates, a horizontal reflection reverses its horizontal meaning; unchanged labels need an explicit validity check.\n\n```mermaid\nflowchart LR\n  A[\"Episode frame\"] --> B\n  B[\"Visual transform\"] --> C\n  C[\"Label audit\"] --> D\n  D[\"Accept or reject\"]\n```\n\n## Common pitfalls\n\n- **Appearance is not geometry:** a colour change and a reflected camera image do not automatically preserve the same relationships.\n- **Valid command, hidden evidence:** an unchanged action can remain physically correct while its target is no longer visible in the crop.\n- **Synthetic-data confusion:** MimicGen generates demonstrations using structured transformations; this does not make arbitrary image/action edits valid.\n\n## When it's done\n\n- **Deliverable:** a reproducible transformation viewer and an annotated accepted/rejected gallery covering each augmentation family.\n- **Evidence:** explain validity in terms of target visibility and action coordinates; training performance alone does not certify individual labels.",
+      "resources": [
+        {
+          "title": "MimicGen Overview",
+          "url": "https://mimicgen.github.io/resources/overview.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See task-aware synthetic demonstrations, in contrast to blindly editing camera frames."
+        },
+        {
+          "title": "Models",
+          "url": "https://robomimic.github.io/docs/modules/models.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect robomimic observation randomizers and image encoders."
+        },
+        {
+          "title": "Overview",
+          "url": "https://mimicgen.github.io/docs/introduction/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the structured generation pipeline and its assumptions."
+        },
+        {
+          "title": "MimicGen: A Data Generation System for Scalable Robot Learning using Human Demonstrations",
+          "url": "https://arxiv.org/abs/2310.17596",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study why demonstration generation requires more than image augmentation."
+        }
+      ],
+      "sources": [
+        "https://robomimic.github.io/docs/modules/models.html",
+        "https://mimicgen.github.io/resources/overview.mp4",
+        "https://mimicgen.github.io/docs/introduction/overview.html",
+        "https://arxiv.org/abs/2310.17596"
+      ]
+    },
+    {
+      "node_id": "p:chunk-horizon-disturbance-challenge",
+      "type": "project",
+      "name": "Chunk-horizon disturbance challenge",
+      "summary": "Measure how long action chunks keep a simulated robot committed after its goal changes.",
+      "lesson_md": "## In one sentence\n\nMeasure how long action chunks keep a simulated robot committed after its goal changes.\n\n![ACT architecture showing observations and action chunks](/img/lessons/projects_robot_learning_1-chunk-horizon-disturbance-challenge.webp)\n*ACT architecture showing observations and action chunks. Source: [Published project media](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## What you will learn\n\n- **Action chunk:** several future commands predicted together, instead of asking the policy for one command at every control tick.\n- **Open-loop execution:** applying commands without using new observations; feedback resumes when the policy sees the scene again.\n- **Software analogy:** a chunk is a queued batch job; a changed request cannot affect work already committed to the queue.\n\n> **Key idea:** Predicting many future actions and committing to all of them are different decisions.\n\n## What you need\n\n- **Setup:** a compatible simulated task and chunked policy such as ACT (Action Chunking Transformer), plus a controlled goal-disturbance hook.\n- **Skills:** policy rollout logging and timing; FAST action compression oscilloscope provides the action-sequence background.\n- **Cost:** no robot hardware is required. GPU needs depend on the selected checkpoint; first test one short rollout locally.\n\n## Steps\n\n1. **Establish the baseline:** record nominal task success, action timestamps and the predicted chunk length using a fixed set of resets.\n2. **Separate horizons:** log the number of actions predicted and the number executed before replanning. Changing one does not necessarily change the other.\n3. **Inject disturbances:** move the simulated target at a recorded time. Use identical disturbances for every execution horizon and keep an undisturbed control.\n4. **Compare scheduling:** test short and long commitments, then ACT-style temporal ensembling, which combines overlapping predictions for the current time.\n5. **Measure responsiveness:** plot target movement, first changed command and actual recovery. Also test an absent goal and missing observations, producing a logged stop.\n6. **Show the demo:** replay each disturbance beside the action queue and report reaction delay, task success and movement smoothness separately.\n\n**Worked example:** record `predicted_actions`, `executed_prefix` and `control_period`; their product for the executed prefix gives the nominal time before fresh feedback, excluding computation.\n\n```mermaid\nflowchart LR\n  A[\"Observe\"] --> B\n  B[\"Predict chunk\"] --> C\n  C[\"Execute prefix\"] --> D\n  D[\"Observe again\"]\n```\n\n## Common pitfalls\n\n- **Out-of-distribution goals:** moving a target may produce a scene absent from training; distinguish this failure from delayed feedback.\n- **Training changes:** retraining each horizon changes more than scheduling. First vary executed prefixes on one checkpoint where its interface permits.\n- **Ensembling assumptions:** ACT’s overlapping-action averaging is not guaranteed appropriate for every policy or controller.\n\n## When it's done\n\n- **Deliverable:** synchronized videos and plots make open-loop commitment visible rather than relying on a subjective “reactive” impression.\n- **Next experiment:** carry the recorded traces into Frequency-aware token allocation study to examine what compression removes.",
+      "resources": [
+        {
+          "title": "Slot Battery",
+          "url": "https://tonyzhaozh.github.io/aloha/resources/slot_battery.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the ACT manipulation setup whose chunked actions motivate the experiment."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://tonyzhaozh.github.io/aloha/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Read the project explanation of chunking and temporal ensembling."
+        },
+        {
+          "title": "ACT (Action Chunking with Transformers)",
+          "url": "https://huggingface.co/docs/lerobot/act",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect ACT inputs, outputs and action-chunk configuration."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://arxiv.org/abs/2304.13705",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the original action-chunking and temporal-ensembling method."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha/",
+        "https://tonyzhaozh.github.io/aloha/resources/slot_battery.mp4",
+        "https://huggingface.co/docs/lerobot/act",
+        "https://arxiv.org/abs/2304.13705"
+      ]
+    },
+    {
+      "node_id": "p:continual-learning-forgetting-flipbook",
+      "type": "project",
+      "name": "Continual-learning forgetting flipbook",
+      "summary": "Make a flipbook of robot skills that reveals what sequential training remembers and forgets.",
+      "lesson_md": "## In one sentence\n\nMake a flipbook of robot skills that reveals what sequential training remembers and forgets.\n\n![LIBERO task suites for sequential robot learning](/img/lessons/projects_robot_learning_1-continual-learning-forgetting-flipbook.webp)\n*LIBERO task suites for sequential robot learning. Source: [Published project media](https://github.com/Lifelong-Robot-Learning/LIBERO), license unknown.*\n\n## What you will learn\n\n- **Continual learning:** learning tasks over time rather than training once on a permanently pooled dataset.\n- **Replay:** mixing stored examples of earlier tasks into later training to help preserve old behaviour.\n- **Software analogy:** each training update is a code change; old skills are regression tests that must run after every change.\n\n> **Key idea:** Learning the next task is only half the experiment; retesting previous tasks reveals the other half.\n\n## What you need\n\n- **Setup:** a small compatible LIBERO task subset, its demonstrations and a policy you can train and evaluate in simulation.\n- **Skills:** checkpointing and reproducible data splits; finish Intro: run a pretrained policy in simulation before adding updates.\n- **Cost:** hardware purchases are unnecessary, but training can need a GPU. Measure one task’s compute and storage before expanding.\n\n## Steps\n\n1. **Freeze the test suite:** choose a documented task order and immutable evaluation episodes, including absent targets and deliberately missing observations.\n2. **Create the first checkpoint:** train the first skill and evaluate every task, including skills not yet learned; keep failed attempts in the record.\n3. **Train sequentially:** continue on the next task without old data. Save a checkpoint after each stage rather than only the final model.\n4. **Add a replay arm:** repeat with a bounded memory of old demonstrations; match total updates and disclose how replay changes new-task exposure.\n5. **Build the matrix:** use training stages as columns and evaluation skills as rows. Show old-skill drops separately from newly acquired success.\n6. **Film the flipbook:** alternate identical skill resets across checkpoints, then display the score matrix and logged stops on malformed inputs.\n\n**Worked table:** mark each cell `successes / attempts`. Compare skill A immediately after learning A with the same skill after learning B; do not invent missing scores.\n\n```mermaid\nflowchart LR\n  A[\"New task data\"] --> B\n  B[\"Policy update\"] --> C\n  C[\"All-skill tests\"] --> D\n  D[\"Forgetting matrix\"]\n```\n\n## Common pitfalls\n\n- **Test-set replay:** training on evaluation demonstrations invalidates the regression suite; split entire episodes before creating any replay buffer.\n- **Average-only reporting:** a rising overall score can hide a falling old-task score. Keep task-level trajectories visible.\n- **Order dependence:** a single sequence does not establish a universal forgetting ranking; record task order and repeat with another order if feasible.\n\n## When it's done\n\n- **Deliverable:** a replay/no-replay comparison with saved checkpoints, a retention matrix and matched before/after videos.\n- **Interpretation:** call the observed drop forgetting only after checking that evaluation settings and preprocessing stayed unchanged.",
+      "resources": [
+        {
+          "title": "[TMLR] Dynamic Mixture of Progressive Parameter-Efficient Expert Library for Lifelong Robot Learning",
+          "url": "https://www.youtube.com/watch?v=x4Oz0kGAoRA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a research demonstration of preserving and adapting robot skills over sequential tasks."
+        },
+        {
+          "title": "Lifelong-Robot-Learning/LIBERO",
+          "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use a benchmark designed for lifelong robot learning."
+        },
+        {
+          "title": "Overview",
+          "url": "https://robomimic.github.io/docs/datasets/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Keep demonstration episodes separated when constructing replay and test sets."
+        },
+        {
+          "title": "LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+          "url": "https://arxiv.org/abs/2306.03310",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand task suites and continual-learning evaluation in LIBERO."
+        }
+      ],
+      "sources": [
+        "https://github.com/Lifelong-Robot-Learning/LIBERO",
+        "https://www.youtube.com/watch?v=x4Oz0kGAoRA",
+        "https://robomimic.github.io/docs/datasets/overview.html",
+        "https://arxiv.org/abs/2306.03310"
+      ]
+    },
+    {
+      "node_id": "p:correction-timing-replay-lab",
+      "type": "project",
+      "name": "Correction timing replay lab",
+      "summary": "Replay the same simulated failures with early, late and random expert corrections to compare recovery per label.",
+      "lesson_md": "## In one sentence\n\nReplay the same simulated failures with early, late and random expert corrections to compare recovery per label.\n\n![CartPole balancing task used in the official DAgger tutorial](/img/lessons/projects_robot_learning_1-correction-timing-replay-lab.webp)\n*CartPole balancing task used in the official DAgger tutorial. Source: [Published project media](https://gymnasium.farama.org/environments/classic_control/cart_pole/), license unknown.*\n\n## What you will learn\n\n- **Correction:** an expert action label or takeover supplied while a learner is visiting a problematic state.\n- **Intervention schedule:** the rule deciding when to request help; it changes which states enter the training dataset.\n- **Software analogy:** place debugging breakpoints before, during or after a fault, then compare which captured states actually help fix it.\n\n> **Key idea:** When help arrives changes the training states, even when the number of labels stays constant.\n\n## What you need\n\n- **Setup:** a resettable simulator, saved failure states and a scripted expert whose action is available on the learner’s visited states.\n- **Skills:** dataset aggregation and checkpointing; DAgger distribution-shift sandbox is the starting point for the collection loop.\n- **Cost:** no physical robot is needed. Count expert labels and compute separately; simulated oracle labels are not a measured human-time cost.\n\n## Steps\n\n1. **Capture failures:** save simulator state, random seed, observations and timestamps. Verify that restoring the state reproduces the uncorrected rollout.\n2. **Declare schedules:** define early and late relative to an observable failure marker; choose random intervention times without consulting future evaluation outcomes.\n3. **Match label budgets:** allocate the same number of expert-labelled states to each schedule. Log unused requests and repeated states explicitly.\n4. **Collect recoveries:** query the expert on states actually visited under each schedule; aggregate those examples with the same initial demonstrations.\n5. **Retrain fairly:** match update budgets and keep a disjoint test set. Include missing observations and absent targets; stop and retain their failure records.\n6. **Replay the demo:** align videos by the failure marker and display intervention time, label count and recovery outcome for every schedule.\n\n**Worked log:** store `episode_id`, `failure_tick`, `intervention_tick`, `labelled_state_count` and `recovered`; compare schedules using those fields, not edited highlight clips.\n\n```mermaid\nflowchart LR\n  A[\"Failure replay\"] --> B\n  B[\"Intervention schedule\"] --> C\n  C[\"Expert labels\"] --> D\n  D[\"Retrain and test\"]\n```\n\n## Common pitfalls\n\n- **Counterfactual replay:** intervening changes later states, so do not paste actions from a different trajectory onto the original recording.\n- **Unequal assistance:** an earlier intervention lasting longer may consume more labels; match labelled states rather than merely counting takeovers.\n- **Oracle bias:** a scripted expert that cannot recover from learner states is not valid ground truth there; record its limitations.\n\n## When it's done\n\n- **Deliverable:** early, late and random correction comparisons report recovery success per expert-label budget with synchronized failure replays.\n- **Evidence:** distinguish faster learning from safer timing; a recovered training episode alone does not demonstrate better held-out behaviour.",
+      "resources": [
+        {
+          "title": "CS 285: Lecture 2, Imitation Learning. Part 3",
+          "url": "https://www.youtube.com/watch?v=ppN5ORNrMos",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn why expert labels on learner-visited states matter."
+        },
+        {
+          "title": "Train an Agent using the DAgger Algorithm",
+          "url": "https://imitation.readthedocs.io/en/latest/tutorials/2_train_dagger.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build the expert/learner collection loop before changing intervention timing."
+        },
+        {
+          "title": "DAgger",
+          "url": "https://imitation.readthedocs.io/en/latest/algorithms/dagger.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect beta schedules and demonstration aggregation interfaces."
+        },
+        {
+          "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
+          "url": "https://arxiv.org/abs/1011.0686",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Ground the comparison in interactive dataset aggregation."
+        }
+      ],
+      "sources": [
+        "https://gymnasium.farama.org/environments/classic_control/cart_pole/",
+        "https://www.youtube.com/watch?v=ppN5ORNrMos",
+        "https://imitation.readthedocs.io/en/latest/tutorials/2_train_dagger.html",
+        "https://imitation.readthedocs.io/en/latest/algorithms/dagger.html",
+        "https://arxiv.org/abs/1011.0686"
+      ]
+    },
+    {
+      "node_id": "p:cql-and-iql-dataset-quality-ladder",
+      "type": "project",
+      "name": "CQL and IQL dataset-quality ladder",
+      "summary": "Compare offline robot-learning methods while systematically reducing demonstration quality and coverage.",
+      "lesson_md": "## In one sentence\n\nCompare offline robot-learning methods while systematically reducing demonstration quality and coverage.\n\n![Simulated Hopper with a torso and articulated leg](/img/lessons/projects_robot_learning_1-cql-and-iql-dataset-quality-ladder.webp)\n*Simulated Hopper with a torso and articulated leg. Source: [Published project media](https://gymnasium.farama.org/environments/mujoco/hopper/), license unknown.*\n\n## What you will learn\n\n- **Offline reinforcement learning:** learn from an existing dataset without gathering new training interactions from the environment.\n- **CQL:** Conservative Q-Learning discourages overoptimistic action values; IQL, Implicit Q-Learning, avoids evaluating unseen actions during training.\n- **Software analogy:** train a recommender from historical logs; unseen choices cannot be judged reliably just because a predictor assigns them high scores.\n\n> **Key idea:** An offline algorithm cannot recover evidence that its dataset never supplied; data design belongs in the benchmark.\n\n## What you need\n\n- **Setup:** compatible CQL and IQL implementations, one simulated benchmark and a versioned transition dataset containing observations, actions, rewards and termination flags.\n- **Skills:** experiment configuration and data splitting; Offline value optimism microscope supplies the motivation for conservative value estimates.\n- **Cost:** no robot purchase; training and simulation need computer resources. Check dependency compatibility before budgeting multiple runs.\n\n## Steps\n\n1. **Freeze evaluation:** pin environment versions, reward definitions, reset seeds and episode limits. Reserve whole episodes before building the training ladder.\n2. **Construct the ladder:** vary demonstrated success quality separately from state coverage. Document how examples were selected and keep training-set size matched.\n3. **Add behaviour cloning:** train a supervised action predictor as the BC baseline, alongside CQL and IQL using the same data and evaluation contract.\n4. **Match effort:** declare update budgets and tuning budgets in advance. Preserve each implementation’s required preprocessing rather than forcing incompatible defaults.\n5. **Evaluate rollouts:** measure task completion, returns and failure categories; test absent targets and corrupt observations with explicit stopped-rollout records.\n6. **Film the ladder:** show matched reset videos for each method and dataset rung, including failures, then publish the complete version/configuration ledger.\n\n**Worked split:** create separate `lower_success` and `narrower_coverage` manifests from the same training pool; use one unchanged evaluation manifest for both.\n\n```mermaid\nflowchart LR\n  A[\"Frozen dataset\"] --> B\n  B[\"Quality and coverage variants\"] --> C\n  C[\"CQL IQL BC\"] --> D\n  D[\"Held-out rollouts\"]\n```\n\n## Common pitfalls\n\n- **Quality versus coverage:** fewer successful examples and missing regions of state space are different changes; isolate them before drawing conclusions.\n- **Reward shortcuts:** high return need not mean the intended task is completed. Keep a separate, fixed completion check.\n- **Version mismatch:** termination handling, reward scaling and normalized score definitions can invalidate comparisons between original repositories.\n\n## When it's done\n\n- **Deliverable:** a CQL/IQL/BC score table over documented dataset variants with reproducible splits, seeds and videos.\n- **Conclusion:** describe which method worked under your tested data conditions, not a universal ranking of offline algorithms.",
+      "resources": [
+        {
+          "title": "CS 285: Lecture 15, Part 3: Offline Reinforcement Learning",
+          "url": "https://www.youtube.com/watch?v=YNritd36FB0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why offline action-value estimation is difficult."
+        },
+        {
+          "title": "aviralkumar2907/CQL",
+          "url": "https://github.com/aviralkumar2907/CQL",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the reference CQL implementation and benchmark setup."
+        },
+        {
+          "title": "ikostrikov/implicit_q_learning",
+          "url": "https://github.com/ikostrikov/implicit_q_learning",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect IQL dependencies, training and evaluation conventions."
+        },
+        {
+          "title": "Conservative Q-Learning for Offline Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2006.04779",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the conservative value-learning objective."
+        },
+        {
+          "title": "Offline Reinforcement Learning with Implicit Q-Learning",
+          "url": "https://arxiv.org/abs/2110.06169",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand implicit value learning without querying unseen actions."
+        }
+      ],
+      "sources": [
+        "https://gymnasium.farama.org/environments/mujoco/hopper/",
+        "https://www.youtube.com/watch?v=YNritd36FB0",
+        "https://github.com/aviralkumar2907/CQL",
+        "https://github.com/ikostrikov/implicit_q_learning",
+        "https://arxiv.org/abs/2006.04779",
+        "https://arxiv.org/abs/2110.06169"
+      ]
+    },
+    {
+      "node_id": "p:cross-robot-negative-transfer-benchmark",
+      "type": "project",
+      "name": "Cross-robot negative-transfer benchmark",
+      "summary": "Test whether sharing training across simulated robots helps one robot while harming another.",
+      "lesson_md": "## In one sentence\n\nTest whether sharing training across simulated robots helps one robot while harming another.\n\n![CrossFormer controlling different robot embodiments](/img/lessons/projects_robot_learning_1-cross-robot-negative-transfer-benchmark.webp)\n*CrossFormer controlling different robot embodiments. Source: [Published project media](https://crossformer-model.github.io/), license unknown.*\n\n## What you will learn\n\n- **Embodiment:** a robot’s physical structure, sensors and available actions, which determine how it interacts with a task.\n- **Negative transfer:** shared training makes a target robot perform worse than an appropriate target-only baseline.\n- **Software analogy:** a shared backend can help several clients, but a change benefiting one API client may break another’s contract.\n\n> **Key idea:** Sharing a representation is an experimental choice, not a promise that every robot benefits.\n\n## What you need\n\n- **Setup:** two simulated embodiments, small controlled demonstration sets and a shared-policy design with explicit robot-specific input and output interfaces.\n- **Skills:** dataset accounting and action schemas; complete Embodiment action-space passport before mixing demonstrations.\n- **Cost:** no hardware purchase is required. This is a small student benchmark, not a reproduction of CrossFormer’s full training scale.\n\n## Steps\n\n1. **Write the passports:** document camera inputs, action dimensions, units and control rate for each robot before selecting compatible tasks.\n2. **Freeze target tests:** reserve episodes per robot and task; include familiar tasks, held-out task conditions, absent objects and malformed observations.\n3. **Train separate baselines:** give each robot a target-only policy with recorded data and update budgets; keep a no-training reference if using pretrained weights.\n4. **Train shared variants:** use a CrossFormer-style shared representation with modality/action interfaces; vary the mixture while keeping target-robot data exposure matched.\n5. **Audit transfer:** report target-by-target score changes, compute, total source data and parameter counts. Stop invalid inputs instead of silently dropping them.\n6. **Film paired trials:** replay identical target resets under separate and shared training, showing both improvements and degradations with the corresponding score rows.\n\n**Worked report:** use rows `robot A` and `robot B`, with columns `separate`, `shared`, `difference`; a positive average cannot erase a negative row.\n\n```mermaid\nflowchart LR\n  A[\"Robot-specific data\"] --> B\n  B[\"Separate or shared policy\"] --> C\n  C[\"Per-robot tests\"] --> D\n  D[\"Transfer comparison\"]\n```\n\n## Common pitfalls\n\n- **Unequal target exposure:** extra examples or extra updates can masquerade as transfer; explicitly count target samples processed.\n- **Schema collision:** two equal-length vectors need not mean the same command. Keep robot identity and action interpretation explicit.\n- **Pooled averages:** a shared-model average can improve while one embodiment gets worse; never omit per-robot results.\n\n## When it's done\n\n- **Deliverable:** a shared-versus-separate benchmark with per-embodiment outcomes, controlled mixtures and visible harmful-transfer cases if observed.\n- **Next step:** reserve an entirely unseen robot for Held-out embodiment adaptation challenge rather than relabelling familiar-robot tests as adaptation.",
+      "resources": [
+        {
+          "title": "CrossFormer",
+          "url": "https://crossformer-model.github.io/static/videos/crossformer/final_crossformer_video.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a policy handling different robots and action spaces."
+        },
+        {
+          "title": "CrossFormer",
+          "url": "https://crossformer-model.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand shared representations across embodiments."
+        },
+        {
+          "title": "rail-berkeley/crossformer",
+          "url": "https://github.com/rail-berkeley/crossformer",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect modality and action configuration in the implementation."
+        },
+        {
+          "title": "Scaling Cross-Embodied Learning: One Policy for Manipulation, Navigation, Locomotion and Aviation",
+          "url": "https://arxiv.org/abs/2408.11812",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read CrossFormer’s cross-embodiment training and evaluation methodology."
+        }
+      ],
+      "sources": [
+        "https://crossformer-model.github.io/",
+        "https://crossformer-model.github.io/static/videos/crossformer/final_crossformer_video.mp4",
+        "https://github.com/rail-berkeley/crossformer",
+        "https://arxiv.org/abs/2408.11812"
+      ]
+    },
+    {
+      "node_id": "p:dagger-distribution-shift-sandbox",
+      "type": "project",
+      "name": "DAgger distribution-shift sandbox",
+      "summary": "Build a small imitation learner that drifts from expert paths, then improve it with labels from its own mistakes.",
+      "lesson_md": "## In one sentence\n\nBuild a small imitation learner that drifts from expert paths, then improve it with labels from its own mistakes.\n\n![CartPole expert-learning setup from the DAgger tutorial](/img/lessons/projects_robot_learning_1-dagger-distribution-shift-sandbox.webp)\n*CartPole expert-learning setup from the DAgger tutorial. Source: [Published project media](https://gymnasium.farama.org/environments/classic_control/cart_pole/), license unknown.*\n\n## What you will learn\n\n- **Behaviour cloning:** supervised learning that predicts the expert’s action from a recorded observation.\n- **Distribution shift:** the learner visits states different from the expert demonstrations; mistakes can then compound over time.\n- **DAgger:** Dataset Aggregation repeatedly queries the expert on learner-visited states; think of adding real bug reports to a regression dataset.\n\n> **Key idea:** To correct compounding mistakes, teach the learner what to do in the states its own mistakes create.\n\n## What you need\n\n- **Setup:** a simple simulated cursor reaching a target, a scripted expert and a small supervised action model; no robot is needed.\n- **Skills:** Python loops and train/test splits; Intro: run a pretrained policy in simulation provides the rollout vocabulary.\n- **Cost:** local simulation avoids hardware purchases and API calls. Start with a lightweight model before considering GPU training.\n\n## Steps\n\n1. **Define the sandbox:** implement cursor position, target position, action bounds and a completion check. Save reset seeds for comparable rollouts.\n2. **Collect expert paths:** let the oracle expert move toward the target; keep evaluation episodes separate from every training collection round.\n3. **Train the baseline:** fit behaviour cloning on expert paths, then film its own rollouts. Add small reset variations to reveal drift.\n4. **Aggregate corrections:** run the learner, ask the expert what it would do in those visited states, and append the labelled observations.\n5. **Retrain by rounds:** keep a no-aggregation control and record cumulative expert labels. Test absent targets and missing observations with explicit stop outcomes.\n6. **Show recovery:** replay matched seeds before and after aggregation, displaying off-path states, added labels and successful rollouts per label budget.\n\n**Worked expert:** in a toy cursor world, `action = clip(target - cursor, -limit, limit)` labels the current cursor state, not a nearby expert recording.\n\n```mermaid\nflowchart LR\n  A[\"Learner rollout\"] --> B\n  B[\"Expert labels visited states\"] --> C\n  C[\"Aggregate data\"] --> D\n  D[\"Retrain\"]\n```\n\n## Common pitfalls\n\n- **Wrong labels:** copying the original expert trajectory’s next action does not label the learner’s new state; query the expert again.\n- **Uncounted supervision:** count every queried action, including labels discarded by filtering, so apparent sample efficiency is not inflated.\n- **Easy-only testing:** keep failures and unseen resets in the report instead of showing only paths the expert already demonstrated.\n\n## When it's done\n\n- **Deliverable:** baseline drift and post-DAgger recovery videos accompany a learning curve indexed by cumulative expert labels.\n- **Next step:** Correction timing replay lab changes when labels are requested while retaining this dataset-aggregation foundation.",
+      "resources": [
+        {
+          "title": "CS 285: Lecture 2, Imitation Learning. Part 3",
+          "url": "https://www.youtube.com/watch?v=ppN5ORNrMos",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the explanation of compounding imitation errors and dataset aggregation."
+        },
+        {
+          "title": "Train an Agent using the DAgger Algorithm",
+          "url": "https://imitation.readthedocs.io/en/latest/tutorials/2_train_dagger.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow a concrete DAgger expert/learner workflow."
+        },
+        {
+          "title": "DAgger",
+          "url": "https://imitation.readthedocs.io/en/latest/algorithms/dagger.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check collection schedules and supported data aggregation behaviour."
+        },
+        {
+          "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
+          "url": "https://arxiv.org/abs/1011.0686",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original reduction from imitation learning to supervised learning."
+        }
+      ],
+      "sources": [
+        "https://gymnasium.farama.org/environments/classic_control/cart_pole/",
+        "https://www.youtube.com/watch?v=ppN5ORNrMos",
+        "https://imitation.readthedocs.io/en/latest/tutorials/2_train_dagger.html",
+        "https://imitation.readthedocs.io/en/latest/algorithms/dagger.html",
+        "https://arxiv.org/abs/1011.0686"
+      ]
+    }
+  ]
+}
