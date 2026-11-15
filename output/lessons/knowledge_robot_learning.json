@@ -794,49 +794,6 @@
       ]
     },
     {
-      "node_id": "k:real-time-learned-policy-execution-inference-scheduling",
-      "type": "knowledge",
-      "name": "Real-time learned-policy execution & inference scheduling",
-      "summary": "Real-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.",
-      "lesson_md": "## In one sentence\n\nReal-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.\n\n![Async inference scheme: the robot client executes queued actions while the policy server computes the next action chunk](/img/lessons/knowledge_robot_learning-real-time-execution.webp)\n*Asynchronous inference overlaps computing and acting. Source: [Hugging Face blog](https://huggingface.co/blog/async-robot-inference), license unknown.*\n\n## Why it matters for us\n\n- **Big policies are slow:** a VLA forward pass can take longer than one control step, so a naive loop makes the arm freeze.\n- **Our hardware is modest:** laptops and remote GPUs add network and compute latency.\n- **Pauses change behaviour:** stop-and-go motion creates jerky moves and states the policy never saw in training.\n\n> **Key idea:** Decouple prediction from execution: keep a queue of upcoming actions, refill it before it runs out, and blend new chunks into old ones.\n\n## How it works\n\nIt is a **producer-consumer queue**: the policy server produces action chunks, the robot client consumes one action per control tick.\n\n- **Sequential baseline:** with an ACT model on a 2021 MacBook Pro, inference took about 100 ms, roughly 3 frames at 30 fps, while the robot sat idle.\n- **Async inference:** LeRobot's `RobotClient` streams observations to a `PolicyServer` over gRPC when the queue drops below a threshold.\n- **Chunk aggregation:** new chunks are merged with remaining queued actions on the overlapping part.\n- **Worked example:** the Hugging Face post reports about a 2x speedup in task completion, plus recovery attempts after failed grasps.\n- **Real-time chunking (RTC):** for diffusion or flow VLAs, RTC freezes actions sure to execute and inpaints the rest, with no retraining.\n\n```mermaid\nflowchart LR\n  C[\"Camera and joints\"] --> Q{\"Queue below threshold?\"}\n  Q -- yes --> S[\"Send observation to policy server\"]\n  S --> P[\"Predict next chunk\"]\n  P --> M[\"Merge into action queue\"]\n  Q -- no --> X[\"Pop next action\"]\n  M --> X\n  X --> R[\"Motor command\"]\n```\n\n## Key terms\n\n- **Control frequency**: how many commands per second the robot receives, such as 30 Hz.\n- **Inference latency**: time for a forward pass plus any network round-trip.\n- **Action queue**: a buffer of upcoming actions consumed at control frequency.\n- **Asynchronous inference**: computing new actions while older ones are still executing.\n- **Queue starvation**: the queue empties before new actions arrive, so the robot stalls.\n\n## Before / after\n\n- **Before:** Learn Action chunking & action tokenization, Diffusion & flow-matching policies and basic threading or async programming.\n- **After:** You can build the Latency injection action-queue viewer, the Real-time chunk stitching bake-off or the Supervised arm deadline qualification.\n\n## Try it in an afternoon\n\n1. **Follow the LeRobot async guide** and start a policy server and robot client on one machine.\n2. **Log timestamps** for every observation sent, chunk received and action executed.\n3. **Add artificial latency** of 50, 100 and 200 ms on the server side.\n4. **Plot queue length over time** and find the threshold where starvation begins.",
-      "resources": [
-        {
-          "title": "LeRobot Async Inference: Eliminate Lag & Achieve Real-Time Robotics Control",
-          "url": "https://www.youtube.com/watch?v=XIrqwNPTilA",
-          "format": "Video",
-          "level": "Beginner",
-          "why": "Demonstrates removing idle pauses on a real arm with LeRobot's asynchronous inference."
-        },
-        {
-          "title": "Asynchronous Robot Inference: Decoupling Action Prediction and Execution",
-          "url": "https://huggingface.co/blog/async-robot-inference",
-          "format": "Blog",
-          "level": "Beginner",
-          "why": "Explains the queue, threshold and chunk aggregation, with latency measurements."
-        },
-        {
-          "title": "Asynchronous Inference",
-          "url": "https://huggingface.co/docs/lerobot/main/en/async",
-          "format": "Docs",
-          "level": "Intermediate",
-          "why": "Commands and parameters to run the policy server and robot client."
-        },
-        {
-          "title": "Real-Time Execution of Action Chunking Flow Policies",
-          "url": "https://arxiv.org/abs/2506.07339",
-          "format": "Paper",
-          "level": "Advanced",
-          "why": "Introduces real-time chunking for smooth execution despite inference delay."
-        }
-      ],
-      "sources": [
-        "https://huggingface.co/blog/async-robot-inference",
-        "https://huggingface.co/docs/lerobot/main/en/async",
-        "https://arxiv.org/abs/2506.07339",
-        "https://www.youtube.com/watch?v=XIrqwNPTilA"
-      ]
-    },
-    {
       "node_id": "k:reinforcement-learning-for-robots",
       "type": "knowledge",
       "name": "Reinforcement learning for robots",
@@ -1062,6 +1019,49 @@
         "https://openvla.github.io/",
         "https://huggingface.co/docs/lerobot/smolvla",
         "https://www.youtube.com/watch?v=dtofzDY9zuo"
+      ]
+    },
+    {
+      "node_id": "k:real-time-learned-policy-execution-inference-scheduling",
+      "type": "knowledge",
+      "name": "Real-time learned-policy execution & inference scheduling",
+      "summary": "Real-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.",
+      "lesson_md": "## In one sentence\n\nReal-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.\n\n![Async inference scheme: the robot client executes queued actions while the policy server computes the next action chunk](/img/lessons/knowledge_robot_learning-real-time-execution.webp)\n*Asynchronous inference overlaps computing and acting. Source: [Hugging Face blog](https://huggingface.co/blog/async-robot-inference), license unknown.*\n\n## Why it matters for us\n\n- **Big policies are slow:** a VLA forward pass can take longer than one control step, so a naive loop makes the arm freeze.\n- **Our hardware is modest:** laptops and remote GPUs add network and compute latency.\n- **Pauses change behaviour:** stop-and-go motion creates jerky moves and states the policy never saw in training.\n\n> **Key idea:** Decouple prediction from execution: keep a queue of upcoming actions, refill it before it runs out, and blend new chunks into old ones.\n\n## How it works\n\nIt is a **producer-consumer queue**: the policy server produces action chunks, the robot client consumes one action per control tick.\n\n- **Sequential baseline:** with an ACT model on a 2021 MacBook Pro, inference took about 100 ms, roughly 3 frames at 30 fps, while the robot sat idle.\n- **Async inference:** LeRobot's `RobotClient` streams observations to a `PolicyServer` over gRPC when the queue drops below a threshold.\n- **Chunk aggregation:** new chunks are merged with remaining queued actions on the overlapping part.\n- **Worked example:** the Hugging Face post reports about a 2x speedup in task completion, plus recovery attempts after failed grasps.\n- **Real-time chunking (RTC):** for diffusion or flow VLAs, RTC freezes actions sure to execute and inpaints the rest, with no retraining.\n\n```mermaid\nflowchart LR\n  C[\"Camera and joints\"] --> Q{\"Queue below threshold?\"}\n  Q -- yes --> S[\"Send observation to policy server\"]\n  S --> P[\"Predict next chunk\"]\n  P --> M[\"Merge into action queue\"]\n  Q -- no --> X[\"Pop next action\"]\n  M --> X\n  X --> R[\"Motor command\"]\n```\n\n## Key terms\n\n- **Control frequency**: how many commands per second the robot receives, such as 30 Hz.\n- **Inference latency**: time for a forward pass plus any network round-trip.\n- **Action queue**: a buffer of upcoming actions consumed at control frequency.\n- **Asynchronous inference**: computing new actions while older ones are still executing.\n- **Queue starvation**: the queue empties before new actions arrive, so the robot stalls.\n\n## Before / after\n\n- **Before:** Learn Action chunking & action tokenization, Diffusion & flow-matching policies and basic threading or async programming.\n- **After:** You can build the Latency injection action-queue viewer, the Real-time chunk stitching bake-off or the Supervised arm deadline qualification.\n\n## Try it in an afternoon\n\n1. **Follow the LeRobot async guide** and start a policy server and robot client on one machine.\n2. **Log timestamps** for every observation sent, chunk received and action executed.\n3. **Add artificial latency** of 50, 100 and 200 ms on the server side.\n4. **Plot queue length over time** and find the threshold where starvation begins.",
+      "resources": [
+        {
+          "title": "LeRobot Async Inference: Eliminate Lag & Achieve Real-Time Robotics Control (SmolVLA & All Policies)",
+          "url": "https://www.youtube.com/watch?v=XIrqwNPTilA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Demonstrates removing idle pauses on a real arm with LeRobot's asynchronous inference."
+        },
+        {
+          "title": "Asynchronous Robot Inference: Decoupling Action Prediction and Execution",
+          "url": "https://huggingface.co/blog/async-robot-inference",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Explains the queue, threshold and chunk aggregation, with latency measurements."
+        },
+        {
+          "title": "Asynchronous Inference",
+          "url": "https://huggingface.co/docs/lerobot/main/en/async",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Commands and parameters to run the policy server and robot client."
+        },
+        {
+          "title": "Real-Time Execution of Action Chunking Flow Policies",
+          "url": "https://arxiv.org/abs/2506.07339",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Introduces real-time chunking for smooth execution despite inference delay."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/blog/async-robot-inference",
+        "https://huggingface.co/docs/lerobot/main/en/async",
+        "https://arxiv.org/abs/2506.07339",
+        "https://www.youtube.com/watch?v=XIrqwNPTilA"
       ]
     }
   ]
