@@ -1,0 +1,1092 @@
+{
+  "batch": "knowledge_robot_learning",
+  "lessons": [
+    {
+      "node_id": "k:robot-learning-problem-formulation-observations-actions-policies",
+      "type": "knowledge",
+      "name": "Robot learning problem formulation: observations, actions, policies",
+      "summary": "Formulating a robot-learning problem means defining what a policy sees, what its commands mean, and how those commands affect the robot.",
+      "lesson_md": "## In one sentence\n\nFormulating a robot-learning problem means defining what a policy sees, what its commands mean, and how those commands affect the robot.\n\n![ACT diagram showing camera and joint inputs transformed into an action sequence](/img/lessons/knowledge_robot_learning-problem-formulation.webp)\n*ACT makes its observation-to-action interface visible. Source: [ALOHA project](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## Why it matters for us\n\n- **Start with the interface:** a robot cannot learn from information its sensors never record, or execute commands its controller does not understand.\n- **Separate input from target:** a camera image is evidence; a commanded joint position is something the robot should try to reach.\n- **Make experiments comparable:** write down observation keys and action meanings before moving from Teleoperation & robot data collection to training.\n\n> **Key idea:** The policy’s input and output contract is part of the learning problem, not plumbing to decide later.\n\n## How it works\n\n- **Think of a typed function:** observations are the request payload; actions are the response. Matching array shapes alone does not establish matching meanings.\n- **Read a real contract:** ALOHA’s ACT takes camera images and joint positions, then predicts future joint positions rather than a textual task plan.\n- **Use the published example:** four cameras supply images 480 pixels high, 640 wide; ACT predicts 90 joint-position steps at 50 Hz (commands per second).\n- **Distinguish sensing from acting:** an observation describes what was measured; an action describes what was requested, not proof that the request succeeded.\n- **Record boundaries:** RLDS stores episodes as ordered steps, including an initial and final observation. Its final step’s action is not a valid training target.\n\n```mermaid\nflowchart LR\n  O[\"Camera and joints\"] --> P[\"Policy function\"]\n  P --> A[\"Joint targets\"]\n  A --> R[\"Robot and scene\"]\n  R --> O\n```\n\n## Key terms\n\n- **Observation**: the measured information supplied to a policy, such as images and joint positions.\n- **Action**: the command supplied to a robot controller.\n- **Policy**: the function that selects actions from observations.\n- **Episode**: one ordered interaction sequence, from its initial observation to its ending.\n\n## Before / after\n\n- **Before:** Know Python arrays; use Imitation learning (behavior cloning) to understand why recorded actions become training targets.\n- **After:** You can specify the contract needed by Robot learning toolchains & data formats before choosing a model.\n\n## Try it in an afternoon\n\n1. **Open the ACT diagram** and make a two-column list of its observation inputs and action outputs.\n2. **Write a contract file** naming every field, its array shape, and whether it is measured or commanded; leave undocumented units unknown.\n3. **Trace one RLDS episode** on paper, marking where observations and actions pair and why the final action must be excluded.\n4. **Review with a teammate:** could they implement the receiver without guessing whether your output is an image, position, or instruction?",
+      "resources": [
+        {
+          "title": "ALOHA and ACT: LeRobot Research Presentation #1 by Alexander Soare",
+          "url": "https://www.youtube.com/watch?v=ft73x0LfGpM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how camera observations and joint states become sequences of robot actions."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the observation, teleoperation, recording, training, and evaluation interfaces."
+        },
+        {
+          "title": "ACT (Action Chunking with Transformers)",
+          "url": "https://huggingface.co/docs/lerobot/act",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the inputs and chunked outputs of a concrete imitation-learning policy."
+        },
+        {
+          "title": "google-research/rlds",
+          "url": "https://github.com/google-research/rlds",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read episode and step conventions, especially the final observation and invalid action."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha/",
+        "https://www.youtube.com/watch?v=ft73x0LfGpM",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://huggingface.co/docs/lerobot/act",
+        "https://github.com/google-research/rlds",
+        "https://arxiv.org/abs/2304.13705"
+      ]
+    },
+    {
+      "node_id": "k:teleoperation-robot-data-collection",
+      "type": "knowledge",
+      "name": "Teleoperation & robot data collection",
+      "summary": "Teleoperation lets a person guide a robot while recording the observations and commands that will become demonstrations for learning.",
+      "lesson_md": "## In one sentence\n\nTeleoperation lets a person guide a robot while recording the observations and commands that will become demonstrations for learning.\n\n![Frame from ALOHA's teleoperation video showing a person operating leader arms and robot follower arms](/img/lessons/knowledge_robot_learning-teleoperation.webp)\n*ALOHA’s published teleoperation demonstration, video frame. Source: [ALOHA project](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## Why it matters for us\n\n- **Collect behavior, not just footage:** a useful demonstration pairs what the robot saw with what the operator commanded at that moment.\n- **Build a repeatable station:** camera views, robot calibration, and task descriptions belong alongside the trajectories, not only in someone’s memory.\n- **Make the next stage possible:** Imitation learning (behavior cloning) uses these demonstrations as supervised examples rather than discovering every motion through trial and error.\n\n> **Key idea:** A demonstration is a synchronized record of a decision, not merely a video of a successful outcome.\n\n## How it works\n\n- **Use a remote interface:** a leader arm or keyboard supplies actions; the follower robot executes them while cameras and joint sensors supply observations.\n- **Think of request tracing:** recording only the final HTTP response loses the request that caused it; robot datasets likewise need actions and their observation context.\n- **Follow the documented example:** LeRobot shows wrist and top cameras at 640-by-480 pixels and 30 frames per second.\n- **Record whole attempts:** the tutorial’s example records five episodes of “Grab the black cube”; this is an example configuration, not a sufficient training-data guarantee.\n- **Inspect before expanding:** Hugging Face’s dataset review identifies empty task descriptions, ambiguous camera names, and inconsistent action dimensions as concrete data-quality problems.\n- **Keep the calibration identity:** LeRobot uses the robot ID to locate calibration; its tutorial requires the same ID during teleoperation, recording, and evaluation.\n\n```mermaid\nflowchart LR\n  H[\"Human interface\"] --> A[\"Robot commands\"]\n  A --> R[\"Follower robot\"]\n  R --> O[\"Cameras and joints\"]\n  O --> D[\"Recorded episode\"]\n  A --> D\n```\n\n## Key terms\n\n- **Leader**: the input arm moved by the operator.\n- **Follower**: the robot arm that receives the operator’s commands.\n- **Trajectory**: the time-ordered observations and actions from an attempt.\n- **Task annotation**: a written description of the intended behavior.\n\n## Before / after\n\n- **Before:** Understand Robot learning problem formulation: observations, actions, policies; identify the observations and commands before wiring up recording.\n- **After:** Use Robot datasets & benchmarks to decide how to document and compare the demonstrations you collected.\n\n## Try it in an afternoon\n\n1. **Watch the ALOHA demonstration** and identify which arms the person touches and which arms manipulate the objects.\n2. **Draft a recording checklist:** robot ID, camera names, task instruction, and a clear beginning and end for each attempt.\n3. **Inspect an existing episode** with LeRobot’s documented visualization tools; compare image motion with action and joint-state traces.\n4. **Write a quality report:** note ambiguous camera views or missing instructions before proposing additional recordings.",
+      "resources": [
+        {
+          "title": "ALOHA and ACT: LeRobot Research Presentation #1 by Alexander Soare",
+          "url": "https://www.youtube.com/watch?v=ft73x0LfGpM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The ALOHA presentation explains leader/follower teleoperation and how demonstrations feed ACT training."
+        },
+        {
+          "title": "Imitation Learning on Real-World Robots",
+          "url": "https://huggingface.co/docs/lerobot/il_robots",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the observation, teleoperation, recording, training, and evaluation interfaces."
+        },
+        {
+          "title": "LeRobot Community Datasets: The “ImageNet” of Robotics — When and How?",
+          "url": "https://huggingface.co/blog/lerobot-datasets",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Learn to spot missing instructions, ambiguous cameras, and inconsistent action dimensions."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://tonyzhaozh.github.io/aloha/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the teleoperation setup, policy diagram, and reported action sequence lengths."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha/",
+        "https://tonyzhaozh.github.io/aloha/resources/teleop_all.mp4",
+        "https://huggingface.co/docs/lerobot/il_robots",
+        "https://huggingface.co/blog/lerobot-datasets",
+        "https://www.youtube.com/watch?v=ft73x0LfGpM"
+      ]
+    },
+    {
+      "node_id": "k:robot-learning-toolchains-data-formats",
+      "type": "knowledge",
+      "name": "Robot learning toolchains & data formats",
+      "summary": "Robot-learning toolchains turn recorded episodes into training batches and evaluations, while data formats preserve the meaning and timing of each observation and action.",
+      "lesson_md": "## In one sentence\n\nRobot-learning toolchains turn recorded episodes into training batches and evaluations, while data formats preserve the meaning and timing of each observation and action.\n\n![LeRobot streaming diagram showing a dataset feeding successive smaller portions](/img/lessons/knowledge_robot_learning-toolchains.webp)\n*LeRobot can stream portions of a dataset rather than downloading everything first. Source: [LeRobot docs](https://huggingface.co/docs/lerobot/lerobot-dataset-v3), license unknown.*\n\n## Why it matters for us\n\n- **Reuse the same experience:** a recorder, trainer, and visualizer need to agree on episode boundaries, feature names, and which action belongs to each observation.\n- **Avoid silent corruption:** a conversion can produce readable files while shifting actions relative to images or treating a final observation as another command.\n- **Start with inspection:** an episode timeline is a more useful first deliverable than a large training run whose inputs nobody has checked.\n\n> **Key idea:** File compatibility is not semantic compatibility: preserve what each stored value means.\n\n## How it works\n\n- **Think of a database migration:** converting a dataset requires preserving relationships and constraints, not merely renaming columns until the loader stops complaining.\n- **Separate three layers:** LeRobotDataset v3 stores numerical signals in Parquet, camera recordings in MP4, and schema plus episode indexing information in metadata.\n- **Reconstruct logical episodes:** multiple episodes can share a data or video file; metadata offsets define their boundaries rather than filenames.\n- **Read the schema first:** `meta/info.json` describes feature shapes, data types, frame rate, and path templates; `meta/stats.json` contains normalization statistics.\n- **Compare another representation:** robomimic uses HDF5, a hierarchical file format, storing demonstrations in groups such as `demo_0`, with separate action and observation arrays.\n- **Respect ending conventions:** RLDS marks first and last steps; a last step’s action is invalid even though the step still contains an observation.\n\n```mermaid\nflowchart LR\n  E[\"Recorded episodes\"] --> S[\"Schema and metadata\"]\n  S --> L[\"Dataset loader\"]\n  L --> B[\"Training batches\"]\n  B --> P[\"Policy\"]\n  L --> V[\"Timeline inspection\"]\n```\n\n## Key terms\n\n- **Schema**: the contract describing field names, types, and shapes.\n- **Parquet**: the tabular storage format used for LeRobot numerical signals.\n- **Shard**: one file containing a portion of a larger dataset.\n- **Normalization**: rescaling values using dataset statistics before model processing.\n\n## Before / after\n\n- **Before:** Understand Robot learning problem formulation: observations, actions, policies and how Teleoperation & robot data collection creates paired examples.\n- **After:** You can inspect the input pipeline before working on Fine-tuning & adapting pretrained robot policies.\n\n## Try it in an afternoon\n\n1. **Open the v3 layout** and locate metadata, numerical data, and video directories; explain what each contributes to episode reconstruction.\n2. **Trace the documented sample:** its timestamp is 1.234 seconds, and its image tensor uses channel-height-width order rather than robomimic’s stored height-width-channel order.\n3. **Compare one episode contract** with RLDS, writing down first-step, last-step, and invalid-action handling before proposing a converter.\n4. **Design a round-trip check:** retain episode lengths, timestamps, and action values, then compare them after conversion instead of trusting successful file loading.",
+      "resources": [
+        {
+          "title": "Recording a Robotics Dataset to train VLA (LeRobot Arm)",
+          "url": "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the recording workflow whose outputs a robot-data toolchain must preserve."
+        },
+        {
+          "title": "LeRobotDataset v3.0",
+          "url": "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand Parquet signals, MP4 videos, and metadata that reconstructs episodes."
+        },
+        {
+          "title": "Overview",
+          "url": "https://robomimic.github.io/docs/datasets/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect robomimic's HDF5 layout, image order, and train-validation filter keys."
+        },
+        {
+          "title": "google-research/rlds",
+          "url": "https://github.com/google-research/rlds",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Read episode and step conventions, especially the final observation and invalid action."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3",
+        "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+        "https://robomimic.github.io/docs/datasets/overview.html",
+        "https://github.com/google-research/rlds"
+      ]
+    },
+    {
+      "node_id": "k:robot-datasets-benchmarks",
+      "type": "knowledge",
+      "name": "Robot datasets & benchmarks",
+      "summary": "Robot datasets provide recorded experience, while benchmarks define tasks and evaluation procedures for comparing policies on more than a hand-picked successful video.",
+      "lesson_md": "## In one sentence\n\nRobot datasets provide recorded experience, while benchmarks define tasks and evaluation procedures for comparing policies on more than a hand-picked successful video.\n\n![Open X-Embodiment overview showing varied robot platforms and shared robot-learning data](/img/lessons/knowledge_robot_learning-datasets.webp)\n*Open X-Embodiment brings data from different robot setups together. Source: [Open X-Embodiment project](https://robotics-transformer-x.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Separate evidence from advertising:** a montage shows that a robot can sometimes succeed; a benchmark specifies what is tested and how results are compared.\n- **Choose data deliberately:** camera placement, action dimensions, and task annotations affect whether a dataset is usable for your policy.\n- **Make student results reusable:** a documented dataset or reproducible benchmark run lets another team investigate your failures instead of only watching your best attempt.\n\n> **Key idea:** A result means little without the dataset, task definition, and evaluation conditions that produced it.\n\n## How it works\n\n- **Think of fixtures and tests:** training episodes resemble development fixtures; evaluation tasks resemble integration tests that exercise the complete policy-environment interaction.\n- **Distinguish collection from protocol:** Open X-Embodiment combines robot-learning datasets, while LIBERO supplies task suites and tools for training and evaluation.\n- **Inspect task variation:** LIBERO includes spatial, object, and goal suites, separating changes in arrangement, manipulated objects, and objectives.\n- **Read a concrete task:** LIBERO’s example retrieves task 0 from `libero_10`, including its name, language instruction, and environment-definition file.\n- **Check data quality:** Hugging Face documents incomplete task annotations, ambiguous camera names, very short episodes, and inconsistent action dimensions in community datasets.\n- **Report the setup:** preserve the selected suite, task, policy, and random seed when following LIBERO’s evaluation workflow; otherwise your comparison is difficult to reproduce.\n\n```mermaid\nflowchart LR\n  D[\"Training demonstrations\"] --> T[\"Train policy\"]\n  T --> E[\"Benchmark tasks\"]\n  E --> O[\"Recorded outcomes\"]\n  O --> C[\"Compare same protocol\"]\n```\n\n## Key terms\n\n- **Dataset**: stored examples used for training or analysis.\n- **Benchmark**: a specified set of tasks and procedures used for comparison.\n- **Task suite**: a group of evaluation problems designed to test related capabilities.\n- **Seed**: a setting controlling pseudo-random choices in an experiment.\n\n## Before / after\n\n- **Before:** Learn Robot learning toolchains & data formats so you can distinguish a dataset’s contents from its storage layout.\n- **After:** Use Policy evaluation & real-world testing methodology to design physical trials rather than assuming a simulated benchmark proves hardware readiness.\n\n## Try it in an afternoon\n\n1. **Watch the recording walkthrough** and list the information captured in an episode; distinguish robot experience from a benchmark’s testing protocol.\n2. **Read LIBERO’s task example** and identify the suite, task ID, instruction, and environment file without starting a training run.\n3. **Draft a results table** containing suite, task, seed, evaluated policy, and outcome; leave unmeasured results blank rather than inventing scores.\n4. **Audit a dataset description** using Hugging Face’s checklist; record missing camera meanings, task labels, or action conventions before deciding to use it.",
+      "resources": [
+        {
+          "title": "Recording a Robotics Dataset to train VLA (LeRobot Arm)",
+          "url": "https://www.youtube.com/watch?v=hthAUo2Ukz4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch a concrete robot-dataset recording workflow before inspecting dataset quality and benchmark protocols."
+        },
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://robotics-transformer-x.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See how shared robot datasets and RT-X models fit together."
+        },
+        {
+          "title": "LeRobot Community Datasets: The “ImageNet” of Robotics — When and How?",
+          "url": "https://huggingface.co/blog/lerobot-datasets",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Learn to spot missing instructions, ambiguous cameras, and inconsistent action dimensions."
+        },
+        {
+          "title": "Lifelong-Robot-Learning/LIBERO",
+          "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect task suites, dataset access, task retrieval, and evaluation commands."
+        }
+      ],
+      "sources": [
+        "https://robotics-transformer-x.github.io/",
+        "https://robotics-transformer-x.github.io/video/teaser_compressed.mp4",
+        "https://huggingface.co/blog/lerobot-datasets",
+        "https://github.com/Lifelong-Robot-Learning/LIBERO",
+        "https://www.youtube.com/watch?v=hthAUo2Ukz4"
+      ]
+    },
+    {
+      "node_id": "k:action-chunking-action-tokenization",
+      "type": "knowledge",
+      "name": "Action chunking & action tokenization",
+      "summary": "Action chunking predicts several future commands together; action tokenization encodes continuous commands as discrete symbols that a sequence model can predict.",
+      "lesson_md": "## In one sentence\n\nAction chunking predicts several future commands together; action tokenization encodes continuous commands as discrete symbols that a sequence model can predict.\n\n![ACT architecture diagram showing a transformer predicting an action sequence from images and joint positions](/img/lessons/knowledge_robot_learning-action-chunking.webp)\n*ACT predicts an action sequence rather than a single command. Source: [ALOHA project](https://tonyzhaozh.github.io/aloha/), license unknown.*\n\n## Why it matters for us\n\n- **Choose the output representation:** predicting one joint target, a trajectory, or compressed symbols gives the learner different prediction problems.\n- **Understand the baseline:** ACT is a concrete route from Imitation learning (behavior cloning) to predicting coordinated sequences from camera images and joint positions.\n- **Separate two decisions:** chunk length describes how much future motion is predicted; tokenization describes how that motion is represented.\n\n> **Key idea:** A chunk is a time window; a token is a symbol. Neither word tells you how often fresh feedback reaches the robot.\n\n## How it works\n\n- **Think of batching versus serialization:** batching several API requests does not determine their wire format; likewise, chunks need not be encoded as discrete tokens.\n- **Predict a sequence:** ALOHA’s ACT directly predicts joint positions at 50 Hz with a fixed chunk size of 90.\n- **Work through the timing:** 90 steps divided by 50 steps per second span 1.8 seconds; that prediction horizon does not require ignoring new observations throughout.\n- **Combine overlapping predictions:** The ACT paper introduces temporal ensembling, combining predictions from different times to smooth action execution.\n- **Encode continuous actions:** tokenization maps numerical commands into symbols; decoding converts the predicted symbols back into commands.\n- **Use a specific example:** FAST applies a discrete cosine transform, representing a trajectory through frequency components rather than independently binning every time-step value.\n\n```mermaid\nflowchart LR\n  O[\"Images and joints\"] --> M[\"Sequence model\"]\n  M --> C[\"Predicted action chunk\"]\n  C --> E[\"Execute commands\"]\n  E --> O\n  C --> K[\"Optional token encoding\"]\n  K --> D[\"Decode for comparison\"]\n```\n\n## Key terms\n\n- **Chunk**: a sequence of future actions predicted together.\n- **Token**: a discrete symbol representing encoded action information.\n- **Prediction horizon**: how far into the future the output sequence extends.\n- **Temporal ensembling**: combining overlapping action predictions made at different times.\n- **Discrete cosine transform**: a way to describe a signal using cosine-shaped frequency components.\n\n## Before / after\n\n- **Before:** Know Imitation learning (behavior cloning) and the observation-action contract before studying a policy’s sequence representation.\n- **After:** Study Diffusion & flow-matching policies for another way to generate action chunks without predicting discrete symbols.\n\n## Try it in an afternoon\n\n1. **Inspect ACT’s diagram** and label where observations enter and where the action sequence leaves the model.\n2. **Reproduce the timing calculation:** explain the difference between 90 predicted steps, 50 commands per second, and the frequency of new predictions.\n3. **Sketch two data types:** an array of continuous joint targets and a list of token IDs; label the decoder required by the second.\n4. **Read FAST’s abstract** and explain why compressing an action sequence is a different intervention from increasing ACT’s chunk length.",
+      "resources": [
+        {
+          "title": "ALOHA and ACT: LeRobot Research Presentation #1 by Alexander Soare",
+          "url": "https://www.youtube.com/watch?v=ft73x0LfGpM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how camera observations and joint states become sequences of robot actions."
+        },
+        {
+          "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+          "url": "https://tonyzhaozh.github.io/aloha/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the teleoperation setup, policy diagram, and reported action sequence lengths."
+        },
+        {
+          "title": "ACT (Action Chunking with Transformers)",
+          "url": "https://huggingface.co/docs/lerobot/act",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the inputs and chunked outputs of a concrete imitation-learning policy."
+        },
+        {
+          "title": "FAST: Efficient Action Tokenization for Vision-Language-Action Models",
+          "url": "https://arxiv.org/abs/2501.09747",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Learn why frequency-space compression differs from independently binning each action value."
+        }
+      ],
+      "sources": [
+        "https://tonyzhaozh.github.io/aloha/",
+        "https://www.youtube.com/watch?v=ft73x0LfGpM",
+        "https://huggingface.co/docs/lerobot/act",
+        "https://arxiv.org/abs/2501.09747",
+        "https://arxiv.org/html/2304.13705v1"
+      ]
+    },
+    {
+      "node_id": "k:diffusion-flow-matching-policies",
+      "type": "knowledge",
+      "name": "Diffusion & flow-matching policies",
+      "summary": "Diffusion and flow-matching policies learn to transform noise into robot action sequences, conditioned on what the robot observes.",
+      "lesson_md": "## In one sentence\n\nDiffusion and flow-matching policies learn to transform noise into robot action sequences, conditioned on what the robot observes.\n\n![Comparison of explicit, implicit, and diffusion policies](/img/lessons/knowledge_robot_learning-diffusion.webp)\n*Diffusion Policy learns an action-distribution gradient field. Source: [Diffusion Policy project](https://diffusion-policy.cs.columbia.edu/), license unknown.*\n\n## Why it matters for us\n\n- **Allow multiple valid answers:** a scene can permit several successful motions, not just one average.\n- **Generate motion, not pictures:** these models generate robot commands, even when camera images are inputs.\n- **Connect specialist and generalist work:** Diffusion Policy studies manipulation; π₀ uses flow matching in a vision-language-action model for general robot control.\n\n> **Key idea:** The generated object is an action sequence; observations steer its generation, and feedback still matters after generation.\n\n## How it works\n\n- **Start with intuition:** Diffusion Policy repeatedly refines noisy candidate actions using what it sees, producing a sequence suited to the current scene.\n- **Think of an iterative solver:** the policy improves a candidate output through several updates rather than returning a command from one ordinary regression pass.\n- **Condition the updates:** camera observations guide which action sequences fit the situation; noise alone does not specify a task.\n- **Execute and reconsider:** receding-horizon control executes part of the predicted sequence, then plans again with updated observations rather than blindly finishing everything.\n- **Distinguish flow matching:** π₀ learns a flow that transforms noise into actions, building on a pretrained vision-language model; it is not simply ACT with another name.\n- **Read the published scope:** Diffusion Policy evaluates 12 tasks across four manipulation benchmarks; that result describes those experiments, not guaranteed performance on our hardware.\n- **Use a concrete task:** Push-T requires pushing a T-shaped block into its target region, then moving the robot’s tool tip into an ending zone.\n- **Work a toy cycle:** predict three actions, execute one, observe, and regenerate; three is illustrative, not a published setting.\n\n```mermaid\nflowchart LR\n  N[\"Noisy action sequence\"] --> G[\"Conditioned refinement\"]\n  O[\"Camera observations\"] --> G\n  G --> A[\"Predicted actions\"]\n  A --> E[\"Execute a portion\"]\n  E --> O\n```\n\n## Key terms\n\n- **Denoising**: removing noise from a candidate action sequence through learned updates.\n- **Conditioning**: supplying observations that guide which outputs the model generates.\n- **Multimodal distribution**: a set of possible outputs with several distinct plausible choices.\n- **Receding horizon**: repeatedly planning ahead while executing only part of each plan.\n- **Flow matching**: learning a transformation that moves noise toward the action-data distribution.\n\n## Before / after\n\n- **Before:** Understand Imitation learning (behavior cloning) and Action chunking & action tokenization; distinguish learning from demonstrations from executing a fixed replay.\n- **After:** Study Real-time learned-policy execution & inference scheduling to connect action generation with the timing constraints of robot execution.\n\n## Try it in an afternoon\n\n1. **Watch the Push-T sequence** and identify the block’s target region and the separate zone used to finish the episode.\n2. **Read the policy diagram** and distinguish observations, noisy actions, and the executable output; do not label intermediate noise as motor commands.\n3. **Trace one planning cycle** on paper: observe, generate a sequence, execute a portion, then obtain fresh observations.\n4. **Compare the two abstracts:** contrast denoising with flow matching without assuming identical architectures or data.",
+      "resources": [
+        {
+          "title": "Diffusion Policy: LeRobot Research Presentation #2 by Cheng Chi",
+          "url": "https://www.youtube.com/watch?v=M03sZFfW-qU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Cheng Chi explains Diffusion Policy, observation conditioning, and action-sequence generation in the LeRobot research series."
+        },
+        {
+          "title": "Diffusion Policy",
+          "url": "https://diffusion-policy.cs.columbia.edu/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect action-generation diagrams, task videos, and linked demonstration notebooks."
+        },
+        {
+          "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+          "url": "https://arxiv.org/abs/2303.04137",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Read the denoising formulation, receding-horizon design, and benchmark scope."
+        },
+        {
+          "title": "π₀: A Vision-Language-Action Flow Model for General Robot Control",
+          "url": "https://arxiv.org/abs/2410.24164",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "See how a flow-matching action generator is combined with a pretrained vision-language model."
+        }
+      ],
+      "sources": [
+        "https://diffusion-policy.cs.columbia.edu/",
+        "https://diffusion-policy.cs.columbia.edu/videos/highlight_pusht_process.mp4",
+        "https://arxiv.org/abs/2303.04137",
+        "https://arxiv.org/abs/2410.24164",
+        "https://www.youtube.com/watch?v=M03sZFfW-qU"
+      ]
+    },
+    {
+      "node_id": "k:autonomous-self-improvement-continual-robot-learning",
+      "type": "knowledge",
+      "name": "Autonomous self-improvement & continual robot learning",
+      "summary": "Self-improving robots alternate between collecting their own experience and retraining on it, while continual learning asks how to add new skills without erasing old ones.",
+      "lesson_md": "## In one sentence\n\nSelf-improving robots alternate between collecting their own experience and retraining on it, while continual learning asks how to add new skills without erasing old ones.\n\n![RoboCat training cycle: train a generalist, collect demos of a new task, fine-tune, self-generate data, grow the dataset](/img/lessons/knowledge_robot_learning-self-improvement.webp)\n*RoboCat's self-improvement cycle. Source: [Google DeepMind blog](https://deepmind.google/discover/blog/robocat-a-self-improving-robotic-agent/), license unknown.*\n\n## Why it matters for us\n\n- **Demonstrations are expensive:** every hour a student spends teleoperating an arm is an hour not spent building; a robot that practises alone multiplies that effort.\n- **Policies should not freeze:** a policy trained once stays blind to new objects, rooms and failures it meets later.\n- **Updates can break things:** retraining on new data can silently destroy an older skill, so every update needs a regression test.\n\n> **Key idea:** A self-improvement loop is only as good as its filter and its regression tests; treat every retrained policy as a release candidate, not an upgrade.\n\n## How it works\n\nThink of it as **continuous integration for a policy**. New data is like a new commit: it is merged only if the test suite, including old skills, still passes.\n\n- **RoboCat's five steps:** collect 100–1000 human demos, fine-tune a task-specific copy, collect about 10,000 practice attempts, combine data, then retrain the generalist.\n- **The payoff was measurable:** after 500 demos per unseen task, the initial RoboCat averaged 36% success and the final, self-improved one 74%.\n- **Online reinforcement learning (RL):** RLPD reuses recorded trajectories while learning from new interactions; its benchmark study reports a 2.5x improvement over existing approaches.\n- **Forgetting is benchmarked:** LIBERO is a benchmark built to measure knowledge transfer in lifelong robot learning, where tasks arrive one after another.\n\n```mermaid\nflowchart LR\n  P[\"Current policy\"] --> R[\"Practise on robot\"]\n  R --> F[\"Filter good episodes\"]\n  F --> D[\"Grow dataset\"]\n  D --> T[\"Retrain\"]\n  T --> G{\"Old and new tests pass?\"}\n  G -- yes --> P\n  G -- no --> B[\"Roll back\"]\n```\n\n## Key terms\n\n- **Self-generated data**: episodes produced by the robot's own policy rather than by a human operator.\n- **Catastrophic forgetting**: losing performance on old tasks after training on new ones.\n- **Spin-off agent**: a copy of the generalist fine-tuned for one task, used to collect more data.\n- **Replay buffer**: a store of past transitions that training samples from, mixing old and new experience.\n- **Rollback**: returning to the last policy version that passed every test.\n\n## Before / after\n\n- **Before:** Learn Offline reinforcement learning, Policy evaluation & real-world testing methodology and Imitation learning (behavior cloning).\n- **After:** You can design a Rollback-first autonomous curriculum or a Continual-learning forgetting flipbook project with honest before/after scores.\n\n## Try it in an afternoon\n\n1. **Pick two LIBERO tasks** in simulation and train a small behavior-cloning policy on task A only.\n2. **Record its success rate** on task A over 20 fixed-seed episodes.\n3. **Fine-tune on task B** and re-measure both tasks to see how much task A dropped.\n4. **Replay some task A data** during fine-tuning (a tiny replay buffer) and compare the forgetting.\n5. **Write the gate:** a script that refuses a new checkpoint if any task falls below its previous score.",
+      "resources": [
+        {
+          "title": "Andrew Wagenmaker: Robots That Learn From Experience [ETHZ Robot Learning 2026]",
+          "url": "https://www.youtube.com/watch?v=CPmTpXA5azw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 2026 guest lecture on getting real robots to keep improving from their own experience with reinforcement learning."
+        },
+        {
+          "title": "RoboCat: A self-improving robotic agent",
+          "url": "https://deepmind.google/discover/blog/robocat-a-self-improving-robotic-agent/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Walks through the five-step self-improvement cycle with the 36% to 74% result."
+        },
+        {
+          "title": "RoboCat: A Self-Improving Generalist Agent for Robotic Manipulation",
+          "url": "https://arxiv.org/abs/2306.11706",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The full paper on multi-embodiment training and using the model to generate its own next training data."
+        },
+        {
+          "title": "ikostrikov/rlpd",
+          "url": "https://github.com/ikostrikov/rlpd",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Reference code for online reinforcement learning that reuses prior offline data."
+        },
+        {
+          "title": "LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+          "url": "https://arxiv.org/abs/2306.03310",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Defines the benchmark used to measure forgetting and transfer when robot tasks arrive sequentially."
+        }
+      ],
+      "sources": [
+        "https://deepmind.google/discover/blog/robocat-a-self-improving-robotic-agent/",
+        "https://arxiv.org/abs/2306.11706",
+        "https://arxiv.org/abs/2302.02948",
+        "https://github.com/ikostrikov/rlpd",
+        "https://arxiv.org/abs/2306.03310",
+        "https://www.youtube.com/watch?v=CPmTpXA5azw"
+      ]
+    },
+    {
+      "node_id": "k:cross-embodiment-learning",
+      "type": "knowledge",
+      "name": "Cross-embodiment learning",
+      "summary": "Cross-embodiment learning trains one policy on data from robots with different bodies, sensors and command spaces, aiming to transfer experience between them.",
+      "lesson_md": "## In one sentence\n\nCross-embodiment learning trains one policy on data from robots with different bodies, sensors and command spaces, aiming to transfer experience between them.\n\n![CrossFormer architecture: per-modality tokenizers feed one shared transformer with separate action heads for quadrupeds, single arms, navigation and bimanual robots](/img/lessons/knowledge_robot_learning-cross-embodiment.webp)\n*One shared transformer, one action head per robot type. Source: [CrossFormer project page](https://crossformer-model.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Public data broadens coverage:** Open X-Embodiment offers experience collected on many robots, beyond what a student team can record alone.\n- **Mixed-robot pretraining:** RT-1-X and CrossFormer learn from multiple robot bodies rather than a single setup.\n- **Transfer is not guaranteed:** data from a 7-joint arm can help or hurt a 6-joint arm, so we must measure it.\n\n> **Key idea:** Share the perception and the task understanding, but give every body its own action interface, and test on a robot the model never trained on.\n\n## How it works\n\nThink of a **web backend with one business-logic core and several API adapters**. The core is shared; each client (robot) gets its own input parser and output serializer.\n\n- **Pooled data:** Open X-Embodiment gathered data from 22 robots across 21 institutions, covering 527 skills (160,266 tasks).\n- **Positive transfer:** the RT-X model trained on that pool improved several robots compared with training on each robot alone.\n- **Tokenize every input:** CrossFormer converts images, proprioception (the robot’s measured body state), and task information into tokens, numerical representations processed by its transformer.\n- **Share the processing core:** one transformer, a neural network processing token sequences, feeds separate action heads for embodiment classes with different command dimensions.\n- **No manual alignment:** CrossFormer trained on 900K trajectories and controlled arms, wheeled robots, quadcopters and quadrupeds with the same weights.\n\n```mermaid\nflowchart LR\n  A[\"Arm data\"] --> T[\"Tokenizers\"]\n  B[\"Quadruped data\"] --> T\n  C[\"Mobile robot data\"] --> T\n  T --> S[\"Shared transformer\"]\n  S --> H1[\"Arm action head\"]\n  S --> H2[\"Legged action head\"]\n  S --> H3[\"Navigation head\"]\n```\n\n## Key terms\n\n- **Embodiment**: a robot's physical body, sensors and actuators, which define what it can observe and do.\n- **Action space**: the format of commands a robot accepts, such as 6 joint angles or a 2D velocity.\n- **Action head**: the final network layers that turn shared features into one robot's commands.\n- **Positive transfer**: when training on other robots' data improves performance on yours.\n- **Negative transfer**: when that extra data makes your robot perform worse.\n\n## Before / after\n\n- **Before:** Understand Robot datasets & benchmarks and Robot learning problem formulation: observations, actions, policies, especially action normalization.\n- **After:** You can run a Cross-robot negative-transfer benchmark or the Held-out embodiment adaptation challenge, and judge Vision-Language-Action models (VLAs) trained on mixed fleets.\n\n## Try it in an afternoon\n\n1. **Open the Open X-Embodiment dataset list** and pick two robots with different action spaces.\n2. **Write an embodiment passport** for each: camera count, joint count, gripper type, control frequency.\n3. **Load a few episodes** of each and plot one action dimension over time to see the scale difference.\n4. **Write reversible normalizers** mapping each robot’s actions to a common range; note that equal numeric ranges do not align physical meanings.",
+      "resources": [
+        {
+          "title": "Pushing the Limits of Extreme Cross-Embodiment Learning for Manipulation and Navigation",
+          "url": "https://www.youtube.com/watch?v=ljZ48IoaPTY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Research video examining whether manipulation and navigation robots can learn from each other's data."
+        },
+        {
+          "title": "CrossFormer: Scaling Cross-Embodied Learning for Manipulation, Navigation, Locomotion, and Aviation",
+          "url": "https://crossformer-model.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with the architecture figure and rollout videos on six very different robots."
+        },
+        {
+          "title": "google-deepmind/open_x_embodiment",
+          "url": "https://github.com/google-deepmind/open_x_embodiment",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The dataset list, data format and RT-1-X checkpoints for the pooled multi-robot dataset."
+        },
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://arxiv.org/abs/2310.08864",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Reports the 22-robot dataset and the positive transfer measured with RT-X."
+        },
+        {
+          "title": "Scaling Cross-Embodied Learning: One Policy for Manipulation, Navigation, Locomotion and Aviation",
+          "url": "https://arxiv.org/abs/2408.11812",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Explains how CrossFormer handles different observations and action sizes without manual alignment."
+        }
+      ],
+      "sources": [
+        "https://crossformer-model.github.io/",
+        "https://arxiv.org/abs/2408.11812",
+        "https://arxiv.org/abs/2310.08864",
+        "https://github.com/google-deepmind/open_x_embodiment",
+        "https://robotics-transformer-x.github.io/",
+        "https://www.youtube.com/watch?v=ljZ48IoaPTY"
+      ]
+    },
+    {
+      "node_id": "k:data-augmentation-synthetic-demonstration-generation",
+      "type": "knowledge",
+      "name": "Data augmentation & synthetic demonstration generation",
+      "summary": "Augmentation alters training examples while keeping their actions valid, and synthetic demonstration generation adapts a few human demos to new scenes to produce many more.",
+      "lesson_md": "## In one sentence\n\nAugmentation alters training examples while keeping their actions valid, and synthetic demonstration generation adapts a few human demos to new scenes to produce many more.\n\n![MimicGen overview: about 10 human teleoperated demos become thousands of generated demos across scenes, objects and robots](/img/lessons/knowledge_robot_learning-data-augmentation.webp)\n*MimicGen multiplies a handful of human demos. Source: [MimicGen project page](https://mimicgen.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Teleoperation takes human effort:** every manually recorded demonstration needs an operator; generating valid variations can stretch that recording effort.\n- **Narrow data makes fragile policies:** a policy trained on one table colour may fail when the background changes.\n- **Simulation makes generation cheap:** with Isaac Lab or robosuite, thousands of generated episodes cost compute, not people.\n\n> **Key idea:** A generated demo is only useful if its action is still correct in the new scene, so always count rejected generations and test on scenes the generator never touched.\n\n## How it works\n\nIt is like **property-based testing**: from a few hand-written cases you generate many variants, but each variant must still satisfy the same rule.\n\n- **Image augmentation:** change colours, crops or backgrounds only when the recorded action remains valid; cropping away the target can invalidate an example.\n- **Consistency matters:** Augmentron (2026 preprint) renders variations through the recorded camera poses so every camera and frame stays consistent.\n- **Object-relative replay:** MimicGen splits a human demo into object-centric segments, then transforms each segment to the new object pose and replays it.\n- **Keep only successes:** a generated trajectory is executed in simulation and kept only if the task succeeds.\n- **Scale reported:** MimicGen generated over 50,000 demos across 18 tasks from fewer than 200 human demos, including transfer from a Panda to Sawyer, IIWA and UR5e arms.\n\n```mermaid\nflowchart LR\n  H[\"Few human demos\"] --> S[\"Split into object segments\"]\n  S --> N[\"New scene and object pose\"]\n  N --> X[\"Transform and replay in sim\"]\n  X --> C{\"Task succeeded?\"}\n  C -- yes --> D[\"Add to dataset\"]\n  C -- no --> R[\"Reject and count\"]\n```\n\n## Key terms\n\n- **Data augmentation**: modifying existing examples, such as images, without changing the correct label or action.\n- **Synthetic demonstration**: a trajectory produced automatically rather than by a human operator.\n- **Reset distribution**: the range of starting positions a task's objects can have at the start of an episode.\n- **Label validity**: whether the stored action is still the right action after the observation was changed.\n- **Coverage**: how much of the situations the robot will face appear in the training data.\n\n## Before / after\n\n- **Before:** Know Imitation learning (behavior cloning), Teleoperation & robot data collection and coordinate transforms between object and robot frames.\n- **After:** You can build the MimicGen reset-coverage laboratory or the Augmentation label-validity microscope, and feed Sim-to-real transfer with more varied data.\n\n## Try it in an afternoon\n\n1. **Install MimicGen** from its documentation and run the provided example on one robosuite task.\n2. **Generate 100 demos** from the 10 source demos and note how many attempts were rejected.\n3. **Train two small policies:** one on the 10 source demos, one on the generated set.\n4. **Evaluate both** on 20 fixed starting positions outside the original demo positions and compare success rates.",
+      "resources": [
+        {
+          "title": "Scaling Imitation Learning With Synthetic Motion Data Using GR00T-Mimic",
+          "url": "https://www.youtube.com/watch?v=cty5V9hJJG0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "NVIDIA explains synthetic motion-data generation with GR00T-Mimic in an imitation-learning workflow."
+        },
+        {
+          "title": "MimicGen: A Data Generation System for Scalable Robot Learning using Human Demonstrations",
+          "url": "https://mimicgen.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with videos of generated datasets for new reset distributions, objects and robot arms."
+        },
+        {
+          "title": "MimicGen: A Data Generation System for Scalable Robot Learning using Human Demonstrations",
+          "url": "https://arxiv.org/abs/2310.17596",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Explains object-centric segment transformation and reports the 50K-from-200 demo result."
+        },
+        {
+          "title": "Augmentron: Scalable Multi-View Visual Augmentation for Robot Learning",
+          "url": "https://arxiv.org/abs/2611.09145",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A 2026 preprint on keeping visual augmentation consistent across cameras and time."
+        }
+      ],
+      "sources": [
+        "https://mimicgen.github.io/",
+        "https://arxiv.org/abs/2310.17596",
+        "https://arxiv.org/abs/2611.09145",
+        "https://www.youtube.com/watch?v=cty5V9hJJG0"
+      ]
+    },
+    {
+      "node_id": "k:failure-detection-uncertainty-for-learned-policies",
+      "type": "knowledge",
+      "name": "Failure detection & uncertainty for learned policies",
+      "summary": "Failure detection lets a learned policy notice when it is likely wrong, using uncertainty estimates to stop, retry or ask a human instead of acting confidently.",
+      "lesson_md": "## In one sentence\n\nFailure detection lets a learned policy notice when it is likely wrong, using uncertainty estimates to stop, retry or ask a human instead of acting confidently.\n\n![KnowNo example: a robot is asked to put the bowl in the microwave, finds two plausible bowls, and asks which one](/img/lessons/knowledge_robot_learning-failure-detection.webp)\n*KnowNo turns uncertainty into a clarifying question. Source: [KnowNo project page](https://robot-help.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Learned policies fail silently:** a network outputs an action even in a scene it has never seen, with no built-in error code.\n- **Planning confidence is not motor safety:** KnowNo addresses ambiguous task choices; it does not certify collision-free robot motion.\n- **Asking is cheaper than failing:** one question to a human can save an episode, a broken object or a reset.\n\n> **Key idea:** Uncertainty is useful only once it is calibrated: a confidence score must be checked against real outcomes before you trust it to trigger help.\n\n## How it works\n\nIt is like **an exception handler around a model call**. Instead of trusting every return value, the wrapper checks a confidence signal and raises when it looks unsafe.\n\n- **Score the options:** KnowNo asks a large language model (LLM) planner to score several candidate next steps as multiple-choice options.\n- **Calibrate a threshold:** conformal prediction uses held-out examples to target statistical coverage, assuming calibration and deployment examples are exchangeable (drawn under comparable conditions).\n- **Build a prediction set:** every option scoring above the threshold is kept.\n- **Resolve uncertainty:** a singleton set supplies one plan; otherwise KnowNo requests help. A selected plan still needs a reliable low-level controller.\n- **Worked example:** for \"put the bowl in the microwave\", plastic bowl scored 0.44 and metal bowl 0.41; both passed the 0.21 threshold, so the robot asked.\n\n```mermaid\nflowchart LR\n  O[\"Observation and task\"] --> S[\"Score candidate actions\"]\n  S --> T[\"Apply calibrated threshold\"]\n  T --> P{\"How many options left?\"}\n  P -- one --> A[\"Act\"]\n  P -- otherwise --> H[\"Ask a human\"]\n  A --> M[\"Monitor outcome\"]\n```\n\n## Key terms\n\n- **Uncertainty**: how unsure a model is about its output, either from ambiguous input or from lack of training data.\n- **Calibration**: making confidence scores match how often the model is actually right.\n- **Conformal prediction**: a method producing prediction sets with a target error rate under statistical assumptions, not a guarantee for arbitrary deployment shifts.\n- **Prediction set**: the group of outputs still considered plausible after thresholding.\n- **Out-of-distribution (OOD)**: an input unlike anything in the training data.\n\n## Before / after\n\n- **Before:** Understand Robot learning problem formulation: observations, actions, policies and LLM/VLM task planning & code-as-policies.\n- **After:** You can build the Uncertainty calibration help button, the Failure early-warning precision-recall lab or the Shift-aware stop-or-continue arena.\n\n## Try it in an afternoon\n\n1. **Open the KnowNo Colab** linked from the project page and run the tabletop demo.\n2. **Write five ambiguous instructions** of your own, such as \"pick up the block\" with two blocks present.\n3. **Change the target success level** and watch how the prediction sets and help requests change.\n4. **Log a small table:** instruction, set size, asked or not, correct or not.",
+      "resources": [
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://www.youtube.com/watch?v=xCXx09gfhx4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short research video showing robots asking clarifying questions when the planner is unsure."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://robot-help.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with the microwave example, demos and links to the Colab notebook."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://arxiv.org/abs/2307.01928",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Explains how conformal prediction gives task-success guarantees while minimizing help requests."
+        },
+        {
+          "title": "google-research/language_model_uncertainty",
+          "url": "https://github.com/google-research/google-research/tree/master/language_model_uncertainty",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Code released for the KnowNo uncertainty-alignment experiments."
+        },
+        {
+          "title": "Conformal prediction",
+          "url": "https://en.wikipedia.org/wiki/Conformal_prediction",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Background on the statistical tool behind calibrated prediction sets."
+        }
+      ],
+      "sources": [
+        "https://robot-help.github.io/",
+        "https://arxiv.org/abs/2307.01928",
+        "https://en.wikipedia.org/wiki/Conformal_prediction",
+        "https://www.youtube.com/watch?v=xCXx09gfhx4",
+        "https://arxiv.org/html/2307.01928"
+      ]
+    },
+    {
+      "node_id": "k:fine-tuning-adapting-pretrained-robot-policies",
+      "type": "knowledge",
+      "name": "Fine-tuning & adapting pretrained robot policies",
+      "summary": "Fine-tuning continues training a pretrained robot policy on a small dataset from your own robot and task, so it adapts without learning everything from scratch.",
+      "lesson_md": "## In one sentence\n\nFine-tuning continues training a pretrained robot policy on a small dataset from your own robot and task, so it adapts without learning everything from scratch.\n\n![OpenVLA fine-tuning results on Franka-Tabletop and Franka-DROID tasks compared with Diffusion Policy, Octo and OpenVLA from scratch](/img/lessons/knowledge_robot_learning-fine-tuning.webp)\n*Fine-tuned policies compared on new Franka tasks. Source: [OpenVLA project page](https://openvla.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **We cannot pretrain:** OpenVLA was trained on 64 A100 GPUs for 15 days; fine-tuning is the realistic path on our budget.\n- **Check the target setup:** do not assume a pretrained policy supports our robot’s action interface, camera views, or normalization without verifying compatibility.\n- **Choices matter more than size:** the fine-tuning method can decide whether a model beats a small policy trained from scratch.\n\n> **Key idea:** Fine-tuning is transfer learning for robots: keep the general knowledge in the pretrained weights and spend your few demos teaching your body, cameras and task.\n\n## How it works\n\nThink of **forking a big open-source library** and patching only the parts your product needs, instead of rewriting it.\n\n1. **Collect demos** on your robot in the same format the model expects.\n2. **Map your action space** to the model's action format and normalization.\n3. **Choose what to update:** all weights, a few layers, or small adapter weights.\n4. **Train briefly** and evaluate on held-out scenes, not on training episodes.\n\n- **Worked example:** OpenVLA tested fine-tuning on Franka-Tabletop at 5 Hz and Franka-DROID at 15 Hz.\n- **LoRA in these experiments:** low-rank adapters matched full fine-tuning while updating only 1.4% of parameters; this is not a universal performance guarantee.\n- **Diverse-task results:** OpenVLA reached at least 50% success across the tested diverse tasks; this does not cover every narrow task in the figure.\n- **It is not magic:** Diffusion Policy trained from scratch was stronger on narrow, precise single-instruction tasks.\n\n```mermaid\nflowchart LR\n  P[\"Pretrained policy\"] --> F[\"Fine-tune\"]\n  D[\"Your robot demos\"] --> N[\"Normalize actions\"]\n  N --> F\n  F --> E[\"Evaluate on held-out scenes\"]\n  E --> R[\"Deploy or collect more demos\"]\n```\n\n## Key terms\n\n- **Pretrained policy**: a model already trained on large, mixed robot datasets.\n- **Full fine-tuning**: updating every weight of the model on new data.\n- **LoRA (low-rank adaptation)**: training small extra matrices while freezing the original weights.\n- **Overfitting**: memorizing the few training demos instead of learning the task.\n- **Co-training**: mixing original pretraining data with new data to keep old abilities.\n\n## Before / after\n\n- **Before:** Learn Vision-Language-Action models (VLAs), Robot learning toolchains & data formats and Teleoperation & robot data collection.\n- **After:** You can run the Pretrained-policy adaptation budget explorer, the Normalization and camera adaptation clinic or the Adapter merge versus forgetting benchmark.\n\n## Try it in an afternoon\n\n1. **Choose compatible demonstrations:** for an illustrative 50-episode dataset, reserve 10 entire episodes before training.\n2. **Fine-tune SmolVLA** only on the remaining training episodes, adapting the documented dataset configuration.\n3. **Evaluate the reserved episodes:** compare predicted and recorded actions; this offline error does not measure closed-loop task success.\n4. **Repeat with half the data** and plot how error changes with dataset size.",
+      "resources": [
+        {
+          "title": "End-to-End Pi-0.5 Training with OpenPi: From Dataset to Deployment",
+          "url": "https://www.youtube.com/watch?v=b0idWtoOvjk",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Walks through fine-tuning a pretrained VLA on a custom dataset and deploying it on a real arm."
+        },
+        {
+          "title": "OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://openvla.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with the fine-tuning comparison and the LoRA trade-off result."
+        },
+        {
+          "title": "OpenVLA: An Open-Source Vision-Language-Action Model",
+          "url": "https://arxiv.org/abs/2406.09246",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Details the data-efficient adaptation experiments and parameter-efficient fine-tuning study."
+        },
+        {
+          "title": "Physical-Intelligence/openpi",
+          "url": "https://github.com/Physical-Intelligence/openpi",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Open pi0 and pi0.5 checkpoints with fine-tuning examples on your own data."
+        },
+        {
+          "title": "SmolVLA",
+          "url": "https://huggingface.co/docs/lerobot/smolvla",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "LeRobot guide for fine-tuning a small VLA on SO-101-style datasets."
+        }
+      ],
+      "sources": [
+        "https://openvla.github.io/",
+        "https://arxiv.org/abs/2406.09246",
+        "https://github.com/Physical-Intelligence/openpi",
+        "https://huggingface.co/docs/lerobot/smolvla",
+        "https://www.youtube.com/watch?v=b0idWtoOvjk"
+      ]
+    },
+    {
+      "node_id": "k:interactive-imitation-human-in-the-loop-correction",
+      "type": "knowledge",
+      "name": "Interactive imitation & human-in-the-loop correction",
+      "summary": "Interactive imitation lets the robot run its own policy while a human corrects it, so training data covers the mistakes the policy actually makes.",
+      "lesson_md": "## In one sentence\n\nInteractive imitation lets the robot run its own policy while a human corrects it, so training data covers the mistakes the policy actually makes.\n\n![HIL-SERL system: train a reward classifier, collect 20-30 demos, then train RL online with human interventions that decrease over time](/img/lessons/knowledge_robot_learning-interactive-imitation.webp)\n*Human interventions feed the training buffers. Source: [HIL-SERL project page](https://hil-serl.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Plain behavior cloning drifts:** small errors push the robot into states no demo covered, and errors compound.\n- **Corrections target weaknesses:** labeling states the learner actually visits can cover recovery behavior absent from successful expert-only demonstrations.\n- **Design the override:** a human-correction interface needs explicit control handover and logging; a connected input device alone does not provide safe intervention.\n\n> **Key idea:** Collect data where the learner goes, not only where the expert goes; that closes the gap between training states and deployment states.\n\n## How it works\n\nIt is like **code review on a junior's pull request**: you let them write the code, then fix the exact lines where they went wrong, and they learn from those fixes.\n\n- **DAgger:** run the current policy, ask an expert to label the right action in the visited states, aggregate the data, retrain.\n- **Why it works:** DAgger trains on the learner’s visited states, addressing the distribution shift that makes errors accumulate in plain cloning.\n- **Intervention style:** a human takes over only when needed, and those segments are added to training.\n- **Related reinforcement-learning example:** HIL-SERL starts with 20–30 demos, then learns from rewards and human interventions; this is not DAgger’s supervised retraining objective.\n- **Reported result:** near-perfect success within 1 to 2.5 hours of training, with on average 2x success and 1.8x faster execution than baselines.\n\n```mermaid\nflowchart LR\n  D[\"Initial demos\"] --> T[\"Train policy\"]\n  T --> R[\"Robot runs policy\"]\n  R --> H{\"Human sees a mistake?\"}\n  H -- yes --> C[\"Human corrects\"]\n  H -- no --> L[\"Expert labels visited states\"]\n  C --> A[\"Aggregate dataset\"]\n  L --> A\n  A --> T\n```\n\n## Key terms\n\n- **Distribution shift**: the policy meets states during deployment that differ from training states.\n- **Compounding error**: small mistakes that lead to bigger, unseen situations step after step.\n- **DAgger**: Dataset Aggregation, which repeatedly labels the learner's own visited states.\n- **Intervention**: the moment a human takes control to correct the robot.\n- **Shared control**: a human and a policy both contribute to the command sent to the robot.\n\n## Before / after\n\n- **Before:** Know Imitation learning (behavior cloning) and Teleoperation & robot data collection.\n- **After:** You can build the DAgger distribution-shift sandbox, the Correction timing replay lab or the Shared-control coverage ablation, then move to Reinforcement learning for robots.\n\n## Try it in an afternoon\n\n1. **Choose an illustrative budget:** train a behavior-cloning policy on a simulated reaching task with 10 demos; these are exercise settings, not reported results.\n2. **Run it 20 times** and record where it fails.\n3. **Label the failed states** with a scripted expert action and add them to the dataset.\n4. **Retrain and compare** success before and after one DAgger round.",
+      "resources": [
+        {
+          "title": "CS 285: Lecture 2, Imitation Learning. Part 5",
+          "url": "https://www.youtube.com/watch?v=awfrsjYnJmw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Sergey Levine's lecture segment explaining the DAgger algorithm and why it fixes distribution shift."
+        },
+        {
+          "title": "HIL-SERL: Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning",
+          "url": "https://hil-serl.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with the system diagram and videos of human corrections during real training."
+        },
+        {
+          "title": "Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2410.21845",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Reports the training times and gains from mixing demos, human corrections and RL."
+        },
+        {
+          "title": "A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning",
+          "url": "https://arxiv.org/abs/1011.0686",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The original DAgger paper."
+        },
+        {
+          "title": "Robotic Data Inoculation",
+          "url": "https://arxiv.org/abs/2610.39054",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A 2026 shared-control method that exposes recovery states without waiting for the policy to fail."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/1011.0686",
+        "https://hil-serl.github.io/",
+        "https://arxiv.org/abs/2410.21845",
+        "https://arxiv.org/abs/2610.39054",
+        "https://www.youtube.com/watch?v=awfrsjYnJmw"
+      ]
+    },
+    {
+      "node_id": "k:learning-from-human-video",
+      "type": "knowledge",
+      "name": "Learning from human video",
+      "summary": "Learning from human video extracts useful knowledge, such as visual features, object motions or hand trajectories, from recordings of people so robots need fewer teleoperated demos.",
+      "lesson_md": "## In one sentence\n\nLearning from human video extracts useful knowledge, such as visual features, object motions or hand trajectories, from recordings of people so robots need fewer teleoperated demos.\n\n![OKAMI overview: a single human RGB-D video of a task is turned into a humanoid robot performing the same manipulation](/img/lessons/knowledge_robot_learning-human-video.webp)\n*OKAMI imitates one human video on a humanoid. Source: [OKAMI paper on arXiv](https://arxiv.org/html/2410.11792v1), license unknown.*\n\n## Why it matters for us\n\n- **Human recordings avoid robot teleoperation:** a person can demonstrate the task with their own body, though capture equipment and processing are still needed.\n- **Bodies differ:** a human hand has more joints than an SO-101 gripper, so motions cannot be copied directly.\n- **Robot action labels are missing:** ordinary human footage shows motion, not the robot commands needed to reproduce it.\n\n> **Key idea:** Human video gives you what to do and where things should go; you still need the robot's own data or a retargeting step to know how its body should do it.\n\n## How it works\n\nThink of **porting an app between two platforms**: the product logic is the same, but every UI call must be rewritten for the new system's API.\n\n- **Representation route:** R3M trains an image encoder, a network producing visual features, using human video and language; robot policies reuse those features.\n- **Plan route:** OKAMI turns one RGB-D video into a reference plan of which objects move, and how, between subgoals.\n- **Retargeting:** OKAMI adjusts motions for new object locations; inverse kinematics finds body joint positions matching target poses, while finger angles are mapped separately.\n- **Worked example:** OKAMI rollouts were used as training data for closed-loop policies that averaged 79.2% success without teleoperation.\n\n```mermaid\nflowchart LR\n  V[\"Human video\"] --> O[\"Detect objects and hands\"]\n  O --> P[\"Reference plan\"]\n  P --> R[\"Retarget to robot body\"]\n  R --> X[\"Robot rollouts\"]\n  X --> T[\"Train visuomotor policy\"]\n```\n\n## Key terms\n\n- **Embodiment gap**: differences in body shape, joints and sensors between a human and a robot.\n- **Retargeting**: converting a motion from one body into an equivalent motion for another body.\n- **Imitation from observation**: learning a skill from observed states only, without recorded actions.\n- **RGB-D video**: colour video with a depth value for every pixel.\n- **Egocentric video**: footage recorded from the person's own head or chest viewpoint.\n\n## Before / after\n\n- **Before:** Know Imitation learning (behavior cloning), Pretrained visual representations for robots and Teleoperation & robot data collection.\n- **After:** You can start the Human video → robot data engine project and compare it with Data augmentation & synthetic demonstration generation.\n\n## Try it in an afternoon\n\n1. **Choose five frames** from a cup-moving phone clip as an illustrative exercise; manually mark the wrist and cup in image coordinates.\n2. **Plot their pixel paths** and distinguish visible image motion from the unknown depth of the wrist above the table.\n3. **List missing robot information:** joint limits, camera geometry, contact forces and commands are not supplied by the pixel paths.\n4. **Compare with OKAMI:** identify how its depth video, object locations and retargeting address gaps your phone clip leaves unresolved.",
+      "resources": [
+        {
+          "title": "OKAMI: Teaching Humanoid Robots Manipulation Skills through Single Video Imitation",
+          "url": "https://www.youtube.com/watch?v=P8WwXSnKq1g",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows side by side a human video and a humanoid robot imitating it."
+        },
+        {
+          "title": "OKAMI: Teaching Humanoid Robots Manipulation Skills through Single Video Imitation",
+          "url": "https://ut-austin-rpl.github.io/OKAMI/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explains the two-stage plan-then-retarget method with human and robot videos for six tasks."
+        },
+        {
+          "title": "OKAMI: Teaching Humanoid Robots Manipulation Skills through Single Video Imitation",
+          "url": "https://arxiv.org/abs/2410.11792",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Full method and the 79.2% visuomotor policy result."
+        },
+        {
+          "title": "R3M: A Universal Visual Representation for Robot Manipulation",
+          "url": "https://arxiv.org/abs/2203.12601",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Shows how human video from Ego4D can pretrain visual features for robot learning."
+        }
+      ],
+      "sources": [
+        "https://ut-austin-rpl.github.io/OKAMI/",
+        "https://arxiv.org/abs/2410.11792",
+        "https://arxiv.org/html/2410.11792v1",
+        "https://arxiv.org/abs/2203.12601",
+        "https://www.youtube.com/watch?v=P8WwXSnKq1g"
+      ]
+    },
+    {
+      "node_id": "k:llm-vlm-task-planning-code-as-policies",
+      "type": "knowledge",
+      "name": "LLM/VLM task planning & code-as-policies",
+      "summary": "A large language or vision-language model breaks a spoken task into steps, choosing from robot skills or writing code that calls robot APIs.",
+      "lesson_md": "## In one sentence\n\nA large language or vision-language model breaks a spoken task into steps, choosing from robot skills or writing code that calls robot APIs.\n\n![SayCan in a simulated tabletop: the task \"move all the blocks to different corners\" becomes three pick-and-place steps](/img/lessons/knowledge_robot_learning-llm-planning.webp)\n*An LLM planner turns one instruction into a list of skills. Source: [SayCan project page](https://say-can.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **It is our home turf:** prompting, APIs and code generation are skills École 42 students already have.\n- **Long tasks benefit from structure:** a planner can break “clean the table” into short skills rather than requiring one monolithic learned behavior.\n- **LLMs hallucinate:** a plan that calls a skill the robot does not have, or cannot execute now, fails in the real world.\n\n> **Key idea:** Ground generated plans and code in explicit robot interfaces; language plausibility alone does not establish physical feasibility.\n\n## How it works\n\nIt is like **an LLM agent with tool calling**: the model reads the request, picks functions from a fixed API and returns calls in order.\n\n- **SayCan:** for each skill, multiply the language model's \"is this useful?\" probability by a value function's \"can I succeed from here?\" probability.\n- **Affordance grounding:** the learned value function down-ranks skills estimated unlikely to succeed; its estimates can be wrong and are not a safety guarantee.\n- **Worked example:** PaLM-SayCan picked the correct skill sequence 84% of the time and executed it successfully 74% of the time across 101 tasks.\n- **Code as Policies:** prompts pair commands with Python examples; generated programs call perception and control APIs and can include feedback loops, not just skill lists.\n- **Code adds precision:** generated code can use loops, NumPy and geometry, turning \"faster\" into concrete velocity values.\n\n```mermaid\nflowchart LR\n  U[\"User instruction\"] --> L[\"LLM or VLM\"]\n  S[\"Skill API and scene\"] --> L\n  L --> P[\"Plan or generated code\"]\n  P --> G{\"Feasible now?\"}\n  G -- yes --> E[\"Execute skill\"]\n  G -- no --> L\n```\n\n## Key terms\n\n- **Task planning**: choosing the sequence of steps that reaches a goal.\n- **Skill primitive**: a reusable low-level behaviour such as `pick(object)` or `go_to(place)`.\n- **Grounding**: linking words in the instruction to objects and actions available in the real scene.\n- **Affordance**: what an object or situation allows the robot to do right now.\n- **Few-shot prompting**: putting a few worked examples in the prompt so the model copies the pattern.\n\n## Before / after\n\n- **Before:** Know Robot learning problem formulation: observations, actions, policies and basic prompt engineering.\n- **After:** You can build the Skill-API hallucination test stage, the Affordance-grounded plan ranking lab or the Generated robot-code contract arena, and add Failure detection & uncertainty for learned policies.\n\n## Try it in an afternoon\n\n1. **Open the Code as Policies Colab** from the project page and run the tabletop demo.\n2. **Define three skills** of your own, such as `pick`, `place` and `point_at`, as Python stubs.\n3. **Prompt an LLM** with two examples and ten new instructions, and collect the generated code.\n4. **Inspect without executing:** count unknown functions, wrong argument types and impossible orders; keep generated code isolated from hardware.",
+      "resources": [
+        {
+          "title": "Supplementary video for Do As I Can, Not As I Say: Grounding Language in Robotic Affordances",
+          "url": "https://www.youtube.com/watch?v=ysFav0b472w",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows a mobile robot executing long kitchen instructions planned by a language model."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Explains combining language-model and value-function scores, with the 84% and 74% results."
+        },
+        {
+          "title": "Do As I Can, Not As I Say: Grounding Language in Robotic Affordances",
+          "url": "https://arxiv.org/abs/2204.01691",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The full SayCan paper."
+        },
+        {
+          "title": "Code as Policies: Language Model Programs for Embodied Control",
+          "url": "https://code-as-policies.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with examples of LLM-written robot code and an interactive Colab."
+        },
+        {
+          "title": "Code as Policies: Language Model Programs for Embodied Control",
+          "url": "https://arxiv.org/abs/2209.07753",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Describes language model programs that call perception and control APIs."
+        }
+      ],
+      "sources": [
+        "https://say-can.github.io/",
+        "https://arxiv.org/abs/2204.01691",
+        "https://code-as-policies.github.io/",
+        "https://arxiv.org/abs/2209.07753",
+        "https://www.youtube.com/watch?v=ysFav0b472w"
+      ]
+    },
+    {
+      "node_id": "k:offline-reinforcement-learning",
+      "type": "knowledge",
+      "name": "Offline reinforcement learning",
+      "summary": "Offline reinforcement learning learns a reward-maximizing policy from a fixed dataset of past robot experience, without letting the robot explore during training.",
+      "lesson_md": "## In one sentence\n\nOffline reinforcement learning learns a reward-maximizing policy from a fixed dataset of past robot experience, without letting the robot explore during training.\n\n![Standard RL collects data in a loop many times; offline RL trains for many epochs on a big dataset of past interactions, then deploys](/img/lessons/knowledge_robot_learning-offline-rl.webp)\n*Online RL versus offline RL. Source: [Berkeley AI Research blog](https://bair.berkeley.edu/blog/2020/12/07/offline/), license unknown.*\n\n## Why it matters for us\n\n- **Real exploration is risky:** letting a learning arm try random moves can break objects, the robot or a finger.\n- **Logs need the right fields:** reuse demonstrations and failures only when observations, actions, rewards and episode boundaries can be recovered consistently.\n- **It can beat the data:** unlike behavior cloning, offline RL uses rewards to prefer the better actions inside mixed-quality data.\n\n> **Key idea:** The danger in offline RL is optimism about actions the dataset never tried, so good algorithms stay conservative outside the data.\n\n## How it works\n\nIt is like **training a recommender only from historical click logs**: you cannot show users new items to test them, so you must not trust predictions far from what users actually saw.\n\n- **Q-function:** the agent learns a score Q(state, action) estimating the total future reward of that action.\n- **Distribution shift:** the learned policy wants actions missing from the dataset, where Q estimates can be wildly overestimated.\n- **CQL:** conservative Q-learning penalizes optimistic values; its theory lower-bounds a policy’s expected value under stated assumptions, not every individual state-action score.\n- **IQL:** implicit Q-learning avoids querying unseen actions during offline training; the paper reports improvement beyond the best behavior in its datasets.\n- **Worked example:** a robot trained to grasp from an open drawer fails if the drawer starts closed; COG uses offline RL to reuse prior drawer-opening data.\n\n```mermaid\nflowchart LR\n  D[\"Logged robot data\"] --> R[\"Label rewards\"]\n  R --> Q[\"Learn conservative Q-function\"]\n  Q --> P[\"Extract policy\"]\n  P --> E[\"Evaluate offline then on robot\"]\n  E --> F[\"Optional online fine-tuning\"]\n```\n\n## Key terms\n\n- **Reward**: a number telling the agent how good an outcome was.\n- **Q-function**: a learned estimate of future reward for taking an action in a state.\n- **Behavior policy**: whatever produced the dataset, such as a human operator or an older policy.\n- **Distribution shift**: the gap between actions in the dataset and actions the new policy chooses.\n- **Conservatism**: deliberately pessimistic value estimates for unfamiliar actions.\n\n## Before / after\n\n- **Before:** Learn Reinforcement learning for robots, Imitation learning (behavior cloning) and Robot datasets & benchmarks.\n- **After:** You can run the Offline value optimism microscope, the CQL and IQL dataset-quality ladder or the Offline-policy release stress test.\n\n## Try it in an afternoon\n\n1. **Pick one D4RL benchmark dataset** of medium quality, as used in the IQL paper.\n2. **Train behavior cloning** and IQL on that same dataset.\n3. **Compare returns** over an illustrative 10 simulated evaluation episodes each; these interactions evaluate the fixed policy, not its offline training.\n4. **Audit predicted values:** compare dataset-action scores with random-action scores; high predicted values alone cannot establish actual returns for unseen actions.",
+      "resources": [
+        {
+          "title": "NeurIPS 2020 Tutorial on Offline RL: Part 1",
+          "url": "https://www.youtube.com/watch?v=9tMLmjVq6bA",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Tutorial introducing offline RL, distribution shift and why standard RL fails on static data."
+        },
+        {
+          "title": "Offline Reinforcement Learning: How Conservative Algorithms Can Enable New Applications",
+          "url": "https://bair.berkeley.edu/blog/2020/12/07/offline/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Readable intro to CQL and COG with robot drawer examples."
+        },
+        {
+          "title": "Conservative Q-Learning for Offline Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2006.04779",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The CQL paper and its lower-bound value idea."
+        },
+        {
+          "title": "Offline Reinforcement Learning with Implicit Q-Learning",
+          "url": "https://arxiv.org/abs/2110.06169",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "IQL, a widely used offline RL method that never queries unseen actions."
+        }
+      ],
+      "sources": [
+        "https://bair.berkeley.edu/blog/2020/12/07/offline/",
+        "https://arxiv.org/abs/2006.04779",
+        "https://arxiv.org/abs/2110.06169",
+        "https://www.youtube.com/watch?v=9tMLmjVq6bA"
+      ]
+    },
+    {
+      "node_id": "k:policy-evaluation-real-world-testing-methodology",
+      "type": "knowledge",
+      "name": "Policy evaluation & real-world testing methodology",
+      "summary": "Policy evaluation measures how often a learned robot policy succeeds, under conditions and repetition counts fixed in advance, so different policies can be compared honestly.",
+      "lesson_md": "## In one sentence\n\nPolicy evaluation measures how often a learned robot policy succeeds, under conditions and repetition counts fixed in advance, so different policies can be compared honestly.\n\n![AutoEval: users submit policies to a queue, autonomous WidowX cells run and reset tasks, and results correlate with human evaluation](/img/lessons/knowledge_robot_learning-evaluation.webp)\n*Automated real-world evaluation compared with human-run scores. Source: [AutoEval project page](https://auto-eval.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Demos lie:** one lucky video says nothing about whether a policy succeeds 30% or 90% of the time.\n- **Small samples are noisy:** 10 trials give wide error bars, so a \"better\" policy may just be luck.\n- **Offline metrics mislead:** a lower validation loss does not guarantee more real successes.\n\n> **Key idea:** Treat robot evaluation like an experiment: fix the protocol, the starting states and the number of trials before you look at results.\n\n## How it works\n\nIt is like **a CI test suite with flaky tests**: you need fixed test cases, many repeated runs and a pass rate, not one green build.\n\n1. **Define success** with a clear, checkable rule per task.\n2. **Fix starting conditions:** object positions, lighting and distractors, including held-out ones.\n3. **Run every policy** on the same conditions, ideally in random order.\n4. **Report success rate** with the number of trials and an error bar.\n\n- **Automate resets:** AutoEval uses success classifiers and reset policies so WidowX cells evaluate policies around the clock with minimal human help.\n- **Published comparison:** AutoEval’s teaser reports correlations with human scores: 0.99 for AutoEval, 0.45 for SIMPLER, and −0.38 for validation mean squared error.\n- **Simulation proxies:** SIMPLER reports strong simulation-to-reality correlation in its paired experiments; AutoEval’s different comparison illustrates why no proxy is universally reliable.\n\n```mermaid\nflowchart LR\n  S[\"Define success rule\"] --> C[\"Fix test conditions\"]\n  C --> R[\"Run N trials per policy\"]\n  R --> D[\"Detect success\"]\n  D --> X[\"Reset scene\"]\n  X --> R\n  D --> M[\"Success rate and error bars\"]\n```\n\n## Key terms\n\n- **Success rate**: the fraction of trials where the task's success rule was met.\n- **Evaluation protocol**: the written rules for setup, trials and scoring, decided before testing.\n- **Held-out condition**: a test situation absent from training data.\n- **Confidence interval**: a range showing how uncertain a measured success rate is.\n- **Reset**: returning the scene to a starting state between trials.\n\n## Before / after\n\n- **Before:** Know Robot learning problem formulation: observations, actions, policies and Robot datasets & benchmarks.\n- **After:** You can build the Policy scorecard with honest error bars, the Kitchen generalization tournament or the Physical-policy qualification gate.\n\n## Try it in an afternoon\n\n1. **Pick two checkpoints** of the same policy in a LIBERO or RoboCasa simulation task.\n2. **Write an illustrative protocol:** 50 fixed seeds, success rule and episode-length limit; keep training and test conditions separate.\n3. **Run both checkpoints** on all seeds and record successes.\n4. **Compute 95% Wilson intervals** using NIST’s formula; report trial counts and intervals as uncertainty summaries, not overlap as a definitive test of policy differences.",
+      "resources": [
+        {
+          "title": "Ep#9: AutoEval - Autonomous Evaluation of Generalist Robot Manipulation Policies in the Real World",
+          "url": "https://www.youtube.com/watch?v=M6opzo9vyFE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Interview explaining why real-world evaluation is a bottleneck and how AutoEval automates it."
+        },
+        {
+          "title": "AutoEval: Autonomous Evaluation of Generalist Robot Manipulation Policies in the Real World",
+          "url": "https://auto-eval.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page showing the evaluation queue, tasks and policy server interface."
+        },
+        {
+          "title": "AutoEval: Autonomous Evaluation of Generalist Robot Manipulation Policies in the Real World",
+          "url": "https://arxiv.org/abs/2503.24278",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Details success detection, automatic resets and agreement with human evaluations."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://arxiv.org/abs/2405.05941",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The SIMPLER paper on using simulation to predict real-world policy performance."
+        },
+        {
+          "title": "7.2.4.1. Confidence intervals",
+          "url": "https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the Wilson interval formula to summarize uncertainty in a success proportion."
+        }
+      ],
+      "sources": [
+        "https://auto-eval.github.io/",
+        "https://arxiv.org/abs/2503.24278",
+        "https://arxiv.org/abs/2405.05941",
+        "https://www.youtube.com/watch?v=M6opzo9vyFE",
+        "https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm"
+      ]
+    },
+    {
+      "node_id": "k:pretrained-visual-representations-for-robots",
+      "type": "knowledge",
+      "name": "Pretrained visual representations for robots",
+      "summary": "A pretrained visual representation is an image encoder trained on large image or video collections, reused so robot policies learn from fewer demonstrations.",
+      "lesson_md": "## In one sentence\n\nA pretrained visual representation is an image encoder trained on large image or video collections, reused so robot policies learn from fewer demonstrations.\n\n![R3M overview: Ego4D human video and language pretrain a representation that is reused for robot learning in new environments and tasks](/img/lessons/knowledge_robot_learning-visual-representations.webp)\n*R3M pretrains on human video, then serves robot policies. Source: [R3M project page](https://sites.google.com/view/robot-r3m/), license unknown.*\n\n## Why it matters for us\n\n- **Small datasets limit visual learning:** pretraining can reduce the robot demonstrations needed to learn useful perception, as R3M’s experiments illustrate.\n- **Feature quality decides success:** the encoder decides whether the policy can even see the gripper-object gap.\n- **Compare compatible interfaces:** DINOv2, R3M and VC-1 provide features, but their dimensions and preprocessing may require different adapters before a policy head.\n\n> **Key idea:** Reuse vision learned from huge datasets, and spend your scarce robot demos only on mapping those features to actions.\n\n## How it works\n\nIt is exactly like **using a pretrained embedding model** for search: you do not train your own text encoder, you embed documents and train a small model on top.\n\n- **Pretrain:** R3M learns from Ego4D human video by relating frames across time, aligning video with language, and penalizing unnecessarily dense feature activations.\n- **Freeze and reuse:** the encoder becomes a frozen perception module; only the small policy network is trained on robot data.\n- **Worked example:** across 12 simulated manipulation tasks, R3M improved success by over 20% versus training from scratch, and over 10% versus CLIP and MoCo.\n- **No universal winner:** the VC-1 study pretrained on over 4,000 hours of egocentric video and found that no encoder dominated every task.\n- **Adapt when needed:** that study found task-specific adaptation of VC-1 gave substantial gains on CortexBench.\n\n```mermaid\nflowchart LR\n  W[\"Large image or video data\"] --> P[\"Pretrain encoder\"]\n  P --> E[\"Frozen encoder\"]\n  C[\"Robot camera image\"] --> E\n  E --> F[\"Feature vector\"]\n  F --> H[\"Small policy head\"]\n  H --> A[\"Robot action\"]\n```\n\n## Key terms\n\n- **Visual representation**: a compact vector summarizing an image, produced by an encoder network.\n- **Pretraining**: training a model on a large general dataset before using it on your task.\n- **Frozen encoder**: an encoder whose weights are not updated during policy training.\n- **Self-supervised learning**: learning from unlabelled data by predicting parts of it, such as masked patches.\n- **Linear probe**: a single layer trained on frozen features to test how much information they hold.\n\n## Before / after\n\n- **Before:** Know convolutional or transformer image models, embeddings, and Imitation learning (behavior cloning).\n- **After:** You can build the Robot-camera feature atlas, the Frozen-encoder low-data race or the Precision-versus-semantics encoder audit.\n\n## Try it in an afternoon\n\n1. **Choose an illustrative sample:** split 200 labeled frames by whole episode into training and test groups, then extract DINOv2 features.\n2. **Plot the embeddings** with a 2D projection, coloured by episode phase.\n3. **Train a linear probe** on training episodes to predict gripper open or closed; evaluate only on the held-out episodes.\n4. **Compare a random encoder** using the same splits and classifier training; report held-out accuracy rather than accuracy on the fitted examples.",
+      "resources": [
+        {
+          "title": "R3M: A Universal Visual Representation for Robot Manipulation",
+          "url": "https://www.youtube.com/watch?v=l_N1SKFJYMk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Research video showing R3M pretraining on human video and reuse on robots."
+        },
+        {
+          "title": "R3M: A Universal Visual Representation for Robot Manipulation",
+          "url": "https://sites.google.com/view/robot-r3m/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Overview figure, code link and robot results."
+        },
+        {
+          "title": "R3M: A Universal Visual Representation for Robot Manipulation",
+          "url": "https://arxiv.org/abs/2203.12601",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Reports the 12-task comparison against training from scratch, CLIP and MoCo."
+        },
+        {
+          "title": "Where are we in the search for an Artificial Visual Cortex for Embodied Intelligence?",
+          "url": "https://arxiv.org/abs/2303.18240",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The VC-1 and CortexBench study comparing pretrained visual representations."
+        },
+        {
+          "title": "facebookresearch/dinov2",
+          "url": "https://github.com/facebookresearch/dinov2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official code and weights for DINOv2 general-purpose visual features."
+        }
+      ],
+      "sources": [
+        "https://sites.google.com/view/robot-r3m/",
+        "https://arxiv.org/abs/2203.12601",
+        "https://arxiv.org/abs/2303.18240",
+        "https://github.com/facebookresearch/dinov2",
+        "https://arxiv.org/abs/2304.07193",
+        "https://www.youtube.com/watch?v=l_N1SKFJYMk"
+      ]
+    },
+    {
+      "node_id": "k:reinforcement-learning-for-robots",
+      "type": "knowledge",
+      "name": "Reinforcement learning for robots",
+      "summary": "Reinforcement learning (RL) trains a robot policy by trial and error, rewarding good outcomes so the policy gradually prefers actions that earn more reward.",
+      "lesson_md": "## In one sentence\n\nReinforcement learning (RL) trains a robot policy by trial and error, rewarding good outcomes so the policy gradually prefers actions that earn more reward.\n\n![Reinforcement learning loop: an agent acts on the environment, which returns a new state and a reward](/img/lessons/knowledge_robot_learning-reinforcement-learning.webp)\n*The agent-environment loop at the heart of RL. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Reinforcement_learning_diagram.svg), CC0 1.0, by Megajuice.*\n\n## Why it matters for us\n\n- **Demos have a ceiling:** imitation copies the operator, while RL can improve beyond the demos it started from.\n- **Simulation avoids physical trial damage:** a simulated reaching task lets us experiment with rewards before attempting robot exploration.\n- **Hardware results are task-specific:** HIL-SERL demonstrates precise manipulation within hours using demonstrations and human corrections, not unconstrained autonomous exploration.\n\n> **Key idea:** RL needs three things you must engineer yourself: a reward that means what you want, safe exploration and enough interaction data.\n\n## How it works\n\nIt is like **A/B testing a product continuously**: try a variant, measure the metric, keep what scored better, repeat thousands of times.\n\n1. **Observe** sensor information, such as camera images and joint angles; this may reveal only part of the physical state.\n2. **Act** with the current policy, plus some exploration.\n3. **Receive a reward**, for example 1 when the object is in the box.\n4. **Update** the policy or value function to make high-reward actions more likely.\n\n- **Reuse data:** RLPD learns from previously collected transitions alongside new interactions, reporting a 2.5x benchmark improvement over prior approaches.\n- **Worked example:** HIL-SERL trains real-robot policies with demos, human corrections and RL, reaching near-perfect success in 1 to 2.5 hours.\n- **Measured gains:** it averaged 2x higher success and 1.8x faster execution than imitation and prior RL baselines.\n\n```mermaid\nflowchart LR\n  S[\"State\"] --> P[\"Policy\"]\n  P --> A[\"Action\"]\n  A --> E[\"Robot or simulator\"]\n  E --> R[\"Reward and next state\"]\n  R --> U[\"Update policy\"]\n  U --> P\n```\n\n## Key terms\n\n- **Agent**: the learner that chooses actions, here the robot policy.\n- **Reward**: a number scoring how good the latest outcome was.\n- **Episode**: one attempt at the task from start to reset.\n- **Exploration**: trying actions that are not yet known to be good.\n- **Sample efficiency**: how much interaction an algorithm needs to learn.\n\n## Before / after\n\n- **Before:** Know Robot learning problem formulation: observations, actions, policies, basic probability and gradient descent.\n- **After:** You can build Real-world RL fine-tuning (HIL-SERL) or Sim-to-real transfer on the SO-101, and study Reward learning & reward specification.\n\n## Try it in an afternoon\n\n1. **Use simulated Fetch Reach** from Gymnasium-Robotics with Stable Baselines3’s PPO (Proximal Policy Optimization), using its dictionary-observation policy interface.\n2. **Plot episode reward** over training steps.\n3. **Compare sparse and dense rewards:** Fetch Reach documents a sparse success threshold and a dense negative-distance reward; keep evaluation conditions fixed.\n4. **Record a video** of the final policy and list any reward-hacking behaviour you see.",
+      "resources": [
+        {
+          "title": "Robot Learning 2026 – Lecture 4: Reinforcement Learning I | ETH Zürich",
+          "url": "https://www.youtube.com/watch?v=90raNpc11tQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 2026 university lecture introducing RL for robots from first principles."
+        },
+        {
+          "title": "Reach",
+          "url": "https://robotics.farama.org/envs/fetch/reach/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the simulated reaching task, dictionary observations, actions and sparse versus dense rewards."
+        },
+        {
+          "title": "PPO",
+          "url": "https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the documented PPO interfaces, including MultiInputPolicy for dictionary observations."
+        },
+        {
+          "title": "Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning",
+          "url": "https://arxiv.org/abs/2410.21845",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Shows real-world RL learning precise manipulation within hours."
+        },
+        {
+          "title": "Efficient Online Reinforcement Learning with Offline Data",
+          "url": "https://arxiv.org/abs/2302.02948",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "RLPD: minimal changes that let off-policy RL exploit prior data."
+        }
+      ],
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Reinforcement_learning_diagram.svg",
+        "https://arxiv.org/abs/2410.21845",
+        "https://hil-serl.github.io/",
+        "https://arxiv.org/abs/2302.02948",
+        "https://github.com/ikostrikov/rlpd",
+        "https://www.youtube.com/watch?v=90raNpc11tQ",
+        "https://robotics.farama.org/envs/fetch/reach/",
+        "https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html"
+      ]
+    },
+    {
+      "node_id": "k:reward-learning-reward-specification",
+      "type": "knowledge",
+      "name": "Reward learning & reward specification",
+      "summary": "Reward specification defines the score a robot learner optimizes, and reward learning trains or generates that score from data, code or vision-language models.",
+      "lesson_md": "## In one sentence\n\nReward specification defines the score a robot learner optimizes, and reward learning trains or generates that score from data, code or vision-language models.\n\n![D&A teaser: a naive VLM gives noisy progress estimates for success and failure videos, while D&A separates them clearly](/img/lessons/knowledge_robot_learning-reward-learning.webp)\n*VLM progress estimates for successful and failed episodes. Source: [D&A paper on arXiv](https://arxiv.org/html/2611.03622v1), CC BY 4.0.*\n\n## Why it matters for us\n\n- **RL pursues the supplied score:** an exploitable reward can encourage behavior that scores highly without solving the intended task.\n- **Hand-written rewards are hard:** \"fold the shirt\" is easy to say and hard to score with code.\n- **Evaluation needs scores too:** the same reward models can grade episodes in Policy evaluation & real-world testing methodology.\n\n> **Key idea:** A reward is a specification: test it like code, by checking that bad behaviour gets a low score before you train anything on it.\n\n## How it works\n\nIt is like **choosing a KPI for a team**: measure lines of code and you get long code; the metric must capture what you actually want.\n\n- **Hand-coded reward:** distances, contact flags or success checks written by an engineer.\n- **LLM-written reward:** Eureka has an LLM write reward code, then improves it with evolutionary search.\n- **Worked example:** across 29 RL environments with 10 robot morphologies, Eureka beat human-expert rewards on 83% of tasks, averaging 52% normalized improvement.\n- **VLM reward model:** a vision-language model watches the episode video and estimates task progress.\n- **Separate description from judgment:** D&A describes video without the task instruction, then assesses that description against explicit success criteria, reducing confirmation bias in its experiments.\n\n```mermaid\nflowchart LR\n  T[\"Task description\"] --> W[\"Write or learn reward\"]\n  W --> C{\"Bad episodes score low?\"}\n  C -- no --> W\n  C -- yes --> R[\"Train with RL\"]\n  R --> V[\"Watch rollouts\"]\n  V --> W\n```\n\n## Key terms\n\n- **Reward function**: code or a model that maps a state or episode to a score.\n- **Sparse reward**: informative feedback occurs rarely, such as a success signal only when a task finishes.\n- **Shaped reward**: extra intermediate scores, like distance to the goal, that guide learning.\n- **Reward hacking**: the policy finds a way to score highly without solving the task.\n- **Reward model**: a learned network that predicts reward from observations.\n\n## Before / after\n\n- **Before:** Know Reinforcement learning for robots and basic use of LLM or VLM APIs.\n- **After:** You can build the Reward hacking museum, the VLM reward confusion gallery or the Eureka reward-code safety tournament.\n\n## Try it in an afternoon\n\n1. **Build an illustrative test set:** record 10 short task videos, half successes and half failures; include partial progress and regressions.\n2. **Prompt a baseline VLM** to rate each video’s progress from 0 to 1.\n3. **Separate the prompts:** request task-blind video descriptions, then have an assessor score them against task-specific success criteria.\n4. **Compare with human labels:** inspect failures receiving high scores; this small prompting exercise is not the full D&A benchmark.",
+      "resources": [
+        {
+          "title": "Jason Ma: Foundation Reward Models for General Robot Skill Acquisition",
+          "url": "https://www.youtube.com/watch?v=o6NUsY10Nkc",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Talk by a Eureka author on learned and generated reward functions for robots."
+        },
+        {
+          "title": "Eureka: Human-Level Reward Design via Coding Large Language Models",
+          "url": "https://eureka-research.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page with videos of skills trained on LLM-written rewards."
+        },
+        {
+          "title": "Eureka: Human-Level Reward Design via Coding Large Language Models",
+          "url": "https://arxiv.org/abs/2310.12931",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Reports the 29-environment comparison against human-written rewards."
+        },
+        {
+          "title": "D&A: Decoupling Description and Assessment Enables VLMs as Zero-Shot Robotic Reward Models",
+          "url": "https://arxiv.org/abs/2611.03622",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A 2026 method for more reliable VLM progress rewards."
+        }
+      ],
+      "sources": [
+        "https://eureka-research.github.io/",
+        "https://arxiv.org/abs/2310.12931",
+        "https://arxiv.org/abs/2611.03622",
+        "https://arxiv.org/html/2611.03622v1",
+        "https://www.youtube.com/watch?v=o6NUsY10Nkc"
+      ]
+    },
+    {
+      "node_id": "k:sim-to-real-transfer",
+      "type": "knowledge",
+      "name": "Sim-to-real transfer",
+      "summary": "Sim-to-real transfer trains or tests a robot policy in simulation and then makes it work on the physical robot despite differences between the two.",
+      "lesson_md": "## In one sentence\n\nSim-to-real transfer trains or tests a robot policy in simulation and then makes it work on the physical robot despite differences between the two.\n\n![Grid of simulated robot tasks in Isaac Lab: arms, mobile manipulators and quadrupeds in varied scenes](/img/lessons/knowledge_robot_learning-sim-to-real.webp)\n*Simulated robot tasks used to train policies before real deployment. Source: [Isaac Lab documentation](https://isaac-sim.github.io/IsaacLab/main/index.html), license unknown.*\n\n## Why it matters for us\n\n- **Simulation avoids physical wear:** automated resets enable repeated practice, though simulator setup and computation still have costs.\n- **The reality gap is real:** friction, motor delays, lighting and camera noise differ from the simulator.\n- **Measure the mismatch:** compare simulated and real motion before assuming a robot model accurately predicts hardware behavior.\n\n> **Key idea:** Match important measured discrepancies, randomize plausible remaining variation, and test transfer rather than assuming simulation success is enough.\n\n## How it works\n\nIt is like **testing a web app across many browsers**: if it works on all of them, it probably works on the one your user has.\n\n- **Domain randomization:** vary textures, lighting, masses or friction every episode so reality looks like one more variation.\n- **Worked example:** Tobin et al. trained an object detector only on simulated images with random textures and reached 1.5 cm accuracy on real images.\n- **System identification:** measure real parameters, such as motor response, and set the simulator to match them.\n- **Real-to-sim checks:** SIMPLER reduces visual and control gaps; its paired experiments show correlation with real performance, not a universal transfer guarantee.\n- **Fine-tune on real data:** real experience may improve transfer, but the needed amount and resulting success depend on the task.\n\n```mermaid\nflowchart LR\n  M[\"Robot and scene model\"] --> R[\"Randomize physics and visuals\"]\n  R --> T[\"Train policy in sim\"]\n  T --> S[\"Evaluate in sim\"]\n  S --> D[\"Deploy on real robot\"]\n  D --> G[\"Measure reality gap\"]\n  G --> M\n```\n\n## Key terms\n\n- **Reality gap**: differences between simulated and real physics, sensing and timing.\n- **Domain randomization**: training across many randomized simulator settings.\n- **System identification**: estimating real physical parameters from measurements.\n- **Digital twin**: a simulator model tuned to match one specific real setup.\n- **Zero-shot transfer**: deploying without additional task-policy training on the target hardware; calibration may still use real measurements.\n\n## Before / after\n\n- **Before:** Learn Reinforcement learning for robots and the basics of a physics simulator.\n- **After:** You can build Sim-to-real transfer on the SO-101 or a Calibrated SO-101 digital twin that predicts real policy success.\n\n## Try it in an afternoon\n\n1. **Inspect SIMPLER’s paired videos** showing real motion, simulation without system identification, and simulation after identification.\n2. **Compare corresponding frames** and note differences in motion and appearance; separate control mismatch from visual mismatch.\n3. **Propose one calibration measurement** and one randomized variation to address distinct discrepancies, explaining what each would test.\n4. **Design a held-out trajectory check:** matching a calibration trajectory alone does not establish accurate prediction of unseen motions.",
+      "resources": [
+        {
+          "title": "Lecture 22 Sim2Real and Domain Randomization -- CS287-FA19 Advanced Robotics at UC Berkeley",
+          "url": "https://www.youtube.com/watch?v=ac_W9IgKX2c",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "University lecture on the reality gap and domain randomization."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://simpler-env.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Paired real/sim videos show visual matching and system identification for sim-to-real evaluation."
+        },
+        {
+          "title": "Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World",
+          "url": "https://arxiv.org/abs/1703.06907",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The classic domain randomization paper with the 1.5 cm detector result."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://arxiv.org/abs/2405.05941",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Shows how to reduce control and visual gaps so simulation predicts real results."
+        }
+      ],
+      "sources": [
+        "https://isaac-sim.github.io/IsaacLab/main/index.html",
+        "https://arxiv.org/abs/1703.06907",
+        "https://arxiv.org/abs/2405.05941",
+        "https://www.youtube.com/watch?v=ac_W9IgKX2c",
+        "https://simpler-env.github.io/"
+      ]
+    },
+    {
+      "node_id": "k:world-models-world-action-models",
+      "type": "knowledge",
+      "name": "World models & world action models",
+      "summary": "A world model predicts future observations or representations, often conditioned on actions; a world action model couples future prediction with choosing actions.",
+      "lesson_md": "## In one sentence\n\nA world model predicts future observations or representations, often conditioned on actions; a world action model couples future prediction with choosing actions.\n\n![V-JEPA 2-AC: a frozen encoder embeds robot video frames, and a predictor interleaves action tokens to predict future frame embeddings](/img/lessons/knowledge_robot_learning-world-models.webp)\n*V-JEPA 2-AC predicts future embeddings from actions. Source: [V-JEPA 2 paper on arXiv](https://arxiv.org/html/2506.09985v1), CC BY 4.0.*\n\n## Why it matters for us\n\n- **Plan before acting:** a robot can imagine several action sequences and pick the one predicted to reach the goal.\n- **Pretraining can reduce robot-data needs:** V-JEPA 2 combines web-scale video learning with a smaller robot-interaction dataset; this is not a guarantee for every model.\n- **Predictions can fail:** V-JEPA 2-AC reports sensitivity to camera placement and challenges with long-horizon planning, so imagined success still needs real testing.\n\n> **Key idea:** A world model is a learned simulator: if it predicts consequences well, planning or policy learning can happen inside it.\n\n## How it works\n\nIt is like **a game engine's physics step learned from data**: given state and input, return the next state, then call it in a loop to look ahead.\n\n- **Pretrain on video:** V-JEPA 2 learns from over 1 million hours of internet video, predicting in embedding space rather than pixels.\n- **Add actions:** V-JEPA 2-AC uses under 62 hours of DROID robot interaction data, including motion signals but no task, reward or success labels.\n- **Worked example:** deployed zero-shot on Franka arms in two labs, it picked and placed objects by planning towards image goals.\n- **World action models:** DreamWAM’s training predicts appearance, motion, geometry and semantics to inform actions; its extra supervision branches are disabled at deployment.\n\n```mermaid\nflowchart LR\n  O[\"Current frame\"] --> E[\"Encoder\"]\n  E --> W[\"World model\"]\n  C[\"Candidate actions\"] --> W\n  W --> F[\"Predicted future state\"]\n  G[\"Goal image\"] --> S[\"Score distance to goal\"]\n  F --> S\n  S --> A[\"Execute best action\"]\n```\n\n## Key terms\n\n- **World model**: a learned predictor of future observations or features; action-conditioned versions predict consequences of candidate commands.\n- **Latent space**: a compact embedding where predictions are made instead of raw pixels.\n- **Action-conditioned**: the prediction depends on which action the robot takes.\n- **Model-predictive control (MPC)**: replanning a short action sequence at every step using a model.\n- **World action model (WAM)**: a model that jointly predicts future states and the actions to take.\n\n## Before / after\n\n- **Before:** Learn Robot learning problem formulation: observations, actions, policies and Pretrained visual representations for robots.\n- **After:** You can build World-model planning on the SO-101 and compare it with Vision-Language-Action models (VLAs).\n\n## Try it in an afternoon\n\n1. **Follow the V-JEPA 2 video demo** with its documented checkpoints and preprocessing; the supplied script assumes a GPU.\n2. **Extract clip features**, not independent frame embeddings, using the demo’s encoder interface on short clips from one recorded episode.\n3. **Pool clip features consistently** and plot distance to a goal clip; treat shrinking distance as a hypothesis to inspect, not a guaranteed property.\n4. **Explain the missing planner:** this encoder diagnostic neither predicts candidate-action consequences nor reproduces V-JEPA 2-AC control.",
+      "resources": [
+        {
+          "title": "Robot Learning 2026 – Lecture 8: World Models | ETH Zürich",
+          "url": "https://www.youtube.com/watch?v=cTTmUZlOF2s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 2026 lecture introducing world models for robot learning."
+        },
+        {
+          "title": "facebookresearch/vjepa2",
+          "url": "https://github.com/facebookresearch/vjepa2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Official code and checkpoints for V-JEPA 2 and V-JEPA 2-AC."
+        },
+        {
+          "title": "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning",
+          "url": "https://arxiv.org/abs/2506.09985",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Reports video pretraining and zero-shot robot planning with V-JEPA 2-AC."
+        },
+        {
+          "title": "DreamWAM: Beyond RGB Future Prediction for World Action Models",
+          "url": "https://arxiv.org/abs/2608.04996",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A 2026 world action model predicting structured future states for action learning."
+        }
+      ],
+      "sources": [
+        "https://arxiv.org/abs/2506.09985",
+        "https://arxiv.org/html/2506.09985v1",
+        "https://github.com/facebookresearch/vjepa2",
+        "https://arxiv.org/abs/2608.04996",
+        "https://www.youtube.com/watch?v=cTTmUZlOF2s",
+        "https://raw.githubusercontent.com/facebookresearch/vjepa2/main/notebooks/vjepa2_demo.py"
+      ]
+    },
+    {
+      "node_id": "k:vision-language-action-models-vlas",
+      "type": "knowledge",
+      "name": "Vision-Language-Action models (VLAs)",
+      "summary": "A vision-language-action model (VLA) takes camera images and a text instruction and outputs robot actions, reusing a pretrained vision-language model as its backbone.",
+      "lesson_md": "## In one sentence\n\nA vision-language-action model (VLA) takes camera images and a text instruction and outputs robot actions, reusing a pretrained vision-language model as its backbone.\n\n![RT-2 overview: internet-scale visual question answering and robot action data co-fine-tune a model that then controls a robot in closed loop](/img/lessons/knowledge_robot_learning-vla.webp)\n*RT-2 trains on web data and robot actions together. Source: [RT-2 project page](https://robotics-transformer2.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **One model, many tasks:** one VLA can follow different text instructions; speech requires a separate transcription interface.\n- **Web knowledge can transfer:** RT-2’s experiments show generalization to novel objects and commands, not unrestricted understanding or reliable execution of arbitrary requests.\n- **Open VLAs exist:** OpenVLA, pi0 and SmolVLA can be downloaded and fine-tuned on our own data.\n\n> **Key idea:** A VLA treats robot actions as one more output language for a vision-language model, so web-scale pretraining helps control.\n\n## How it works\n\nIt is like **adding a new output format to an LLM**: the model already reads images and text; you teach it to also emit robot commands.\n\n- **Actions as tokens:** RT-2 writes actions as text tokens and co-fine-tunes on robot trajectories and web visual question answering.\n- **Worked example:** RT-2 was evaluated in 6,000 trials and showed emergent abilities from internet-scale training.\n- **Continuous actions:** pi0 builds a flow-matching architecture on top of a pretrained VLM instead of predicting discrete action tokens.\n- **Open alternative:** OpenVLA is a 7B-parameter VLA pretrained on 970k robot episodes from Open X-Embodiment.\n\n```mermaid\nflowchart LR\n  I[\"Camera images\"] --> V[\"Vision encoder\"]\n  T[\"Text instruction\"] --> L[\"Language model backbone\"]\n  V --> L\n  L --> A[\"Action tokens or action expert\"]\n  A --> R[\"Robot commands\"]\n```\n\n## Key terms\n\n- **Vision-language model (VLM)**: a model trained on images and text that answers questions about images.\n- **Co-fine-tuning**: training on robot data and web data at the same time.\n- **Action token**: a discrete symbol standing for a range of action values.\n- **Flow matching**: a generative method that turns noise into continuous action values step by step.\n- **Generalist policy**: one policy meant to handle many tasks, scenes and instructions.\n\n## Before / after\n\n- **Before:** Learn Action chunking & action tokenization, Diffusion & flow-matching policies and Cross-embodiment learning.\n- **After:** You can build the Language-commanded arm with SmolVLA and move on to Fine-tuning & adapting pretrained robot policies.\n\n## Try it in an afternoon\n\n1. **Read the SmolVLA guide:** distinguish its base checkpoint from a task-fine-tuned policy; use a compatible policy and dataset for this offline exercise.\n2. **Prepare complete inputs:** match camera names, sensorimotor state and preprocessing to the policy, rather than providing an isolated image.\n3. **Vary only the instruction** while keeping other inputs fixed; compare predicted actions without sending them to motors.\n4. **Measure inference latency** after warm-up; chunk length, networking and control scheduling also determine the achievable command rate.",
+      "resources": [
+        {
+          "title": "Robot Learning 2026 – Lecture 9: Generalist Robot Policies | ETH Zürich",
+          "url": "https://www.youtube.com/watch?v=dtofzDY9zuo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A 2026 lecture on generalist policies and VLAs."
+        },
+        {
+          "title": "SmolVLA",
+          "url": "https://huggingface.co/docs/lerobot/smolvla",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "A small open VLA you can fine-tune and run with LeRobot."
+        },
+        {
+          "title": "RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control",
+          "url": "https://robotics-transformer2.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page explaining actions as text tokens, with demo videos."
+        },
+        {
+          "title": "RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control",
+          "url": "https://arxiv.org/abs/2307.15818",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "The full RT-2 paper on co-fine-tuning a VLM with robot actions."
+        },
+        {
+          "title": "π0: A Vision-Language-Action Flow Model for General Robot Control",
+          "url": "https://arxiv.org/abs/2410.24164",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A flow-matching VLA built on a pretrained vision-language model."
+        }
+      ],
+      "sources": [
+        "https://robotics-transformer2.github.io/",
+        "https://arxiv.org/abs/2307.15818",
+        "https://arxiv.org/abs/2410.24164",
+        "https://openvla.github.io/",
+        "https://huggingface.co/docs/lerobot/smolvla",
+        "https://www.youtube.com/watch?v=dtofzDY9zuo"
+      ]
+    },
+    {
+      "node_id": "k:real-time-learned-policy-execution-inference-scheduling",
+      "type": "knowledge",
+      "name": "Real-time learned-policy execution & inference scheduling",
+      "summary": "Real-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.",
+      "lesson_md": "## In one sentence\n\nReal-time execution schedules slow neural-network inference alongside fast robot control, so the robot keeps moving smoothly while the next actions are computed.\n\n![Async inference scheme: the robot client executes queued actions while the policy server computes the next action chunk](/img/lessons/knowledge_robot_learning-real-time-execution.webp)\n*Asynchronous inference overlaps computing and acting. Source: [Hugging Face blog](https://huggingface.co/blog/async-robot-inference), license unknown.*\n\n## Why it matters for us\n\n- **Big policies are slow:** a VLA forward pass can take longer than one control step, so a naive loop makes the arm freeze.\n- **Measure the full path:** local compute, observation preparation and any remote connection contribute to observation-to-action delay.\n- **Pauses change behaviour:** stop-and-go motion creates jerky moves and states the policy never saw in training.\n\n> **Key idea:** Overlap prediction with execution and merge time-aligned chunks before the queue empties; asynchronous scheduling reduces stalls but does not guarantee hard deadlines.\n\n## How it works\n\nIt is a **producer-consumer queue**: the policy server produces action chunks, the robot client consumes one action per control tick.\n\n- **Sequential baseline:** with an ACT model on a 2021 MacBook Pro, inference took about 100 ms, roughly 3 frames at 30 fps, while the robot sat idle.\n- **Async inference:** LeRobot's `RobotClient` streams observations to a `PolicyServer` over gRPC when the queue drops below a threshold.\n- **Chunk aggregation:** new chunks are merged with remaining queued actions on the overlapping part.\n- **Worked example:** Hugging Face reports about 2x faster task completion with comparable success in its SmolVLA comparison, not a universal speedup.\n- **Real-time chunking (RTC):** for diffusion or flow VLAs, RTC freezes actions sure to execute and inpaints the rest, with no retraining.\n\n```mermaid\nflowchart LR\n  C[\"Camera and joints\"] --> Q{\"Queue below threshold?\"}\n  Q -- yes --> S[\"Send observation to policy server\"]\n  S --> P[\"Predict next chunk\"]\n  P --> M[\"Merge into action queue\"]\n  Q -- no --> X[\"Pop next action\"]\n  M --> X\n  X --> R[\"Motor command\"]\n  R --> C\n```\n\n## Key terms\n\n- **Control frequency**: how many commands per second the robot receives, such as 30 Hz.\n- **Inference latency**: model computation time; measure network and preprocessing delays too when budgeting end-to-end latency.\n- **Action queue**: a buffer of upcoming actions consumed at control frequency.\n- **Asynchronous inference**: computing new actions while older ones are still executing.\n- **Queue starvation**: the queue empties before new actions arrive, so the robot stalls.\n\n## Before / after\n\n- **Before:** Learn Action chunking & action tokenization, Diffusion & flow-matching policies and basic threading or async programming.\n- **After:** You can build the Latency injection action-queue viewer, the Real-time chunk stitching bake-off or the Supervised arm deadline qualification.\n\n## Try it in an afternoon\n\n1. **Build a mock producer-consumer queue** inspired by the LeRobot async guide; consume dummy actions at a fixed simulated control frequency.\n2. **Log monotonic timestamps** for observations, chunk arrivals and action consumption; keep this timing experiment disconnected from motors.\n3. **Inject illustrative producer delays** of 50, 100 and 200 ms; compare different queue-refill thresholds.\n4. **Plot queue length and starvation events:** include startup and delayed-chunk cases; a nonempty queue alone does not prove fresh observations or smooth motion.",
+      "resources": [
+        {
+          "title": "LeRobot Async Inference: Eliminate Lag & Achieve Real-Time Robotics Control (SmolVLA & All Policies)",
+          "url": "https://www.youtube.com/watch?v=XIrqwNPTilA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Demonstrates removing idle pauses on a real arm with LeRobot's asynchronous inference."
+        },
+        {
+          "title": "Asynchronous Robot Inference: Decoupling Action Prediction and Execution",
+          "url": "https://huggingface.co/blog/async-robot-inference",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Explains the queue, threshold and chunk aggregation, with latency measurements."
+        },
+        {
+          "title": "Asynchronous Inference",
+          "url": "https://huggingface.co/docs/lerobot/main/en/async",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Commands and parameters to run the policy server and robot client."
+        },
+        {
+          "title": "Real-Time Execution of Action Chunking Flow Policies",
+          "url": "https://arxiv.org/abs/2506.07339",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Introduces real-time chunking for smooth execution despite inference delay."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/blog/async-robot-inference",
+        "https://huggingface.co/docs/lerobot/main/en/async",
+        "https://arxiv.org/abs/2506.07339",
+        "https://www.youtube.com/watch?v=XIrqwNPTilA"
+      ]
+    }
+  ]
+}
