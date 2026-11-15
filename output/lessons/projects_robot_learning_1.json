@@ -884,6 +884,326 @@
         "https://say-can.github.io/",
         "https://github.com/google-research/google-research/tree/master/code_as_policies"
       ]
+    },
+    {
+      "node_id": "p:held-out-embodiment-adaptation-challenge",
+      "type": "project",
+      "name": "Held-out embodiment adaptation challenge",
+      "summary": "Pretrain a shared robot policy without one simulated robot, then measure how quickly it learns reaching on that unseen body.",
+      "lesson_md": "## In one sentence\n\nPretrain a shared robot policy without one simulated robot, then measure how quickly it learns reaching on that unseen body.\n\n![CrossFormer architecture with a shared transformer and separate action heads per robot type](/img/lessons/projects_robot_learning_1-held-out-embodiment-adaptation-challenge.webp)\n*CrossFormer architecture with a shared transformer and separate action heads per robot type. Source: [Published project media](https://crossformer-model.github.io/), license unknown.*\n\n## What you will learn\n\n- **Embodiment:** one robot body with its own sensors, joints and action space. A quadruped, a single arm and a drone are different embodiments.\n- **Shared encoder plus heads:** CrossFormer feeds all robots through one transformer, then uses **separate action heads** per embodiment class. It resembles one backend with per-client adapters.\n- **Held-out evaluation:** the new robot never appears in pretraining, so success measures real transfer, not memorisation.\n- **Adaptation budget:** a fixed number of target demos and training steps, reported alongside every success rate.\n\n> **Key idea:** Transfer only counts when the new body was truly absent from pretraining and both methods get the same small budget.\n\n## What you need\n\n- **Software:** Python, a simulator with at least three robot bodies, and the MIT-licensed CrossFormer code, which loads weights with `CrossFormerModel.load_pretrained(\"hf://rail-berkeley/crossformer\")`.\n- **Background data:** CrossFormer was trained on 900K trajectories from 20 embodiments; Open X-Embodiment pooled data from 22 robots across 21 institutions.\n- **Prerequisite:** Cross-robot negative-transfer benchmark, which shows that mixing robots can also hurt.\n- **Cost:** €0 hardware (simulation only); GPU time is extra.\n\n## Steps\n\n1. **Pick bodies:** choose source robots for pretraining and one target robot with a different joint count. Freeze this split in a config file.\n2. **Pretrain shared:** train the shared encoder with one head per source robot on bounded reaching tasks.\n3. **Build the baseline:** train the same architecture from scratch on target data only, matching demos and steps.\n4. **Adapt:** add a fresh head for the target robot and fine-tune with the small budget, e.g. 10, 50 and 200 demos.\n5. **Stress test:** run nominal trials, absent targets and corrupted observations; log every safe stop.\n6. **Film the demo:** show the new robot reaching after adaptation, next to the from-scratch curve.\n\n```mermaid\nflowchart LR\n  A[\"Source robots\"] --> B[\"Shared encoder\"]\n  B --> C[\"Per-robot heads\"]\n  B --> D[\"New head for held-out robot\"]\n  D --> E[\"Small fine-tune\"]\n  E --> F[\"Compare to scratch\"]\n```\n\n## Common pitfalls\n\n- **Leaky split:** a target-robot episode hiding in pretraining data makes adaptation look free. Check dataset ids, not just names.\n- **Unequal budgets:** giving the pretrained model more steps or demos hides whether pretraining helped.\n- **Action mismatch:** different units or frames between robots produce silent failures; Embodiment action-space passport helps here.\n\n## When it's done\n\n- **Deliverable:** a video of the held-out simulated robot reaching targets after adaptation.\n- **Measured result:** success-rate curves versus demo count for adapted and from-scratch models, with failure categories listed.\n- **Honest framing:** this is a student study in simulation; no real-world transfer is claimed.",
+      "resources": [
+        {
+          "title": "Machine Learning Series - Crossformers Whitepaper Review",
+          "url": "https://www.youtube.com/watch?v=jyCAkmAOjbc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A walkthrough of the CrossFormer paper and its cross-embodiment design."
+        },
+        {
+          "title": "CrossFormer: Scaling Cross-Embodied Learning for Manipulation, Navigation, Locomotion, and Aviation",
+          "url": "https://crossformer-model.github.io/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Project page with the architecture figure and per-embodiment evaluation videos."
+        },
+        {
+          "title": "rail-berkeley/crossformer",
+          "url": "https://github.com/rail-berkeley/crossformer",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Code to load and fine-tune CrossFormer on new robot setups."
+        },
+        {
+          "title": "Scaling Cross-Embodied Learning: One Policy for Manipulation, Navigation, Locomotion and Aviation",
+          "url": "https://arxiv.org/abs/2408.11812",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The paper comparing one shared policy against single-robot baselines."
+        },
+        {
+          "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models",
+          "url": "https://arxiv.org/abs/2310.08864",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The 22-robot dataset and RT-X results on positive transfer."
+        }
+      ],
+      "sources": [
+        "https://crossformer-model.github.io/",
+        "https://github.com/rail-berkeley/crossformer",
+        "https://arxiv.org/abs/2408.11812",
+        "https://arxiv.org/abs/2310.08864",
+        "https://github.com/google-deepmind/open_x_embodiment",
+        "https://www.youtube.com/watch?v=jyCAkmAOjbc"
+      ]
+    },
+    {
+      "node_id": "p:hidden-state-memory-challenge",
+      "type": "project",
+      "name": "Hidden-state memory challenge",
+      "summary": "Hide a target from a simulated robot for a few frames and test whether giving the policy observation history lets it recover.",
+      "lesson_md": "## In one sentence\n\nHide a target from a simulated robot for a few frames and test whether giving the policy observation history lets it recover.\n\n![Simulated two-arm transport task from the robomimic benchmark](/img/lessons/projects_robot_learning_1-hidden-state-memory-challenge.webp)\n*Simulated two-arm transport task from the robomimic benchmark. Source: [Published project media](https://robomimic.github.io/docs/introduction/overview.html), license unknown.*\n\n## What you will learn\n\n- **Partial observability:** the current camera frame does not contain everything needed to act, for example when the target is behind an obstacle.\n- **Observation history:** feeding the policy the last few frames, like passing a function its recent call log instead of one argument.\n- **Recurrent policy:** a network with internal memory; robomimic implements **BC-RNN** and an `RNNActorNetwork` for this.\n- **Confound control:** separating \"the robot forgot\" from \"the camera mis-detected\" so the history effect is measured cleanly.\n\n> **Key idea:** Memory only helps when the missing information was visible earlier, so design occlusions that test exactly that.\n\n## What you need\n\n- **Software:** robomimic, a framework of demonstration datasets and offline algorithms (BC, BC-RNN, CQL and others), or LeRobot with the RoboMME benchmark.\n- **Reference benchmark:** RoboMME has 16 memory tasks in 4 suites, 1,600 training demos and a 768K-frame dataset at 10 fps, on ManiSkill with a Panda arm (Linux only).\n- **Prerequisite:** Observation-to-action contract visualizer, to know exactly what each observation contains.\n- **Cost:** €0 hardware (simulation only).\n\n## Steps\n\n1. **Design occlusion:** show the target, hide it for a fixed number of frames, then require a reach. Log the hidden frame range.\n2. **Fix model size:** keep parameter count constant while varying only the history length, e.g. 1, 2, 4 and 8 frames.\n3. **Train variants:** train one policy per history length on identical demos and seeds.\n4. **Separate errors:** run a control with ground-truth target positions to tell perception errors apart from memory failures.\n5. **Stress test:** include absent targets and dropped frames; the robot must stop safely, not guess.\n6. **Film the demo:** play the no-history and with-history policies side by side on the same occluded episode.\n\n```mermaid\nflowchart LR\n  A[\"Target visible\"] --> B[\"Target hidden\"]\n  B --> C{\"History length\"}\n  C -->|\"1 frame\"| D[\"Policy guesses\"]\n  C -->|\"several frames\"| E[\"Policy remembers\"]\n  D --> F[\"Compare success\"]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Leaky state:** if low-dimensional object poses stay in the observation during occlusion, nothing is actually hidden.\n- **Bigger model wins:** longer history often means more inputs; keep capacity matched or the gain is not about memory.\n- **Too few seeds:** small success differences need several seeds and error bars to be trusted.\n\n## When it's done\n\n- **Deliverable:** a video of a simulated robot recovering a briefly occluded target with history, failing without it.\n- **Measured result:** success rate versus history length, with perception and memory failures counted separately.\n- **Next step:** Action-coordinate mismatch detective builds on the same observation discipline.",
+      "resources": [
+        {
+          "title": "Ep#91: RoboMME: Benchmarking and Understanding Memory for Robotic Generalist Policies",
+          "url": "https://www.youtube.com/watch?v=1Crdfpl7ekU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Authors explain how to benchmark memory in robot policies."
+        },
+        {
+          "title": "RoboMME",
+          "url": "https://huggingface.co/docs/lerobot/main/en/robomme",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Lists the 16 memory tasks and how to evaluate a LeRobot policy on them."
+        },
+        {
+          "title": "Overview — robomimic",
+          "url": "https://robomimic.github.io/docs/introduction/overview.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Datasets and algorithms, including BC-RNN, for history-based imitation."
+        },
+        {
+          "title": "Models — robomimic",
+          "url": "https://robomimic.github.io/docs/modules/models.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "The RNN actor networks you would use for a memory policy."
+        },
+        {
+          "title": "What Matters in Learning from Offline Human Demonstrations for Robot Manipulation",
+          "url": "https://arxiv.org/abs/2108.03298",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The robomimic study of design choices in offline imitation learning."
+        }
+      ],
+      "sources": [
+        "https://robomimic.github.io/docs/introduction/overview.html",
+        "https://robomimic.github.io/docs/modules/models.html",
+        "https://robomimic.github.io/docs/modules/algorithms.html",
+        "https://huggingface.co/docs/lerobot/main/en/robomme",
+        "https://arxiv.org/abs/2108.03298",
+        "https://www.youtube.com/watch?v=1Crdfpl7ekU"
+      ]
+    },
+    {
+      "node_id": "p:human-video-robot-data-engine",
+      "type": "project",
+      "name": "Human video → robot data engine",
+      "summary": "Turn phone videos of a person doing a task into SO-101 training data and measure the gain over robot-only demos.",
+      "lesson_md": "## In one sentence\n\nTurn phone videos of a person doing a task into SO-101 training data and measure the gain over robot-only demos.\n\n![Vid2Robot training losses linking prompt videos of humans to robot actions](/img/lessons/projects_robot_learning_1-human-video-robot-data-engine.webp)\n*Vid2Robot training losses linking prompt videos of humans to robot actions. Source: [Published project media](https://vid2robot.github.io/), license unknown.*\n\n## What you will learn\n\n- **Data engine:** a pipeline that converts cheap raw recordings into training data, like an ETL job feeding a model.\n- **Hand pose detection:** MediaPipe Hand Landmarker returns **21 hand keypoints** per hand, from the wrist (0) to the pinky tip (20).\n- **Retargeting:** mapping human hand motion onto the arm's joints and gripper, despite a different body and reach.\n- **Human-to-robot gap:** Vid2Robot learned from paired human and robot videos and reported over 20% improvement over BC-Z with human prompt videos.\n\n> **Key idea:** Human video is cheap but unlabeled for your robot, so the real work is converting it into actions the arm can actually execute.\n\n## What you need\n\n- **Hardware:** an SO-101 arm (LeRobot's flagship arm, with a bill of materials in its docs) and a smartphone; planning estimate under €500.\n- **Software:** LeRobot, MediaPipe Hand Landmarker and your own retargeting script.\n- **Prerequisites:** Autonomous pick-and-place with ACT and Retarget human arm video to the SO-101.\n- **Context:** a 2026 survey groups video reconstruction with simulation as data-engine paradigms sharing physical-grounding limits.\n\n## Steps\n\n1. **Pick one task:** a simple pick-and-place the SO-101 can already do with teleoperated demos.\n2. **Record humans:** film the task with a phone from a fixed angle, many times, varying object position.\n3. **Extract hands:** run Hand Landmarker on each frame and smooth the wrist and fingertip tracks.\n4. **Retarget:** convert wrist position to arm targets and thumb-index distance to gripper opening; reject frames the arm cannot reach.\n5. **Train and compare:** train on robot-only demos, then robot plus converted human demos, with equal evaluation trials.\n6. **Film the demo:** a person films a task, the robot then performs it after training.\n\n```mermaid\nflowchart LR\n  A[\"Phone video\"] --> B[\"Hand landmarks\"]\n  B --> C[\"Retarget to SO-101\"]\n  C --> D[\"LeRobot dataset\"]\n  E[\"Robot demos\"] --> D\n  D --> F[\"Train policy\"]\n  F --> G[\"Real arm test\"]\n```\n\n## Common pitfalls\n\n- **Depth ambiguity:** one phone camera gives weak depth, so wrist height can be badly wrong; check against a few measured poses.\n- **Unreachable motion:** humans move outside the arm's workspace; clip or drop those segments instead of training on them.\n- **Unfair comparison:** count robot demo minutes equally in both runs so the gain comes from human video.\n\n> **Watch out:** replay retargeted trajectories slowly with a hand near the power switch before running them at full speed.\n\n## When it's done\n\n- **Deliverable:** a video where a person demonstrates on a phone and the SO-101 then performs the task.\n- **Measured result:** success rate with and without human-video data on the same trials.",
+      "resources": [
+        {
+          "title": "Robot Learning by Understanding Egocentric Videos",
+          "url": "https://www.youtube.com/watch?v=4WznUQvDQEw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A talk on turning first-person human videos into robot learning signal."
+        },
+        {
+          "title": "Hand landmarks detection guide",
+          "url": "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How to extract the 21 hand keypoints from images or video."
+        },
+        {
+          "title": "Vid2Robot: End-to-end Video-conditioned Policy Learning with Cross-Attention Transformers",
+          "url": "https://vid2robot.github.io/",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "Videos of a robot copying tasks shown by humans."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/main/en/so101",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Assembly and setup of the arm that will execute the converted demos."
+        },
+        {
+          "title": "Vid2Robot: End-to-end Video-conditioned Policy Learning with Cross-Attention Transformers",
+          "url": "https://arxiv.org/abs/2403.12943",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The method and results for learning from human prompt videos."
+        },
+        {
+          "title": "Vision-Language-Action in Robotics: A Survey of Datasets, Benchmarks, and Data Engines",
+          "url": "https://arxiv.org/abs/2604.23001",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Survey placing video-reconstruction data engines among other data sources."
+        }
+      ],
+      "sources": [
+        "https://vid2robot.github.io/",
+        "https://arxiv.org/abs/2403.12943",
+        "https://arxiv.org/abs/2604.23001",
+        "https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker",
+        "https://huggingface.co/docs/lerobot/main/en/so101",
+        "https://www.youtube.com/watch?v=4WznUQvDQEw"
+      ]
+    },
+    {
+      "node_id": "p:intro-run-a-pretrained-policy-in-simulation",
+      "type": "project",
+      "name": "Intro: run a pretrained policy in simulation",
+      "summary": "Install LeRobot, load a public pretrained policy and dataset, and measure its success rate in a simulated environment.",
+      "lesson_md": "## In one sentence\n\nInstall LeRobot, load a public pretrained policy and dataset, and measure its success rate in a simulated environment.\n\n![Push-T task from the Diffusion Policy project, where a robot pushes a T-shaped block onto a target](/img/lessons/projects_robot_learning_1-intro-run-a-pretrained-policy-in-simulation.webp)\n*Push-T task from the Diffusion Policy project, where a robot pushes a T-shaped block onto a target. Source: [Published project media](https://diffusion-policy.cs.columbia.edu/), license unknown.*\n\n## What you will learn\n\n- **Policy:** a model that maps an observation to an action, called at every control step like a request handler.\n- **Rollout:** one episode of the policy acting in the simulator, from reset to success or timeout.\n- **Push-T:** a 2D task where a circle agent pushes a T-shaped block to a goal; actions are target `[x, y]` positions in `[0, 512]`.\n- **Success rate:** the share of episodes that succeed; for `lerobot/diffusion_pusht`, success means at least 95% overlap with the target.\n\n> **Key idea:** A policy is only as good as its measured success rate over many seeded episodes, not one nice-looking video.\n\n## What you need\n\n- **Software:** Python 3.12 environment, LeRobot with simulation extras (`pip install 'lerobot[aloha,pusht]'`) and the Gymnasium-based `gym-pusht` environment.\n- **Model:** `lerobot/diffusion_pusht`, a Diffusion Policy checkpoint trained on the `lerobot/pusht` dataset.\n- **Skills:** basic command line, Python virtual environments and reading logs.\n- **Cost:** €0 (simulation only); a GPU speeds up evaluation.\n\n## Steps\n\n1. **Install:** create the virtual environment and install LeRobot with the `pusht` extra, following the official installation page.\n2. **Explore the dataset:** load `lerobot/pusht` and plot a few episodes to see observations and actions.\n3. **Run a random baseline:** step `gym_pusht/PushT-v0` with random actions to see what failure looks like.\n4. **Evaluate the checkpoint:** run `lerobot-eval --policy.path=lerobot/diffusion_pusht --env.type=pusht --eval.n_episodes=50`.\n5. **Record results:** save success rate, average max overlap and a few rollout videos.\n\n```mermaid\nflowchart LR\n  A[\"Install LeRobot\"] --> B[\"Load dataset\"]\n  B --> C[\"Load pretrained policy\"]\n  C --> D[\"Rollouts in Push-T\"]\n  D --> E[\"Success rate\"]\n```\n\n## Common pitfalls\n\n- **Too few episodes:** 5 episodes give a noisy number; the model card reports 500 episodes for a stable estimate.\n- **Version drift:** the model card shows an older script path (`lerobot/scripts/eval.py`); current docs use the `lerobot-eval` command.\n- **Headless rendering:** on servers without a display, MuJoCo-based environments need `MUJOCO_GL=egl`.\n\n## When it's done\n\n- **Deliverable:** a pretrained policy running in simulation with its success rate measured and a short rollout video.\n- **Reference point:** the model card reports 65.4% success over 500 episodes for this checkpoint.\n- **Next steps:** Episode timeline and schema inspector, Autonomous pick-and-place with ACT and Latency injection action-queue viewer.",
+      "resources": [
+        {
+          "title": "Evaluate Policy: LeRobot Tutorial #5 by Simon Alibert",
+          "url": "https://www.youtube.com/watch?v=Il3Kt8vqpI8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hugging Face walkthrough of evaluating a policy with LeRobot."
+        },
+        {
+          "title": "Installation",
+          "url": "https://huggingface.co/docs/lerobot/main/en/installation",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official LeRobot install steps and the simulation extras."
+        },
+        {
+          "title": "huggingface/gym-pusht",
+          "url": "https://github.com/huggingface/gym-pusht",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Defines the Push-T observations, actions and quick-start loop."
+        },
+        {
+          "title": "lerobot/diffusion_pusht",
+          "url": "https://huggingface.co/lerobot/diffusion_pusht",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Model card with the success metric, training command and 500-episode results."
+        },
+        {
+          "title": "LIBERO",
+          "url": "https://huggingface.co/docs/lerobot/main/en/libero",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "A next benchmark showing how `lerobot-eval` flags select tasks and episodes."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/main/en/installation",
+        "https://github.com/huggingface/gym-pusht",
+        "https://huggingface.co/lerobot/diffusion_pusht",
+        "https://huggingface.co/docs/lerobot/main/en/libero",
+        "https://huggingface.co/docs/lerobot/main/en/il_sim",
+        "https://diffusion-policy.cs.columbia.edu/",
+        "https://www.youtube.com/watch?v=Il3Kt8vqpI8"
+      ]
+    },
+    {
+      "node_id": "p:kitchen-generalization-tournament",
+      "type": "project",
+      "name": "Kitchen generalization tournament",
+      "summary": "Compare two robot policies on matching RoboCasa kitchen tasks in familiar and unseen kitchens, under equal evaluation budgets.",
+      "lesson_md": "## In one sentence\n\nCompare two robot policies on matching RoboCasa kitchen tasks in familiar and unseen kitchens, under equal evaluation budgets.\n\n![Collage of RoboCasa simulated kitchen scenes with a mobile manipulator](/img/lessons/projects_robot_learning_1-kitchen-generalization-tournament.webp)\n*Collage of RoboCasa simulated kitchen scenes with a mobile manipulator. Source: [Published project media](https://robocasa.ai/), license unknown.*\n\n## What you will learn\n\n- **Generalization:** whether a policy still works in kitchens it never saw during training, like testing code on new inputs, not the unit-test fixtures.\n- **Held-out split:** RoboCasa365 exposes groups such as `atomic_seen`, `composite_seen` and `composite_unseen` as `--env.task` shortcuts.\n- **Success predicate:** the fixed rule that decides success; freeze it before running any policy.\n- **Failure categories:** labels such as missed grasp, wrong object or timeout that explain a drop in success.\n\n> **Key idea:** A generalization gap is only meaningful when both policies face the same tasks, seeds, budget and frozen success rule.\n\n## What you need\n\n- **Simulator:** RoboCasa365: 365 tasks, 2,500 kitchens, 3,200+ objects and 600+ hours of human demos on a 12-DOF PandaOmron mobile manipulator.\n- **Policies:** two compatible baselines, e.g. the public `lerobot/smolvla_robocasa` checkpoint and one you train; optionally LIBERO's 130 tasks for a second benchmark.\n- **Install note:** RoboCasa and robosuite are not on PyPI; LeRobot docs install them as editable clones.\n- **Cost:** €0 hardware (simulation only); GPU time is extra.\n\n## Steps\n\n1. **Freeze the protocol:** pick tasks, seeds, episodes per task and success predicates; commit them before evaluating.\n2. **Set up both policies:** confirm each reads the same cameras and outputs the same action format.\n3. **Run familiar kitchens:** evaluate both policies on seen scenes with equal episode counts.\n4. **Run held-out kitchens:** repeat on unseen scenes with identical settings.\n5. **Label failures:** watch failed rollouts and tag each with one category; add absent-target and corrupted-observation trials.\n6. **Film the demo:** matched clips of both policies in seen and unseen kitchens, with the success table.\n\n```mermaid\nflowchart LR\n  A[\"Frozen protocol\"] --> B[\"Policy A\"]\n  A --> C[\"Policy B\"]\n  B --> D[\"Seen kitchens\"]\n  B --> E[\"Unseen kitchens\"]\n  C --> D\n  C --> E\n  D --> F[\"Gap and failure table\"]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Moving goalposts:** editing the success rule after seeing results invalidates the comparison.\n- **Version mismatch:** RoboCasa v1.0.1 increased horizon lengths 1.5x; mixing versions changes scores.\n- **Unequal budgets:** more episodes or longer horizons for one policy bias the tournament.\n\n## When it's done\n\n- **Deliverable:** matched videos of both policies in familiar and held-out kitchens.\n- **Measured result:** a seen-versus-unseen success table with error bars and failure counts per category.\n- **Next step:** Physical-policy qualification gate uses this evaluation discipline before any real robot test.",
+      "resources": [
+        {
+          "title": "RoboCasa: Large-Scale Simulation of Everyday Tasks for Generalist Robots",
+          "url": "https://www.youtube.com/watch?v=FumCnLbD8VI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The authors' video tour of RoboCasa kitchens and tasks."
+        },
+        {
+          "title": "RoboCasa",
+          "url": "https://robocasa.ai/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Project page with release notes, scene examples and the leaderboard."
+        },
+        {
+          "title": "RoboCasa365",
+          "url": "https://huggingface.co/docs/lerobot/main/en/robocasa",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How to install RoboCasa and evaluate LeRobot policies on seen and unseen task groups."
+        },
+        {
+          "title": "LIBERO",
+          "url": "https://huggingface.co/docs/lerobot/main/en/libero",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "A second benchmark with five task suites for cross-checking results."
+        },
+        {
+          "title": "RoboCasa: Large-Scale Simulation of Everyday Tasks for Generalist Robots",
+          "url": "https://arxiv.org/abs/2406.02523",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The RSS 2024 paper describing the kitchens, tasks and data generation."
+        }
+      ],
+      "sources": [
+        "https://robocasa.ai/",
+        "https://huggingface.co/docs/lerobot/main/en/robocasa",
+        "https://huggingface.co/docs/lerobot/main/en/libero",
+        "https://github.com/Lifelong-Robot-Learning/LIBERO",
+        "https://arxiv.org/abs/2406.02523",
+        "https://arxiv.org/abs/2306.03310",
+        "https://www.youtube.com/watch?v=FumCnLbD8VI"
+      ]
+    },
+    {
+      "node_id": "p:latency-injection-action-queue-viewer",
+      "type": "project",
+      "name": "Latency injection action-queue viewer",
+      "summary": "Inject inference delays into a simulated robot and animate its action queue to compare synchronous and asynchronous policy execution.",
+      "lesson_md": "## In one sentence\n\nInject inference delays into a simulated robot and animate its action queue to compare synchronous and asynchronous policy execution.\n\n![Action queue size over time for different chunk_size_threshold values in LeRobot async inference](/img/lessons/projects_robot_learning_1-latency-injection-action-queue-viewer.webp)\n*Action queue size over time for different chunk_size_threshold values in LeRobot async inference. Source: [Published project media](https://huggingface.co/docs/lerobot/main/en/async), license unknown.*\n\n## What you will learn\n\n- **Action chunk:** a policy outputs many future actions at once (e.g. 50 steps) and the robot executes them from a **queue**.\n- **Synchronous inference:** the robot idles while the policy computes the next chunk, like a blocking network call.\n- **Asynchronous inference:** LeRobot's PolicyServer computes the next chunk while the RobotClient keeps executing, like a producer-consumer pipeline.\n- **Command age and starvation:** how old an executed action is, and when the queue runs empty.\n\n> **Key idea:** Latency becomes visible as an empty or stale action queue, so watch the queue, not just the final success rate.\n\n## What you need\n\n- **Software:** LeRobot with the async extra (`pip install -e \".[async]\"`) and a simulated robot.\n- **Key knob:** `chunk_size_threshold`; near 0.0 behaves almost sequentially, near 1.0 sends an observation every step. LeRobot found 0.5-0.6 works well.\n- **Built-in plot:** `--debug_visualize_queue_size` draws queue size at runtime.\n- **Prerequisite:** Intro: run a pretrained policy in simulation. Cost: €0 hardware.\n\n## Steps\n\n1. **Baseline:** run a chunking policy synchronously in simulation and log queue length per control step.\n2. **Inject delay:** add an artificial sleep to inference, e.g. 0, 100 and 300 ms, using fixed seeds.\n3. **Switch to async:** start PolicyServer and RobotClient locally and repeat the same delays.\n4. **Measure:** record command age, starvation events and the jump between consecutive chunks.\n5. **Animate:** draw the queue filling and draining next to the robot video.\n6. **Stress test:** drop observations and confirm the client stops safely when the queue is empty.\n\n```mermaid\nflowchart LR\n  A[\"Robot client\"] -->|\"observation\"| B[\"Policy server\"]\n  B -->|\"action chunk\"| C[\"Action queue\"]\n  C -->|\"one action per step\"| A\n  D[\"Injected delay\"] --> B\n```\n\n## Common pitfalls\n\n- **Ignoring boundaries:** naive chunk switching causes pauses or jerky jumps; Real-Time Chunking (RTC) blends new chunks with the executed part.\n- **FPS too high:** if the client consumes faster than the server produces, the queue starves; LeRobot advises lowering fps.\n- **Real memory limits:** PI0 needs about 14 GB at inference versus about 2 GB for SmolVLA, which changes latency.\n\n## When it's done\n\n- **Deliverable:** an animation of action queues and the simulated robot under injected delays, sync versus async.\n- **Measured result:** a table of command age, starvation count and chunk discontinuity per delay.\n- **Next step:** Real-time chunk stitching bake-off compares smoothing methods like RTC.",
+      "resources": [
+        {
+          "title": "LeRobot Async Inference: Eliminate Lag & Achieve Real-Time Robotics Control (SmolVLA & All Policies)",
+          "url": "https://www.youtube.com/watch?v=XIrqwNPTilA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "A video walkthrough of LeRobot's asynchronous inference setup."
+        },
+        {
+          "title": "Asynchronous Inference",
+          "url": "https://huggingface.co/docs/lerobot/main/en/async",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "How to run PolicyServer and RobotClient and tune the queue."
+        },
+        {
+          "title": "Real-Time Chunking (RTC)",
+          "url": "https://huggingface.co/docs/lerobot/main/en/rtc",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How LeRobot smooths chunk boundaries for slow flow-matching policies."
+        },
+        {
+          "title": "Real-Time Execution of Action Chunking Flow Policies",
+          "url": "https://arxiv.org/abs/2506.07339",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The RTC paper, tested under inference delay in simulation and on real robots."
+        },
+        {
+          "title": "Control-Aware Command Generation for Asynchronous Control and Action Inference with Vision-Based Policies towards Fast Execution",
+          "url": "https://arxiv.org/abs/2611.11089",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "A 2026 control-level take on async inference with action skipping."
+        }
+      ],
+      "sources": [
+        "https://huggingface.co/docs/lerobot/main/en/async",
+        "https://huggingface.co/docs/lerobot/main/en/rtc",
+        "https://arxiv.org/abs/2506.07339",
+        "https://arxiv.org/abs/2611.11089",
+        "https://www.youtube.com/watch?v=XIrqwNPTilA"
+      ]
     }
   ]
 }
