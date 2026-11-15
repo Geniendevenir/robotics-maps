@@ -1,0 +1,619 @@
+{
+  "batch": "knowledge_simulation",
+  "lessons": [
+    {
+      "node_id": "k:collision-geometry-contact-solver-fidelity",
+      "type": "knowledge",
+      "name": "Collision geometry & contact solver fidelity",
+      "summary": "Collision geometry decides which shapes touch; the contact solver estimates how those touches change motion.",
+      "lesson_md": "## In one sentence\n\nCollision geometry decides which shapes touch; the contact solver estimates how those touches change motion.\n\n![Contact coordinate frame showing normal and tangential directions](/img/lessons/knowledge_simulation-contact.webp)\n*Contact coordinate frame showing normal and tangential directions. Source: [MuJoCo documentation](https://mujoco.readthedocs.io/en/stable/computation/index.html), license unknown.*\n\n## Why it matters for us\n\n- **Grasps depend on contact:** a beautiful object can behave incorrectly if its invisible collision shape fills a handle or misses an edge.\n- **Friction changes outcomes:** a controller can appear successful because the simulator makes an object unrealistically easy to hold.\n- **Debugging needs overlays:** display collision shapes and contact points before blaming your policy, camera, or motor controller for a failed grasp.\n\n> **Key idea:** Validate the geometry that the solver uses, not just the mesh that the camera sees.\n\n## How it works\n\nThink of a visible mesh as a detailed frontend and collision geometry as the simplified data structure used by the backend. Changing one does not necessarily change the other.\n\n- **Detection** finds nearby shapes and returns contact positions, directions, and distances; it does not itself decide the resulting motion.\n- **Response** combines contact constraints with applied forces to calculate how bodies should accelerate while resisting overlap and sliding.\n- **Convex approximation** replaces a complicated mesh with a shape without inward dents; several pieces may be needed to preserve openings.\n- **Contact dimension (`condim`)** selects the force directions MuJoCo models at a contact.\n- **Worked example:** `condim=1` permits only a normal force; `condim=3` adds two sliding-friction directions. Identical touching shapes can therefore respond differently.\n\n```mermaid\nflowchart LR\n  G[Collision shapes] --> D[Detect contacts]\n  D --> S[Solve contact forces]\n  A[Applied forces] --> S\n  S --> M[Update motion]\n  M --> D\n```\n\n## Key terms\n\n- **Normal**: the direction perpendicular to the touching surfaces, along which the contact pushes them apart.\n- **Friction**: resistance to relative sliding or other contact motion.\n- **Compliance**: how much a contact yields instead of behaving as perfectly hard.\n- **Solver tolerance**: the numerical stopping criterion for the solver's approximate solution, not a guarantee of physical accuracy.\n\n## Before / after\n\n- **Before:** Learn Time stepping & numerical fidelity and basic forces; distinguish drawing a shape from simulating its motion.\n- **After:** Build Collision hull versus visual mesh gallery, then investigate Cross-engine contact disagreement atlas using identical starting conditions.\n\n## Try it in an afternoon\n\n1. **Load a small MuJoCo scene** with an object resting on a plane; enable contact and collision-geometry visualization.\n2. **Change the collision representation** while keeping the visible object and initial pose fixed; inspect new contact locations.\n3. **Compare frictionless and frictional contact** under the same horizontal push; record sliding rather than judging a screenshot.\n4. **Save the model and settings** beside the recording so another student can reproduce the disagreement.",
+      "resources": [
+        {
+          "title": "Estimating Bouncing Ball Contact Parameters",
+          "url": "https://www.mathworks.com/videos/estimating-bouncing-ball-contact-parameters-1591181764885.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why different contact parameters produce different bounce trajectories; watching does not require MATLAB."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read Contact and Collision detection for contact directions, convex geometry and solver behavior."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use Contact parameters to separate friction and compliance settings from visible geometry."
+        },
+        {
+          "title": "Ch. 17 - Planning and Control through Contact",
+          "url": "https://underactuated.mit.edu/contact.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Understand why making and breaking contact introduces discontinuities into robot dynamics."
+        }
+      ],
+      "sources": [
+        "https://www.mathworks.com/videos/estimating-bouncing-ball-contact-parameters-1591181764885.html",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://underactuated.mit.edu/contact.html"
+      ]
+    },
+    {
+      "node_id": "k:deformable-and-multiphysics-simulation-fidelity",
+      "type": "knowledge",
+      "name": "Deformable and multiphysics simulation fidelity",
+      "summary": "Deformable simulation models bending or flowing materials, while multiphysics simulation couples different material solvers in one scene.",
+      "lesson_md": "## In one sentence\n\nDeformable simulation models bending or flowing materials, while multiphysics simulation couples different material solvers in one scene.\n\n![MuJoCo bunny model represented with a deformable mesh](/img/lessons/knowledge_simulation-deformable.webp)\n*MuJoCo bunny model represented with a deformable mesh. Source: [MuJoCo documentation](https://mujoco.readthedocs.io/en/stable/modeling.html), license unknown.*\n\n## Why it matters for us\n\n- **Rigid approximations have limits:** a cloth folds, a soft gripper bends, and liquid flows; moving a rigid shell cannot reproduce these effects.\n- **Representation matters:** material particles, mesh cells, and geometric constraints encode different approximations, even when their rendered surfaces look similar.\n- **Coupling adds difficulty:** a rigid robot touching a soft object needs forces exchanged between solvers, not just both animations playing together.\n\n> **Key idea:** Pick the simplest material representation that preserves the behavior your task actually measures.\n\n## How it works\n\nA rigid object moves as one transform; a deformable object also changes its internal shape. Think of updating an entire vertex array instead of changing one object's position field.\n\n- **Discretize the material:** replace a continuous object with a finite collection of particles, elements, or constraints that a computer can update.\n- **Compute deformation:** material parameters determine how these pieces resist stretching, compression, or bending.\n- **Advance together:** substeps are smaller updates inside one scene step; Genesis recommends them for numerically stiff non-rigid materials.\n- **Exchange contact forces:** in Genesis hybrid entities, a rigid skeleton drives a soft skin, and the skin's reaction feeds forces back to the skeleton.\n- **Worked example:** Genesis compares MPM and FEM muscle spheres: radius 0.1 m, density 1000 kg/m³, and Young's modulus 30000 Pa.\n- **Read the units:** radius measures size; density is mass per volume; Young's modulus measures stiffness in pascals (Pa).\n- **Muscle actuation** adds stress along embedded fiber directions; these spheres are actively driven, not simply passive falling balls.\n\n```mermaid\nflowchart LR\n  M[Material parameters] --> D[Deformable solver]\n  R[Rigid solver] --> C[Coupled contact]\n  D --> C\n  C --> R\n  C --> D\n  D --> V[Render surface]\n```\n\n## Key terms\n\n- **Young's modulus**: a material stiffness parameter; higher values mean greater resistance to stretching under the model's assumptions.\n- **FEM**: finite element method; approximates a solid using small mesh elements.\n- **MPM**: material point method; combines particles carrying material information with a background grid.\n- **PBD**: position-based dynamics; updates positions to satisfy constraints, often used for cloth and ropes.\n\n## Before / after\n\n- **Before:** Understand Collision geometry & contact solver fidelity and Time stepping & numerical fidelity before tuning soft material behavior.\n- **After:** Build Rigid-versus-soft drop comparison reel, then explore Coupled solver stability frontier map rather than trusting appearance alone.\n\n## Try it in an afternoon\n\n1. **Watch the Genesis material demos** and choose one behavior, such as a sphere deforming on contact.\n2. **Run one supplied example** without changing parameters; record the baseline shape and whether it settles.\n3. **Vary only stiffness** and compare deformation; restore the baseline before varying substeps separately.\n4. **Report both cost and behavior:** save parameters, simulation duration, elapsed runtime, and a side-by-side recording.",
+      "resources": [
+        {
+          "title": "Beyond rigid bodies",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/beyond_rigid_bodies.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the embedded cloth, material-point and liquid demos, then follow the matching solver example."
+        },
+        {
+          "title": "Soft robots",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/soft_robots.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare the supplied MPM and FEM muscle spheres with explicit material parameters."
+        },
+        {
+          "title": "Hybrid entities",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/hybrid_entity.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Trace force exchange between a rigid articulated skeleton and its deformable skin."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Read Deformable objects and Deformables for MuJoCo representations and tuning trade-offs."
+        }
+      ],
+      "sources": [
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/beyond_rigid_bodies.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/soft_robots.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/physics/hybrid_entity.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html"
+      ]
+    },
+    {
+      "node_id": "k:differentiable-physics-gradient-validation",
+      "type": "knowledge",
+      "name": "Differentiable physics & gradient validation",
+      "summary": "Differentiable physics computes how simulation outputs change with inputs, and gradient validation checks whether those sensitivities are trustworthy.",
+      "lesson_md": "## In one sentence\n\nDifferentiable physics computes how simulation outputs change with inputs, and gradient validation checks whether those sensitivities are trustworthy.\n\n![Ball trajectories optimized to bounce from a wall toward a target](/img/lessons/knowledge_simulation-gradients.webp)\n*Ball trajectories optimized to bounce from a wall toward a target. Source: [NVIDIA Technical Blog](https://developer.nvidia.com/blog/creating-differentiable-graphics-and-physics-simulation-in-python-with-nvidia-warp/), license unknown.*\n\n## Why it matters for us\n\n- **Optimization needs direction:** a gradient can tell us how to adjust an initial velocity, controller parameter, or material property to reduce an error.\n- **A plausible rollout proves little:** a rollout is a simulated sequence; correct forward motion does not prove the backward derivative calculation is correct.\n- **Contact complicates learning:** a small input change can create or remove a collision, so one smooth local sensitivity may not describe nearby outcomes.\n\n> **Key idea:** Treat a simulator gradient as a result to test, not a certificate supplied by automatic differentiation.\n\n## How it works\n\nThink of the rollout as a neural network unrolled through time: each step consumes the previous state. A backward pass propagates a final error back through those computations.\n\n- **Define a loss:** turn the desired behavior into a scalar error, such as squared distance between a final position and a target.\n- **Record dependencies:** Warp's `Tape` records kernel launches; arrays needing gradients must have `requires_grad=True`.\n- **Check independently:** finite differences rerun the forward calculation with small input perturbations instead of using the backward implementation.\n- **Worked example:** Warp's documented kernel includes an output equal to `a * length(b)`. With `a=2` and `b=(3,1,2)`, the output is twice √14.\n- **Expected sensitivity:** the derivative of that output with respect to `a` is √14; perturbing `a` should agree before testing an entire contact rollout.\n- **Automatic differentiation** applies derivative rules to executed operations; using a GPU alone does not provide gradients.\n\n```mermaid\nflowchart LR\n  P[Parameter] --> F[Forward rollout]\n  F --> L[Scalar loss]\n  L --> A[Autodiff gradient]\n  P --> D[Perturbed rollouts]\n  D --> N[Finite difference]\n  A --> C[Compare]\n  N --> C\n```\n\n## Key terms\n\n- **Gradient**: local rate of change of a scalar output with respect to its inputs.\n- **Jacobian**: a table of sensitivities when the output has several components.\n- **Finite difference**: an approximate derivative computed from output changes after small input changes.\n- **Contact mode**: which bodies are touching and whether those contacts stick or slide.\n\n## Before / after\n\n- **Before:** Know basic calculus, automatic differentiation, and Collision geometry & contact solver fidelity; first validate a smooth calculation without contact.\n- **After:** Build Gradient versus finite-difference spotlight before attempting Contact gradient breakage gallery or parameter fitting through simulation.\n\n## Try it in an afternoon\n\n1. **Run Warp's documented kernel example** and inspect the input-to-output Jacobians rather than only the final scalar loss.\n2. **Call `warp.autograd.gradcheck`** on that example and record its absolute and relative error summaries.\n3. **Repeat with several perturbation sizes** in a simple smooth simulation; look for a range of agreement.\n4. **Introduce contact separately:** compare gradients before, during, and after impact; preserve failing cases instead of averaging them away.",
+      "resources": [
+        {
+          "title": "Eric Heiden - Warp: Advancing Simulation AI with Differentiable GPU Computing in Python | SciPy 2024",
+          "url": "https://www.youtube.com/watch?v=jDOekvNddFo",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Eric Heiden introduces Warp kernels, differentiability and connections to robotics; start with the conceptual examples."
+        },
+        {
+          "title": "Differentiability",
+          "url": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Run the Jacobian and gradcheck examples, including diagnostics for broken gradient paths."
+        },
+        {
+          "title": "Creating Differentiable Graphics and Physics Simulation in Python with NVIDIA Warp",
+          "url": "https://developer.nvidia.com/blog/creating-differentiable-graphics-and-physics-simulation-in-python-with-nvidia-warp/",
+          "format": "Blog",
+          "level": "Intermediate",
+          "why": "See an optimized bouncing-ball trajectory and how Tape connects simulation to learning."
+        },
+        {
+          "title": "Ch. 17 - Planning and Control through Contact",
+          "url": "https://underactuated.mit.edu/contact.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Understand impact discontinuities before interpreting derivatives near contact transitions."
+        }
+      ],
+      "sources": [
+        "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+        "https://developer.nvidia.com/blog/creating-differentiable-graphics-and-physics-simulation-in-python-with-nvidia-warp/",
+        "https://underactuated.mit.edu/contact.html"
+      ]
+    },
+    {
+      "node_id": "k:domain-randomization-transfer-stress-testing",
+      "type": "knowledge",
+      "name": "Domain randomization & transfer stress testing",
+      "summary": "Domain randomization varies simulated conditions during training; transfer stress tests check whether behavior survives deliberately unfamiliar conditions.",
+      "lesson_md": "## In one sentence\n\nDomain randomization varies simulated conditions during training; transfer stress tests check whether behavior survives deliberately unfamiliar conditions.\n\n![A simulated manipulation scene seen with randomized camera settings](/img/lessons/knowledge_simulation-randomization.webp)\n*A simulated manipulation scene seen with randomized camera settings. Source: [ManiSkill documentation](https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html), license unknown.*\n\n## Why it matters for us\n\n- **A policy** maps observations to actions; it may exploit one camera angle, texture, or friction value rather than learning robust behavior.\n- **Variation targets uncertainty:** camera poses, lighting, link masses, and contact friction represent different gaps between a model and hardware.\n- **Evaluation must remain separate:** repeatedly tuning the randomizer against the same test conditions turns those tests into training feedback.\n\n> **Key idea:** Randomize for a reason, then measure failures on conditions you did not use to tune the policy.\n\n## How it works\n\nTreat the simulator like a fuzz-tested API: the task remains recognizable while inputs and configuration vary. Keep a separate regression suite for cases the fuzzer did not prepare the program for.\n\n- **Choose nuisance variables:** these are details the policy should tolerate without changing the task, such as background appearance or small camera shifts.\n- **Specify distributions:** record the sampling rule, bounds, units, and whether values are fixed per run or resampled at reset.\n- **Worked example:** Genesis samples friction multipliers as `0.5 + torch.rand(...)`, giving scales from 0.5 up to, but not including, 1.5.\n- **Interpret the bounds:** a scale of 0.5 halves nominal friction; the randomizer changes a physical parameter, not merely a pixel color.\n- **Test targeted shifts:** change one factor first, then combinations; distinguish failure from lighting changes from failure caused by different contact dynamics.\n\n```mermaid\nflowchart LR\n  D[Training distributions] --> S[Sample settings]\n  S --> T[Train policy]\n  T --> H[Held-out conditions]\n  H --> E[Measure failures]\n  E --> R[Report coverage gaps]\n```\n\n## Key terms\n\n- **Domain**: the collection of conditions under which observations and actions are produced.\n- **Randomization range**: the set of values from which a parameter may be sampled.\n- **Held-out condition**: a test case excluded from training and tuning.\n- **Distribution shift**: a change between the conditions used for learning and those encountered during evaluation.\n\n## Before / after\n\n- **Before:** Know train/test splits and Simulation benchmarks & reproducible evaluation; identify which simulated quantities correspond to real uncertainty.\n- **After:** Build Randomization coverage heatmap, then Held-out nuisance robustness tournament with explicit, separately saved training and evaluation configurations.\n\n## Try it in an afternoon\n\n1. **Open the ManiSkill lighting demo** and list which visual factors change and which task properties remain fixed.\n2. **Select one randomization axis** in a supplied environment; save sampled values and seeds for replay.\n3. **Compare fixed and varied conditions** using the same policy, task, and success rule before considering retraining.\n4. **Reserve an unseen condition:** report its success separately and preserve representative failures, not only the overall average.",
+      "resources": [
+        {
+          "title": "Domain Randomization",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the embedded lighting randomization and inspect camera and color randomization examples."
+        },
+        {
+          "title": "Domain randomization",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/policy_training/best_practices/domain_randomization.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use explicit batched friction and mass distributions, and distinguish per-run from per-episode changes."
+        },
+        {
+          "title": "Reproducibility and Random Number Generation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/rng.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Learn how to replay randomized environments with per-environment seeds and saved states."
+        },
+        {
+          "title": "Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World",
+          "url": "https://arxiv.org/abs/1703.06907",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original rendering-randomization experiment and its object-localization transfer setting."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/user_guide/tutorials/domain_randomization.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/policy_training/best_practices/domain_randomization.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/rng.html",
+        "https://arxiv.org/abs/1703.06907"
+      ]
+    },
+    {
+      "node_id": "k:gpu-parallel-simulation-vectorized-environments",
+      "type": "knowledge",
+      "name": "GPU-parallel simulation & vectorized environments",
+      "summary": "GPU-parallel simulation advances many worlds together, while a vectorized environment presents their actions, observations, and resets as batches.",
+      "lesson_md": "## In one sentence\n\nGPU-parallel simulation advances many worlds together, while a vectorized environment presents their actions, observations, and resets as batches.\n\n![Many simulated robot arms displayed together in the ManiSkill viewer](/img/lessons/knowledge_simulation-parallel.webp)\n*Many simulated robot arms displayed together in the ManiSkill viewer. Source: [ManiSkill documentation](https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html), license unknown.*\n\n## Why it matters for us\n\n- **Learning consumes rollouts:** these are simulated action-and-observation sequences. Stepping copies together can collect more experience than handling each world separately.\n- **Batching changes correctness:** each world's termination flag marks a task-defined ending; its truncation flag marks an external cutoff. Neither automatically ends neighboring episodes.\n- **Rendering has its own cost:** state-only observations and camera images exercise different parts of the system; compare them separately.\n\n> **Key idea:** Batch dimensions are part of the environment API, not just a performance option.\n\n## How it works\n\nThink of replacing repeated scalar function calls with a NumPy operation over an array. Each row is a separate world, even when one visualization displays all robots together.\n\n- **Allocate a batch:** states and actions gain a leading environment dimension; ManiSkill's documented example uses `num_envs=16`.\n- **Step collectively:** one environment call consumes the action batch and returns batched observations, rewards, termination flags, and truncation flags.\n- **Keep resets local:** ending one episode must not accidentally reset unfinished neighbors or mix their final observations.\n- **Example adapted from Quickstart:** this creates the documented state-observation batch; the returned reward has one entry per environment.\n\n```python\nimport gymnasium as gym\nimport mani_skill.envs\nenv = gym.make(\"PickCube-v1\", num_envs=16, obs_mode=\"state\",\n               control_mode=\"pd_joint_delta_pos\")\nobs, info = env.reset(seed=0)\nobs, reward, terminated, truncated, info = env.step(\n    env.action_space.sample())\nenv.close()\n```\n\n```mermaid\nflowchart LR\n  A[Action batch] --> S[Parallel physics step]\n  S --> O[Observation batch]\n  S --> D[Per-world done flags]\n  D --> R[Reset selected worlds]\n  R --> A\n  O --> A\n```\n\n## Key terms\n\n- **Vectorized environment**: an interface that accepts and returns several environments' data together.\n- **Throughput**: total simulated transitions processed per elapsed second, across the whole batch.\n- **Latency**: elapsed time needed to obtain a result from a particular call.\n- **Compilation**: preparing executable code before repeated execution; MJX's JAX example uses `jit` alongside vectorized stepping.\n\n## Before / after\n\n- **Before:** Know Python array shapes, device memory, and an environment's reset/step API; run one task correctly before increasing the batch.\n- **After:** Build Batch-reset correctness kaleidoscope, then Parallel simulation throughput truth sheet; correctness comes before impressive transitions-per-second numbers.\n\n## Try it in an afternoon\n\n1. **Run the documented PickCube example** and print the shapes and devices of actions, observations, rewards, and done flags.\n2. **Inspect per-world completion:** confirm that individual episodes remain distinct rather than treating the whole batch as one robot.\n3. **Measure steady-state stepping** after initialization; record batch size, observation mode, hardware, and elapsed runtime.\n4. **Repeat with camera observations** and compare throughput separately from startup or compilation time; do not generalize one machine's result.",
+      "resources": [
+        {
+          "title": "Quickstart",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the embedded parallel PickCube demonstration and use the accompanying batched Gymnasium example."
+        },
+        {
+          "title": "GPU Simulation",
+          "url": "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand sub-scenes, batched GPU buffers and the environment step pipeline."
+        },
+        {
+          "title": "MuJoCo XLA (MJX)",
+          "url": "https://mujoco.readthedocs.io/en/stable/mjx.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect a real batched_step example combining JAX vmap and jit."
+        },
+        {
+          "title": "Parallel simulation",
+          "url": "https://genesis-world.readthedocs.io/en/latest/user_guide/getting_started/parallel_simulation.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Build multiple copies of one Genesis scene and understand the environment dimension."
+        }
+      ],
+      "sources": [
+        "https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html",
+        "https://maniskill.readthedocs.io/en/latest/user_guide/concepts/gpu_simulation.html",
+        "https://mujoco.readthedocs.io/en/stable/mjx.html",
+        "https://genesis-world.readthedocs.io/en/latest/user_guide/getting_started/parallel_simulation.html"
+      ]
+    },
+    {
+      "node_id": "k:learned-action-conditioned-world-simulators",
+      "type": "knowledge",
+      "name": "Learned action-conditioned world simulators",
+      "summary": "A learned action-conditioned world simulator predicts future observations or hidden states from experience and the actions supplied to it.",
+      "lesson_md": "## In one sentence\n\nA learned action-conditioned world simulator predicts future observations or hidden states from experience and the actions supplied to it.\n\n![World Models diagram connecting visual encoding, memory and a controller](/img/lessons/knowledge_simulation-world-models.webp)\n*World Models diagram connecting visual encoding, memory and a controller. Source: [World Models](https://worldmodels.github.io/), CC-BY 4.0.*\n\n## Why it matters for us\n\n- **Prediction can replace repeated interaction:** an agent can explore imagined outcomes instead of collecting every candidate trajectory in the real environment.\n- **Appearance is not action fidelity:** a convincing future frame is insufficient if changing the requested action barely changes the predicted outcome.\n- **Errors accumulate:** a model trained on recorded transitions also needs evaluation when its own predictions become the next inputs.\n\n> **Key idea:** Check that imagined futures respond correctly to actions, not merely that the videos look plausible.\n\n## How it works\n\nThink of a mock service learned from request logs: it predicts responses without running the original backend. Unlike a hand-written mock, its behavior outside recorded requests must be measured.\n\n- **Encode the observation:** compress a camera image into a smaller hidden representation that keeps useful information.\n- **Predict a transition:** combine the representation, past memory, and action to predict what happens next.\n- **Decode if needed:** turn a predicted representation back into an image for inspection; the controller may instead use the hidden representation directly.\n- **Improve a policy:** a policy maps observations or hidden states to actions. Dreamer learns this behavior by imagining futures with its world model.\n- **Interface sketch:** this pseudocode describes the action-conditioned prediction loop, not a package's installation or public API.\n\n```python\nlatent = encode(observation)\nmemory = initial_memory()\nfor action in recorded_actions:\n    latent, memory = predict(latent, action, memory)\n    imagined_frame = decode(latent)\n    save(imagined_frame)\n```\n\n```mermaid\nflowchart LR\n  I[Image] --> E[Encode]\n  E --> P[Predict hidden state]\n  A[Action] --> P\n  P --> D[Decode image]\n  P --> P\n  D --> C[Compare with held-out future]\n```\n\n## Key terms\n\n- **Latent state**: a learned compressed representation, rather than explicitly named positions and velocities.\n- **Action conditioning**: making the prediction depend on the command given to the agent.\n- **Rollout**: a sequence of transitions, generated either by an environment or by the learned model.\n- **Open-loop prediction**: predicting several steps without replacing intermediate predictions with fresh real observations.\n\n## Before / after\n\n- **Before:** Understand sequence models and held-out data; compare this approach with Time stepping & numerical fidelity, where explicit dynamics generate motion.\n- **After:** Use DreamerV3 as context for Imagined pendulum rollout microscope, then build Action-ignored video simulator detector.\n\n## Try it in an afternoon\n\n1. **Explore the World Models interactive page** and follow how vision, memory, and controller components connect.\n2. **Inspect one recorded sequence:** retain its observations and actions together rather than training on unlabelled video alone.\n3. **Compare short and long predictions** on a held-out sequence; report where the imagined state diverges.\n4. **Swap the action sequence** while keeping the initial observation fixed; check whether predicted motion changes in the expected direction.",
+      "resources": [
+        {
+          "title": "World Models",
+          "url": "https://worldmodels.github.io/",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Manipulate the visual and dream-environment demos to connect observations, actions and recurrent prediction."
+        },
+        {
+          "title": "Mastering Diverse Control Tasks through World Models",
+          "url": "https://danijar.com/project/dreamerv3/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the creators' task rollouts and read how Dreamer improves behavior through imagined futures."
+        },
+        {
+          "title": "Mastering Diverse Domains through World Models",
+          "url": "https://arxiv.org/abs/2301.04104",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the DreamerV3 formulation and distinguish learning a world model from learning the behavior inside it."
+        },
+        {
+          "title": "Mastering Diverse Domains through World Models",
+          "url": "https://github.com/danijar/dreamerv3",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect the implementation and experiment configurations behind the paper."
+        }
+      ],
+      "sources": [
+        "https://worldmodels.github.io/",
+        "https://danijar.com/project/dreamerv3/",
+        "https://arxiv.org/abs/2301.04104",
+        "https://github.com/danijar/dreamerv3"
+      ]
+    },
+    {
+      "node_id": "k:procedural-scenes-asset-pipelines-task-generation",
+      "type": "knowledge",
+      "name": "Procedural scenes, asset pipelines & task generation",
+      "summary": "Procedural scene generation assembles reusable assets and sampled rules into varied, reproducible robot environments and tasks.",
+      "lesson_md": "## In one sentence\n\nProcedural scene generation assembles reusable assets and sampled rules into varied, reproducible robot environments and tasks.\n\n![Procedurally placed pallets, boxes and a forklift viewed from three cameras](/img/lessons/knowledge_simulation-scenes.webp)\n*Procedurally placed pallets, boxes and a forklift viewed from three cameras. Source: [Isaac Sim documentation](https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_scene_based_sdg.html), license unknown.*\n\n## Why it matters for us\n\n- **Manual scenes do not scale:** reusable rules let us vary object placements and environments without editing every scene by hand.\n- **Pretty does not mean usable:** a scene can render correctly yet contain intersecting objects, an inaccessible target, or the wrong physical scale.\n- **Assets carry obligations:** record where models came from and their licenses rather than assuming every downloadable object permits the same uses.\n\n> **Key idea:** A generated scene needs a validity check and a replayable recipe, not just an attractive render.\n\n## How it works\n\nTreat the asset pipeline like a compiler: source models and configuration become a runnable world. Validation belongs between stages, so invalid geometry does not silently reach task evaluation.\n\n- **Import assets:** preserve meaningful dimensions and distinguish visual surfaces from the collision shapes used by physics.\n- **Assemble structure:** RoboCasa separates a kitchen's layout, defining fixture arrangement, from its style, defining textures and fixture attributes.\n- **Sample placements:** turn a random seed and explicit rules into positions; save the chosen assets and parameters alongside the seed.\n- **Worked example:** Isaac Sim's warehouse tutorial randomizes a forklift, places a pallet in front, and scatters boxes using `scatter_2d` with `check_for_collisions=True`.\n- **Settle and capture:** a separate pallet behind the forklift receives falling boxes during a short physics simulation; data capture then uses three camera views.\n- **Reject invalid tasks:** collision-free placement alone does not establish robot reachability or whether the goal can be completed.\n\n```mermaid\nflowchart LR\n  A[Licensed assets] --> N[Normalize geometry]\n  N --> G[Sample scene rules]\n  S[Seed and configuration] --> G\n  G --> V[Validate and settle]\n  V --> T[Task instance]\n  V --> R[Reject invalid scene]\n```\n\n## Key terms\n\n- **Asset**: a reusable model, texture, or other scene component.\n- **Fixture**: an environment object such as a counter, drawer, or appliance that gives a scene structure.\n- **Scene recipe**: the asset choices and rules needed to reconstruct a particular environment.\n- **Solvability filter**: a check that rejects generated tasks the robot cannot reasonably complete under the stated assumptions.\n\n## Before / after\n\n- **Before:** Learn Robot and scene formats: URDF, MJCF, SDF & USD and Collision geometry & contact solver fidelity; understand random seeds.\n- **After:** Build Seeded tabletop scene generator, then Procedural scene solvability filter before attempting Compositional scene generalization split.\n\n## Try it in an afternoon\n\n1. **Inspect RoboCasa's layout/style examples** and list which scene properties each controls before inventing a generator.\n2. **Choose a small existing scene** and vary only object placement, keeping robot geometry and the task goal fixed.\n3. **Add explicit rejection checks** for initial overlap and objects outside the usable workspace; record why each rejected scene failed.\n4. **Replay a saved scene recipe** and compare asset identities, placements, and initial task state, not just its screenshot.",
+      "resources": [
+        {
+          "title": "Realistic and Diverse Scenes",
+          "url": "https://robocasa.ai/#realistic-and-diverse-scenes",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the kitchen-scene collage to see how reusable fixtures, layouts and styles create varied environments."
+        },
+        {
+          "title": "Scenes",
+          "url": "https://robocasa.ai/docs/build/html/assets/scenes.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Learn the concrete layout/style split and how RoboCasa selects kitchen scene splits."
+        },
+        {
+          "title": "Objects",
+          "url": "https://robocasa.ai/docs/build/html/assets/objects.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the asset categories and documented source collections rather than treating all objects as identical meshes."
+        },
+        {
+          "title": "Scene Based Synthetic Dataset Generation",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_scene_based_sdg.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Follow the warehouse placement, collision-checking, physics-settling and capture pipeline."
+        }
+      ],
+      "sources": [
+        "https://robocasa.ai/#realistic-and-diverse-scenes",
+        "https://robocasa.ai/docs/build/html/assets/scenes.html",
+        "https://robocasa.ai/docs/build/html/assets/objects.html",
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_scene_based_sdg.html"
+      ]
+    },
+    {
+      "node_id": "k:real-to-sim-digital-twins-gaussian-splat-rendering",
+      "type": "knowledge",
+      "name": "Real-to-sim digital twins & Gaussian-splat rendering",
+      "summary": "A digital twin reconstructs a particular real setup; Gaussian splatting reproduces its appearance but still needs separate geometry and physics for interaction.",
+      "lesson_md": "## In one sentence\n\nA digital twin reconstructs a particular real setup; Gaussian splatting reproduces its appearance but still needs separate geometry and physics for interaction.\n\n![A reconstructed outdoor bicycle scene rendered using 3D Gaussian Splatting](/img/lessons/knowledge_simulation-digital-twin.webp)\n*A reconstructed outdoor bicycle scene rendered using 3D Gaussian Splatting. Source: [GraphDeco project page](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), license unknown.*\n\n## Why it matters for us\n\n- **Specific workspaces matter:** testing a desk task benefits from matching the real camera, robot placement, and relevant objects rather than a generic room.\n- **Rendering is only one gap:** a visually convincing reconstruction can still have incorrect collisions, friction, or actuator response.\n- **Separate evaluations help:** camera-view matching and successful physical interaction answer different questions; neither should substitute for the other.\n\n> **Key idea:** A scene can look like your desk without behaving like your desk.\n\n## How it works\n\nThink of a reconstruction as a realistic frontend connected to a physics backend. Sharing a coordinate system is necessary, but good frontend screenshots do not validate backend behavior.\n\n- **Capture multiple viewpoints:** photos provide camera-pose and scene information; Gaussian splatting begins from sparse points produced during camera calibration.\n- **Fit visible structure:** optimize three-dimensional Gaussian primitives—small spatial blobs with position, shape, opacity, and color information—to reproduce the captured views.\n- **Render new views:** project and blend those primitives to generate an image from a camera viewpoint.\n- **Attach interaction geometry:** SplatSim uses Gaussian splatting as a renderer over existing simulators, which still determine robot and object motion.\n- **Worked capture example:** SplatSim's README suggests a 1–2 minute landscape smartphone video, covering multiple angles and finer details around the gripper.\n- **Align before judging beauty:** its workflow aligns the reconstructed robot with simulator geometry; mismatched coordinates make convincing images unsuitable for action evaluation.\n\n```mermaid\nflowchart LR\n  P[Multi-view capture] --> G[Fit Gaussian scene]\n  G --> A[Align coordinates]\n  M[Physics model] --> A\n  A --> S[Simulate motion]\n  S --> R[Render camera view]\n  R --> V[Compare with reality]\n```\n\n## Key terms\n\n- **Digital twin**: a model tied to a particular physical setup and the measurements it must reproduce.\n- **Gaussian splat**: a spatial, colored rendering primitive whose projected contribution blends into an image.\n- **Camera pose**: the camera's position and orientation relative to the scene.\n- **Registration**: aligning reconstructions and models within a common coordinate system.\n\n## Before / after\n\n- **Before:** Learn camera calibration, Collision geometry & contact solver fidelity, and System identification & simulator calibration before trusting a reconstructed scene.\n- **After:** Build Desk twin alignment before beauty contest, then Twin appearance-versus-physics ablation to separate visual improvements from dynamics improvements.\n\n## Try it in an afternoon\n\n1. **Watch the original Gaussian-splatting video** and identify what it demonstrates about novel views, not contact forces.\n2. **Inspect the SplatSim workflow** and locate the reconstruction, physics, and alignment stages before attempting installation.\n3. **Choose a static desk view** and compare landmarks against a simple geometric model; record coordinate and camera assumptions.\n4. **Design separate acceptance checks** for image alignment and an object's sliding or resting behavior; never combine them into one beauty score.",
+      "resources": [
+        {
+          "title": "3D Gaussian Splatting for Real-Time Radiance Field Rendering",
+          "url": "https://www.youtube.com/watch?v=T_kXY43VZnk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how reconstructed scenes render from changing viewpoints; this is evidence of appearance, not contact physics."
+        },
+        {
+          "title": "SplatSim: Zero-Shot Sim2Real Transfer of RGB Manipulation Policies Using Gaussian Splatting",
+          "url": "https://splatsim.github.io/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "See Gaussian splatting used over a simulator for robot manipulation and the alignment stages involved."
+        },
+        {
+          "title": "3D Gaussian Splatting for Real-Time Radiance Field Rendering",
+          "url": "https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read how calibrated images become optimized Gaussian primitives for novel-view rendering."
+        },
+        {
+          "title": "SplatSim",
+          "url": "https://github.com/qureshinomaan/SplatSim",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Inspect capture advice, calibration, alignment and rendering scripts from the robot-specific implementation."
+        }
+      ],
+      "sources": [
+        "https://splatsim.github.io/",
+        "https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/",
+        "https://github.com/qureshinomaan/SplatSim"
+      ]
+    },
+    {
+      "node_id": "k:robot-and-scene-formats-urdf-mjcf-sdf-usd",
+      "type": "knowledge",
+      "name": "Robot and scene formats: URDF, MJCF, SDF & USD",
+      "summary": "Robot and scene formats serialize geometry, structure, and selected simulation settings, but different formats do not preserve every feature during conversion.",
+      "lesson_md": "## In one sentence\n\nRobot and scene formats serialize geometry, structure, and selected simulation settings, but different formats do not preserve every feature during conversion.\n\n![Two named can models and a light listed in a Gazebo SDF world's entity tree](/img/lessons/knowledge_simulation-formats.webp)\n*Two named can models and a light listed in a Gazebo SDF world's entity tree. Source: [Gazebo documentation](https://gazebosim.org/docs/latest/sdf_worlds/), Creative Commons Attribution 4.0.*\n\n## Why it matters for us\n\n- **A mesh is not a robot:** controllers also need joints and reference frames; dynamics need mass, inertia, and collision information.\n- **Different workflows need different descriptions:** a robot model and a complete world with sensors, lighting, and plugins are not the same document.\n- **Conversion can lose meaning:** a file that loads successfully may no longer reproduce the source model's actuators or contact settings.\n\n> **Key idea:** Treat model conversion as a schema migration with semantic tests, not a change of filename.\n\n## How it works\n\nThese files resemble serialized object graphs. A loader parses their structure, resolves assets, and builds internal simulation objects; the supported fields determine what behavior survives.\n\n- **URDF** organizes a robot as links joined together; the ROS tutorial separates visual geometry from later joint, collision, and physical-property additions.\n- **MJCF** is MuJoCo's native XML modeling format; its modeling guide explains defaults, actuators, contact parameters, and URDF extensions.\n- **SDF** describes Gazebo worlds and models, including physics configuration, sensors, and plugins used by the world.\n- **USD** composes scene descriptions from reusable assets and layers, supporting collaborative scene assembly rather than just a list of triangles.\n- **Worked example:** Gazebo's SDF tutorial sets `max_step_size` to `0.001` seconds: a maximum physics step of one millisecond.\n- **Preserve simulation settings:** exporting only geometry does not retain the world's physics configuration.\n\n```mermaid\nflowchart LR\n  F[Source description] --> P[Parse schema]\n  P --> A[Resolve assets]\n  A --> M[Build runtime model]\n  M --> T[Test geometry and motion]\n  T --> C[Compare converted model]\n```\n\n## Key terms\n\n- **Link**: a robot body to which geometry and physical properties can be attached.\n- **Joint**: the connection specifying allowed relative motion between robot bodies.\n- **Inertia**: the body's resistance to angular acceleration, determined by how mass is distributed.\n- **Composition**: assembling a scene from descriptions that reference and refine other assets.\n- **Round trip**: exporting a model and importing it back to check which properties changed or disappeared.\n\n## Before / after\n\n- **Before:** Know XML, units, and coordinate transforms; separate a displayed shape from the Collision geometry & contact solver fidelity it requires.\n- **After:** Build URDF/MJCF linter for student robots, then Round-trip robot description loss report with explicit tests for properties you care about.\n\n## Try it in an afternoon\n\n1. **Read one small URDF model** from the tutorial repository and identify its links, joints, and referenced mesh paths.\n2. **Inspect the Gazebo SDF example** and separate world-level physics settings from the model's visible geometry.\n3. **List conversion requirements** for mass, joint limits, collision shapes, actuator behavior, and asset paths before exporting anything.\n4. **Compare before and after loading:** check structure and simple motion, and mark unsupported properties explicitly rather than silently replacing them.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Creating worlds",
+          "url": "https://www.youtube.com/watch?v=48TX-XJ14Gs",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the official world-building walkthrough, then follow the current SDF tutorial for syntax."
+        },
+        {
+          "title": "SDF worlds",
+          "url": "https://gazebosim.org/docs/latest/sdf_worlds/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build a world and inspect its physics configuration, models and entity tree."
+        },
+        {
+          "title": "urdf_tutorial: Learning URDF Step by Step",
+          "url": "https://github.com/ros/urdf_tutorial",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect small ROS 2 URDF examples organized from visual models to movable and physical models."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read MJCF modeling and URDF extensions to understand what the MuJoCo loader actually supports."
+        },
+        {
+          "title": "Introduction to USD",
+          "url": "https://openusd.org/release/intro.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand asset composition, scene assembly and non-destructive layering in USD."
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/latest/sdf_worlds/",
+        "https://github.com/ros/urdf_tutorial",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html",
+        "https://openusd.org/release/intro.html"
+      ]
+    },
+    {
+      "node_id": "k:ros-2-and-gazebo-simulation-integration",
+      "type": "knowledge",
+      "name": "ROS 2 and Gazebo simulation integration",
+      "summary": "ROS 2–Gazebo integration connects simulated commands and measurements to ROS nodes while keeping message types and simulation time consistent.",
+      "lesson_md": "## In one sentence\n\nROS 2–Gazebo integration connects simulated commands and measurements to ROS nodes while keeping message types and simulation time consistent.\n\n![A Gazebo robot and its corresponding ROS RViz visualization](/img/lessons/knowledge_simulation-ros-gazebo.webp)\n*A Gazebo robot and its corresponding ROS RViz visualization. Source: [Gazebo documentation](https://gazebosim.org/docs/latest/ros2_integration/), Creative Commons Attribution 4.0.*\n\n## Why it matters for us\n\n- **Reuse the software loop:** a ROS node can consume simulated sensor messages and send commands without changing the high-level algorithm.\n- **Messages need translation:** Gazebo Transport and ROS 2 do not automatically share every topic type or transport mechanism.\n- **Clocks affect correctness:** a message stamped in simulation time may appear stale or future-dated to a node using the machine's wall clock.\n\n> **Key idea:** A connected topic graph is necessary, but matching message semantics and clocks makes the integration useful.\n\n## How it works\n\nThink of `ros_gz_bridge` as a protocol adapter between two services. Its configuration maps topic names and message types, while ROS time provides a shared interpretation of timestamps.\n\n- **Simulate a sensor or actuator:** a Gazebo plugin produces measurements or consumes commands through Gazebo Transport topics.\n- **Configure translation:** the bridge supports specific message-type pairs, so confirm support rather than assuming arbitrary messages can cross.\n- **Worked example:** the tutorial bridges a laser scan with this command; the second `@` selects bidirectional traffic.\n\n```sh\nros2 run ros_gz_bridge parameter_bridge /scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan\n```\n\n- **Choose direction deliberately:** the tutorial also supports `[` for Gazebo-to-ROS traffic and `]` for ROS-to-Gazebo traffic after the ROS type.\n- **Use simulation time:** bridge `/clock` only from Gazebo to ROS and enable `use_sim_time` on participating ROS nodes.\n- **Pause as a diagnostic:** ROS time can stop with simulation; the system clock continues. Do not mix the two in elapsed-time calculations.\n\n```mermaid\nflowchart LR\n  C[ROS command] --> B[Message bridge]\n  B --> G[Gazebo robot]\n  G --> S[Simulated sensors]\n  S --> B\n  B --> R[ROS processing]\n  R --> C\n  T[Simulation clock] --> R\n```\n\n## Key terms\n\n- **Topic**: a named channel used to publish and subscribe to messages.\n- **Bridge**: a component translating supported messages between ROS and Gazebo transports.\n- **Timestamp**: the time assigned to a measurement or event, interpreted against a specific clock.\n- **ROS time**: a time abstraction that can follow simulation rather than the computer's system clock.\n\n## Before / after\n\n- **Before:** Understand ROS 2 topics, transforms, and Robot and scene formats: URDF, MJCF, SDF & USD; run the simulator before adding bridges.\n- **After:** Build Simulation clock and bridge oscilloscope, then ROS graph fault-injection sandbox with explicit expectations for stopped or delayed messages.\n\n## Try it in an afternoon\n\n1. **Choose compatible releases:** ROS 2 Lyrical pairs with Gazebo Jetty; ROS 2 Jazzy pairs with Gazebo Harmonic. Treat the Foxy video as conceptual only.\n2. **Inspect each side separately:** list the Gazebo topic and ROS topic, then compare their message types and sample payloads.\n3. **Visualize a bridged measurement** and compare its frame and timestamp with the simulated robot.\n4. **Pause and resume simulation:** record `/clock`, sensor timestamps, and node time to expose mixed-clock behavior.",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: ROS 2 Foxy integration",
+          "url": "https://www.youtube.com/watch?v=IpZTNyTp9t8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Official conceptual bridge walkthrough for Foxy; use the current documentation, not these older commands, for setup."
+        },
+        {
+          "title": "Use ROS 2 to interact with Gazebo",
+          "url": "https://gazebosim.org/docs/latest/ros2_integration/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow current topic/type syntax and visualize Gazebo data through ROS 2."
+        },
+        {
+          "title": "Installing Gazebo with ROS",
+          "url": "https://gazebosim.org/docs/latest/ros_installation/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Choose an officially supported ROS 2/Gazebo release pair before installing the bridge."
+        },
+        {
+          "title": "Bridge communication between ROS and Gazebo",
+          "url": "https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Check the supported message pairs, bridge directions and /clock guidance in ros_gz_bridge."
+        },
+        {
+          "title": "Clock and Time",
+          "url": "https://design.ros2.org/articles/clock_and_time.html",
+          "format": "Article",
+          "level": "Advanced",
+          "why": "Understand why ROS time can pause or jump and how use_sim_time activates the simulation time source."
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/latest/ros2_integration/",
+        "https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge",
+        "https://design.ros2.org/articles/clock_and_time.html",
+        "https://gazebosim.org/docs/latest/ros_installation/"
+      ]
+    },
+    {
+      "node_id": "k:sensor-simulation-rendering-synthetic-labels",
+      "type": "knowledge",
+      "name": "Sensor simulation, rendering & synthetic labels",
+      "summary": "Sensor simulation turns a virtual scene into measurements, while synthetic labels describe the objects those measurements should reveal.",
+      "lesson_md": "## In one sentence\n\nSensor simulation turns a virtual scene into measurements, while synthetic labels describe the objects those measurements should reveal.\n\n![Rendered cubes beside their bright object masks](/img/lessons/knowledge_simulation-sensors.webp)\n*Rendered cubes beside their bright object masks. Source: [Isaac Sim documentation](https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_getting_started.html), license unknown.*\n\n## Why it matters for us\n\n- **Generate paired examples:** a virtual camera produces images alongside annotations, avoiding manual labelling of every training image.\n- **Inspect the interface:** perception code receives measurements, not the simulator's complete internal description of the world.\n- **Test real images too:** the appearance gap is a pixel mismatch; the content gap is a mismatch in scene objects or arrangements.\n\n> **Key idea:** Correct synthetic labels do not prove that a detector will work on real camera images.\n\n## How it works\n\nThink of rendering as a fixture generator for image-processing tests. The scene is the fixture; its image is input, and annotations provide expected answers.\n\n- **Build the scene:** place geometry, lights and a camera, then attach semantic labels identifying objects of interest.\n- **Export paired data:** annotators compute labels; a writer saves them with the rendered images.\n- **Worked example:** Replicator's BasicWriter example captures three frames at 512 × 512 resolution with color images and tight two-dimensional bounding boxes.\n\n```mermaid\nflowchart LR\n  S[\"Labelled scene\"] --> C[\"Virtual camera\"]\n  C --> I[\"Rendered image\"]\n  C --> A[\"Annotations\"]\n  I --> W[\"Dataset writer\"]\n  A --> W\n```\n\n## Key terms\n\n- **Rendering**: computing an image from a virtual scene and camera.\n- **Semantic label**: a category attached to an object, such as a cube's class.\n- **Bounding box**: a rectangle enclosing an object's image region.\n- **Annotator**: a component computing an output such as boxes or camera parameters.\n\n## Before / after\n\n- **Before:** Know arrays and camera viewpoints; Gazebo's sensor tutorial introduces measurements beyond images.\n- **After:** Explore Synthetic label quality auditor and Virtual sensor truth-versus-noise wall with Isaac Sim / Isaac Lab or ManiSkill.\n\n## Try it in an afternoon\n\n1. **Start with BasicWriter** if Isaac Sim is available; otherwise inspect the published image and annotation workflow.\n2. **Capture a cube** and draw its saved bounding box over the matching image before training a detector.\n3. **Change one camera viewpoint** and compare how the picture and annotation change together.\n4. **Include an empty scene** and check that your dataset consumer handles frames containing no labelled objects.\n5. **Save paired examples** with their configuration so another student can inspect whether each annotation belongs to the correct image.",
+      "resources": [
+        {
+          "title": "Generate Synthetic Data with Omniverse Replicator: Overview (Part 1)",
+          "url": "https://www.youtube.com/watch?v=amVjqaABfU8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See NVIDIA's introduction to generating labelled synthetic images."
+        },
+        {
+          "title": "Getting Started Scripts",
+          "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_getting_started.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the small cube, camera and bounding-box capture example."
+        },
+        {
+          "title": "Sensors",
+          "url": "https://gazebosim.org/docs/latest/sensors/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Add simulated inertial, contact and lidar sensors and read their measurements."
+        },
+        {
+          "title": "Replicator",
+          "url": "https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand annotators, writers and appearance and content gaps."
+        }
+      ],
+      "sources": [
+        "https://docs.isaacsim.omniverse.nvidia.com/latest/replicator_tutorials/tutorial_replicator_getting_started.html",
+        "https://www.youtube.com/watch?v=amVjqaABfU8",
+        "https://gazebosim.org/docs/latest/sensors/",
+        "https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator.html"
+      ]
+    },
+    {
+      "node_id": "k:simulation-benchmarks-reproducible-evaluation",
+      "type": "knowledge",
+      "name": "Simulation benchmarks & reproducible evaluation",
+      "summary": "A simulation benchmark fixes tasks and scoring rules so robot programs can be compared through repeatable experiments rather than selected demonstrations.",
+      "lesson_md": "## In one sentence\n\nA simulation benchmark fixes tasks and scoring rules so robot programs can be compared through repeatable experiments rather than selected demonstrations.\n\n![SIMPLER compares real and simulated robot tasks beside their success-rate plot](/img/lessons/knowledge_simulation-benchmarks.webp)\n*SIMPLER compares real and simulated robot tasks beside their success-rate plot. Source: [SIMPLER project](https://simpler-env.github.io/), license unknown.*\n\n## Why it matters for us\n\n- **Compare fairly:** changing the task or starting conditions can change a score without improving the robot's decision-making.\n- **Keep failures visible:** one successful grasp video does not describe how often the same program fails.\n- **Question transfer:** SIMPLER investigates whether simulated evaluations reflect real robot performance rather than treating agreement as automatic.\n\n> **Key idea:** A score is meaningful only alongside the conditions and rules that produced it.\n\n## How it works\n\nThink of a benchmark as a shared integration-test suite. Each trial supplies a starting state, runs a robot program, and checks an explicit outcome.\n\n- **Define the contract:** record the task, observations, allowed actions, stopping rule and success test.\n- **Freeze the experiment:** save software revisions, configuration and starting conditions alongside results.\n- **Worked example:** in a proposed ten-trial exercise, seven successful placements give 7 / 10 = 70% success; the three failures remain in the report.\n- **Inspect ranking:** SIMPLER also measures disagreements about which policy performs better in simulation versus reality.\n\n```mermaid\nflowchart LR\n  C[\"Saved configuration\"] --> R[\"Reset task\"]\n  R --> P[\"Run policy\"]\n  P --> S[\"Check success\"]\n  S --> L[\"Log every trial\"]\n  L --> A[\"Aggregate results\"]\n```\n\n## Key terms\n\n- **Policy**: the robot program mapping observations to actions.\n- **Episode**: one attempt, from reset until a stopping condition.\n- **Seed**: a value initializing a pseudorandom generator so its sequence can be repeated.\n- **Success criterion**: the precise condition used to mark an attempt successful.\n\n## Before / after\n\n- **Before:** Know basic statistics and environment reset/step interfaces; SimplerEnv provides documented manipulation tasks and evaluation scripts.\n- **After:** Build Seeded simulation leaderboard in a box, then investigate Simulator-to-real ranking credibility study.\n\n## Try it in an afternoon\n\n1. **Choose one documented task** and write its success condition in plain English before running a policy.\n2. **Save a trial manifest** containing seeds, configuration and software revision; reserve evaluation trials rather than tuning on them.\n3. **Compare two simple policies** on identical starting conditions, recording every success, timeout and execution error.\n4. **Handle broken runs explicitly:** report no completed trials as unavailable, not zero-percent performance; retain error logs.\n5. **Publish counts with the score** and enough configuration for another student to repeat the comparison.",
+      "resources": [
+        {
+          "title": "SIMPLER: Simulated Manipulation Policy Evaluation for Real Robot Setups",
+          "url": "https://www.youtube.com/watch?v=SIcPxapIgBI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the authors compare real manipulation with corresponding simulated evaluations."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://simpler-env.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect paired tasks and the rationale for checking simulated versus real performance."
+        },
+        {
+          "title": "SimplerEnv: Simulated Manipulation Policy Evaluation Environments for Real Robot Setups",
+          "url": "https://github.com/simpler-env/SimplerEnv",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Find task names, evaluation scripts and reproducibility settings."
+        },
+        {
+          "title": "Evaluating Real-World Robot Manipulation Policies in Simulation",
+          "url": "https://arxiv.org/abs/2405.05941",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the paired sim-and-real evaluation study and its control and visual gap analysis."
+        }
+      ],
+      "sources": [
+        "https://simpler-env.github.io/",
+        "https://www.youtube.com/watch?v=SIcPxapIgBI",
+        "https://github.com/simpler-env/SimplerEnv",
+        "https://arxiv.org/abs/2405.05941"
+      ]
+    },
+    {
+      "node_id": "k:system-identification-simulator-calibration",
+      "type": "knowledge",
+      "name": "System identification & simulator calibration",
+      "summary": "System identification estimates a model from measured inputs and outputs; simulator calibration adjusts that model so its predictions match observed motion.",
+      "lesson_md": "## In one sentence\n\nSystem identification estimates a model from measured inputs and outputs; simulator calibration adjusts that model so its predictions match observed motion.\n\n![Input commands enter a system block and measured outputs leave it](/img/lessons/knowledge_simulation-calibration.webp)\n*Input commands enter a system block and measured outputs leave it. Source: [Underactuated Robotics](https://underactuated.mit.edu/sysid.html), license unknown.*\n\n## Why it matters for us\n\n- **Replace guessed settings:** a robot model needs parameters describing its motion; measurements provide evidence for choosing them.\n- **Predict beyond one frame:** MIT's notes distinguish matching the next observation from matching a full simulated trajectory.\n- **Check what data reveals:** some physical parameters cannot be identified from the motions and measurements available.\n\n> **Key idea:** A fitted model earns trust by predicting motion it was not adjusted to match.\n\n## How it works\n\nThink of this as implementing a stateful API from input/output traces. Matching one response is insufficient if the internal state makes later responses diverge.\n\n- **Record a trajectory:** collect commands and corresponding measurements over time.\n- **Choose adjustable parameters:** begin with one uncertain quantity rather than changing every physical setting.\n- **Worked example:** use a simulated pendulum as the hidden system; vary damping and choose the candidate minimizing squared angle differences over a recorded swing.\n- **Validate separately:** reserve another initial angle for testing the chosen model's complete predicted swing.\n- **Constrain the search:** bounded least squares can restrict candidate values rather than allowing physically meaningless settings.\n\n```mermaid\nflowchart LR\n  D[\"Recorded commands\"] --> M[\"Simulate candidate\"]\n  M --> E[\"Compare measured outputs\"]\n  E --> F[\"Adjust parameters\"]\n  F --> M\n  F --> V[\"Test held-out motion\"]\n```\n\n## Key terms\n\n- **Parameter**: an adjustable model constant, such as damping.\n- **Damping**: resistance associated with motion that dissipates mechanical energy.\n- **Residual**: predicted output minus the corresponding measured output.\n- **Identifiability**: whether available data distinguishes the parameter values being estimated.\n- **Held-out trajectory**: motion reserved for checking predictions rather than fitting parameters.\n\n## Before / after\n\n- **Before:** Know regression and time-series arrays; Time stepping & numerical fidelity helps separate numerical error from model mismatch.\n- **After:** Try Recover hidden simulated pendulum damping before STS3215 actuator model for sim-to-real or SO-101 calibration uncertainty challenge.\n\n## Try it in an afternoon\n\n1. **Generate a reference swing** in MuJoCo with damping hidden from the fitting code; keep other settings fixed.\n2. **Sweep candidate damping values** and plot each complete trajectory against the reference.\n3. **Compare fitting and validation errors** on separate swings, retaining the settings used to produce both.\n4. **Reject an empty trace** and flag a motionless pendulum that provides no useful evidence about damping.\n5. **Save prediction plots** rather than reporting only the optimizer's final parameter or success flag.",
+      "resources": [
+        {
+          "title": "What Is System Identification? | System Identification, Part 1",
+          "url": "https://www.mathworks.com/videos/system-identification-part-1-what-is-system-identification-1636628273301.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Brian Douglas distinguishes physical, data-driven and combined approaches to dynamic modelling."
+        },
+        {
+          "title": "Ch. 18 - System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Study equation versus simulation error, calibration and unidentifiable parameters."
+        },
+        {
+          "title": "least_squares",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Implement residual minimization with bounds for a small parameter-fitting exercise."
+        },
+        {
+          "title": "Modeling",
+          "url": "https://mujoco.readthedocs.io/en/stable/modeling.html#system-identification",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Read the focused section on fitting simulator parameters to recorded commands and sensor trajectories."
+        }
+      ],
+      "sources": [
+        "https://underactuated.mit.edu/sysid.html",
+        "https://www.mathworks.com/videos/system-identification-part-1-what-is-system-identification-1636628273301.html",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html",
+        "https://mujoco.readthedocs.io/en/stable/modeling.html#system-identification"
+      ]
+    },
+    {
+      "node_id": "k:time-stepping-numerical-fidelity",
+      "type": "knowledge",
+      "name": "Time stepping & numerical fidelity",
+      "summary": "Time stepping approximates continuous motion through repeated updates, and numerical fidelity describes how faithfully those updates reproduce the intended dynamics.",
+      "lesson_md": "## In one sentence\n\nTime stepping approximates continuous motion through repeated updates, and numerical fidelity describes how faithfully those updates reproduce the intended dynamics.\n\n![A plot of tiny changes in energy over time in a numerical physics example](/img/lessons/knowledge_simulation-time-stepping.webp)\n*A plot of tiny changes in energy over time in a numerical physics example. Source: [SciML documentation](https://docs.sciml.ai/DiffEqDocs/stable/examples/classical_physics/), license unknown.*\n\n## Why it matters for us\n\n- **Animation is not validation:** an arm can move smoothly on screen while numerical error changes its predicted motion.\n- **Check conserved quantities:** without friction or motor work, Modern Robotics uses total mechanical energy to check a simulated falling arm.\n- **Compare accuracy and cost:** smaller steps or more elaborate integration methods can reduce drift but require computational work.\n\n> **Key idea:** Test the numerical update rule before interpreting a simulated trajectory as a physical prediction.\n\n## How it works\n\nThink of motion as a stateful update loop with a simulated clock. Unlike a display refresh, this loop determines the calculated positions and velocities.\n\n- **Compute acceleration:** forward dynamics uses the current state and applied forces or torques.\n- **Advance the state:** an integration method approximates the next position and velocity.\n- **Worked example:** for a proposed one-second experiment, a 0.01-second step requires 100 updates; halving the step to 0.005 seconds requires 200.\n- **Separate the questions:** more updates do not create a better physical model; they approximate the same chosen dynamics differently.\n- **Inspect method choice:** SciML compares energy changes across numerical methods, including symplectic integration, a method designed for mechanical systems rather than arbitrary update rules.\n\n```mermaid\nflowchart LR\n  S[\"Position and velocity\"] --> A[\"Compute acceleration\"]\n  A --> I[\"Integrate one step\"]\n  I --> N[\"Next state\"]\n  N --> S\n  N --> E[\"Check trajectory and energy\"]\n```\n\n## Key terms\n\n- **State**: variables needed to continue the simulation, including position and velocity.\n- **Time step**: the amount of simulated time advanced per update.\n- **Integrator**: the numerical rule that advances the state.\n- **Energy drift**: accumulated change in calculated energy from numerical approximation in a system that should conserve it.\n\n## Before / after\n\n- **Before:** Know Python loops, vectors and the idea that velocity describes position change over time.\n- **After:** Use MuJoCo or Drake to explore Pendulum energy-drift cinema and Simulation speed versus fidelity dashboard.\n\n## Try it in an afternoon\n\n1. **Choose a frictionless pendulum** without motor input; record its initial state and energy.\n2. **Run a fixed simulated duration** with several step sizes, keeping the same starting state and integration method.\n3. **Plot energy change and angle** alongside computation time; compare trajectories at matching simulated times.\n4. **Change the integrator separately** to distinguish method effects from step-size effects.\n5. **Retain failure cases:** reject nonpositive steps and mark nonfinite states as failed runs, not missing plot points.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 8.5:  Forward Dynamics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch acceleration become motion and energy conservation become a numerical check."
+        },
+        {
+          "title": "8.5. Forward Dynamics of Open Chains",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the transcript on integration drift, smaller timesteps and more complex methods."
+        },
+        {
+          "title": "Classical Physics Models",
+          "url": "https://docs.sciml.ai/DiffEqDocs/stable/examples/classical_physics/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Work through energy-change plots and symplectic integration."
+        },
+        {
+          "title": "Computation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Read Numerical integration for MuJoCo's state-update methods and trade-offs."
+        }
+      ],
+      "sources": [
+        "https://docs.sciml.ai/DiffEqDocs/stable/examples/classical_physics/",
+        "https://www.youtube.com/watch?v=L8zpJOxDbh4",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-5-forward-dynamics-of-open-chains/",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html"
+      ]
+    }
+  ]
+}
