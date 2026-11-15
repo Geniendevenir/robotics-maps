@@ -530,6 +530,136 @@
         "https://www.youtube.com/watch?v=_eh1conN6YM",
         "https://python-control.readthedocs.io/en/latest/response.html#frequency-response-data"
       ]
+    },
+    {
+      "node_id": "k:system-identification-controller-tuning",
+      "type": "knowledge",
+      "name": "System identification & controller tuning",
+      "summary": "System identification fits a motion model from measured inputs and outputs; controller tuning chooses how strongly feedback corrects errors.",
+      "lesson_md": "## In one sentence\n\nSystem identification fits a motion model from measured inputs and outputs; controller tuning chooses how strongly feedback corrects errors.\n\n![Measured output compared with initial and optimized model predictions](/img/lessons/knowledge_control-system-identification-controller-tuning.webp)\n*Measured output and fitted model predictions. Source: [APMonitor](https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization), license unknown.*\n\n## Why it matters for us\n\n- **Measurements replace guesses:** A model fitted from experiments can describe response delays and dynamics that affect how well a controller tracks its target.\n- **Identification and tuning differ:** Identification changes the model parameters; tuning changes the controller gains. A good fit does not automatically supply a good controller.\n- **Plots make debugging concrete:** Compare input commands, measured output, and model predictions on the same timeline before blaming the feedback code.\n\n> **Key idea:** First learn how the system responds, then choose corrections for that response.\n\n## How it works\n\n- **Record a useful experiment:** Vary the input and record the resulting output with timestamps, rather than collecting only a motionless robot.\n- **Choose a compact model:** A first-order model with delay describes response size, response speed, and how long the output waits before reacting.\n- **Fit the parameters:** Minimize squared prediction errors, meaning the sum of squared differences between modeled and recorded output values.\n- **Worked fitting example:** APMonitor starts its fit with gain 2, time constant 3, and delay 0; optimization adjusts these against the recorded data.\n- **Think of performance profiling:** Measure the running system before changing configuration; your model plays the role of a reproducible benchmark.\n- **Tune against observed behavior:** ODrive's guide adjusts velocity gain before position gain, then adds velocity integral gain to address persistent error.\n- **Keep gain meanings separate:** Model gain describes input-to-output response size; controller gain determines the strength of a correction.\n\n```mermaid\nflowchart LR\n  U[Test inputs] --> R[System response]\n  R --> D[Recorded data]\n  D --> M[Fit model]\n  M --> T[Tune controller]\n  T --> V[Evaluate response]\n  V --> U\n```\n\n## Key terms\n\n- **System identification**: estimating model parameters from observed behavior.\n- **Time constant**: the characteristic response time of a first-order model.\n- **Delay**: time between an input change and its effect on the output.\n- **Residual**: the difference between a prediction and its measurement.\n\n## Before / after\n\n- **Before:** Read Dynamic system modeling & state-space and Feedback control & PID; know what a state, input, and feedback error represent.\n- **After:** Try Identify friction and inertia of one joint, then Cascaded position-velocity loop on an ODrive bench.\n\n## Try it in an afternoon\n\n1. **Run APMonitor's Python fitting example** using its supplied data, keeping the initial and optimized predictions on one plot.\n2. **Inspect the residuals** and compare the initial sum of squared errors with the optimized value.\n3. **Change the initial guesses** and repeat; note whether different starts produce similar predictions before moving to motor experiments.",
+      "resources": [
+        {
+          "title": "Fit Lower Order Models in Python",
+          "url": "https://www.youtube.com/watch?v=RVnId1hU7qE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Shows how recorded input and output data become a fitted dynamic model."
+        },
+        {
+          "title": "Optimization Method: FOPDT to Data",
+          "url": "https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Provides Python data, fitting code, and model-versus-measurement plots."
+        },
+        {
+          "title": "Tuning the Controller",
+          "url": "https://docs.odriverobotics.com/v/latest/guides/tuning.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains the order and observed symptoms used to tune cascaded motor-control gains."
+        },
+        {
+          "title": "System Identification",
+          "url": "https://underactuated.mit.edu/sysid.html",
+          "format": "Course",
+          "level": "Advanced",
+          "why": "Develops least-squares identification and explains which model errors matter for control."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=RVnId1hU7qE",
+        "https://apmonitor.com/pdc/index.php/Main/FirstOrderOptimization",
+        "https://docs.odriverobotics.com/v/latest/guides/tuning.html",
+        "https://underactuated.mit.edu/sysid.html"
+      ]
+    },
+    {
+      "node_id": "k:task-space-whole-body-control",
+      "type": "knowledge",
+      "name": "Task-space & whole-body control",
+      "summary": "Task-space control specifies goals for robot parts; whole-body control coordinates those goals with the robot's motion, contact, and actuator constraints.",
+      "lesson_md": "## In one sentence\n\nTask-space control specifies goals for robot parts; whole-body control coordinates those goals with the robot's motion, contact, and actuator constraints.\n\n![Task frames on several simulated robots, including a dual-arm robot and humanoid](/img/lessons/knowledge_control-task-space-whole-body-control.webp)\n*Task-based inverse kinematics on different robot bodies. Source: [Pink repository](https://github.com/pink-kinematics/pink), Apache-2.0.*\n\n## Why it matters for us\n\n- **Describe the outcome:** “Keep the hand here” is easier to reason about than manually coordinating every joint angle while other parts move.\n- **Multiple goals can conflict:** A hand target, preferred posture, and joint limits may not all be achievable together.\n- **Whole-body motion adds constraints:** A floating robot base and feet touching the ground require more than independent arm-joint corrections.\n\n> **Key idea:** Solve the tasks together, because moving one joint can help one goal and hurt another.\n\n## How it works\n\n- **Measure task error:** Compare a robot part's current position and orientation with its target, expressed in a consistent coordinate frame.\n- **Map joint motion to task motion:** A Jacobian is a matrix describing how small joint changes affect the chosen task.\n- **Start with velocities:** Differential inverse kinematics repeatedly chooses joint velocities that reduce task errors, then updates the robot configuration.\n- **Think of a constrained scheduler:** Tasks request outcomes, but a shared solver allocates motion while respecting limits instead of running independent commands.\n- **Worked task example:** Pink's biped example combines four tasks: base, left contact, right contact, and posture. The posture task supplies preferred joint angles.\n- **Add dynamics for torque control:** TSID uses Pinocchio to formulate optimization-based inverse dynamics, relating accelerations and contact forces to joint torques.\n- **Separate costs from constraints:** A weighted cost trades errors against each other; a hard constraint must be satisfied rather than merely assigned a large weight.\n\n```mermaid\nflowchart LR\n  G[Task targets] --> E[Task errors]\n  S[Robot state] --> E\n  E --> Q[Constrained solver]\n  L[Model and limits] --> Q\n  Q --> C[Motion command]\n  C --> S\n```\n\n## Key terms\n\n- **Task space**: coordinates describing the outcome, such as a hand's position, rather than individual joint angles.\n- **Posture**: the collection of joint positions used to shape the robot's overall configuration.\n- **Inverse dynamics**: computing forces or torques needed for desired accelerations.\n- **Quadratic program**: an optimization problem with a quadratic objective and linear constraints.\n\n## Before / after\n\n- **Before:** Read Joint-space control of robot arms and learn Jacobians; distinguish joint velocity commands from joint torque commands.\n- **After:** Explore TSID and Pinocchio, then Task-space controller: keep the hand still while the base moves.\n\n## Try it in an afternoon\n\n1. **Run a Pink arm example** in simulation and identify the task target and the model's joint limits.\n2. **Move the target** and plot task error as the configuration updates; keep the same initial pose for comparisons.\n3. **Add a posture preference** and change its cost; observe how the arm resolves competing goals without assuming this velocity-level demo proves balance.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 11.3:  Motion Control with Velocity Inputs (Part 3 of 3)",
+          "url": "https://www.youtube.com/watch?v=WuhEEidkes8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduces task-space feedback and mapping desired task motion into joint velocities."
+        },
+        {
+          "title": "GitHub - pink-kinematics/pink: Python inverse kinematics using Pinocchio and QP solvers · GitHub",
+          "url": "https://github.com/pink-kinematics/pink",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Gives runnable task-based velocity control with posture costs and joint limits."
+        },
+        {
+          "title": "GitHub - stack-of-tasks/tsid: Efficient Task Space Inverse Dynamics (TSID) based on Pinocchio · GitHub",
+          "url": "https://github.com/stack-of-tasks/tsid",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Connects task-based goals to inverse-dynamics control and robot examples."
+        },
+        {
+          "title": "Home · stack-of-tasks/tsid Wiki · GitHub",
+          "url": "https://github.com/stack-of-tasks/tsid/wiki",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Explains motion tasks, contact constraints, and the optimization variables used by TSID."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=WuhEEidkes8",
+        "https://github.com/pink-kinematics/pink",
+        "https://github.com/stack-of-tasks/tsid",
+        "https://github.com/stack-of-tasks/tsid/wiki",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-3-motion-control-with-velocity-inputs-part-3-of-3/"
+      ]
+    },
+    {
+      "node_id": "k:trajectory-generation-motion-profiles",
+      "type": "knowledge",
+      "name": "Trajectory generation & motion profiles",
+      "summary": "Trajectory generation turns a destination into timed motion targets, with profiles that control velocity, acceleration, and how quickly acceleration changes.",
+      "lesson_md": "## In one sentence\n\nTrajectory generation turns a destination into timed motion targets, with profiles that control velocity, acceleration, and how quickly acceleration changes.\n\n![Ruckig example profiles plotting position, velocity, acceleration, and jerk over time](/img/lessons/knowledge_control-trajectory-generation-motion-profiles.webp)\n*Timed motion profiles from Ruckig. Source: [Ruckig repository](https://github.com/pantor/ruckig), MIT.*\n\n## Why it matters for us\n\n- **A destination is incomplete:** A controller needs to know where the joint should be during the move, not only where it should finish.\n- **Timing changes the demand:** The same geometric path can require different speeds and accelerations depending on how quickly it is traversed.\n- **Smoothness has levels:** Continuous position does not guarantee continuous velocity or acceleration; inspect those curves separately.\n\n> **Key idea:** Choose how motion unfolds over time before asking feedback to follow it.\n\n## How it works\n\n- **Separate path from timing:** The path says where the robot travels; a time scaling says how far along it should be at each instant.\n- **Use a trapezoidal velocity profile:** Accelerate at a constant rate, coast at constant speed, then decelerate to rest.\n- **Notice the corners:** That profile's acceleration jumps between segments. An S-curve instead uses bounded jerk, the rate at which acceleration changes.\n- **Think of an animation interpolator:** A start and end keyframe need an interpolation rule; the intermediate samples matter as much as the endpoints.\n- **Worked cubic example:** Modern Robotics uses zero starting and ending speed. With normalized time r, path progress is `s = 3*r*r - 2*r*r*r`.\n- **Check the midpoint:** At r = 0.5, this gives s = 0.5. Zero endpoint speed still does not remove the cubic profile's endpoint acceleration jumps.\n- **Respect limits explicitly:** Ruckig takes current and target motion states plus velocity, acceleration, and jerk limits to calculate a trajectory.\n\n```mermaid\nflowchart LR\n  A[Current state] --> G[Trajectory generator]\n  B[Target and limits] --> G\n  G --> T[Timed targets]\n  T --> C[Feedback controller]\n  C --> R[Robot motion]\n  R --> A\n```\n\n## Key terms\n\n- **Trajectory**: a motion description that includes time, unlike a purely geometric path.\n- **Velocity**: how quickly position changes, including direction.\n- **Acceleration**: how quickly velocity changes.\n- **Jerk**: how quickly acceleration changes.\n- **Interpolation**: calculating intermediate values between supplied samples.\n\n## Before / after\n\n- **Before:** Understand Feedback control & PID and basic derivatives; separate the desired target from the measured joint position.\n- **After:** Try Smooth arm motions with Ruckig, then Online re-targeting with ros2 joint trajectory controller using ros2_controllers.\n\n## Try it in an afternoon\n\n1. **Plot the cubic example** for normalized times from zero to one, including its velocity and acceleration.\n2. **Run Ruckig's example** and plot position, velocity, acceleration, and jerk rather than inspecting position alone.\n3. **Reduce the jerk limit** while keeping the destination unchanged; compare motion duration and acceleration curves before considering a real arm.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapters 9.1 and 9.2:  Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Compares cubic, quintic, trapezoidal, and S-curve timing profiles."
+        },
+        {
+          "title": "9.1 and 9.2. Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Supplies the written explanation of endpoint conditions and timing choices."
+        },
+        {
+          "title": "GitHub - pantor/ruckig: Motion Generation for Robots and Machines. Real-time. Jerk-constrained. Time-optimal. · GitHub",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Shows how to specify motion states and limits for jerk-limited generation."
+        },
+        {
+          "title": "Trajectory Representation",
+          "url": "https://control.ros.org/lyrical/doc/ros2_controllers/joint_trajectory_controller/doc/trajectory.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Explains how waypoint fields affect interpolation continuity in ROS 2."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+        "https://github.com/pantor/ruckig",
+        "https://control.ros.org/lyrical/doc/ros2_controllers/joint_trajectory_controller/doc/trajectory.html"
+      ]
     }
   ]
 }
