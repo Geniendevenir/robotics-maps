@@ -657,6 +657,308 @@
         "https://docs.ros.org/en/rolling/p/image_pipeline/camera_info.html",
         "https://github.com/ros-perception/image_pipeline"
       ]
+    },
+    {
+      "node_id": "r:ros2-control",
+      "type": "robot",
+      "name": "ros2_control",
+      "summary": "ros2_control connects reusable robot controllers to hardware through standard interfaces for reading state and sending commands.",
+      "lesson_md": "## In one sentence\n\nros2_control connects reusable robot controllers to hardware through standard interfaces for reading state and sending commands.\n\n![The official ros2_control architecture linking controllers, resource management, and hardware](/img/lessons/robots_simulator_tool_7-ros2-control.webp)\n*The official ros2_control architecture linking controllers, resource management, and hardware. Source: [ros-controls contributors](https://control.ros.org/rolling/doc/getting_started/getting_started.html), license unknown.*\n\n## Why it matters for us\n\n- **Avoid rewriting the whole stack:** a hardware plugin can expose a robot's joints while existing controllers handle familiar command patterns.\n- **Separate hardware from behaviour:** the same controller concept can work with different devices when their interfaces match.\n- **Inspect before moving:** command-line tools reveal available interfaces and active controllers, making integration less mysterious.\n\n> **Key idea:** Sharing interface names is only the beginning; the driver must make those interfaces mean the right physical quantities.\n\n## What it is made of / how it works\n\n- **Read, update, write:** the controller manager reads hardware state, updates active controllers, then writes their commands back to hardware.\n- **Think of a device-driver boundary:** hardware plugins translate device-specific communication into named state and command interfaces.\n- **The resource manager coordinates access:** controllers request interfaces rather than directly opening a motor's communication port.\n- **Worked demo:** RRBot exposes `joint1/position` and `joint2/position`; a command containing `[0.5, 0.5]` updates both joints in the official simulated example.\n\n| Specification | Value |\n| --- | --- |\n| **Hardware component types** | 3: system, actuator, sensor |\n| **Main control-cycle operations** | 3: read, update, write |\n| **RRBot joints** | 2 |\n| **RRBot links** | 3 |\n| **Example command interface** | position |\n| **Robot configuration** | URDF ros2_control tags plus controller YAML |\n\n## Key terms\n\n- **State interface**: A named value read from hardware, such as measured joint position.\n- **Command interface**: A named value sent to hardware, such as a desired position.\n- **Plugin**: A loadable implementation behind a common software interface.\n- **Controller manager**: The component coordinating controller lifecycle and the control cycle.\n\n## Getting started\n\n1. **Start with the free RRBot demo:** choose documentation and packages matching your ROS distribution rather than mixing development and released versions.\n2. **Launch the documented fake-hardware example:** no motors or external power supply are needed for this first exercise.\n3. **Run `ros2 control list_hardware_interfaces`:** identify which position interfaces are available and claimed.\n4. **Run `ros2 control list_controllers`:** verify the broadcaster and position controller are active before sending the example command.\n5. **Read the hardware plugin next:** trace how a command becomes a simulated state before attempting a real device driver.\n\n## Used in\n\n- **Driver project:** ros2_control hardware interface for SO-101 proposes adapting this driver boundary to the lab's arm.\n- **Sim-matched digital twin of the arm electronics** connects interface design with simulated behaviour.\n- **Real-time OS & real-time control loops** explains why predictable update timing matters beyond a working API.",
+      "resources": [
+        {
+          "title": "You can use ANY hardware with ros2_control",
+          "url": "https://www.youtube.com/watch?v=J02jEKawE5U",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Articulated Robotics walks through the hardware-plugin boundary and its C++ implementation."
+        },
+        {
+          "title": "Example 1: RRBot",
+          "url": "https://control.ros.org/rolling/doc/ros2_control_demos/example_1/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect a complete two-joint control setup without real hardware."
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://control.ros.org/rolling/doc/getting_started/getting_started.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the controller manager, resource manager, and hardware components."
+        },
+        {
+          "title": "ros-controls/ros2_control",
+          "url": "https://github.com/ros-controls/ros2_control",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Trace the framework implementation and hardware-interface contracts."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=J02jEKawE5U",
+        "https://control.ros.org/rolling/doc/ros2_control_demos/example_1/doc/userdoc.html",
+        "https://control.ros.org/rolling/doc/getting_started/getting_started.html",
+        "https://github.com/ros-controls/ros2_control"
+      ]
+    },
+    {
+      "node_id": "r:ros2-controllers",
+      "type": "robot",
+      "name": "ros2_controllers",
+      "summary": "ros2_controllers supplies reusable control and state-broadcasting plugins that run inside the ros2_control framework.",
+      "lesson_md": "## In one sentence\n\nros2_controllers supplies reusable control and state-broadcasting plugins that run inside the ros2_control framework.\n\n![RRBot, the official two-joint demonstration used to switch between forwarding and trajectory controllers](/img/lessons/robots_simulator_tool_7-ros2-controllers.webp)\n*RRBot, the official two-joint demonstration used to switch between forwarding and trajectory controllers. Source: [ros-controls contributors](https://control.ros.org/rolling/doc/ros2_control_demos/example_1/doc/userdoc.html), license unknown.*\n\n## Why it matters for us\n\n- **Reuse established building blocks:** the collection includes joint trajectory, PID, admittance, and mobile-robot controllers rather than one universal control algorithm.\n- **Choose by task and interfaces:** an arm following timed joint targets needs different logic from a differential-drive base receiving body-velocity commands.\n- **Observe as well as command:** broadcasters publish measured hardware state, helping us compare requested motion with what the model or device reports.\n\n> **Key idea:** Selecting a controller also selects its input contract; a list of target angles is not automatically a monitored trajectory.\n\n## What it is made of / how it works\n\n- **Controllers consume references:** a desired motion enters through the selected controller's ROS interfaces and becomes commands for claimed hardware interfaces.\n- **Think of interchangeable strategies:** ros2_control hosts the plugins, while ros2_controllers provides ready-made implementations of particular control behaviours.\n- **Trajectory execution has two entrances:** the joint trajectory controller accepts an action with execution feedback or a fire-and-forget topic message.\n- **Worked example:** RRBot's tutorial switches its two position interfaces from a forward command controller to a joint trajectory controller; both must not command them simultaneously.\n\n| Specification | Value |\n| --- | --- |\n| **RRBot demonstration joints** | 2 |\n| **Trajectory command routes** | 2: action and topic |\n| **Trajectory action type** | control_msgs/action/FollowJointTrajectory |\n| **Trajectory message type** | trajectory_msgs/msg/JointTrajectory |\n| **Minimum trajectory feedback** | Joint position |\n| **Concurrent trajectory action goals** | At most 1 active goal |\n\n## Key terms\n\n- **Reference**: A target value or trajectory the controller should follow.\n- **Broadcaster**: A controller-interface plugin publishing hardware state to ROS topics.\n- **Tolerance**: An allowed difference between desired and actual motion.\n- **PID**: Proportional–integral–derivative feedback, combining current, accumulated, and changing error.\n\n## Getting started\n\n1. **Use the free controller collection** with a ros2_control installation matching your ROS distribution.\n2. **Run the RRBot example:** inspect its controller YAML and list active controllers before changing anything.\n3. **Follow the documented controller switch:** deactivate the forwarding controller before activating the trajectory controller on the same command interfaces.\n4. **Send a small simulated trajectory:** use the action interface when you need execution feedback and goal-tolerance checking.\n5. **Test an out-of-tolerance goal:** observe the reported failure instead of treating message publication as proof that motion succeeded.\n\n## Used in\n\n- **Online re-targeting with ros2 joint trajectory controller** proposes updating commands while motion is already underway.\n- **Admittance hand-guiding in simulation** explores a different controller family from simple joint tracking.\n- **Trajectory generation & motion profiles** explains the timed references these controllers execute.",
+      "resources": [
+        {
+          "title": "Solving the problem EVERY robot has (with ros2_control)",
+          "url": "https://www.youtube.com/watch?v=4QKsDf1c4hc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Articulated Robotics explains the standard controller collection and configures its differential-drive controller."
+        },
+        {
+          "title": "Example 1: RRBot",
+          "url": "https://control.ros.org/rolling/doc/ros2_control_demos/example_1/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Switch between two standard controller implementations on the same robot."
+        },
+        {
+          "title": "ros2_controllers",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/doc/controllers_index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Choose among controller and broadcaster families."
+        },
+        {
+          "title": "joint_trajectory_controller",
+          "url": "https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Study required interfaces, action feedback, tolerances, and goal replacement."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=4QKsDf1c4hc",
+        "https://control.ros.org/rolling/doc/ros2_control_demos/example_1/doc/userdoc.html",
+        "https://control.ros.org/rolling/doc/ros2_controllers/doc/controllers_index.html",
+        "https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html"
+      ]
+    },
+    {
+      "node_id": "r:rosbag2",
+      "type": "robot",
+      "name": "rosbag2",
+      "summary": "rosbag2 records ROS 2 message traffic to disk and replays it so you can inspect or repeat an experiment later.",
+      "lesson_md": "## In one sentence\n\nrosbag2 records ROS 2 message traffic to disk and replays it so you can inspect or repeat an experiment later.\n\n![Official ROS 2 playback diagram from the rosbag2 recording tutorial](/img/lessons/robots_simulator_tool_7-rosbag2.webp)\n*Official ROS 2 playback diagram from the rosbag2 recording tutorial. Source: [Open Robotics](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html), license unknown.*\n\n## Why it matters for us\n\n- **Keep evidence from a robot run:** a recording lets another student inspect the messages without repeating the original physical setup.\n- **Debug one input repeatedly:** replaying the same sensor stream helps compare downstream processing changes.\n- **Recording is not a completeness guarantee:** compatible communication settings and sufficient storage throughput still matter.\n\n> **Key idea:** A bag preserves recorded messages, not every hidden dependency or every message the sensor intended to publish.\n\n## What it is made of / how it works\n\n- **A recorder subscribes to topics:** incoming messages are written through a storage plugin alongside metadata describing the recording.\n- **A player publishes recorded traffic:** downstream nodes can consume it through ROS interfaces, rather than through a special offline-only API.\n- **Think of a replayable event log:** the log lets us revisit inputs, but it does not recreate unrecorded system state.\n- **Worked tutorial:** `ros2 bag record /turtle1/cmd_vel` captures turtle movement commands; after stopping recording, `ros2 bag info` reveals what was stored.\n\n| Specification | Value |\n| --- | --- |\n| **CLI entry point** | ros2 bag |\n| **Core workflow commands** | record, info, play |\n| **Included storage backends** | MCAP and SQLite3 |\n| **Tutorial command topic** | /turtle1/cmd_vel |\n| **QoS override configuration** | YAML file per-topic settings |\n| **Explicit QoS flag** | --qos-profile-overrides-path |\n\n## Key terms\n\n- **Bag**: A stored collection of ROS data and its recording metadata.\n- **Playback**: Publishing stored messages again for other nodes to consume.\n- **Storage plugin**: The implementation that writes and reads a particular recording format.\n- **QoS**: Quality of service, communication policies affecting delivery and publisher/subscriber compatibility.\n\n## Getting started\n\n1. **Use the free rosbag2 tools** supplied with your ROS 2 installation; budget separately for disk capacity and sustained write speed.\n2. **Start turtlesim and its keyboard controller:** inspect the command topic before recording it.\n3. **Record a short movement sequence:** stop the recorder cleanly, then inspect topic names and message counts with `ros2 bag info`.\n4. **Stop the original command publisher:** replay the bag and compare the observed motion with the original experiment.\n5. **Try an empty-input recording:** distinguish an existing bag directory from evidence that useful messages were actually captured.\n6. **Check QoS compatibility when data is missing:** use the documented override file rather than silently assuming the sensor stopped.\n\n## Used in\n\n- **Sensor QoS loss-versus-latency capture experiment** proposes measuring the difference between timely delivery and complete capture.\n- **Recording archive recovery and calibration-manifest integrity** asks whether saved data remains interpretable.\n- **ROS 2 sensor drivers, metadata & recording** supplies the acquisition and metadata context.",
+      "resources": [
+        {
+          "title": "ROS2 - Create and Replay a ROS2 Bag",
+          "url": "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Robotics Back-End demonstrates recording, inspecting, and replaying a ROS 2 topic."
+        },
+        {
+          "title": "Recording and playing back data",
+          "url": "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Reproduce the official turtlesim recording exercise."
+        },
+        {
+          "title": "ros2/rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect storage options, recorder features, and playback configuration."
+        },
+        {
+          "title": "rosbag2: Overriding QoS Policies",
+          "url": "https://docs.ros.org/en/jazzy/How-To-Guides/Overriding-QoS-Policies-For-Recording-And-Playback.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Diagnose incompatible communication settings during capture and replay."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=a-O1qM9_S7k",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+        "https://github.com/ros2/rosbag2",
+        "https://docs.ros.org/en/jazzy/How-To-Guides/Overriding-QoS-Policies-For-Recording-And-Playback.html"
+      ]
+    },
+    {
+      "node_id": "r:rplidar-a1",
+      "type": "robot",
+      "name": "RPLIDAR A1",
+      "summary": "RPLIDAR A1 is a rotating laser scanner that measures distances around one horizontal plane for robot sensing and mapping experiments.",
+      "lesson_md": "## In one sentence\n\nRPLIDAR A1 is a rotating laser scanner that measures distances around one horizontal plane for robot sensing and mapping experiments.\n\n![SLAMTEC illustration of the RPLIDAR A1 scanner and its surrounding scan plane](/img/lessons/robots_simulator_tool_7-rplidar-a1.webp)\n*SLAMTEC illustration of the RPLIDAR A1 scanner and its surrounding scan plane. Source: [SLAMTEC](https://www.slamtec.com/en/Lidar/A1), license unknown.*\n\n## Why it matters for us\n\n- **Make surroundings measurable:** a scan gives distances around the sensor instead of an ordinary colour photograph.\n- **Separate sensing from mapping:** the A1 supplies measurements; a mapping program must still combine scans with a model of robot motion.\n- **Start at the bench:** inspecting scans from a stationary sensor helps us understand geometry before mounting it on a moving base.\n\n> **Key idea:** A full revolution covers directions in a plane, not a complete three-dimensional model of the room.\n\n## What it is made of / how it works\n\n- **Triangulation estimates distance:** the sensor uses laser triangulation and vision acquisition, not a time-of-flight measurement principle.\n- **The core rotates clockwise:** measurements collected during rotation provide a surrounding two-dimensional scan.\n- **Think of a polling loop over angles:** each range belongs to a direction; the complete scan is an ordered collection, not one indivisible photograph.\n- **Worked sampling estimate:** at 8,000 samples per second and 10 revolutions per second, division gives about 800 samples per revolution; actual acquisition settings still matter.\n\n| Specification | Value |\n| --- | --- |\n| **Angular coverage** | 360° |\n| **Manufacturer sample-rate claim** | Up to 8,000 measurements/s |\n| **Configurable scan rate** | 2–10 Hz |\n| **Ranging principle** | Laser triangulation |\n| **Scan-rate adjustment** | Motor PWM signal |\n| **Official ROS 2 A1 launch file** | sllidar_a1_launch.py |\n\n## Key terms\n\n- **LiDAR**: Laser-based distance sensing used to measure surrounding surfaces.\n- **Scan plane**: The flat slice of space sampled by a two-dimensional scanner.\n- **Triangulation**: Inferring distance from the geometry of emitted and observed light.\n- **PWM**: Pulse-width modulation, controlling a signal by changing its on-time fraction.\n\n## Getting started\n\n1. **Check the exact A1 package:** current delivered EU price is unknown; verify whether the USB adapter and required cables are included.\n2. **Use the official SDK viewer or ROS 2 driver:** the software is available separately from the physical sensor.\n3. **Place the scanner on a stable surface:** leave its rotating assembly unobstructed and inspect the first scan before adding motion.\n4. **Compare a nearby wall with the displayed points:** identify its direction and shape in the scan.\n5. **Try the official A1 launch configuration:** verify the serial port, permissions, and model-specific settings rather than using another RPLIDAR model's parameters.\n\n## Used in\n\n- **Planar LiDAR scan geometry and blind-zone bench** proposes documenting coverage and missed regions directly.\n- **LiDAR reflectivity and incidence-angle return audit** proposes comparing returns from differently oriented surfaces.\n- **2D & 3D LiDAR hardware** explains why this planar sensor differs from a three-dimensional scanner.",
+      "resources": [
+        {
+          "title": "RPLidar and Hector SLAM for Beginners | ROS Tutorial #8",
+          "url": "https://www.youtube.com/watch?v=Qrtz0a7HaQ4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Tiziano Fiorenzani introduces the A1 hardware and scan viewer; its ROS 1 mapping commands are historical."
+        },
+        {
+          "title": "RPLIDAR-A1 Cost-Effective 360° Lidar Sensor | SLAMTEC",
+          "url": "https://www.slamtec.com/en/Lidar/A1",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read the manufacturer description of triangulation, rotation, and scan rate."
+        },
+        {
+          "title": "Slamtec/sllidar_ros2",
+          "url": "https://github.com/Slamtec/sllidar_ros2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Use the model-specific ROS 2 launch configuration and inspect scans."
+        },
+        {
+          "title": "Slamtec/rplidar_sdk",
+          "url": "https://github.com/Slamtec/rplidar_sdk",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Explore the lower-level device interface and SDK examples."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Qrtz0a7HaQ4",
+        "https://www.slamtec.com/en/Lidar/A1",
+        "https://github.com/Slamtec/sllidar_ros2",
+        "https://github.com/Slamtec/rplidar_sdk"
+      ]
+    },
+    {
+      "node_id": "r:rsl-rl",
+      "type": "robot",
+      "name": "RSL-RL",
+      "summary": "RSL-RL is a compact robot-learning library that trains neural-network controllers using batched experience from simulation environments.",
+      "lesson_md": "## In one sentence\n\nRSL-RL is a compact robot-learning library that trains neural-network controllers using batched experience from simulation environments.\n\n![RSL-RL paper diagram connecting simulation environments, runners, algorithms, and networks](/img/lessons/robots_simulator_tool_7-rsl-rl.webp)\n*RSL-RL paper diagram connecting simulation environments, runners, algorithms, and networks. Source: [Clemens Schwarke and coauthors](https://arxiv.org/html/2509.10771v1), license unknown.*\n\n## Why it matters for us\n\n- **Learn the trainer separately from the simulator:** RSL-RL supplies learning algorithms while an environment supplies robot observations, rewards, and transitions.\n- **Keep experiments understandable:** the library emphasises a small codebase that researchers can inspect and modify.\n- **Exploit parallel simulation:** GPU-based training batches many environment interactions instead of learning from one physical trial at a time.\n\n> **Key idea:** The training library updates a policy; the environment's observations, actions, and rewards still define what that policy can learn.\n\n## What it is made of / how it works\n\n- **The runner coordinates learning:** it steps the environment, gathers experience, and calls the selected algorithm to update networks.\n- **PPO learns from interaction:** proximal policy optimisation improves a policy using collected rewards rather than requiring labelled action examples.\n- **Think of a training backend behind an adapter:** the environment interface supplies tensors while the runner handles the repeated optimisation workflow.\n- **Worked data path:** observations enter the policy network, actions enter the simulator, and returned rewards drive training; evaluation later runs the saved policy without updating it.\n\n| Specification | Value |\n| --- | --- |\n| **Main components in paper** | 3: runners, algorithms, networks |\n| **Primary learning method** | PPO |\n| **Student-training option** | Teacher–student distillation |\n| **Training hardware design** | GPU-accelerated; multi-GPU support |\n| **Python package name** | rsl-rl-lib |\n| **Documented environment integrations** | Isaac Lab, Legged Gym, mjlab, MuJoCo Playground |\n\n## Key terms\n\n- **Policy**: A function mapping observations to actions.\n- **Reward**: A numerical signal specifying desirable outcomes during training.\n- **Runner**: The component coordinating environment interaction and learning updates.\n- **Distillation**: Training a student policy to reproduce a teacher's behaviour.\n\n## Getting started\n\n1. **Start with the free library and paper:** GPU compute and the chosen simulator's requirements are separate costs.\n2. **Choose a supported environment integration:** keep its required library version instead of combining unrelated installation recipes.\n3. **Use `pip install rsl-rl-lib`** only inside the environment selected for that integration, following the repository instructions.\n4. **Run a small supplied simulation task:** identify its observation vector, action meaning, and reward terms before tuning training parameters.\n5. **Save and evaluate a checkpoint:** inspect repeated rollouts and failures, not only the training reward curve or one successful animation.\n\n## Used in\n\n- **ETH Zurich Robotic Systems Lab (RSL)** is the map's institutional connection to this training library; using its code does not automatically reproduce a published robot's hardware performance.",
+      "resources": [
+        {
+          "title": "How to Train a Custom Quadruped Robot to Walk Using Isaac Lab",
+          "url": "https://www.youtube.com/watch?v=z62oU4hM1xM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The walkthrough explicitly trains through Isaac Lab’s rsl_rl scripts and explains the robot and reward configuration."
+        },
+        {
+          "title": "RSL-RL Documentation",
+          "url": "https://leggedrobotics.github.io/rsl_rl/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distinguish the learning library from its supported simulation environments."
+        },
+        {
+          "title": "leggedrobotics/rsl_rl",
+          "url": "https://github.com/leggedrobotics/rsl_rl",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect installation, runner code, and learning implementations."
+        },
+        {
+          "title": "RSL-RL: A Learning Library for Robotics Research",
+          "url": "https://arxiv.org/html/2509.10771v1",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study the modular architecture, PPO, and teacher–student training design."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=z62oU4hM1xM",
+        "https://leggedrobotics.github.io/rsl_rl/",
+        "https://github.com/leggedrobotics/rsl_rl",
+        "https://arxiv.org/html/2509.10771v1"
+      ]
+    },
+    {
+      "node_id": "r:rtab-map",
+      "type": "robot",
+      "name": "RTAB-Map",
+      "summary": "RTAB-Map builds maps while estimating motion, using recognised places to reconnect and correct the robot’s accumulated route.",
+      "lesson_md": "## In one sentence\n\nRTAB-Map builds maps while estimating motion, using recognised places to reconnect and correct the robot’s accumulated route.\n\n![RTAB-Map project figure showing visual relocalisation across lighting conditions](/img/lessons/robots_simulator_tool_7-rtab-map.webp)\n*RTAB-Map project figure showing visual relocalisation across lighting conditions. Source: [Mathieu Labbé and IntRoLab](https://introlab.github.io/rtabmap/), license unknown.*\n\n## Why it matters for us\n\n- **See a map improve after a revisit:** loop closure gives an understandable demonstration of correcting accumulated mapping error.\n- **Work with several sensor families:** the project supports RGB-D, stereo, and lidar graph-based mapping rather than requiring one particular camera.\n- **Study map reuse:** the project also documents multi-session mapping and visual relocalisation under changing illumination.\n\n> **Key idea:** Recognising a familiar-looking image suggests a loop closure; accepting that relationship changes the constraints of the map.\n\n## What it is made of / how it works\n\n- **Observations become places:** appearance matching estimates whether a new image comes from a location already encountered.\n- **Accepted matches add constraints:** a graph optimiser adjusts the map to reduce disagreement among its relationships.\n- **Think of reconciling linked records:** a new relationship can change earlier estimates, rather than merely appending another point to a route.\n- **Memory management limits active work:** the approach restricts locations used for loop detection and graph optimisation to support long-term operation.\n- **Worked example:** map a short route and return to its start; compare the route before and after an accepted loop instead of judging only the final map.\n\n| Specification | Value |\n| --- | --- |\n| **Mapping sensor families** | RGB-D, stereo, lidar |\n| **Full spatial mapping** | 6 degrees of freedom |\n| **Planar robot mapping** | 3 degrees of freedom |\n| **Map representation** | Graph of locations and constraints |\n| **Revisit mechanism** | Incremental appearance-based loop closure |\n| **Available interfaces** | Standalone application and library; ROS integration |\n\n## Key terms\n\n- **SLAM**: Simultaneous localisation and mapping, estimating motion while building a map.\n- **RGB-D**: Colour images accompanied by depth measurements.\n- **Loop closure**: A recognised revisit that links two parts of a trajectory.\n- **Relocalisation**: Finding the current position again within an existing map.\n\n## Getting started\n\n1. **Start with the free standalone software:** check the installation guide for your platform; sensors, compute, and storage are separate costs.\n2. **Choose an official tutorial or recorded dataset:** avoid adding ROS integration and physical hardware at the same time.\n3. **Run a short mapping sequence:** inspect the estimated trajectory as well as the reconstructed surfaces.\n4. **Identify an accepted revisit:** record which relationship changed and whether the route correction is consistent with the scene.\n5. **Try a visually repetitive segment:** report rejected or incorrect matches rather than presenting every visible correction as success.\n\n## Used in\n\n- **Film a map correction after a verified loop** proposes making the correction and its evidence visible.\n- **Build a look-alike-room loop rejection test** explores false place matches.\n- **Place recognition, loop closure & relocalization** explains the central mechanism beyond this particular implementation.",
+      "resources": [
+        {
+          "title": "RTAB-Map RGB-D mapping (desktop example)",
+          "url": "https://www.youtube.com/watch?v=Nm2ggyAW4rw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The creator demonstrates RGB-D mapping in RTAB-Map’s desktop application."
+        },
+        {
+          "title": "Tutorials",
+          "url": "https://github.com/introlab/rtabmap/wiki/Tutorials",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Choose a supported mapping exercise and dataset workflow."
+        },
+        {
+          "title": "RTAB-Map | Real-Time Appearance-Based Mapping",
+          "url": "https://introlab.github.io/rtabmap/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand loop closure, memory management, and multi-session mapping."
+        },
+        {
+          "title": "introlab/rtabmap",
+          "url": "https://github.com/introlab/rtabmap",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Explore the standalone library and links to build and API documentation."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Nm2ggyAW4rw",
+        "https://github.com/introlab/rtabmap/wiki/Tutorials",
+        "https://introlab.github.io/rtabmap/",
+        "https://github.com/introlab/rtabmap"
+      ]
+    },
+    {
+      "node_id": "r:ruckig",
+      "type": "robot",
+      "name": "Ruckig",
+      "summary": "Ruckig generates timed motions from a current state to a target state while respecting velocity, acceleration, and jerk limits.",
+      "lesson_md": "## In one sentence\n\nRuckig generates timed motions from a current state to a target state while respecting velocity, acceleration, and jerk limits.\n\n![Ruckig’s published single-axis S-curve trajectory profile](/img/lessons/robots_simulator_tool_7-ruckig.webp)\n*Ruckig’s published single-axis S-curve trajectory profile. Source: [Lars Berscheid and Ruckig contributors](https://github.com/pantor/ruckig), license unknown.*\n\n## Why it matters for us\n\n- **Avoid abrupt command changes:** motion needs limits on speed and acceleration, not just a destination angle.\n- **Retarget during execution:** online generation can respond when the desired state changes while the robot is already moving.\n- **Separate geometry from timing:** a joint-space trajectory still needs collision checking and hardware-compatible limits before execution.\n\n> **Key idea:** Smooth, limit-respecting joint motion is not the same as a collision-free or physically safe robot task.\n\n## What it is made of / how it works\n\n- **Provide complete states:** current and target position, velocity, and acceleration describe the motion request, alongside per-axis limits.\n- **Request the next sample:** `update` returns a new state along the trajectory; `pass_to_input` advances the expected starting state for the next cycle.\n- **Think of a rate-limited state transition:** rather than jumping between assignments, the generator computes a timed sequence connecting the old and new states.\n- **Worked setup:** the official tutorial uses six degrees of freedom and a control period of `0.001` seconds, meaning one requested update per millisecond.\n\n| Specification | Value |\n| --- | --- |\n| **Tutorial axis count** | 6 degrees of freedom |\n| **Tutorial control period** | 0.001 s |\n| **Input data groups** | 3: current state, target state, limits |\n| **Constrained quantities** | Velocity, acceleration, jerk |\n| **Community license** | MIT |\n| **Python installation** | pip install ruckig |\n| **Community intermediate waypoints** | Remote cloud calculation, not real-time local generation |\n\n## Key terms\n\n- **Trajectory**: A motion described as a function of time.\n- **Acceleration**: How quickly velocity changes.\n- **Jerk**: How quickly acceleration changes.\n- **State-to-state motion**: A transition between specified starting and ending motion states.\n\n## Getting started\n\n1. **Start with the free Community version:** paid Pro features are separate; local state-to-state examples need no physical arm.\n2. **Install with `pip install ruckig`** in an isolated Python environment, as documented by the project.\n3. **Run a supplied example:** plot position, velocity, and acceleration against time before connecting any hardware.\n4. **Reduce the jerk limit:** compare the resulting acceleration changes and motion duration with the original run.\n5. **Change the target mid-motion:** inspect continuity, validate input limits, and handle error results instead of sending unchecked output to motors.\n\n## Used in\n\n- **Smooth arm motions with Ruckig** proposes turning raw targets into inspectable motion profiles.\n- **Jerk-limited trajectories on the real SO-101** adds hardware execution after simulation and limit checks.\n- **Smoothing learned-policy actions** connects trajectory generation to commands produced by learned models.",
+      "resources": [
+        {
+          "title": "Ruckig: Tutorial",
+          "url": "https://docs.ruckig.com/tutorial.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the current-state, target-state, and control-cycle API."
+        },
+        {
+          "title": "RSS 2021, Spotlight Talk 24: Jerk-limited Real-time Trajectory Generation with Arbitrary Target...",
+          "url": "https://www.youtube.com/watch?v=b6y_3JvGFJo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The RSS spotlight presents the Ruckig algorithm and its constrained state-to-state motion problem."
+        },
+        {
+          "title": "pantor/ruckig",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Run examples and distinguish Community and Pro waypoint behaviour."
+        },
+        {
+          "title": "Jerk-limited Real-time Trajectory Generation with Arbitrary Target States",
+          "url": "https://arxiv.org/abs/2105.04830",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Study time synchronisation and the jerk-limited algorithm."
+        }
+      ],
+      "sources": [
+        "https://docs.ruckig.com/tutorial.html",
+        "https://www.youtube.com/watch?v=b6y_3JvGFJo",
+        "https://github.com/pantor/ruckig",
+        "https://arxiv.org/abs/2105.04830",
+        "https://roboticsconference.org/2021/program/papers/015/"
+      ]
     }
   ]
 }
