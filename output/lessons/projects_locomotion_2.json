@@ -1,0 +1,234 @@
+{
+  "batch": "projects_locomotion_2",
+  "lessons": [
+    {
+      "node_id": "p:map-stable-hopping-parameters",
+      "type": "project",
+      "name": "Map stable hopping parameters",
+      "summary": "Sweep a springy simulated leg's stiffness and landing angle to find which settings return to a repeatable hop.",
+      "lesson_md": "## In one sentence\n\nSweep a springy simulated leg's stiffness and landing angle to find which settings return to a repeatable hop.\n\n![SLIP point mass on a spring leg, with leg length and angle labelled](/img/lessons/projects_locomotion_2-hopping.webp)\n*SLIP point mass on a spring leg, with leg length and angle labelled. Source: [Underactuated Robotics](https://underactuated.mit.edu/simple_legs.html), license unknown.*\n\n## What you will learn\n\n- **SLIP** means spring-loaded inverted pendulum: a point mass above a massless spring leg, alternating between flight and ground contact.\n- **A return map** plots one hop's highest point against the next; a fixed point repeats the same height.\n- **Think regression tests:** the simulator is a function, while each initial state and parameter pair is a reproducible test fixture.\n\n> **Key idea:** A repeatable hop is a property of the return map, not proof that every nearby launch will work.\n\n## What you need\n\n- **Start after Simulate LIPM versus SLIP** and revisit Reduced-order locomotion models; this is a student experiment, not a published robot result.\n- **Use Python and Drake:** MIT's SLIP notebook supplies the model and event detection; Pinocchio is a related map tool, not required here.\n- **Simulation plan:** the map estimates 2–4 weeks and €0 hardware, excluding the computer; these are planning assumptions.\n\n## Steps\n\n1. **Reproduce the reference:** MIT uses dimensionless stiffness 10.7, dimensionless energy 1.61, and a touchdown angle of 30 degrees.\n2. **Find apex events:** record height when vertical velocity crosses zero from positive to negative; distinguish this from touchdown and takeoff.\n3. **Hold energy fixed** while sweeping initial apex heights; adjust horizontal speed consistently, as the notebook does.\n4. **Sweep stiffness and angle** and plot next height against current height, including the equal-height diagonal.\n5. **Perturb candidate fixed points** and replay consecutive hops; mark missing next-apex events as failures, not zeros.\n6. **Demo the parameter map** alongside animations of convergence, backward falls, and timeouts.\n\n```mermaid\nflowchart LR\n A[\"Choose parameters\"] --> B[\"Launch at apex\"]\n B --> C[\"Touchdown and stance\"]\n C --> D[\"Next apex\"]\n D --> E[\"Plot return map\"]\n E --> A\n```\n\n## Common pitfalls\n\n- **Event timing matters:** stepping past contact without locating its zero crossing can corrupt the return map.\n- **Partial stability is not universal stability:** the one-dimensional analysis assumes conserved energy; disturbances changing that energy require separate tests.\n- **Reject invalid inputs:** include nonpositive stiffness, impossible energy/height combinations, and launches that never reach contact.\n\n## When it's done\n\n- **Publish reproducible plots**, parameters, failure counts, and replayable traces, ready for Test reduced-model predictions on a full robot.\n- **Keep the conclusion local:** describe tested parameter regions, not guaranteed hardware performance.",
+      "resources": [
+        {
+          "title": "LegLab",
+          "url": "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the physical hopping research behind simplified spring-leg models."
+        },
+        {
+          "title": "underactuated/book/simple_legs/slip.ipynb at master · RussTedrake/underactuated · GitHub",
+          "url": "https://github.com/RussTedrake/underactuated/blob/master/book/simple_legs/slip.ipynb",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the SLIP simulation and apex-to-apex plotting example."
+        },
+        {
+          "title": "Ch. 4 - Simple Models of Walking and Running",
+          "url": "https://underactuated.mit.edu/simple_legs.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Understand fixed points, conserved energy, and the limits of hopping stability."
+        },
+        {
+          "title": "Drake: WitnessFunction< T > Class Template Reference",
+          "url": "https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1_witness_function.html",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Understand zero-crossing events used to detect touchdown and apex."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=Bd5iEke6UlE",
+        "https://github.com/RussTedrake/underactuated/blob/master/book/simple_legs/slip.ipynb",
+        "https://underactuated.mit.edu/simple_legs.html",
+        "https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1_witness_function.html"
+      ]
+    },
+    {
+      "node_id": "p:normalize-gait-observations-across-two-virtual-bodies",
+      "type": "project",
+      "name": "Normalize gait observations across two virtual bodies",
+      "summary": "Build a checked observation adapter that compares two simulated bodies without pretending their joint layouts are interchangeable.",
+      "lesson_md": "## In one sentence\n\nBuild a checked observation adapter that compares two simulated bodies without pretending their joint layouts are interchangeable.\n\n![MuJoCo Menagerie's simulated Unitree Go1, one possible body for an observation comparison](/img/lessons/projects_locomotion_2-observations.webp)\n*MuJoCo Menagerie's simulated Unitree Go1, one possible body for an observation comparison. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1), BSD-3-Clause.*\n\n## What you will learn\n\n- **An observation** is the bundle of measurements passed to a controller; equal vector lengths do not guarantee equal meanings.\n- **A coordinate frame** defines the axes of a measurement; body-relative velocity differs from velocity measured against the world.\n- **Treat this like an API migration:** map named fields, units, and missing values before comparing serialized arrays.\n\n> **Key idea:** Normalize meaning before magnitude; scaling cannot repair a mismatched joint or coordinate frame.\n\n## What you need\n\n- **Begin with Intro: train an RL policy in a GPU simulator** and Cross-embodiment locomotion policies; this proposal does not demonstrate policy transfer.\n- **Choose two documented bodies** in MuJoCo Playground or Isaac Sim / Isaac Lab; verify compatible assets and software revisions before collecting traces.\n- **Simulation budget:** the map estimates 2–4 weeks and €0 hardware, excluding computing equipment.\n\n## Steps\n\n1. **Write an observation manifest:** record each field's name, units, coordinate frame, ordering, and whether it is available on both bodies.\n2. **Inspect the archived Go1 example:** its state stacks local velocity, angular velocity, gravity, joint offsets, joint velocities, previous actions, and commands.\n3. **Work one concrete example:** Go1's joint-position block contains 12 values and subtracts the default pose; preserve joint names before comparing those offsets.\n4. **Implement explicit adapters:** select shared body measurements, choose documented reference scales, and emit a compatibility mask for joint-specific entries.\n5. **Test standing and moving traces:** include zero commands, absent contact, missing fields, nonfinite values, and deliberately shuffled joint names.\n6. **Demo aligned plots** for shared features and a clearly labelled table of incompatible fields; keep the raw measurements alongside normalized outputs.\n\n```mermaid\nflowchart LR\n A[\"Body A trace\"] --> C[\"Check field meanings\"]\n B[\"Body B trace\"] --> C\n C --> D[\"Transform and scale\"]\n D --> E[\"Plot shared fields\"]\n C --> F[\"Mark incompatible fields\"]\n```\n\n## Common pitfalls\n\n- **Do not expose privileged state:** the Go1 example separates ordinary observations from extra simulator information available during training.\n- **Do not silently pad joints:** a missing joint is incompatibility, not evidence that its angle or action equals zero.\n- **Pin the example:** the cited Go1 implementation lives in the RSS 2025 archive, not the current Playground task layout.\n\n## When it's done\n\n- **Deliver the schema, adapters, tests, and plots**, including rejection counts and reasons rather than only successful overlays.\n- **Continue to Test one policy on scaled virtual quadrupeds** only after establishing the observation contract; aligned inputs alone promise no shared control capability.",
+      "resources": [
+        {
+          "title": "Highlight reel for MuJoCo Playground 1.0 launch!",
+          "url": "https://www.youtube.com/watch?v=NUjmOEnvL9g",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the simulator platform; the adapter itself is your proposed experiment."
+        },
+        {
+          "title": "mujoco_playground/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py at main · google-deepmind/mujoco_playground · GitHub",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the exact ordinary and privileged Go1 observation vectors."
+        },
+        {
+          "title": "isaaclab.managers — Isaac Lab Documentation",
+          "url": "https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.managers.html#observation-manager",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Study observation groups, terms, scaling, and shape handling."
+        },
+        {
+          "title": "MuJoCo Playground",
+          "url": "https://arxiv.org/abs/2502.08844",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original multi-platform environment context, not a claim of automatic input compatibility."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=NUjmOEnvL9g",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+        "https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.managers.html#observation-manager",
+        "https://arxiv.org/abs/2502.08844",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1",
+        "https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.managers.html"
+      ]
+    },
+    {
+      "node_id": "p:plot-a-leg-workspace-and-force-map",
+      "type": "project",
+      "name": "Plot a leg workspace and force map",
+      "summary": "Plot where a planar leg can put its foot and which static foot forces fit within chosen joint-torque limits.",
+      "lesson_md": "## In one sentence\n\nPlot where a planar leg can put its foot and which static foot forces fit within chosen joint-torque limits.\n\n![Pupper leg assembly with linked upper and lower leg members](/img/lessons/projects_locomotion_2-workspace.webp)\n*Pupper leg assembly with linked upper and lower leg members. Source: [Stanford Pupper assembly guide](https://pupper.readthedocs.io/en/latest/guide/assembly.html), license unknown.*\n\n## What you will learn\n\n- **Workspace** means the set of reachable foot positions; it depends on link geometry and allowed joint angles.\n- **Torque** is a twisting effort at a joint; a **Jacobian** translates small joint motions into foot motion.\n- **A static force map** relates foot forces to joint torques; it is not a prediction of jumping performance.\n- **Think input-domain visualization:** forward kinematics is a function from joint angles to foot coordinates, and the workspace plots its valid outputs.\n\n> **Key idea:** A reachable foot position does not imply that the leg can push equally hard in every direction.\n\n## What you need\n\n- **Follow Intro: train an RL policy in a GPU simulator** and study Leg design & proprioceptive actuation; this student proposal needs no physical motors.\n- **Use a planar model**, plotting tools, explicit link dimensions and torque limits; Pinocchio can provide kinematics and Jacobians.\n- **Plan one week:** the map's €0 hardware estimate excludes the computer; torque limits must come from your selected model, not guesses.\n\n## Steps\n\n1. **Define the hip frame** and joint limits; draw which direction counts as positive rotation for each joint.\n2. **Sample joint configurations** and calculate foot positions; plot the reachable point cloud with equal horizontal and vertical scales.\n3. **Calculate the Jacobian** at selected poses, checking its predicted foot displacement against a small joint-angle change.\n4. **Map force to torque:** use the static relation below, with all vectors expressed in consistent frames.\n5. **Work a directional example:** test a unit upward force, compute its required joint torques, then scale until the first torque limit is reached.\n6. **Demo force arrows** across the workspace, highlighting straight-leg singularities and configurations outside the selected limits.\n\n```mermaid\nflowchart LR\n A[\"Joint samples\"] --> B[\"Foot positions\"]\n A --> C[\"Jacobians\"]\n C --> D[\"Force to torque\"]\n D --> E[\"Limit checks\"]\n B --> F[\"Workspace overlay\"]\n E --> F\n```\n\nThe transpose of the Jacobian maps foot force to joint torque: `tau = J.T @ force`. This static calculation must handle gravity separately if the model includes link weight.\n\n## Common pitfalls\n\n- **A force ellipsoid is not a torque box:** label the effort constraint you actually used rather than mixing different limit assumptions.\n- **Reject malformed configurations:** test nonfinite angles, an empty sample set, unreachable requested feet, and zero torque allowance.\n\n## When it's done\n\n- **Deliver labelled plots and reproducible model settings**, with a hand-checked pose and explicit treatment of singularities.\n- **Continue to Compare virtual leg ratios** using the same sampling and effort conventions for a fair comparison.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 5.2:  Statics of Open Chains",
+          "url": "https://www.youtube.com/watch?v=eBti6XIoR5U",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn why the Jacobian transpose maps endpoint force to torque."
+        },
+        {
+          "title": "2.5. Task Space and Workspace",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Distinguish the joint input domain from reachable foot locations."
+        },
+        {
+          "title": "5.4.  Manipulability",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "Understand directional force capability and singular configurations."
+        },
+        {
+          "title": "Assembly",
+          "url": "https://pupper.readthedocs.io/en/latest/guide/assembly.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the real Pupper leg linkage behind the motivating picture."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=eBti6XIoR5U",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-4-manipulability/",
+        "https://pupper.readthedocs.io/en/latest/guide/assembly.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-2-statics-of-open-chains/"
+      ]
+    },
+    {
+      "node_id": "p:prototype-a-passive-leg-linkage",
+      "type": "project",
+      "name": "Prototype a passive leg linkage",
+      "summary": "Build a hand-moved tabletop leg linkage and compare its measured foot positions with a computer-aided design model.",
+      "lesson_md": "## In one sentence\n\nBuild a hand-moved tabletop leg linkage and compare its measured foot positions with a computer-aided design model.\n\n![Assembled Pupper hip and leg linkage, a powered reference to simplify into an unpowered prototype](/img/lessons/projects_locomotion_2-passive-linkage.webp)\n*Assembled Pupper hip and leg linkage, a powered reference to simplify into an unpowered prototype. Source: [Stanford Pupper assembly guide](https://pupper.readthedocs.io/en/latest/guide/assembly.html), license unknown.*\n\n## What you will learn\n\n- **A linkage** joins rigid members through movable joints; its geometry constrains where the foot can go.\n- **Passive here means unpowered:** you move the mechanism by hand; it does not mean the prototype must walk downhill autonomously.\n- **CAD**, or computer-aided design, supplies predicted geometry; measurements reveal assembly errors and joint looseness.\n- **Think implementation versus specification:** CAD is the expected behavior, while the physical prototype is an implementation tested against that contract.\n\n> **Key idea:** A mechanism can match its planned motion poorly even when every individual part looks correct.\n\n## What you need\n\n- **Start after Compare virtual leg ratios** and revisit Leg design & proprioceptive actuation; Stanford Pupper provides a reference, not a complete passive-leg recipe.\n- **Choose a documented linkage**, CAD access, a stable tabletop base, hand tools, and a way to measure foot coordinates against a fixed reference.\n- **Keep power disconnected:** no battery, powered servo motion, or high-power custom actuator belongs in this project.\n- **Treat budget as unquoted:** the map lists 1–2 months and a below-€500 planning band, but procurement cost remains unknown until parts are selected.\n\n## Steps\n\n1. **Inspect the reference geometry:** Pupper's guide shows an upper-leg extension rod connected to the lower-leg carbon linkage.\n2. **Choose the passive adaptation:** preserve the intended joint geometry while replacing powered inputs with hand-moved, mechanically supported joints.\n3. **Model the assembly in CAD:** record pivot locations, joint limits, and any closed loops; Pinocchio is optional for numerical comparisons.\n4. **Work a pose example:** set one marked input position, predict the foot coordinate, then measure from the same base axes.\n5. **Repeat across the workspace:** approach marked poses from both directions to expose looseness, binding, and inconsistent measurements.\n6. **Demo a prediction overlay** with photographs of measured poses and a table of coordinate differences.\n\n```mermaid\nflowchart LR\n A[\"Reference linkage\"] --> B[\"Passive CAD design\"]\n B --> C[\"Tabletop build\"]\n C --> D[\"Measure foot poses\"]\n B --> E[\"Predict foot poses\"]\n D --> F[\"Compare errors\"]\n E --> F\n```\n\n## Common pitfalls\n\n- **Closed loops constrain joints:** do not command every joint independently when a linkage couples their motion.\n- **Record failures:** include a blocked pose, an empty measurement file, and invalid coordinates; never force a binding joint.\n\n> **Watch out:** Keep fingers outside closing linkage gaps while moving the prototype by hand.\n\n## When it's done\n\n- **Deliver an unpowered demonstration**, CAD, dimensions, repeat measurements, and mismatches; claim only measured workspace agreement, not load capacity or walking ability.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 7:  Kinematics of Closed Chains",
+          "url": "https://www.youtube.com/watch?v=5wCK6XGC3ig",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why linked joints and closed loops cannot always move independently."
+        },
+        {
+          "title": "Assembly",
+          "url": "https://pupper.readthedocs.io/en/latest/guide/assembly.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Study Pupper's leg members, extension rod, and connection sequence."
+        },
+        {
+          "title": "Mechanical Design",
+          "url": "https://pupper.readthedocs.io/en/latest/reference/design.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Find the official Pupper CAD model for inspecting linkage geometry."
+        },
+        {
+          "title": "2.5. Task Space and Workspace",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Define the reachable foot coordinates to compare with the physical prototype."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=5wCK6XGC3ig",
+        "https://pupper.readthedocs.io/en/latest/guide/assembly.html",
+        "https://pupper.readthedocs.io/en/latest/reference/design.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/"
+      ]
+    },
+    {
+      "node_id": "p:push-a-simulated-standing-quadruped",
+      "type": "project",
+      "name": "Push a simulated standing quadruped",
+      "summary": "Apply repeatable simulated pushes to a standing quadruped and compare support-polygon warnings with actual falls.",
+      "lesson_md": "## In one sentence\n\nApply repeatable simulated pushes to a standing quadruped and compare support-polygon warnings with actual falls.\n\n![MuJoCo Menagerie's Unitree Go1 standing model for a simulated push experiment](/img/lessons/projects_locomotion_2-push-quadruped.webp)\n*MuJoCo Menagerie's Unitree Go1 standing model for a simulated push experiment. Source: [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1), BSD-3-Clause.*\n\n## What you will learn\n\n- **A support polygon** is the outline around ground-contact points; it provides a static balance check, not a complete dynamic fall predictor.\n- **The center of mass** is the robot's mass-weighted average position; its ground projection is useful when interpreting that polygon.\n- **Think fault injection:** a scripted push is a reproducible disturbance, unlike dragging the robot differently in every viewer session.\n\n> **Key idea:** Compare warnings with observed outcomes; do not define a fall using the same geometric test you are trying to evaluate.\n\n## What you need\n\n- **Start after Draw a moving support polygon** and review Static & dynamic stability; this is a student benchmark, not a published push-recovery result.\n- **Use a contact simulator** and a documented quadruped model with a standing controller; check compatibility before choosing a checkpoint.\n- **Pinocchio supports model calculations**, but model loading alone does not supply contact simulation or a working balance controller.\n- **Plan 2–4 weeks:** the map estimates €0 hardware, excluding computing equipment; keep the whole experiment virtual.\n\n## Steps\n\n1. **Establish an unpushed baseline:** verify the robot stands under gravity with realistic contact and actuator limits before adding disturbances.\n2. **Specify each push:** log its force, direction, application point, onset, and duration; keep the controller unchanged across trials.\n3. **Work a controlled pair:** replay the identical initial state with no push and with a horizontal torso push; compare both complete trajectories.\n4. **Compute warnings from actual contacts**, not all nominal foot positions; mark the polygon undefined when there is no supporting contact.\n5. **Define falls independently**, using a documented body-height or orientation rule, and separate falls from timeouts and invalid observations.\n6. **Demo the magnitude-direction sweep:** overlay center-of-mass motion and contact changes, then count correct warnings, missed falls, and false alarms.\n\n```mermaid\nflowchart LR\n A[\"Reset standing state\"] --> B[\"Apply scripted push\"]\n B --> C[\"Log state and contacts\"]\n C --> D[\"Polygon warning\"]\n C --> E[\"Observed outcome\"]\n D --> F[\"Compare counts\"]\n E --> F\n```\n\n## Common pitfalls\n\n- **Force is not impulse:** changing push duration changes the disturbance even when the peak force stays constant.\n- **Do not hide saturation:** record joint-limit violations and lost contact; reject nonfinite observations rather than treating them as balance recovery.\n- **Missing contact needs a status:** an empty polygon must not silently become a safe margin.\n\n## When it's done\n\n- **Publish replayable trials and a warning/outcome table**, including baseline failures; simulated success does not establish hardware transfer.\n- **Continue to Compare balance margins during gait transitions** once the standing benchmark is reproducible.",
+      "resources": [
+        {
+          "title": "Tutorial",
+          "url": "https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/tutorial.ipynb",
+          "format": "Interactive",
+          "level": "Beginner",
+          "why": "Experiment with physics stepping and applied forces before building the standing benchmark."
+        },
+        {
+          "title": "Deep Compliant Control for Legged Robots",
+          "url": "https://www.youtube.com/watch?v=vgeEoK78doA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See research examples of quadruped disturbance recovery; your standing test is a smaller, separate experiment."
+        },
+        {
+          "title": "Ch. 5 - Highly-articulated Legged Robots",
+          "url": "https://underactuated.mit.edu/humanoids.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Understand contact forces and the limitations of static balance reasoning."
+        },
+        {
+          "title": "Unitree Go1 Description (MJCF)",
+          "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect a concrete quadruped asset and its contact-model assumptions."
+        },
+        {
+          "title": "mujoco_playground/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py at main · google-deepmind/mujoco_playground · GitHub",
+          "url": "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect scripted torso perturbations; this locomotion environment is not a ready-made standing benchmark."
+        }
+      ],
+      "sources": [
+        "https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/tutorial.ipynb",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco/main/python/tutorial.ipynb",
+        "https://www.youtube.com/watch?v=vgeEoK78doA",
+        "https://underactuated.mit.edu/humanoids.html",
+        "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go1",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_playground/main/rss2025/mujoco_playground/_src/locomotion/go1/joystick.py",
+        "https://github.com/stack-of-tasks/pinocchio",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html"
+      ]
+    }
+  ]
+}
