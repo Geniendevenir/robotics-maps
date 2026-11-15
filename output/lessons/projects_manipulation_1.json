@@ -683,6 +683,225 @@
         "https://www.eng.yale.edu/grablab/openhand/hdm.html",
         "https://huggingface.co/docs/lerobot/so101"
       ]
+    },
+    {
+      "node_id": "p:detect-slip-from-tactile-sequences",
+      "type": "project",
+      "name": "Detect slip from tactile sequences",
+      "summary": "Detect object sliding from recorded tactile image sequences, then evaluate the detector on held-out contact episodes.",
+      "lesson_md": "## In one sentence\n\nDetect object sliding from recorded tactile image sequences, then evaluate the detector on held-out contact episodes.\n\n![GelSight Mini marker-tracking display with motion vectors under contact](/img/lessons/projects_manipulation_1-tactile-slip.webp)\n*GelSight Mini marker-tracking display with motion vectors under contact. Source: [Published reference](https://github.com/gelsightinc/gsrobotics), license unknown.*\n\n## What you will learn\n\n- **Slip** is relative motion between an object and its contacting surface; gel deformation alone does not prove the object is sliding.\n- **A tactile sequence** is an ordered stream of touch-sensor observations; motion across frames supplies evidence unavailable in a single image.\n- **Think of log anomaly detection:** preserve event order, label episodes, and test on unseen sessions rather than randomly splitting adjacent records.\n\n> **Key idea:** Separate true object slip from elastic deformation, changing contact, and missing sensor data.\n\n## What you need\n\n- **Complete Visualize gel contact images** and review Tactile sensing for manipulation before adding temporal classification.\n- **Use GelSight Mini recordings** with visible contact and independently labelled slip events; new contact capture requires procuring a sensor, not just downloading software.\n- **Use the official marker-tracking demo** to save movement sequences; sensor and mounting costs are unknown until quoted.\n- **Keep external video for labels** if available, but do not feed it to a tactile-only detector or claim multimodal paper results as yours.\n\n## Steps\n\n1. **Collect stable and slipping episodes** with object identity, session, timestamps, contact onset, and an independent slip label saved beside every clip.\n2. **Inspect marker movement** and contact images; establish a simple motion-feature baseline before attempting a learned sequence classifier.\n3. **Split entire episodes and objects** into training, validation, and held-out tests; choose thresholds only on the validation split.\n4. **Compare predicted events with labels**, reporting missed slips, false alarms, detection delay, and the number of evaluated episodes.\n5. **Test empty and broken inputs:** no contact, lost frames, missing files, and lost marker tracks must produce explicit status labels.\n6. **Show held-out clip replays** with synchronized tactile frames, detector output, ground-truth labels, and representative false alarms.\n\nWorked data example from the Mini SDK: each saved marker-data row contains successive **x, y pairs** for all markers; the first row is descriptive metadata.\n\n**Preserve that structure:** parse the header separately, retain marker identity across frames, and store your measured timestamps rather than inventing a constant frame interval.\n\n```mermaid\nflowchart LR\n  C[Recorded touch clips] --> Q[Check contact and data]\n  Q --> F[Temporal features]\n  F --> D[Slip decision]\n  D --> E[Held-out event evaluation]\n```\n\n## Common pitfalls\n\n- **Neighbouring frames leak information** when split randomly; a near-duplicate test frame does not demonstrate generalization to another object.\n- **Published sensors differ:** the cited research uses earlier GelSight setups, so reproduce the idea without assuming identical Mini performance.\n\n## When it's done\n\n- **Publish the held-out outcomes** and failure clips, including no-contact and sensor-loss cases rather than silently dropping them.\n- **Keep this stage offline:** Use touch to adjust grip during lift adds the separate control and hardware-validation problem.",
+      "resources": [
+        {
+          "title": "Slip Detection with Combined Tactile and Visual Information",
+          "url": "https://www.youtube.com/watch?v=kyyh0GWTil0",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a conference demonstration of the slip-detection task and its use of two sensing modalities."
+        },
+        {
+          "title": "GitHub - gelsightinc/gsrobotics: GelSight SDK for robotic sensors · GitHub",
+          "url": "https://github.com/gelsightinc/gsrobotics",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Record Mini tactile clips and marker displacement sequences for your own detector."
+        },
+        {
+          "title": "Improved GelSight Tactile Sensor for Measuring Geometry and Slip",
+          "url": "https://arxiv.org/abs/1708.00922",
+          "format": "Paper",
+          "level": "Intermediate",
+          "why": "Understand relative surface motion and shear distortion as evidence for slip."
+        },
+        {
+          "title": "Slip Detection with Combined Tactile and Visual Information",
+          "url": "https://arxiv.org/abs/1802.10153",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish tactile-only baselines from a combined tactile-and-camera method."
+        }
+      ],
+      "sources": [
+        "https://github.com/gelsightinc/gsrobotics",
+        "https://www.youtube.com/watch?v=kyyh0GWTil0",
+        "https://arxiv.org/abs/1708.00922",
+        "https://arxiv.org/abs/1802.10153"
+      ]
+    },
+    {
+      "node_id": "p:draw-friction-cones",
+      "type": "project",
+      "name": "Draw friction cones",
+      "summary": "Animate the contact-force directions that a simple friction model allows as the surface normal and friction coefficient change.",
+      "lesson_md": "## In one sentence\n\nAnimate the contact-force directions that a simple friction model allows as the surface normal and friction coefficient change.\n\n![Published illustration comparing circular and linearized friction cones](/img/lessons/projects_manipulation_1-friction-cones.webp)\n*Published illustration comparing circular and linearized friction cones. Source: [Published reference](https://scaron.info/robotics/friction-cones.html), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **The contact normal** points perpendicular to the touching surface; tangential directions lie along that surface.\n- **A friction cone** describes allowable contact forces, not a cone-shaped volume that the gripper must move through.\n- **The friction coefficient** scales available tangential force relative to compressive normal force in the approximate Coulomb model.\n- **Think of a validator:** given a contact and candidate force, your code returns allowed, outside the model's limit, or invalid input.\n\n> **Key idea:** Rotate the cone with the contact normal; change its opening with friction, not with drawing scale.\n\n## What you need\n\n- **Complete Intro: robot anatomy & coordinate frames in sim** and review Grasp mechanics before rendering forces in different frames.\n- **Use a plotting library** already available on your computer; the basic animation needs no purchased hardware.\n- **Use MuJoCo optionally** to obtain simulated contacts, keeping the simulator's contact conventions distinct from your introductory point-contact model.\n- **Label friction as an input assumption**, not a measured property of an unspecified material pair.\n\n## Steps\n\n1. **Define a contact point and unit normal**, displaying the surface, normal arrow, and a candidate force in one common coordinate frame.\n2. **Construct a circular cone** around the normal and show its planar cross-section with the two boundary rays.\n3. **Add friction and normal controls**, updating the cone orientation, opening, and force classification whenever either input changes.\n4. **Compare an inscribed polygonal approximation** with the circular cone; mark forces the approximation excludes instead of pretending the boundaries coincide.\n5. **Test limiting and invalid cases:** zero friction becomes a ray; no contact hides the cone; reject negative friction and zero-length normals.\n6. **Record the animation** while rotating the normal, changing friction, and moving a force from inside to outside the displayed cone.\n\nWorked geometric example from Modern Robotics: the cone's half-angle is the inverse tangent of the friction coefficient, written `alpha = atan(mu)`.\n\n**Keep units explicit:** convert angles only for display; cone height is a visualization choice, while the opening represents the force ratio.\n\n```mermaid\nflowchart LR\n  I[Contact and friction inputs] --> V[Validate and normalize]\n  V --> G[Construct local cone]\n  G --> W[Rotate into world frame]\n  W --> A[Animate and classify force]\n```\n\n## Common pitfalls\n\n- **Forces cannot pull through unilateral contact:** a negative compressive normal component lies outside this model even if its sideways component is small.\n- **A contact cone is not force closure:** balancing an entire object requires considering all contacts and their moments.\n\n## When it's done\n\n- **Show labelled axes and boundary cases**, with the cone following a moving normal rather than remaining fixed in world coordinates.\n- **Save the input cases** and prepare to combine contacts in Test force closure numerically; this visualization is not a physical slip guarantee.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapter 12.2.1:  Friction",
+          "url": "https://www.youtube.com/watch?v=FY92f7gssWc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch contact forces become a cone and see its planar cross-section."
+        },
+        {
+          "title": "12.2.1. Friction – Modern Robotics",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Read the transcript defining cone angle, compressive force, and polygonal approximation."
+        },
+        {
+          "title": "Friction cones",
+          "url": "https://scaron.info/robotics/friction-cones.html",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Connect circular cones with the linearized representation your animation can overlay."
+        },
+        {
+          "title": "Computation - MuJoCo Documentation",
+          "url": "https://mujoco.readthedocs.io/en/stable/computation/index.html#friction-cones",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect the Friction cones section and distinguish MuJoCo contact dimensions from the simple force cone."
+        }
+      ],
+      "sources": [
+        "https://scaron.info/robotics/friction-cones.html",
+        "https://www.youtube.com/watch?v=FY92f7gssWc",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/12-2-1-friction/",
+        "https://mujoco.readthedocs.io/en/stable/computation/index.html#friction-cones"
+      ]
+    },
+    {
+      "node_id": "p:evaluate-novel-object-instructions-with-safety-rejection",
+      "type": "project",
+      "name": "Evaluate novel object instructions with safety rejection",
+      "summary": "Test a language-conditioned manipulation pipeline on unseen object instructions, rejecting invalid requests before simulated execution and recording why.",
+      "lesson_md": "## In one sentence\n\nTest a language-conditioned manipulation pipeline on unseen object instructions, rejecting invalid requests before simulated execution and recording why.\n\n![ReKep published pipeline from visual keypoints and instructions to constrained robot motion](/img/lessons/projects_manipulation_1-instruction-rejection.webp)\n*ReKep published pipeline from visual keypoints and instructions to constrained robot motion. Source: [Published reference](https://rekep-robot.github.io/), license unknown.*\n\n## What you will learn\n\n- **Open-vocabulary manipulation** accepts object descriptions beyond a fixed menu; that flexibility does not establish that an instruction is executable or safe.\n- **A keypoint constraint** describes a required relationship between selected scene points; ReKep expresses these relationships as Python cost functions.\n- **Rejection** means withholding motion and returning a reason, not letting execution fail and relabelling the failure afterward.\n- **Think of API validation:** parse intent, validate against trusted rules, then authorize execution; generated text must not authorize itself.\n\n> **Key idea:** Evaluate the rejection gate independently from the language model's willingness to attempt a task.\n\n## What you need\n\n- **Complete Solve a keypoint-constrained manipulation task** and review Open-vocabulary & affordance manipulation before adding novel instructions.\n- **Start with ReKep's simulated demo** and inspect VoxPoser as a related language-to-motion approach, not a certified safety layer.\n- **Use existing compatible compute:** no physical robot is required; simulator, GPU, model access, and API costs remain separate and unknown.\n- **Document privileged inputs:** ReKep's released simulation accesses scene information directly and omits the real-world perception pipeline.\n\n## Steps\n\n1. **Freeze permitted task families**, object identities, workspace limits, and a human-labelled instruction set before evaluating any new prompts.\n2. **Hold out objects and paraphrases** from development; include valid requests, missing targets, ambiguous references, and requests outside your declared task scope.\n3. **Insert a deterministic gate** for target presence, fresh observations, supported actions, workspace bounds, and motion feasibility before any execution command.\n4. **Treat generated constraints as untrusted**, validating their interface and isolating execution rather than granting arbitrary Python access to the host.\n5. **Run accepted requests in simulation**, recording false accepts, false rejects, planning failures, collisions, and completed tasks as separate outcomes.\n6. **Show accepted and rejected examples** with instruction text, gate reason, simulated replay where applicable, and the complete test-set denominator.\n\nWorked baseline from ReKep: `python main.py --use_cached_query` replays its cached language-model query for the pen-in-holder demonstration.\n\n**Use cached output for debugging:** verify the gate can reject a deliberately invalid target even when the generated constraint sequence itself is unchanged.\n\n```mermaid\nflowchart LR\n  I[Instruction and scene] --> P[Proposed constraints]\n  P --> G[Independent validation gate]\n  G -->|Reject| R[Reason and no motion]\n  G -->|Accept| S[Simulated execution]\n  S --> L[Outcome log]\n```\n\n## Common pitfalls\n\n- **Rejection rate alone rewards refusing everything:** report valid-task completion and false rejections alongside unsafe or invalid acceptances.\n- **Perfect simulator state hides perception errors:** inject missing or stale observations explicitly and label the evaluation's assumptions.\n\n## When it's done\n\n- **Publish the labelled test set** and accepted/rejected confusion counts, plus execution outcomes for every accepted request.\n- **State the scope clearly:** this is a tested software rejection policy under declared simulation assumptions, not a hardware safety certification.",
+      "resources": [
+        {
+          "title": "ReKep | Spatio-Temporal Reasoning of Relational Keypoint Constraints for Robotic Manipulation",
+          "url": "https://www.youtube.com/watch?v=2S8YhBdLdww",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how language and visual keypoints generate multi-stage manipulation behavior."
+        },
+        {
+          "title": "VoxPoser",
+          "url": "https://voxposer.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand affordance and constraint maps before defining an independent acceptance gate."
+        },
+        {
+          "title": "GitHub - huangwl18/ReKep: ReKep: Spatio-Temporal Reasoning of Relational Keypoint Constraints for Robotic Manipulation · GitHub",
+          "url": "https://github.com/huangwl18/ReKep",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Reproduce the cached simulated demo and inspect privileged scene inputs and known limitations."
+        },
+        {
+          "title": "ReKep: Spatio-Temporal Reasoning of Relational Keypoint Constraints for Robotic Manipulation",
+          "url": "https://arxiv.org/abs/2409.01652",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Separate the published constraint-generation method from your additional rejection experiment."
+        }
+      ],
+      "sources": [
+        "https://rekep-robot.github.io/",
+        "https://www.youtube.com/watch?v=2S8YhBdLdww",
+        "https://voxposer.github.io/",
+        "https://github.com/huangwl18/ReKep",
+        "https://arxiv.org/abs/2409.01652"
+      ]
+    },
+    {
+      "node_id": "p:filter-grasps-by-reachability",
+      "type": "project",
+      "name": "Filter grasps by reachability",
+      "summary": "Reject proposed grasps that fail robot kinematics or collision checks, while keeping the reason for every rejected candidate visible.",
+      "lesson_md": "## In one sentence\n\nReject proposed grasps that fail robot kinematics or collision checks, while keeping the reason for every rejected candidate visible.\n\n![Contact-GraspNet published grasp-generation demonstration over observed objects](/img/lessons/projects_manipulation_1-grasp-reachability.webp)\n*Contact-GraspNet published grasp-generation demonstration over observed objects. Source: [Published reference](https://github.com/NVlabs/contact_graspnet), license unknown.*\n\n## What you will learn\n\n- **A grasp candidate** proposes a gripper pose and opening; it is not yet a valid command for your particular arm.\n- **Inverse kinematics**, or **IK**, searches for joint angles that place the gripper at a requested position and orientation.\n- **Collision checking** tests whether robot geometry intersects itself or the environment at a specified configuration.\n- **Think of a compiler pipeline:** candidate generation proposes programs; successive validation passes reject them with specific diagnostics before execution.\n\n> **Key idea:** A high grasp score cannot compensate for an unreachable or colliding robot configuration.\n\n## What you need\n\n- **Complete Visualize grasp candidates** and review Learning-based grasp detection before adding robot-specific filtering.\n- **Use Contact-GraspNet** for proposals and MoveIt 2 for the arm model, joint limits, IK, and planning-scene checks.\n- **Use existing compatible computing hardware:** this offline or simulated stage needs no purchased robot; model inference may still require GPU resources.\n- **Keep GraspNet-1Billion as benchmark context**, not a substitute for checking your arm's own geometry and camera-to-base calibration.\n\n## Steps\n\n1. **Freeze one scene and proposal set**, saving depth inputs, camera calibration, grasp scores, and the robot's starting joint configuration.\n2. **Transform grasp poses into the robot frame**, accounting for the difference between the detector's grasp frame and the configured gripper tool frame.\n3. **Attempt IK for each candidate**, retaining joint-limit-valid solutions and marking search failures explicitly rather than silently dropping them.\n4. **Check full robot collisions** for surviving configurations, including the table, nearby objects, and self-collision pairs.\n5. **Test empty and error cases:** no proposals, missing calibration, an out-of-reach target, and a blocked grasp must produce distinct recorded results.\n6. **Show colour-coded candidates** with proposed, IK-surviving, and collision-free counts, plus replayable examples of each rejection reason.\n\nWorked API example from MoveIt's robot-state tutorial: `kinematic_state->setFromIK(joint_model_group, end_effector_state, timeout)` returns whether its IK search found a solution.\n\n**Interpret failure narrowly:** a timed-out search is not a mathematical proof that no solution exists; save the timeout and seed configuration with the outcome.\n\n```mermaid\nflowchart LR\n  G[Grasp proposals] --> T[Frame conversion]\n  T --> I[IK and joint limits]\n  I --> C[Full collision check]\n  C --> V[Visible surviving set]\n  I --> R[Reasoned rejections]\n  C --> R\n```\n\n## Common pitfalls\n\n- **A reachable endpoint does not guarantee a clear approach:** motion planning and grasp execution remain separate checks after this filter.\n- **Target contact needs explicit treatment:** configure intended finger-object contacts without disabling unrelated table or arm collisions.\n\n## When it's done\n\n- **Retain every candidate's provenance**, solution status, and rejection reason, including an explicit empty surviving set.\n- **Show filtering rather than successful lifting:** Benchmark cluttered bin picking adds the execution-level evaluation that this project deliberately leaves out.",
+      "resources": [
+        {
+          "title": "Contact-GraspNet: Efficient 6-DoF Grasp Generation in Cluttered Scenes (ICRA 2021)",
+          "url": "https://www.youtube.com/watch?v=qRLKYSLXElM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the grasp proposals that need arm-specific feasibility checks."
+        },
+        {
+          "title": "GitHub - NVlabs/contact_graspnet: Efficient 6-DoF Grasp Generation in Cluttered Scenes · GitHub",
+          "url": "https://github.com/NVlabs/contact_graspnet",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Load saved grasp proposals and inspect their pose, score, and input conventions."
+        },
+        {
+          "title": "Robot Model and Robot State — MoveIt Documentation: Rolling documentation",
+          "url": "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect setFromIK and joint bounds for the configured arm."
+        },
+        {
+          "title": "Planning Scene — MoveIt Documentation: Rolling documentation",
+          "url": "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish self-collision from full environment collision checking and inspect allowed contacts."
+        }
+      ],
+      "sources": [
+        "https://github.com/NVlabs/contact_graspnet",
+        "https://www.youtube.com/watch?v=qRLKYSLXElM",
+        "https://moveit.picknik.ai/main/doc/examples/robot_model_and_robot_state/robot_model_and_robot_state_tutorial.html",
+        "https://moveit.picknik.ai/main/doc/examples/planning_scene/planning_scene_tutorial.html"
+      ]
+    },
+    {
+      "node_id": "p:fine-tune-a-policy-on-one-tabletop-task",
+      "type": "project",
+      "name": "Fine-tune a policy on one tabletop task",
+      "summary": "Adapt a pretrained robot policy to one simulated tabletop task, then evaluate saved checkpoints on held-out starts and failure cases.",
+      "lesson_md": "## In one sentence\n\nAdapt a pretrained robot policy to one simulated tabletop task, then evaluate saved checkpoints on held-out starts and failure cases.\n\n![Octo published evaluation setups used for adapting a generalist robot policy](/img/lessons/projects_manipulation_1-tabletop-finetuning.webp)\n*Octo published evaluation setups used for adapting a generalist robot policy. Source: [Published reference](https://octo-models.github.io/), license unknown.*\n\n## What you will learn\n\n- **Fine-tuning** updates pretrained weights using target-task demonstrations instead of training from scratch.\n- **A checkpoint** saves model state; evaluate it separately rather than treating training curves as completed tasks.\n- **An action head** converts the model's internal representation into robot commands; a new robot can require a different output interface.\n- **Think of adapting a library:** preserve reusable internals, replace incompatible interfaces, and run integration tests against the actual environment.\n\n> **Key idea:** Data, action conventions, and simulator interfaces must agree before improved training loss can mean improved robot behavior.\n\n## What you need\n\n- **Complete Inspect a generalist policy action output** and review Generalist manipulation policies / VLAs before changing model weights.\n- **Choose Octo for this reproduction:** its examples provide a simulated ALOHA cube-handover fine-tuning and rollout pair.\n- **Treat OpenVLA and π0 / π0.5 as alternatives**, not interchangeable checkpoints; do not mix their preprocessing or action conventions into this run.\n- **Use compatible existing compute** and the documented dataset; no physical robot is required, but training resources and storage are not cost-free.\n\n## Steps\n\n1. **Reproduce the supplied dataset loader** and inspect camera keys, robot-state inputs, language instructions, action units, and episode boundaries before training.\n2. **Reserve whole episodes and start configurations** for validation and testing; fit normalization statistics using only the training data.\n3. **Run a small fine-tuning job** using the example's compatible action head, saving configuration, pretrained checkpoint identity, random seed, and output checkpoints.\n4. **Evaluate checkpoints with the paired rollout example**, selecting a model using validation outcomes rather than the held-out test set.\n5. **Test empty and broken inputs:** missing camera frames, absent cubes, malformed actions, failed grasps, and timeouts need explicit labels or validation errors.\n6. **Show the simulated task completing**, alongside held-out success counts, failure clips, and a comparison against the same adapted architecture before training.\n\nWorked interface example from Octo's fine-tuning script: it uses **256 × 256** primary images, **14-dimensional** bimanual actions, and chunks of **50 actions**.\n\n**Keep those numbers task-specific:** its rollout wrapper also executes chunks of 50; a different robot or controller requires deliberately changing both sides of the interface.\n\n```mermaid\nflowchart LR\n  D[Task demonstrations] --> S[Episode split]\n  S --> F[Adapt and fine-tune]\n  F --> C[Saved checkpoint]\n  C --> E[Held-out simulated rollouts]\n  E --> R[Successes and failures]\n```\n\n## Common pitfalls\n\n- **New action-head weights start untrained:** report that architecture change rather than comparing incompatible raw pretrained commands with adapted commands.\n- **Training loss is not task success:** verify actual object transfer, and keep unsuccessful episodes in the denominator.\n\n## When it's done\n\n- **Publish a reproducible simulated completion** plus dataset split, normalization statistics, checkpoint identity, and all test outcomes.\n- **Keep the claim task-specific:** Compare language-conditioned policies on held-out objects asks a broader generalization question than this single-task adaptation.",
+      "resources": [
+        {
+          "title": "Octo: An Open-Source Generalist Robot Policy",
+          "url": "https://www.youtube.com/watch?v=99667VDGWMg",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See examples of adapting the generalist policy to downstream manipulation tasks."
+        },
+        {
+          "title": "octo/examples/02_finetune_new_observation_action.py at main · octo-models/octo",
+          "url": "https://github.com/octo-models/octo/blob/main/examples/02_finetune_new_observation_action.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the exact simulated ALOHA dataset, camera preprocessing, and replacement action head."
+        },
+        {
+          "title": "octo/examples/03_eval_finetuned.py at main · octo-models/octo",
+          "url": "https://github.com/octo-models/octo/blob/main/examples/03_eval_finetuned.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Pair the saved checkpoint with the matching simulator and action-chunk wrapper."
+        },
+        {
+          "title": "GitHub - octo-models/octo: Octo is a transformer-based robot policy trained on a diverse mix of 800k robot trajectories. · GitHub",
+          "url": "https://github.com/octo-models/octo",
+          "format": "Repo",
+          "level": "Advanced",
+          "why": "Check installation, checkpoint loading, and supported fine-tuning modes."
+        }
+      ],
+      "sources": [
+        "https://octo-models.github.io/",
+        "https://www.youtube.com/watch?v=99667VDGWMg",
+        "https://github.com/octo-models/octo/blob/main/examples/02_finetune_new_observation_action.py",
+        "https://github.com/octo-models/octo/blob/main/examples/03_eval_finetuned.py",
+        "https://github.com/octo-models/octo",
+        "https://raw.githubusercontent.com/octo-models/octo/main/examples/02_finetune_new_observation_action.py",
+        "https://raw.githubusercontent.com/octo-models/octo/main/examples/03_eval_finetuned.py"
+      ]
     }
   ]
 }
