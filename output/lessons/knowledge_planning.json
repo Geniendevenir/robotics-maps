@@ -273,6 +273,149 @@
         "https://underactuated.mit.edu/trajopt.html",
         "https://moveit.picknik.ai/main/_images/chomp.png"
       ]
+    },
+    {
+      "node_id": "k:trajectory-generation-time-parameterization",
+      "type": "knowledge",
+      "name": "Trajectory generation & time parameterization",
+      "summary": "Trajectory generation adds timing to motion, choosing how position, velocity, and acceleration change while respecting the robot's limits.",
+      "lesson_md": "## In one sentence\n\nTrajectory generation adds timing to motion, choosing how position, velocity, and acceleration change while respecting the robot's limits.\n\n![Seven-phase S-curve velocity profile with gradual acceleration and deceleration](/img/lessons/knowledge_planning-time-parameterization.webp)\n*Seven-phase motion profile by Ivec, converted to WebP. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:3rd_order_motion_profile.png), public domain.*\n\n## Why it matters for us\n\n- **A route has no clock:** Knowing which joint angles to visit does not tell a controller when to reach them.\n- **Abrupt changes matter:** Velocity, acceleration, and jerk limits shape how a robot starts, cruises, and stops.\n- **Two tools solve different problems:** TOPP-RA retimes a supplied path; Ruckig generates motion between target states under motion limits.\n\n> **Key idea:** Choosing where to move and choosing how fast to move are separate decisions, even when one tool computes both.\n\n## How it works\n\nImagine a playback cursor sliding along a recorded path: the geometry stays fixed while the playback speed changes.\nLike scheduling queued jobs, time parameterization decides when each point is reached.\n\n- **Separate path and timing:** A path uses a progress variable; a time scaling says how that progress changes with time.\n- **Start and stop smoothly:** Cubic time scaling can begin and end at zero velocity, but its acceleration jumps at the boundaries.\n- **Add smoother boundaries:** Fifth-order polynomial scaling can also make the starting and ending accelerations zero.\n- **Read the picture:** The seven-phase S-curve ramps acceleration through bounded jerk rather than changing acceleration instantaneously.\n- **Work Ruckig's first axis:** Its Python example moves from position 0 to 5, with maximum velocity 3, acceleration 3, and jerk 4.\n- **Compute a speed-only baseline:** Five position units divided by three units per second is about 1.67 seconds; starting and stopping require additional time.\n- **Read the update period:** The example uses 0.01 seconds per control cycle, or 100 updates per second, passing each generated state into the next update.\n\n```mermaid\nflowchart LR\n  P[Path or target state] --> L[Set motion limits]\n  L --> T[Compute timing]\n  T --> S[Sample timed states]\n  S --> C[Controller]\n  C --> N[Next update]\n  N --> T\n```\n\n## Key terms\n\n- **Path**: a geometric sequence of configurations, without an execution schedule.\n- **Trajectory**: a motion with positions assigned to times.\n- **Acceleration**: how quickly velocity changes.\n- **Jerk**: how quickly acceleration changes.\n- **Time parameterization**: assigning progress over time along a given path.\n\n## Before / after\n\n- **Before:** Understand derivatives and Configuration space & collision checking; distinguish position from velocity.\n- **After:** Explore Ruckig, TOPP-RA, and Smooth arm motions with Ruckig.\n\n## Try it in an afternoon\n\n1. **Run Ruckig's Python position example** after following the repository's installation instructions; use simulation rather than hardware.\n2. **Inspect the first-axis output:** Plot position against time and identify where the motion accelerates and brakes.\n3. **Lower the jerk limit** while keeping the target and other limits fixed; compare the resulting duration and acceleration curve.\n4. **Retiming comparison:** Use TOPP-RA's example path and compare its timed output with the original geometric path, noting which input each tool requires.",
+      "resources": [
+        {
+          "title": "Modern Robotics, Chapters 9.1 and 9.2:  Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See cubic, quintic, trapezoidal, and S-curve timing profiles compared."
+        },
+        {
+          "title": "Ruckig",
+          "url": "https://github.com/pantor/ruckig",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Follow online state-to-state generation with velocity, acceleration, and jerk limits."
+        },
+        {
+          "title": "toppra",
+          "url": "https://hungpham2511.github.io/toppra/index.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See how a supplied geometric path and constraints become a timed trajectory."
+        },
+        {
+          "title": "9.1 and 9.2. Point-to-Point Trajectories (Part 2 of 2)",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read why boundary acceleration differs between polynomial time scalings."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=0ZqeBEa_MWo",
+        "https://github.com/pantor/ruckig",
+        "https://hungpham2511.github.io/toppra/index.html",
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/",
+        "https://raw.githubusercontent.com/pantor/ruckig/main/examples/01_position.py",
+        "https://commons.wikimedia.org/wiki/File:3rd_order_motion_profile.png"
+      ]
+    },
+    {
+      "node_id": "k:navigation-stacks-costmaps",
+      "type": "knowledge",
+      "name": "Navigation stacks & costmaps",
+      "summary": "A navigation stack coordinates route planning, path following, and recovery using costmaps that turn maps and sensor observations into traversal costs.",
+      "lesson_md": "## In one sentence\n\nA navigation stack coordinates route planning, path following, and recovery using costmaps that turn maps and sensor observations into traversal costs.\n\n![Separate map layers combined into a single layered costmap](/img/lessons/knowledge_planning-navigation-costmaps.webp)\n*Layered costmap by Taiki Shuttle, resized and converted to WebP. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Layered_Costmap.jpg), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*\n\n## Why it matters for us\n\n- **Navigation is several jobs:** A robot needs more than a shortest-path algorithm to reach a destination and handle a blocked route.\n- **Sensors change the picture:** A static map describes the building; live observations can mark obstacles that were absent when that map was made.\n- **The body needs room:** Planning for a point can miss collisions involving the robot's actual footprint.\n\n> **Key idea:** A costmap is a shared decision surface, not just a picture of walls: its values influence both routes and immediate motion.\n\n## How it works\n\nImagine stacking transparent map sheets, then combining their markings into one grid.\nLike services sharing a database, Nav2's planner and controller use environmental information while performing different tasks.\n\n- **Build the layers:** The static layer loads a map, the obstacle layer marks sensor observations, and the inflation layer adds costs around obstacles.\n- **Plan globally:** The planner computes a path toward the goal using the environmental representation.\n- **Control locally:** The controller uses a local representation to compute commands that follow that path.\n- **Coordinate recovery:** A behavior tree can request planning, following, and recovery actions when progress fails.\n- **Represent uncertainty deliberately:** Unknown cells are not automatically obstacles; the costmap's unknown-space setting changes how they are represented.\n- **Work the documented local grid:** Nav2's configuration example uses a 3-by-3-metre rolling window and 0.05-metre cells: 60 by 60, or 3,600 cells.\n- **Separate update from display:** That example updates at 5 Hz, every 0.2 seconds, but publishes at 2 Hz, every 0.5 seconds.\n\n```mermaid\nflowchart LR\n  M[Map and sensors] --> K[Layered costmaps]\n  G[Goal and robot pose] --> P[Planner]\n  K --> P\n  P --> C[Controller]\n  K --> C\n  C --> R[Robot motion]\n  R --> M\n```\n\n## Key terms\n\n- **Costmap**: a grid containing free, occupied, unknown, or inflated costs.\n- **Inflation**: adding costs around obstacles to influence clearance.\n- **Footprint**: the robot's ground-plane outline, represented by a polygon or circle.\n- **Rolling window**: a local map region that moves with the robot.\n- **Recovery**: an action intended to handle a navigation failure, such as backing up when permitted.\n\n## Before / after\n\n- **Before:** Learn ROS 2, Graph search & incremental replanning, and Local planning & reactive obstacle avoidance; supply a localized pose and coordinate transforms.\n- **After:** Use Nav2 and Planning lab: measure footprint inflation effects in narrow corridors.\n\n## Try it in an afternoon\n\n1. **Follow Nav2's simulated Turtlebot quickstart** for your installed ROS distribution; launch the simulator and RViz visualization tool.\n2. **Set the initial pose** with RViz's pose-estimate tool, then send a navigation goal.\n3. **Display both costmaps:** Identify static walls, sensed obstacles, and the inflated region around them.\n4. **Change only inflation settings:** Repeat the same corridor route and compare clearance and success, keeping the robot footprint unchanged.",
+      "resources": [
+        {
+          "title": "ROSCon 2019 Macau: Navigation 2 Overview",
+          "url": "https://vimeo.com/378682188",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Get the architectural motivation for a coordinated ROS 2 navigation stack."
+        },
+        {
+          "title": "Quickstart",
+          "url": "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Navigate a simulated Turtlebot after setting its initial pose in RViz."
+        },
+        {
+          "title": "Environmental Representation",
+          "url": "https://docs.nav2.org/rolling/getting_started/navigation_concepts/environmental_representation/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand costmap layers and the distinction between free, occupied, inflated, and unknown cells."
+        },
+        {
+          "title": "Navigation Servers",
+          "url": "https://docs.nav2.org/rolling/getting_started/navigation_concepts/navigation_servers/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate planning, control, smoothing, and recovery responsibilities."
+        },
+        {
+          "title": "Costmap 2D",
+          "url": "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/",
+          "format": "Docs",
+          "level": "Advanced",
+          "why": "Inspect footprint, grid resolution, rolling-window, and update parameters."
+        }
+      ],
+      "sources": [
+        "https://vimeo.com/378682188",
+        "https://docs.nav2.org/rolling/getting_started/quickstart/quickstart/",
+        "https://docs.nav2.org/rolling/getting_started/navigation_concepts/environmental_representation/",
+        "https://docs.nav2.org/rolling/getting_started/navigation_concepts/navigation_servers/",
+        "https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/costmap_2d/",
+        "https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/",
+        "https://commons.wikimedia.org/wiki/File:Layered_Costmap.jpg"
+      ]
+    },
+    {
+      "node_id": "k:multi-robot-path-finding-conflict-resolution",
+      "type": "knowledge",
+      "name": "Multi-robot path finding & conflict resolution",
+      "summary": "Multi-robot path finding schedules routes through shared space so robots neither occupy the same cell together nor swap through each other.",
+      "lesson_md": "## In one sentence\n\nMulti-robot path finding schedules routes through shared space so robots neither occupy the same cell together nor swap through each other.\n\n![Three coloured agents with crossing routes toward star-shaped goals on a square grid](/img/lessons/knowledge_planning-multi-robot-pathfinding.webp)\n*Grid MAPF example by BenedettaFlam, converted to WebP. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Example_of_Multi-Agent_Path_Finding_in_a_grid_environment.png), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).*\n\n## Why it matters for us\n\n- **Independent routes can conflict:** Two individually valid shortest paths may require the same doorway at the same time.\n- **Waiting is a useful action:** A robot may need to pause so another can pass.\n- **Define the problem first:** Assigning tasks to robots is different from scheduling routes to already assigned destinations.\n\n> **Key idea:** Shared geometry is not enough: conflict resolution must reason about who occupies each location at each time.\n\n## How it works\n\nReserve a room and its time slot, not just the room.\nLike an exclusive-resource scheduler, the planner detects incompatible reservations.\n\n- **Use discrete time:** In the basic grid model, each robot waits or moves to a neighbouring free cell at each step.\n- **Detect vertex conflicts:** Two robots cannot occupy the same cell at the same time.\n- **Detect edge conflicts:** They also cannot exchange neighbouring cells in one step, even if their endpoints differ.\n- **Branch with CBS:** Conflict-Based Search plans individual paths, finds a conflict, and creates alternatives forbidding the conflicting event for one robot or the other.\n- **Replan under constraints:** Search continues through these alternatives until it finds compatible paths.\n- **Test the edge rule:** This checker follows the linked CBS implementation: an edge conflict without a vertex conflict.\n\n```python\na = [(0, 0), (1, 0)]\nb = [(1, 0), (0, 0)]\nvertex = any(x == y for x, y in zip(a, b))\nedge = any(\n    a[t] == b[t + 1] and b[t] == a[t + 1]\n    for t in range(len(a) - 1)\n)\nprint(vertex, edge)  # False True\n```\n\n```mermaid\nflowchart LR\n  P[Individual paths] --> D[Detect first conflict]\n  D --> B[Branch constraints]\n  B --> R[Replan constrained paths]\n  R --> D\n  D --> S[No conflicts: schedule]\n```\n\n> **Watch out:** A collision-free grid schedule assumes its timing and movement rules hold; execution delays need additional handling before physical robots follow it.\n\n## Key terms\n\n- **MAPF**: Multi-Agent Path Finding, planning compatible routes for several moving agents.\n- **Constraint**: a forbidden location or transition at a specified time.\n- **Makespan**: time until every robot reaches its goal.\n- **Sum of costs**: the sum of individual route durations, a different optimization objective.\n\n## Before / after\n\n- **Before:** Learn Graph search & incremental replanning and the difference between a location and a location-time pair.\n- **After:** Explore Multi-agent path planning examples and Planning lab: compare prioritized planning and conflict-based search.\n\n## Try it in an afternoon\n\n1. **Install the repository requirements** and run `python3 cbs.py input.yaml output.yaml` from `centralized/cbs`.\n2. **Animate its schedule** using `python3 ../visualize.py input.yaml output.yaml` from that same directory.\n3. **Run the tiny checker above:** Add a shared-cell case and a conflict-free case; verify all three outcomes.\n4. **Compare planning methods:** Try the prioritized example too; record failures and successes.",
+      "resources": [
+        {
+          "title": "ICAPS Invited Talk: Multi-Agent Path Finding and Its Applications",
+          "url": "https://www.youtube.com/watch?v=BX4U5B_vx5c",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Hear Sven Koenig introduce shared-space planning problems and their applications."
+        },
+        {
+          "title": "Multi-Agent path planning in Python",
+          "url": "https://github.com/atb033/multi_agent_path_planning",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run and animate CBS and prioritized planning, including examples where priority ordering fails."
+        },
+        {
+          "title": "cbs.py",
+          "url": "https://raw.githubusercontent.com/atb033/multi_agent_path_planning/master/centralized/cbs/cbs.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Trace vertex and edge conflict detection, constraint branching, and time-aware states."
+        },
+        {
+          "title": "Welcome!",
+          "url": "https://mapf.info/",
+          "format": "Article",
+          "level": "Intermediate",
+          "why": "Read the precise grid model, collision rules, makespan, and alternative objectives."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=BX4U5B_vx5c",
+        "https://github.com/atb033/multi_agent_path_planning",
+        "https://raw.githubusercontent.com/atb033/multi_agent_path_planning/master/centralized/cbs/cbs.py",
+        "https://mapf.info/",
+        "https://mapf.info/index.php/Main/Tutorials",
+        "https://commons.wikimedia.org/wiki/File:Example_of_Multi-Agent_Path_Finding_in_a_grid_environment.png"
+      ]
     }
   ]
 }
