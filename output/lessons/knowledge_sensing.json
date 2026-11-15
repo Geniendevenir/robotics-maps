@@ -258,6 +258,274 @@
         "https://learn.sparkfun.com/tutorials/gps-rtk2-hookup-guide/all",
         "https://www.u-blox.com/en/product/zed-f9p-module"
       ]
+    },
+    {
+      "node_id": "k:imus-accelerometers-gyroscopes-magnetometers",
+      "type": "knowledge",
+      "name": "IMUs: accelerometers, gyroscopes & magnetometers",
+      "summary": "An IMU measures acceleration and turning rate along several axes; some packages also measure magnetic field to help estimate orientation.",
+      "lesson_md": "## In one sentence\n\nAn IMU measures acceleration and turning rate along several axes; some packages also measure magnetic field to help estimate orientation.\n\n![TDK ICM-42688-P six-axis inertial sensor chip](/img/lessons/knowledge_sensing-imus.webp)\n*TDK ICM-42688-P six-axis inertial sensor chip. Source: [TDK InvenSense](https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/), license unknown.*\n\n## Why it matters for us\n\n- **Motion becomes measurable:** a robot can detect turning and acceleration without needing a clear camera view or a visible landmark.\n- **Raw measurements are not pose:** angular velocity describes how quickly orientation changes. It does not directly tell you the robot's angle or position.\n- **Count axes carefully:** the ICM-42688-P combines three acceleration axes with three gyroscope axes. A magnetometer is an additional sensor, not implied by “six-axis.”\n\n> **Key idea:** Keep raw sensor values, their units, and any estimated orientation separate in your software interface.\n\n## How it works\n\n- **Accelerometers include gravity effects:** a stationary board does not generally report zero on every axis; turning it changes how gravity appears in those readings.\n- **Gyroscopes report turning rate:** integrating rate over elapsed time estimates angle, but a small persistent offset accumulates into orientation error.\n- **Magnetometers measure magnetic field:** enclosure materials and nearby magnetic sources can distort readings; calibrate in the final mounted setup.\n- **Think of numerical integration:** summing noisy deltas resembles accumulating timestamp errors in a scheduler; small systematic mistakes eventually dominate.\n- **Worked drift example:** an illustrative constant gyro offset of 0.01 rad/s integrated for 10 s creates 0.1 rad of false rotation.\n- **Respect the message contract:** ROS Imu uses m/s² and rad/s. Missing orientation is marked with `orientation_covariance[0] = -1`, not a fabricated identity estimate.\n\n```mermaid\nflowchart LR\n  M[Motion and gravity] --> A[Accelerometer]\n  M --> G[Gyroscope]\n  A --> R[Stamped raw readings]\n  G --> R\n  R --> E[Optional orientation estimator]\n```\n\n## Key terms\n\n- **Bias**: persistent measurement offset, distinct from rapidly varying random noise.\n- **Angular velocity**: how quickly an object rotates about an axis.\n- **Magnetometer**: sensor of magnetic field, not an infallible compass.\n- **Covariance**: description of measurement uncertainty and correlations; all-zero covariance means unknown in the ROS Imu message.\n\n## Before / after\n\n- **Before:** Review Sensor characteristics, uncertainty & noise and vectors before interpreting the three axes or combining measurements.\n- **After:** Try IMU units, missing orientation and axis-sign replay, then Camera-IMU calibration with Kalibr before attempting sensor fusion.\n\n## Try it in an afternoon\n\n1. **Create a synthetic stationary log** with the illustrative gyro offset; integrate it and plot the false angle against time.\n2. **Repeat after subtracting bias** and explain why this removes the constant term but does not prove real measurements are noise-free.\n3. **Draft a ROS message** with acceleration, angular velocity, units, and missing orientation explicitly identified; preserve timestamps and sensor-frame names.",
+      "resources": [
+        {
+          "title": "Understanding Sensor Fusion and Tracking, Part 3: Fusing a GPS and IMU to Estimate Pose",
+          "url": "https://www.youtube.com/watch?v=hN8dL55rP5I",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See what accelerometers, gyroscopes, and magnetometers contribute before studying the fusion algorithm."
+        },
+        {
+          "title": "ICM-42688-P",
+          "url": "https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect a concrete six-axis device and its selectable measurement ranges."
+        },
+        {
+          "title": "Magnetometer Calibration",
+          "url": "https://learn.adafruit.com/ahrs-for-adafruits-9-dof-10-dof-breakout/magnetometer-calibration",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand magnetic offsets and why final mounting matters."
+        },
+        {
+          "title": "Imu",
+          "url": "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Imu.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the ROS units and missing-orientation convention."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Separate white noise from bias and understand stationary-model limitations."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=hN8dL55rP5I",
+        "https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+        "https://learn.adafruit.com/ahrs-for-adafruits-9-dof-10-dof-breakout/magnetometer-calibration",
+        "https://docs.ros.org/en/rolling/p/sensor_msgs/msg/Imu.html",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model"
+      ]
+    },
+    {
+      "node_id": "k:joint-encoders-proprioceptive-sensing",
+      "type": "knowledge",
+      "name": "Joint encoders & proprioceptive sensing",
+      "summary": "Joint encoders measure the robot’s own rotation, using counted transitions or an absolute angle reading rather than observing the outside scene.",
+      "lesson_md": "## In one sentence\n\nJoint encoders measure the robot’s own rotation, using counted transitions or an absolute angle reading rather than observing the outside scene.\n\n![AS5600 magnetic angle sensor breakout with its sensing chip and connectors](/img/lessons/knowledge_sensing-joint-encoders.webp)\n*AS5600 magnetic angle sensor breakout with its sensing chip and connectors. Source: [Adafruit](https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview), license unknown.*\n\n## Why it matters for us\n\n- **Commands need feedback:** requesting a joint angle is not the same as knowing the joint reached it. An encoder supplies a measured angle or count.\n- **A wheel also rotates:** the same principle measures wheel motion, though rotation alone does not prove how far the robot moved across the floor.\n- **Mounting is part of sensing:** a magnetic chip needs a correctly positioned rotating magnet; a valid digital response alone does not establish correct joint geometry.\n\n> **Key idea:** An encoder reading becomes a joint position only after you define its reference, direction, scale, and rollover behavior.\n\n## How it works\n\n- **Incremental encoders emit transitions:** two channels, A and B, change in a staggered sequence. Their ordering tells software which direction the shaft turned.\n- **Count edges consistently:** SimpleFOC distinguishes pulses per revolution from decoded counts; counting both edges of both channels multiplies pulses by four.\n- **Absolute magnetic sensing reads angle:** the AS5600 senses a rotating magnetic field. Its single-turn result wraps around after one revolution.\n- **Think of a circular buffer:** returning from the last index to zero is normal wraparound, not necessarily a giant reverse movement.\n- **Worked wrap example:** illustrative successive angles of 359° and 1° can mean a forward movement of 2°, not a backward movement of 358°.\n- **Reference incremental counts:** an index channel provides a repeatable angular marker. Startup counting alone does not establish the physical zero position.\n\n```mermaid\nflowchart LR\n  J[Joint rotation] --> S[Encoder signal]\n  S --> D[Decode angle or counts]\n  D --> R[Reference and unwrap]\n  R --> P[Joint position]\n```\n\n## Key terms\n\n- **Proprioception**: sensing the robot itself rather than its surroundings.\n- **Quadrature**: two staggered signal channels used to infer rotation and direction.\n- **Index**: reference pulse associated with a particular shaft orientation.\n- **Single-turn absolute**: angle within one revolution, without an automatic record of how many revolutions occurred.\n\n## Before / after\n\n- **Before:** Study Sensor characteristics, uncertainty & noise and basic angle units before connecting raw counts to joint geometry.\n- **After:** Build Encoder rollover and index-reference explorer, then use the result in Feedback control & PID.\n\n## Try it in an afternoon\n\n1. **Generate a toy angle sequence** that crosses from 359° to 1°, then compute both naive subtraction and wrapped differences.\n2. **Reverse the sequence** and verify that your code reports the opposite sign without inventing a nearly complete revolution.\n3. **Read the AS5600 example** and distinguish magnet detection, magnetic strength diagnostics, and angle output before planning any motor connection.",
+      "resources": [
+        {
+          "title": "Understanding and using quadrature encoders - The Byte Sized Engineer | DigiKey",
+          "url": "https://www.youtube.com/watch?v=o1Oev-B7ScM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See A/B signals and the decoding idea behind incremental rotation measurement."
+        },
+        {
+          "title": "Overview | Adafruit AS5600 Magnetic Angle Sensor",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Meet a real contactless absolute-angle breakout and its magnet placement requirements."
+        },
+        {
+          "title": "CircuitPython and Python | Adafruit AS5600 Magnetic Angle Sensor",
+          "url": "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/circuitpython-and-python",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect angle reading and weak/strong magnet diagnostics."
+        },
+        {
+          "title": "Encoder",
+          "url": "https://docs.simplefoc.com/encoder",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand pulses, decoded counts, interrupts, and index inputs."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=o1Oev-B7ScM",
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/overview",
+        "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/circuitpython-and-python",
+        "https://docs.simplefoc.com/encoder"
+      ]
+    },
+    {
+      "node_id": "k:microphone-arrays-robot-audio-acquisition",
+      "type": "knowledge",
+      "name": "Microphone arrays & robot audio acquisition",
+      "summary": "A microphone array records sound at several known positions, preserving separate channels and timing for later direction or speech processing.",
+      "lesson_md": "## In one sentence\n\nA microphone array records sound at several known positions, preserving separate channels and timing for later direction or speech processing.\n\n![ReSpeaker USB four-microphone array circuit board](/img/lessons/knowledge_sensing-microphone-arrays.webp)\n*ReSpeaker USB four-microphone array circuit board. Source: [Seeed Studio](https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/), license unknown.*\n\n## Why it matters for us\n\n- **More than voice recording:** different microphones hear a sound from slightly different positions. The channel relationships contain information that a single mixed track loses.\n- **A robot is noisy:** fans, motors, vibration, and room echoes join the desired sound. Record a baseline before treating every waveform as useful speech.\n- **Acquisition comes first:** direction estimation and speech recognition need trustworthy recordings, channel identities, sample timing, and microphone geometry.\n\n> **Key idea:** Preserve the raw channel layout before applying processing; a clean-sounding mono recording may have discarded the array information you need.\n\n## How it works\n\n- **Microphones convert pressure changes:** a capture device samples their electrical signals and delivers audio buffers to the computer.\n- **Firmware changes the interface:** Seeed documents one-channel processed audio and a six-channel layout; six output channels do not mean six physical microphones.\n- **Decode that layout:** in the documented six-channel firmware, channels 1–4 are the four raw microphones; channel 0 is processed audio and channel 5 is playback.\n- **Think of interleaved records:** each sample instant contains several fields. Reading the wrong stride mixes microphone identities just like decoding a binary struct incorrectly.\n- **Worked extraction:** for the documented six-channel stream, NumPy slicing `samples[1::6]` selects channel 1; retain the original file before extracting or mixing channels.\n- **Geometry remains metadata:** ODAS configuration names microphone positions and sampling parameters. Those settings must describe the actual array rather than an unrelated example rig.\n\n```mermaid\nflowchart LR\n  S[Sound field] --> M[Microphones]\n  M --> A[Sampled channels]\n  A --> B[Interleaved buffers]\n  B --> R[Recording and geometry]\n```\n\n## Key terms\n\n- **Sample rate**: audio samples captured per second for each channel.\n- **Channel**: one signal stream, which may be raw microphone audio or a processed output.\n- **Interleaving**: storing simultaneous channel values next to each other in a repeated order.\n- **Clipping**: waveform peaks exceeding the recording range, losing information about the original signal.\n\n## Before / after\n\n- **Before:** Review Sensor characteristics, uncertainty & noise and Time synchronization & timestamping before comparing channel arrival times.\n- **After:** Try Microphone channel ordering and geometry clap board, then Robot motor-noise audio acquisition dossier before adding sound localization.\n\n## Try it in an afternoon\n\n1. **Inspect the firmware table** and write a channel map; distinguish microphone inputs from processed and playback signals.\n2. **Make a synthetic interleaved array** with a different constant per channel, then test extraction using stride six.\n3. **Plan a short clap recording** with fixed microphone geometry; preserve all channels and compare quiet-room and robot-running conditions without changing gain.",
+      "resources": [
+        {
+          "title": "ReSpeaker Mic Array v2.0 - DOA & AEC Test",
+          "url": "https://www.youtube.com/watch?v=XivM-6PRgX8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the maker demonstrate direction indication and acoustic echo cancellation."
+        },
+        {
+          "title": "reSpeaker USB 4-Mic Array XVF3000 v2.0",
+          "url": "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read the channel map, firmware differences, and Python recording examples."
+        },
+        {
+          "title": "Configuration",
+          "url": "https://github.com/introlab/odas/wiki/Configuration",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect how microphone positions and sampling parameters are represented."
+        },
+        {
+          "title": "ODAS",
+          "url": "https://github.com/introlab/odas",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Locate the downstream sound-localization library and understand its boundary with acquisition."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=XivM-6PRgX8",
+        "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+        "https://github.com/introlab/odas/wiki/Configuration",
+        "https://github.com/introlab/odas"
+      ]
+    },
+    {
+      "node_id": "k:mmwave-radar-sensing-hardware",
+      "type": "knowledge",
+      "name": "mmWave radar sensing hardware",
+      "summary": "mmWave radar transmits radio waves and measures reflections to estimate distances and motion, with outputs ranging from raw samples to processed detections.",
+      "lesson_md": "## In one sentence\n\nmmWave radar transmits radio waves and measures reflections to estimate distances and motion, with outputs ranging from raw samples to processed detections.\n\n![TI IWR6843ISK radar evaluation board with its antenna area](/img/lessons/knowledge_sensing-mmwave-radar.webp)\n*TI IWR6843ISK radar evaluation board with its antenna area. Source: [Texas Instruments](https://www.ti.com/tool/IWR6843ISK), license unknown.*\n\n## Why it matters for us\n\n- **A different physical signal:** radar measures radio reflections rather than visible color. Its detections are not equivalent to a camera image or a complete surface scan.\n- **Buy the correct layer:** a radar chip, an antenna-equipped evaluation board, and a raw-data capture accessory are different pieces of a setup.\n- **Know your output:** a processed point cloud has already passed through signal processing. It cannot automatically substitute for the underlying sampled signals.\n\n> **Key idea:** Decide whether you need raw radio samples or processed detections before choosing hardware and designing the data pipeline.\n\n## How it works\n\n- **Transmit a chirp:** frequency-modulated continuous-wave radar, abbreviated FMCW, changes the transmitted frequency over time in a known sweep.\n- **Compare the returning signal:** combining the reflection with the transmitted signal produces a frequency difference related to propagation delay and therefore range.\n- **Use antenna geometry:** multiple transmit and receive paths help estimate direction; waveform settings and antenna layout constrain what can be resolved.\n- **Think of a processing pipeline:** raw samples resemble source data, while a detection list resembles an aggregated database view; discarded information cannot simply be queried later.\n- **Concrete hardware example:** TI’s IWR6843 operates at 60–64 GHz; the IWR6843ISK evaluation board has four receive and three transmit antennas.\n- **Raw capture differs:** TI documents DCA1000EVM streaming captured sensor-interface data through 1-Gbps Ethernet. That interface rate is not a guaranteed recording rate for your application.\n\n```mermaid\nflowchart LR\n  C[Transmit chirp] --> R[Radio reflection]\n  R --> A[Sample return signal]\n  A --> P[Signal processing]\n  P --> D[Detections]\n```\n\n## Key terms\n\n- **Chirp**: signal whose frequency changes over a defined time interval.\n- **ADC**: analog-to-digital converter, which turns electrical signals into numerical samples.\n- **Point cloud**: processed detections expressed as spatial points, not a promise that every object surface is observed.\n- **Field of view**: angular region covered by the sensing arrangement.\n\n## Before / after\n\n- **Before:** Learn Sensor characteristics, uncertainty & noise and ROS 2 sensor drivers, metadata & recording; distinguish sampling from detection output.\n- **After:** Start with Radar point-cloud capture and no-target baseline before Radar ADC capture throughput and packet-loss characterization.\n\n## Try it in an afternoon\n\n1. **Draw two acquisition paths:** evaluation-board detections to a host, and raw capture through an additional capture board.\n2. **Label every boundary** with the data representation, connection type, and metadata your recorder must preserve.\n3. **Design a baseline comparison** for an empty scene and a fixed target; keep configuration unchanged and report missing detections rather than inventing points.",
+      "resources": [
+        {
+          "title": "Intro to mmWave Sensing : FMCW Radars - Module 1 : Range Estimation",
+          "url": "https://www.ti.com/en-us/design-development/educational-resources/video/5415203482001",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Learn how a frequency sweep and returning signal encode range."
+        },
+        {
+          "title": "IWR6843ISK Evaluation board",
+          "url": "https://www.ti.com/tool/IWR6843ISK",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the antenna-equipped board and its point-cloud versus raw-data paths."
+        },
+        {
+          "title": "IWR6843 data sheet, product information and support",
+          "url": "https://www.ti.com/product/IWR6843",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish the radar chip and its interfaces from a complete acquisition setup."
+        },
+        {
+          "title": "DCA1000EVM Evaluation board",
+          "url": "https://www.ti.com/tool/DCA1000EVM",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand the extra capture hardware and Ethernet transport for sensor data."
+        }
+      ],
+      "sources": [
+        "https://www.ti.com/en-us/design-development/educational-resources/video/5415203482001",
+        "https://www.ti.com/tool/IWR6843ISK",
+        "https://www.ti.com/product/IWR6843",
+        "https://www.ti.com/tool/DCA1000EVM"
+      ]
+    },
+    {
+      "node_id": "k:rgb-cameras-intrinsic-calibration",
+      "type": "knowledge",
+      "name": "RGB cameras & intrinsic calibration",
+      "summary": "Intrinsic calibration estimates how a particular camera and lens project scene points into pixels, including focal lengths, image center, and lens distortion.",
+      "lesson_md": "## In one sentence\n\nIntrinsic calibration estimates how a particular camera and lens project scene points into pixels, including focal lengths, image center, and lens distortion.\n\n![OpenCV checkerboard calibration image with detected corner locations](/img/lessons/knowledge_sensing-rgb-calibration.webp)\n*OpenCV checkerboard calibration image with detected corner locations. Source: [OpenCV contributors](https://github.com/opencv/opencv/blob/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown), license unknown.*\n\n## Why it matters for us\n\n- **Pixels are not metric coordinates:** a detected corner’s image location does not directly specify how far away it is or where a gripper should move.\n- **Lenses bend geometry:** radial distortion can make straight lines look curved. Correcting this matters before comparing geometry across images.\n- **Calibration belongs to a setup:** save image size and camera settings with the result, rather than treating a matrix copied from another camera as valid.\n\n> **Key idea:** A solver returning parameters is only the start; validate how well those parameters explain real image observations.\n\n## How it works\n\n- **Start with a projection model:** the pinhole model relates a point’s direction from the camera to an ideal pixel location.\n- **Estimate internal parameters:** focal lengths scale image coordinates; the principal point sets the image origin used by the projection model.\n- **Fit distortion separately:** coefficients describe departures from ideal projection, including radial bending and tangential effects.\n- **Think of fitting a serializer:** calibration estimates the mapping between known geometric inputs and observed pixel outputs, rather than guessing a conversion from one screenshot.\n- **Worked target example:** OpenCV describes 30 mm squares with target coordinates `(0,0)`, `(30,0)`, and `(60,0)` mm; consistent square dimensions establish geometric scale.\n- **Check reprojection error:** project known target corners back into the image and compare them with detected corners; inspect difficult views instead of trusting one aggregate score.\n\n```mermaid\nflowchart LR\n  T[Known target geometry] --> C[Images from varied views]\n  C --> D[Detect corners]\n  D --> F[Fit camera parameters]\n  F --> V[Validate reprojections]\n```\n\n## Key terms\n\n- **Intrinsics**: parameters describing projection inside a camera model, not the camera’s placement on the robot.\n- **Principal point**: image location where the optical axis intersects the ideal image plane.\n- **Distortion coefficients**: numbers describing lens-model deviations from ideal projection.\n- **Reprojection error**: pixel discrepancy between an observed feature and its prediction using fitted camera parameters.\n\n## Before / after\n\n- **Before:** Review Sensor characteristics, uncertainty & noise and basic matrices; distinguish pixel coordinates from physical target coordinates.\n- **After:** Try Intro: calibrate a webcam and track AprilTags, then study Extrinsic & multi-sensor calibration to connect camera and robot frames.\n\n## Try it in an afternoon\n\n1. **Use OpenCV’s sample checkerboard images** and record the inner-corner grid shape separately from the number of squares.\n2. **Run the documented calibration workflow** to detect corners and estimate intrinsics and distortion; retain the image resolution alongside the parameters.\n3. **Compare undistorted results** and per-view reprojection errors; reserve images for validation rather than judging only the views used during fitting.",
+      "resources": [
+        {
+          "title": "Camera Calibration with MATLAB",
+          "url": "https://www.mathworks.com/videos/camera-calibration-with-matlab-81233.html",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch target capture, parameter fitting, and reprojection validation; MATLAB is not required for the OpenCV exercise."
+        },
+        {
+          "title": "Camera Calibration using OpenCV",
+          "url": "https://learnopencv.com/camera-calibration-using-opencv/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Follow the geometry and Python/C++ calibration workflow."
+        },
+        {
+          "title": "Camera Calibration",
+          "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read the current OpenCV 4.x tutorial source, including target coordinates and sample images."
+        },
+        {
+          "title": "Supported models",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/supported-models",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "See why pinhole, fisheye-related projection, and distortion models are not interchangeable."
+        }
+      ],
+      "sources": [
+        "https://www.mathworks.com/videos/camera-calibration-with-matlab-81233.html",
+        "https://learnopencv.com/camera-calibration-using-opencv/",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://github.com/ethz-asl/kalibr/wiki/supported-models",
+        "https://github.com/opencv/opencv/blob/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown"
+      ]
+    },
+    {
+      "node_id": "k:robot-skin-distributed-tactile-hardware",
+      "type": "knowledge",
+      "name": "Robot skin & distributed tactile hardware",
+      "summary": "Robot skin places contact-sensitive material and sensors over a surface so a robot can measure local touch rather than only see or infer contact.",
+      "lesson_md": "## In one sentence\n\nRobot skin places contact-sensitive material and sensors over a surface so a robot can measure local touch rather than only see or infer contact.\n\n![AnySkin tactile patches mounted on a Franka gripper, Dob-E stick, and LEAP Hand](/img/lessons/knowledge_sensing-robot-skin.webp)\n*AnySkin tactile patches mounted on a Franka gripper, Dob-E stick, and LEAP Hand. Source: [AnySkin authors](https://any-skin.github.io/), Creative Commons Attribution-ShareAlike 4.0 International License.*\n\n## Why it matters for us\n\n- **Contact can be hidden:** a camera may not see the surface pressed against a gripper. A tactile patch measures changes where physical contact occurs.\n- **Coverage requires engineering:** spreading patches across a forearm adds wiring, mounting, channel identities, and calibration work; one fingertip sensor is not a full-body solution.\n- **Soft surfaces wear:** separating the replaceable contact material from electronics makes maintenance possible without treating every worn patch as an entirely new electronic device.\n\n> **Key idea:** A replaceable soft interface still needs a recorded identity, an unloaded baseline, and checks that replacement preserved useful measurements.\n\n## How it works\n\n- **Magnetic skin deforms:** AnySkin embeds magnetic particles in a soft surface. Contact changes the magnetic field measured by nearby electronics.\n- **Electronics remain separate:** the passive skin can be removed while the sensing board stays in place, unlike a permanently bonded sensing interface.\n- **Read multiple channels:** AnySkin uses five magnetometers measuring three axes each, giving `5*3 = 15` magnetic signal components before any learned contact interpretation.\n- **Think of a sensor driver:** raw channels are the device interface; a model interpreting force or slip is a separate software layer with its own assumptions.\n- **Subtract an unloaded reference:** the AnySkin visualizer supports re-zeroing when drift produces a nonzero signal without contact; zeroing is not a complete force calibration.\n- **Scale coverage deliberately:** keep patch positions, channel ordering, and replacement history with recordings rather than combining anonymous streams into a supposed skin map.\n\n```mermaid\nflowchart LR\n  C[Contact] --> D[Soft skin deformation]\n  D --> M[Magnetic field change]\n  M --> R[Magnetometer channels]\n  R --> B[Baseline and recorded identity]\n```\n\n## Key terms\n\n- **Tactile sensing**: measuring physical contact at a surface.\n- **Elastomer**: flexible material that deforms under load and can recover its shape.\n- **Baseline**: reference reading recorded without the contact you want to measure.\n- **Crosstalk**: one contact influencing multiple channels or neighboring sensing regions, complicating interpretation.\n\n## Before / after\n\n- **Before:** Study Sensor characteristics, uncertainty & noise and Tactile sensing for manipulation before interpreting magnetic channels as meaningful contact measurements.\n- **After:** Build Magnetic skin patch replacement repeatability bench, then Magnetic skin array crosstalk and wiring characterization before expanding coverage.\n\n## Try it in an afternoon\n\n1. **Watch the raw-signal demonstration** and separate the visible contact, magnetic readings, and any downstream learned prediction in your notes.\n2. **Draft a 15-component record** with timestamp, patch identifier, mounting position, and unloaded baseline identifier; do not label raw magnetic values as newtons.\n3. **Design a replacement comparison** using the same contact location before and after a patch swap; define which baseline and mounting details must be recorded.",
+      "resources": [
+        {
+          "title": "ReSkin: versatile, replaceable, lasting tactile skins",
+          "url": "https://www.youtube.com/watch?v=SxT_G-Im_CA",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "The research authors show magnetic tactile skin and its replaceable interface."
+        },
+        {
+          "title": "AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://any-skin.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the physical design, raw-signal demonstration, and replacement experiments."
+        },
+        {
+          "title": "AnySkin Sensor Library",
+          "url": "https://github.com/raunaqbhirangi/anyskin",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Learn the readout interface, visualizer, and unloaded re-zeroing behavior."
+        },
+        {
+          "title": "AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://arxiv.org/abs/2409.08276",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the scope and evidence behind cross-instance tactile sensing experiments."
+        }
+      ],
+      "sources": [
+        "https://www.youtube.com/watch?v=SxT_G-Im_CA",
+        "https://any-skin.github.io/",
+        "https://github.com/raunaqbhirangi/anyskin",
+        "https://arxiv.org/abs/2409.08276",
+        "https://reskin.dev/"
+      ]
     }
   ],
   "skipped": []
