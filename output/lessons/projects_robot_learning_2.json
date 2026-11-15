@@ -970,6 +970,135 @@
         "https://arxiv.org/abs/2610.39054",
         "https://arxiv.org/html/2610.39054v1"
       ]
+    },
+    {
+      "node_id": "p:shift-aware-stop-or-continue-arena",
+      "type": "project",
+      "name": "Shift-aware stop-or-continue arena",
+      "summary": "Test when a simulated robot should stop or ask for help after camera dropout or unfamiliar objects, and expose the failures its monitors miss.",
+      "lesson_md": "## In one sentence\n\nTest when a simulated robot should stop or ask for help after camera dropout or unfamiliar objects, and expose the failures its monitors miss.\n\n![KnowNo robot planning with an uncertainty-aware choice display](/img/lessons/projects_robot_learning_2-shift-aware-arena.webp)\n*KnowNo robot planning with an uncertainty-aware choice display. Source: [KnowNo authors](https://robot-help.github.io), license unknown.*\n\n## What you will learn\n\n- **Distribution shift** means evaluation inputs differ from the data used to choose the monitor; unfamiliar objects and lost camera frames are different shifts.\n- **Planner ambiguity** concerns which skill matches a request; **execution monitoring** checks whether the chosen skill is actually progressing. Keep these signals separate.\n- **Software analogy:** An API request can be unambiguous while its worker has crashed; validating the request cannot replace a runtime health check.\n\n> **Key idea:** A confident planner can still execute into a broken scene, so test ambiguity and execution health independently.\n\n## What you need\n\n- **Preparation:** Complete Failure early-warning precision-recall lab; use a simulated manipulation task and a frozen policy with independently labeled outcomes.\n- **Components:** A KnowNo-inspired skill selector, camera-validity checks, and a task-progress monitor; define each monitor’s observable inputs before evaluating it.\n- **Budget:** Existing compute and recorded or simulated observations suffice; no physical robot purchase is needed. This proposal is not safety certification.\n\n## Steps\n\n1. **Freeze calibration data** and thresholds using ordinary scenes; reserve separate unchanged-scene tests and shifted-scene tests before inspecting results.\n2. **Define a decision table:** An ambiguous request asks for help; an invalid camera stops execution; a valid singleton skill still needs progress checks.\n3. **Inject camera dropout** at a recorded time and add novel objects separately; preserve identical starting conditions for the unmodified baseline.\n4. **Measure detection lead time** relative to the independently labeled failure onset; negative lead time means the alarm arrived after failure.\n5. **Count false stops** on successful baseline trials and record interrupted progress; report monitor misses instead of showing only useful alarms.\n6. **Test empty targets and corrupted observations,** then film stop, continue, help, and missed-failure examples with timestamps and monitor reasons visible.\n\n```mermaid\nflowchart LR\n  A[Scene and request] --> B[Ambiguity check]\n  B[Ambiguity check] --> C[Execution checks]\n  C[Execution checks] --> D[Stop or continue]\n  D[Stop or continue] --> E[Outcome audit]\n```\n\n## Common pitfalls\n\n- **Guarantee transfer:** KnowNo’s calibrated prediction sets do not automatically retain their coverage under distribution shift or certify low-level motion.\n- **Threshold hindsight:** Choosing the alarm threshold from the shifted test cases converts your final challenge into tuning data; retain an untouched audit set.\n\n## When it's done\n\n- **Deliverable:** A replayable arena, decision table, false-stop count, missed-failure list, and detection-time report reveal the cost of both stopping and continuing.\n- **Map connection:** LIBERO supplies manipulation-task infrastructure; your injected shifts and stop logic are additional experiments, not built-in benchmark guarantees.",
+      "resources": [
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://www.youtube.com/watch?v=xCXx09gfhx4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See an uncertainty-aware planner ask for help rather than guessing."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://robot-help.github.io",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Separate language ambiguity from execution failures."
+        },
+        {
+          "title": "Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+          "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Select simulated manipulation scenes for controlled perturbations."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://arxiv.org/abs/2307.01928",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the assumptions behind calibrated language-planning claims."
+        }
+      ],
+      "sources": [
+        "https://robot-help.github.io",
+        "https://www.youtube.com/watch?v=xCXx09gfhx4",
+        "https://github.com/Lifelong-Robot-Learning/LIBERO",
+        "https://arxiv.org/abs/2307.01928"
+      ]
+    },
+    {
+      "node_id": "p:skill-api-hallucination-test-stage",
+      "type": "project",
+      "name": "Skill-API hallucination test stage",
+      "summary": "Build a sandbox that rejects invented robot skills, malformed arguments, and unmet preconditions before a language-generated plan can execute.",
+      "lesson_md": "## In one sentence\n\nBuild a sandbox that rejects invented robot skills, malformed arguments, and unmet preconditions before a language-generated plan can execute.\n\n![Robot arranging colored blocks from language-generated control programs](/img/lessons/projects_robot_learning_2-skill-api-stage.webp)\n*Robot arranging colored blocks from language-generated control programs. Source: [Code as Policies authors](https://code-as-policies.github.io/), license unknown.*\n\n## What you will learn\n\n- **Skill API** means the allowed robot operations and their argument types; **hallucination** here means proposing an operation or object the sandbox does not provide.\n- **Precondition** is something that must already be true before a skill runs, such as observing an object before attempting to pick it.\n- **Software analogy:** Treat the planner as an untrusted API client. A plausible function name is not permission to create or execute a new endpoint.\n- **Code as Policies** composes perception and control APIs into programs; this project adds an explicit, deliberately restricted execution contract.\n\n> **Key idea:** The executor, not the language model’s promise, decides which operations are permitted.\n\n## What you need\n\n- **Preparation:** Start after Intro: run a pretrained policy in simulation; use mocked perception and simulated skills rather than a connected physical arm.\n- **Tools:** Python, a typed skill registry, plan validator, and event log; saved planner outputs let the validator work without paid model calls.\n- **Scope:** Begin with a structured call list, not unrestricted Python execution. Model-service and compute costs depend on your chosen planner.\n\n## Steps\n\n1. **Declare a finite registry** with skill names, argument types, permitted object identifiers, preconditions, and observable results for each mocked operation.\n2. **Build a normal example:** `pick(\"red_cube\")` passes only when picking is registered, that identifier exists, and the mocked gripper is available.\n3. **Challenge unavailable capabilities:** Ask to throw the cube when only picking and placing exist; reject the unknown skill without improvising an implementation.\n4. **Challenge valid names with invalid context:** Use a missing object, wrong argument type, or occupied gripper; log distinct validation and precondition failures.\n5. **Test empty plans and corrupted perception;** require fresh valid inputs before rechecking a previously rejected call, rather than replaying stale approvals.\n6. **Film the test stage:** Show proposed calls, validator decisions, and executed mock events; count valid plans, rejected hallucinations, and unmet preconditions separately.\n\n```mermaid\nflowchart LR\n  A[Proposed calls] --> B[Type and registry checks]\n  B[Type and registry checks] --> C[Precondition checks]\n  C[Precondition checks] --> D[Mock dispatch]\n  D[Mock dispatch] --> E[Execution log]\n```\n\n## Common pitfalls\n\n- **Prompt-only enforcement:** Telling a model to use known skills does not enforce the contract; the dispatcher must reject unknown operations itself.\n- **Syntax versus feasibility:** A well-typed call can still fail a physical precondition; SayCan motivates checking what is possible as well as linguistically useful.\n\n## When it's done\n\n- **Deliverable:** A replayable challenge suite demonstrates successful calls and blocked calls, with evidence that rejected plans produce no simulated actuation events.\n- **Next connection:** Affordance-grounded plan ranking lab compares executable choices after this stage has removed calls outside the API.",
+      "resources": [
+        {
+          "title": "Code as Policies: three-minute explainer",
+          "url": "https://code-as-policies.github.io/videos/3_min_explainer.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch language-generated programs call perception and control functions."
+        },
+        {
+          "title": "Code as Policies: Language Model Programs for Embodied Control",
+          "url": "https://code-as-policies.github.io/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Inspect example robot commands and their API-based programs."
+        },
+        {
+          "title": "SayCan: Grounding Language in Robotic Affordances",
+          "url": "https://say-can.github.io/",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand why a plausible skill must also be feasible in the current state."
+        },
+        {
+          "title": "Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners",
+          "url": "https://arxiv.org/abs/2307.01928",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Distinguish rejecting invalid capabilities from asking for help about ambiguous valid ones."
+        }
+      ],
+      "sources": [
+        "https://code-as-policies.github.io/",
+        "https://code-as-policies.github.io/videos/3_min_explainer.mp4",
+        "https://say-can.github.io/",
+        "https://arxiv.org/abs/2307.01928"
+      ]
+    },
+    {
+      "node_id": "p:supervised-arm-deadline-qualification",
+      "type": "project",
+      "name": "Supervised arm deadline qualification",
+      "summary": "Qualify a supervised tabletop arm’s inference queue by measuring command age, triggering a watchdog stop, and requiring explicit authorization before recovery.",
+      "lesson_md": "## In one sentence\n\nQualify a supervised tabletop arm’s inference queue by measuring command age, triggering a watchdog stop, and requiring explicit authorization before recovery.\n\n![Physical Intelligence real-time action-chunking robot demonstration](/img/lessons/projects_robot_learning_2-arm-deadline.webp)\n*Physical Intelligence real-time action-chunking robot demonstration. Source: [Physical Intelligence](https://www.pi.website/research/real_time_chunking), license unknown.*\n\n## What you will learn\n\n- **Asynchronous inference** computes new actions while earlier actions execute; a **queue** holds actions waiting for their execution time.\n- **Command age** measures how old the originating observation is when its action executes; a long queue can hide stale commands behind smooth motion.\n- **Watchdog** is an independent timing check that inhibits further execution when a declared condition fails; the required stop behavior belongs to your robot integration.\n- **Software analogy:** A healthy producer thread does not prove a consumer meets deadlines; trace messages from observation capture through execution.\n\n> **Key idea:** Deadline qualification must test stale-command rejection and recovery, not just average inference speed.\n\n## What you need\n\n- **Prerequisite:** Complete Real-time chunk stitching bake-off in simulation; select an already supported arm, matching policy runtime, calibrated cameras, and timestamp logging.\n- **Hardware:** A physical emergency stop and a cleared slow-motion tabletop setup are required; current procurement cost is unknown. Review any mounting or wiring changes.\n- **Scope:** Test delay injection in simulation first. Compare precision or quantization only when the selected runtime supports it; do not assume interchangeable model formats.\n\n## Steps\n\n1. **Define the timing contract:** State which clock measures observation age, the deadline, the watchdog condition, and the robot-specific controlled-stop procedure.\n2. **Trace the normal queue** from captured image to inferred chunk, enqueue event, and executed command; display age and queue length separately.\n3. **Inject a bounded delay in simulation** and verify stale actions are inhibited; confirm invalid or missing observations cannot refill the queue.\n4. **Authorize a slow physical trial** only after simulated stop tests pass; keep a human at the emergency stop and outside the arm’s reachable area.\n5. **Trigger the tested watchdog condition** under supervision, clear stale queued commands, and require explicit recovery authorization with fresh observations before restarting.\n6. **Film the qualification:** Show ordinary motion, a stop, and authorized recovery with timestamps; include empty-queue and corrupted-observation test evidence.\n\n```mermaid\nflowchart LR\n  A[Timestamped observation] --> B[Infer and queue]\n  B[Infer and queue] --> C[Watchdog gate]\n  C[Watchdog gate] --> D[Execute or stop]\n  D[Execute or stop] --> E[Authorize recovery]\n```\n\n## Common pitfalls\n\n- **Smooth versus current:** Action interpolation can look good while responding to obsolete images; measure observation-to-execution age rather than inference time alone.\n- **Stop semantics:** Merely pausing a network client does not establish a controlled stop; validate the actual arm interface and its configured behavior.\n\n## When it's done\n\n- **Deliverable:** A slow trajectory movie, timing trace, watchdog event log, and explicit recovery record demonstrate the declared deadline contract for this setup only.\n- **Map connection:** Real-time learned-policy execution & inference scheduling explains the pipeline; this qualification tests a concrete integration, not universal robot safety.",
+      "resources": [
+        {
+          "title": "Real-time action chunking demonstration",
+          "url": "https://website.pi-asset.com/real_time_chunking/sizzle.mp4",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why continuous movement needs coordinated action chunks."
+        },
+        {
+          "title": "Asynchronous Inference",
+          "url": "https://huggingface.co/docs/lerobot/main/en/async",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect the inference server, robot client, and action queue."
+        },
+        {
+          "title": "Real-Time Action Chunking with Large Models",
+          "url": "https://www.pi.website/research/real_time_chunking",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand discontinuities, inference delay, and asynchronous execution."
+        },
+        {
+          "title": "Control-Aware Command Generation for Asynchronous Control and Action Inference with Vision-Based Policies towards Fast Execution",
+          "url": "https://arxiv.org/abs/2611.11089",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Separate continuous command generation from your added watchdog acceptance checks."
+        }
+      ],
+      "sources": [
+        "https://www.pi.website/research/real_time_chunking",
+        "https://website.pi-asset.com/real_time_chunking/sizzle.mp4",
+        "https://huggingface.co/docs/lerobot/main/en/async",
+        "https://arxiv.org/abs/2611.11089"
+      ]
     }
   ]
 }
