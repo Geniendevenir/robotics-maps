@@ -1,0 +1,373 @@
+{
+  "batch": "projects_perception_2",
+  "lessons": [
+    {
+      "node_id": "p:line-following-mobile-robot-with-classical-vision",
+      "type": "project",
+      "name": "Line-following mobile robot with classical vision",
+      "summary": "Make a wheeled robot follow a colored tape line by turning camera pixels into steering corrections, without training a neural network.",
+      "lesson_md": "## In one sentence\n\nMake a wheeled robot follow a colored tape line by turning camera pixels into steering corrections, without training a neural network.\n\n![Donkey Car camera view with the line detection area and steering telemetry](/img/lessons/projects_perception_2-line.webp)\n*Donkey Car camera view with the line detection area and steering telemetry. Source: [Publisher](https://docs.donkeycar.com/guide/computer_vision/computer_vision/), license unknown.*\n\n## What you will learn\n\n- **Thresholding** keeps pixels inside a chosen color range; the remaining mask separates the tape from the floor.\n- **HSV** means hue, saturation, and value: a color representation that lets you select a color separately from its brightness.\n- **Feedback control** repeatedly measures line displacement and corrects steering. Think of a server loop that reads fresh input before producing each response.\n\n> **Key idea:** A correct steering command depends on a fresh, reliable line measurement, not merely a good controller.\n\n## What you need\n\n- **Setup:** Use a camera-equipped wheeled chassis, motor controller, computer, contrasting tape, and OpenCV; hardware cost depends on what the lab already owns.\n- **Starting skills:** Complete Intro: calibrate a webcam and track AprilTags, then connect this exercise to Classical image processing & feature matching.\n- **Reference implementation:** Donkey Car provides a configurable camera line follower; its default target is yellow, not an arbitrary floor marking.\n\n## Steps\n\n1. **Record the track** before enabling motors; choose an image strip where the tape remains visible through turns.\n2. **Select tape pixels** using HSV bounds. Display both the original image and mask while adjusting those bounds.\n3. **Measure horizontal displacement:** As an illustrative test, a line at pixel 180 against a target at 160 gives a 20-pixel error.\n4. **Connect steering slowly:** Check the correction direction with wheels raised, then drive a straight section and a bend.\n5. **Add loss handling:** Stop when the line disappears rather than reusing an old steering command indefinitely.\n6. **Demo repeated laps** under changed lighting; include an empty track view and a deliberately interrupted line.\n\n```mermaid\nflowchart LR\n  C[Camera] --> M[Color mask]\n  M --> E[Line error]\n  E --> S[Steering]\n  S --> C\n```\n\n## Common pitfalls\n\n- **Shadows and reflections** can survive a color threshold. Save failure images instead of endlessly changing steering gains.\n- **Camera angle** changes the accuracy-versus-lookahead trade-off; keep mounting fixed during comparisons. Keep feet and cables outside the driving area.\n\n## When it's done\n\n- **Deliverable:** Show the moving robot beside its live mask and steering overlay, including a visible stop after losing the tape.\n- **Report:** Save completed laps, departures, lighting conditions, camera placement, thresholds, and controller settings so another student can repeat the demo.",
+      "resources": [
+        {
+          "title": "Line Following with Computer Vision and a Raspberry Pi Rover",
+          "url": "https://www.youtube.com/watch?v=zcCHddD6g_Y",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See a camera-based Raspberry Pi rover following a line."
+        },
+        {
+          "title": "Computer Vision Autopilot - Donkey Car",
+          "url": "https://docs.donkeycar.com/guide/computer_vision/computer_vision/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the HSV mask, line histogram, and steering-control implementation."
+        },
+        {
+          "title": "donkeycar/donkeycar/parts/line_follower.py at main · autorope/donkeycar · GitHub",
+          "url": "https://github.com/autorope/donkeycar/blob/main/donkeycar/parts/line_follower.py",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the actual camera line-following part."
+        },
+        {
+          "title": "donkeycar/donkeycar/templates/cfg_cv_control.py at main · autorope/donkeycar · GitHub",
+          "url": "https://github.com/autorope/donkeycar/blob/main/donkeycar/templates/cfg_cv_control.py",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Identify the configurable scan region, color bounds, and control settings."
+        }
+      ],
+      "sources": [
+        "https://docs.donkeycar.com/guide/computer_vision/computer_vision/",
+        "https://www.youtube.com/watch?v=zcCHddD6g_Y",
+        "https://github.com/autorope/donkeycar/blob/main/donkeycar/parts/line_follower.py",
+        "https://github.com/autorope/donkeycar/blob/main/donkeycar/templates/cfg_cv_control.py"
+      ]
+    },
+    {
+      "node_id": "p:masked-observations-to-make-imitation-policies-robust",
+      "type": "project",
+      "name": "Masked observations to make imitation policies robust",
+      "summary": "Test whether hiding irrelevant image pixels helps an imitation policy complete the same manipulation task when distracting objects appear.",
+      "lesson_md": "## In one sentence\n\nTest whether hiding irrelevant image pixels helps an imitation policy complete the same manipulation task when distracting objects appear.\n\n![SAM 2 video dataset examples illustrating objects and segmentation masks](/img/lessons/projects_perception_2-masked.webp)\n*SAM 2 video dataset examples illustrating objects and segmentation masks. Source: [Publisher](https://github.com/facebookresearch/sam2), license unknown.*\n\n## What you will learn\n\n- **Segmentation** assigns pixels to an object; a binary mask marks retained pixels versus discarded background.\n- **Imitation learning** fits actions to demonstrations. This project changes the observation, not the task or the robot.\n- **A controlled comparison** isolates one change. Treat masking like an API preprocessing middleware whose effect must be measured, not assumed.\n\n> **Key idea:** Masking is a robustness hypothesis: it can remove distractions, but also remove information needed to act.\n\n## What you need\n\n- **Starting point:** Finish Autonomous pick-and-place with ACT; reuse its working SO-101, cameras, demonstrations, and LeRobot configuration.\n- **Mask source:** SAM 2 supports point- or box-prompted image segmentation and video propagation; prompts must be available during deployment too.\n- **Compute and budget:** Use existing hardware first; training and segmentation compute requirements depend on your chosen checkpoint and image resolution.\n\n## Steps\n\n1. **Freeze the task** and split demonstrations into training and held-out episodes before changing observations.\n2. **Build the mask transform:** For each image, retain selected pixels and replace background with a fixed value; visualize the output.\n3. **Train two policies** with matching settings: original RGB images versus masked images. Apply the same transform during training and deployment.\n4. **Work a pixel example:** With a binary mask, multiply RGB [120, 80, 40] by 0 to discard it, or by 1 to retain it.\n5. **Evaluate matched starts** with clutter, absent targets, empty scenes, and dim lighting; count successes, failures, and mask failures separately.\n6. **Record an A/B demo** showing raw images, masks, and both policies attempting the same held-out conditions.\n\n```mermaid\nflowchart LR\n  I[Camera image] --> M[Mask transform]\n  M --> P[Imitation policy]\n  P --> A[Robot action]\n  A --> I\n```\n\n## Common pitfalls\n\n- **Information loss:** Removing the gripper or destination may make a previously observable task impossible. Inspect masks before blaming the policy.\n- **Evaluation leakage:** Hand-correcting only test masks makes the comparison unfair; log any human prompts and corrections.\n- **Hardware risk:** Supervise slow rollouts with a clear workspace and stop on unexpected motion.\n\n## When it's done\n\n- **Deliverable:** Publish the A/B video and an outcome table with trial counts for every condition, including cases where masking hurts.\n- **Reproducibility:** Save dataset splits, checkpoints, prompt rules, image transforms, and timing; do not present an improvement as guaranteed.",
+      "resources": [
+        {
+          "title": "🤝 Molmo meets SAM",
+          "url": "https://www.youtube.com/watch?v=2UYcTmQ8bFo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See points connected to segmentation in an official Ai2 demonstration."
+        },
+        {
+          "title": "sam2/notebooks/image_predictor_example.ipynb at main · facebookresearch/sam2 · GitHub",
+          "url": "https://github.com/facebookresearch/sam2/blob/main/notebooks/image_predictor_example.ipynb",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Follow point and box prompts to inspect object masks."
+        },
+        {
+          "title": "Cameras · Hugging Face",
+          "url": "https://huggingface.co/docs/lerobot/cameras",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Keep camera inputs consistent in the policy pipeline."
+        },
+        {
+          "title": "SAM 2: Segment Anything in Images and Videos",
+          "url": "https://github.com/facebookresearch/sam2",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Use the official image and video segmentation interfaces."
+        },
+        {
+          "title": "SAM 2: Segment Anything in Images and Videos",
+          "url": "https://arxiv.org/abs/2408.00714",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand what the segmentation model supports, independently of policy robustness."
+        }
+      ],
+      "sources": [
+        "https://github.com/facebookresearch/sam2",
+        "https://www.youtube.com/watch?v=2UYcTmQ8bFo",
+        "https://github.com/facebookresearch/sam2/blob/main/notebooks/image_predictor_example.ipynb",
+        "https://huggingface.co/docs/lerobot/cameras",
+        "https://arxiv.org/abs/2408.00714"
+      ]
+    },
+    {
+      "node_id": "p:multi-view-object-scanning-with-icp",
+      "type": "project",
+      "name": "Multi-view object scanning with ICP",
+      "summary": "Merge overlapping depth-camera views into one object model by repeatedly aligning their three-dimensional surface points.",
+      "lesson_md": "## In one sentence\n\nMerge overlapping depth-camera views into one object model by repeatedly aligning their three-dimensional surface points.\n\n![Open3D registration visualization with overlapping yellow and cyan point clouds](/img/lessons/projects_perception_2-icp.webp)\n*Open3D registration visualization with overlapping yellow and cyan point clouds. Source: [Publisher](https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html), license unknown.*\n\n## What you will learn\n\n- **A point cloud** is a collection of three-dimensional surface samples; RGB-D pairs a color image with a depth image.\n- **Registration** finds the rotation and translation that align two views of the same surface.\n- **Iterative Closest Point (ICP)** alternates nearest-point matching with alignment updates. Think of repeatedly reconciling two partially overlapping datasets until their coordinates agree.\n\n> **Key idea:** ICP refines an already plausible alignment; a small fitting error alone does not prove the scan is correct.\n\n## What you need\n\n- **Tools:** Use Open3D and its example clouds first; then a supported RGB-D camera, a stationary object, and overlapping viewpoints.\n- **Background:** Start from Intro: calibrate a webcam and track AprilTags and Point cloud processing; camera calibration matters before reconstructing geometry.\n- **Budget:** Example data needs no camera purchase; a real scan requires available depth hardware, whose current cost is unknown here.\n\n## Steps\n\n1. **Reproduce pairwise alignment** on the Open3D tutorial data; display the initial and refined cloud overlays.\n2. **Inspect the worked threshold:** The tutorial uses 0.02 for correspondence distance; do not copy it without checking your coordinate units and object scale.\n3. **Capture object views** with overlap. Crop away the table and background before aligning a rotating object.\n4. **Initialize each pair** approximately, refine with ICP, and record overlap fitness and inlier root-mean-square error: the typical distance among accepted matches.\n5. **Merge multiple views** and inspect the closing seam; use the multiway tutorial to understand jointly correcting accumulated alignment errors.\n6. **Demo the scan** as a turntable visualization, alongside source views and a deliberately poor-overlap failure.\n\n```mermaid\nflowchart LR\n  V[RGB-D views] --> P[Object clouds]\n  P --> I[Initial alignment]\n  I --> R[ICP refinement]\n  R --> M[Merged model]\n```\n\n## Common pitfalls\n\n- **Bad initialization** can align the wrong surfaces. Symmetric objects may look convincing even when their pose is wrong.\n- **Table contamination** can align the background instead of the turning object; repeated pairwise errors can also create a visible closing seam.\n- **Empty or noisy depth:** Reject missing clouds and record low-overlap failures rather than silently merging them.\n\n## When it's done\n\n- **Deliverable:** Save the merged point cloud, camera settings, alignment transforms, and turntable video; distinguish a point cloud from a watertight printable mesh.\n- **Evaluation:** Report per-pair fitness and fitting error, plus visible duplication and seam defects on a fixed set of objects and lighting conditions.",
+      "resources": [
+        {
+          "title": "Iterative Closest Point (ICP) - 5 Minutes with Cyrill",
+          "url": "https://www.youtube.com/watch?v=QWDM4cFdKrE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Build intuition for matching and aligning overlapping point clouds."
+        },
+        {
+          "title": "ICP registration - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Run the pairwise example and inspect alignment metrics."
+        },
+        {
+          "title": "RGBD images - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Understand paired color and depth inputs."
+        },
+        {
+          "title": "Multiway registration - Open3D 0.19.0 documentation",
+          "url": "https://www.open3d.org/docs/release/tutorial/pipelines/multiway_registration.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Extend pairwise matching into a consistent multi-view reconstruction."
+        }
+      ],
+      "sources": [
+        "https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html",
+        "https://www.youtube.com/watch?v=QWDM4cFdKrE",
+        "https://www.open3d.org/docs/release/tutorial/geometry/rgbd_image.html",
+        "https://www.open3d.org/docs/release/tutorial/pipelines/multiway_registration.html"
+      ]
+    },
+    {
+      "node_id": "p:open-vlm-vs-api-vlm-for-robot-pointing",
+      "type": "project",
+      "name": "Open VLM vs. API VLM for robot pointing",
+      "summary": "Compare a locally runnable vision-language model with a hosted API by asking both to point at named objects in identical lab images.",
+      "lesson_md": "## In one sentence\n\nCompare a locally runnable vision-language model with a hosted API by asking both to point at named objects in identical lab images.\n\n![Gemini spatial reasoning example with labeled points over tabletop objects](/img/lessons/projects_perception_2-pointing.webp)\n*Gemini spatial reasoning example with labeled points over tabletop objects. Source: [Publisher](https://ai.google.dev/gemini-api/docs/robotics-spatial), license unknown.*\n\n## What you will learn\n\n- **A vision-language model (VLM)** accepts images and text; pointing grounds a phrase in an image coordinate rather than just naming an object.\n- **Local versus hosted** changes control over inference and measurement. Keep accuracy, response time, and billed usage separate instead of inventing one universal winner.\n- **Output adapters** normalize different response formats, like wrappers around incompatible HTTP APIs; malformed responses are test outcomes, not invisible retries.\n\n> **Key idea:** A fluent object description is not evidence of accurate pointing; score the returned location against a human annotation.\n\n## What you need\n\n- **Inputs:** Collect a fixed set of lab images and target descriptions, with hand-marked acceptable target regions and explicit absent-target examples.\n- **Models:** Molmo provides an open pointing-capable baseline; compare it with an available Gemini Robotics endpoint, recording exact model identifiers and dates.\n- **Map connection:** Build on Vision-language models for embodied perception. Florence-2 is another grounding baseline, but its box output needs a declared point-conversion rule.\n- **Costs:** Existing images require no robot; local compute and API charges depend on your setup. Report measured usage rather than assuming either is free.\n\n## Steps\n\n1. **Freeze the benchmark** at 100 images as a project target; separate prompt-development examples from the final scored set.\n2. **Choose one output contract** containing target label, image coordinates, and an explicit no-target result.\n3. **Check coordinate conversion:** Gemini documents normalized [y, x] values from 0–1000; [500, 250] denotes halfway down and one-quarter across.\n4. **Run identical requests** through both systems; retain original output, parsing failures, elapsed time, and input image dimensions.\n5. **Score hits and misses** against annotated regions; test clutter, ambiguous wording, bad lighting, and empty scenes separately.\n6. **Demo paired overlays** with a results table and failure gallery; keep the experiment offline before connecting any robot motion.\n\n```mermaid\nflowchart LR\n  I[Image and request] --> L[Local VLM]\n  I --> A[Hosted VLM]\n  L --> N[Normalize coordinates]\n  A --> N\n  N --> S[Score annotations]\n```\n\n## Common pitfalls\n\n- **Coordinate confusion:** Swapping axes or forgetting a resized image can dominate apparent model error; inspect overlays before ranking models.\n- **Model drift:** Hosted endpoints change; save the actual endpoint identifier instead of assuming Gemini Robotics-ER 1.5 remains available.\n\n## When it's done\n\n- **Deliverable:** Publish per-model hit counts, no-target errors, parsing failures, response times, and measured usage with the 100-image benchmark manifest.\n- **Interpretation:** Explain at least one failure from each model; a correct image point still is not a safe three-dimensional robot target.",
+      "resources": [
+        {
+          "title": "🤖 Molmo on Robotics Data: Powering Machines with AI",
+          "url": "https://www.youtube.com/watch?v=bHOBGAYNBNI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the Molmo creators demonstrate perception on robotics images."
+        },
+        {
+          "title": "Molmo | Ai2",
+          "url": "https://molmo.allenai.org/blog",
+          "format": "Blog",
+          "level": "Beginner",
+          "why": "Understand the open model family and its pointing behavior."
+        },
+        {
+          "title": "allenai/Molmo-7B-D-0924 · Hugging Face",
+          "url": "https://huggingface.co/allenai/Molmo-7B-D-0924",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect a concrete open-model checkpoint and inference example."
+        },
+        {
+          "title": "Spatial reasoning",
+          "url": "https://ai.google.dev/gemini-api/docs/robotics-spatial",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use the hosted pointing task and documented coordinate convention."
+        }
+      ],
+      "sources": [
+        "https://ai.google.dev/gemini-api/docs/robotics-spatial",
+        "https://www.youtube.com/watch?v=bHOBGAYNBNI",
+        "https://molmo.allenai.org/blog",
+        "https://huggingface.co/allenai/Molmo-7B-D-0924"
+      ]
+    },
+    {
+      "node_id": "p:open-vocabulary-3d-map-of-a-room",
+      "type": "project",
+      "name": "Open-vocabulary 3D map of a room",
+      "summary": "Build a three-dimensional room map whose object regions can be retrieved with text queries such as “chair” rather than fixed numeric class IDs.",
+      "lesson_md": "## In one sentence\n\nBuild a three-dimensional room map whose object regions can be retrieved with text queries such as “chair” rather than fixed numeric class IDs.\n\n![ConceptGraphs pipeline connecting RGB-D observations to object maps and scene graphs](/img/lessons/projects_perception_2-room-map.webp)\n*ConceptGraphs pipeline connecting RGB-D observations to object maps and scene graphs. Source: [Publisher](https://concept-graphs.github.io/), license unknown.*\n\n## What you will learn\n\n- **Open vocabulary** means queries are not restricted to a small predefined class list; it does not mean every phrase will be understood correctly.\n- **A semantic map** attaches meaning to geometry. ConceptGraphs associates object regions across views and fuses their spatial and visual information.\n- **An embedding** is a numerical feature vector used to compare meaning. Think of a search index whose results also have three-dimensional locations.\n\n> **Key idea:** Text retrieval needs both recognizable object features and consistent geometry across camera views.\n\n## What you need\n\n- **Inputs:** Use posed RGB-D frames: color, depth, and the camera position and orientation for each frame. Start with a supported recorded sequence.\n- **Software:** Follow ConceptGraphs and its documented dataset configuration; hardware and compute cost depend on whether you collect your own sequence.\n- **Map links:** Start from Intro: calibrate a webcam and track AprilTags; this project practices Open-vocabulary 3D scene graphs & semantic maps.\n\n## Steps\n\n1. **Run the supplied sequence** and inspect the camera views before attempting a new room capture.\n2. **Segment object regions** in each image, compute descriptors, and project valid depth pixels into three-dimensional points.\n3. **Associate repeated observations** so one chair seen from several angles becomes one mapped object, rather than many duplicates.\n4. **Try the documented interaction:** Press f in the visualizer and query “basketball”; inspect whether the actual ball ranks above nearby objects.\n5. **Evaluate a query list** with present objects, absent objects, synonyms, and ambiguous descriptions; record selected regions and failures.\n6. **Demo an interactive map** beside source images; show a correct retrieval, a confusing query, and a missing object.\n\n```mermaid\nflowchart LR\n  F[Posed RGB-D] --> S[Object regions]\n  S --> D[3D objects and features]\n  D --> M[Multi-view fusion]\n  Q[Text query] --> R[Rank mapped objects]\n  M --> R\n```\n\n## Common pitfalls\n\n- **Pose errors** can duplicate objects or bend the map. Good text matching cannot repair inconsistent camera geometry.\n- **Complex queries:** The project reports limitations with negation and multiple concepts for CLIP feature matching; do not treat similarity as calibrated certainty.\n- **Missing depth:** Empty frames and reflective surfaces may leave holes; keep those failures visible in the evaluation.\n\n## When it's done\n\n- **Deliverable:** Save the map, input sequence, configurations, query list, and retrieval outcomes, not only a colorful screenshot.\n- **Next project:** Fetch-by-name with a mobile manipulator can use object locations later; this demo does not yet plan safe grasps or navigation.",
+      "resources": [
+        {
+          "title": "Getting Started with the Code for ConceptGraphs (Tutorial Video)",
+          "url": "https://www.youtube.com/watch?v=56jEFyrqqpo",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Follow the authors through the code and mapping workflow."
+        },
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://concept-graphs.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "See the object fusion pipeline and text-query examples."
+        },
+        {
+          "title": "concept-graphs/concept-graphs",
+          "url": "https://github.com/concept-graphs/concept-graphs",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Reproduce mapping, visualization, and text retrieval."
+        },
+        {
+          "title": "ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning",
+          "url": "https://arxiv.org/abs/2309.16650",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Read the original representation and evaluation."
+        }
+      ],
+      "sources": [
+        "https://concept-graphs.github.io/",
+        "https://www.youtube.com/watch?v=56jEFyrqqpo",
+        "https://github.com/concept-graphs/concept-graphs",
+        "https://arxiv.org/abs/2309.16650"
+      ]
+    },
+    {
+      "node_id": "p:open-vocabulary-detector-shoot-out-on-lab-objects",
+      "type": "project",
+      "name": "Open-vocabulary detector shoot-out on lab objects",
+      "summary": "Benchmark text-conditioned detectors on the same lab photographs to discover which object descriptions succeed, fail, or confuse similar objects.",
+      "lesson_md": "## In one sentence\n\nBenchmark text-conditioned detectors on the same lab photographs to discover which object descriptions succeed, fail, or confuse similar objects.\n\n![Grounding DINO examples showing text-conditioned object detection boxes](/img/lessons/projects_perception_2-detectors.webp)\n*Grounding DINO examples showing text-conditioned object detection boxes. Source: [Publisher](https://github.com/IDEA-Research/GroundingDINO), license unknown.*\n\n## What you will learn\n\n- **Grounding** connects a text phrase to a region in an image; a bounding box encloses that region with rectangular coordinates.\n- **Open-vocabulary detection** accepts text descriptions rather than only fixed training labels. Grounding DINO, OWLv2, and Florence-2 provide useful comparison candidates.\n- **A benchmark** is an executable test suite for model behavior: freeze inputs and expected regions before comparing outputs.\n\n> **Key idea:** Fair comparison requires a shared task and scoring rule, not a collage of each model’s best-looking detections.\n\n## What you need\n\n- **Data:** Photograph lab objects and annotate acceptable boxes, including similar objects, clutter, empty scenes, missing targets, and poor lighting.\n- **Models:** Use documented checkpoints and preprocessing for each detector. Existing photos require no new robot; compute costs depend on your machine.\n- **Background:** Follow Intro: calibrate a webcam and track AprilTags, then connect this benchmark to Open-vocabulary detection & grounding.\n\n## Steps\n\n1. **Freeze 50 prompts** as the project target, including simple names, descriptive phrases, synonyms, and intentionally absent objects.\n2. **Run each model** on identical image-prompt pairs; save checkpoint revisions, thresholds, raw predictions, image sizes, and elapsed inference time.\n3. **Normalize output boxes** into the original image coordinates so resizing and output format do not bias the comparison.\n4. **Define overlap scoring:** Intersection over union divides shared box area by combined area; identical boxes score one and disjoint boxes score zero.\n5. **Count correct and incorrect detections:** Precision is correct detections divided by all returned detections; also count missed targets instead of rewarding silence.\n6. **Demo the leaderboard** alongside a failure gallery, showing the same difficult prompt and image for every detector.\n\n```mermaid\nflowchart LR\n  I[Images and prompts] --> M[Detector adapters]\n  M --> B[Common box format]\n  B --> S[Score labels]\n  S --> F[Table and failure gallery]\n```\n\n## Common pitfalls\n\n- **Threshold tuning:** Choosing thresholds on the final test set leaks answers. Use separate development images and publish the selected settings.\n- **Prompt mismatch:** A phrase that asks for every mug differs from one asking for a particular mug; decide how multiple valid matches are scored.\n- **Timing mismatch:** Separate model loading from inference, and state whether image preprocessing and device transfers are included.\n\n## When it's done\n\n- **Deliverable:** Report precision, missed targets, latency, and failures by prompt category, with trial counts and checkpoint details.\n- **Reproducibility:** Another student should regenerate the table from your images, annotations, saved configurations, and scoring script without manually selecting favorable outputs.",
+      "resources": [
+        {
+          "title": "Detect Anything You Want with Grounding DINO | Zero Shot Object Detection SOTA",
+          "url": "https://www.youtube.com/watch?v=cMa77r3YrDk",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See text-conditioned detection with Grounding DINO before benchmarking it."
+        },
+        {
+          "title": "IDEA-Research/GroundingDINO",
+          "url": "https://github.com/IDEA-Research/GroundingDINO",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Run the official detector and inspect its text and box thresholds."
+        },
+        {
+          "title": "OWLv2 · Hugging Face",
+          "url": "https://huggingface.co/docs/transformers/model_doc/owlv2",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Build a second text-conditioned detector adapter."
+        },
+        {
+          "title": "microsoft/Florence-2-large · Hugging Face",
+          "url": "https://huggingface.co/microsoft/Florence-2-large",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Use the model card’s grounding tasks and output parsing."
+        },
+        {
+          "title": "Grounding DINO: Marrying DINO with Grounded Pre-Training for Open-Set Object Detection",
+          "url": "https://arxiv.org/abs/2303.05499",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand the original grounding model and evaluation."
+        }
+      ],
+      "sources": [
+        "https://github.com/IDEA-Research/GroundingDINO",
+        "https://www.youtube.com/watch?v=cMa77r3YrDk",
+        "https://huggingface.co/docs/transformers/model_doc/owlv2",
+        "https://huggingface.co/microsoft/Florence-2-large",
+        "https://arxiv.org/abs/2303.05499"
+      ]
+    },
+    {
+      "node_id": "p:pan-tilt-camera-that-follows-a-chosen-object",
+      "type": "project",
+      "name": "Pan-tilt camera that follows a chosen object",
+      "summary": "Mount a camera on two servos and repeatedly turn it to keep a selected moving object near the image center.",
+      "lesson_md": "## In one sentence\n\nMount a camera on two servos and repeatedly turn it to keep a selected moving object near the image center.\n\n![Pixy Pet robot with its camera and pan-tilt mechanism assembled](/img/lessons/projects_perception_2-pan-tilt.webp)\n*Pixy Pet robot with its camera and pan-tilt mechanism assembled. Source: [Publisher](https://learn.adafruit.com/pixy-pet-robot-color-vision-follower-using-pixycam/overview), license unknown.*\n\n## What you will learn\n\n- **Pan** rotates the camera sideways; **tilt** rotates it vertically. These are separate axes driven by separate servos.\n- **Visual servoing** means using image measurements as feedback for motion. The target’s displacement from image center becomes a correction request.\n- **Tracking** preserves the chosen target across frames. Think of keeping one session ID instead of opening a new session for whichever object appears largest.\n\n> **Key idea:** Following the selected object requires both stable identity and a stable feedback loop.\n\n## What you need\n\n- **Hardware:** Use a lightweight camera, two-axis bracket, suitable servos, controller, and the manufacturer-specified supply; current assembly cost is unknown here.\n- **Perception:** Begin with a colored target as in Pixy Pet, then adapt a detector such as YOLO11 with persistent tracking for supported object classes.\n- **Starting skills:** Complete Intro: calibrate a webcam and track AprilTags; connect Real-time 2D object detection with Multi-object tracking.\n\n## Steps\n\n1. **Test each axis** independently at low speed and set conservative angle limits before attaching the full perception loop.\n2. **Select one target** and draw its center, identity, and the image center; first verify tracking with motors disabled.\n3. **Compute pixel errors:** An illustrative target at (350, 220) in a 640-by-480 image is 30 pixels right and 20 pixels above center.\n4. **Apply small corrections** and check each axis sign. Start with proportional control: larger displacement requests a larger correction.\n5. **Handle target loss** by holding position; avoid chasing another object automatically or continuing an old correction.\n6. **Demo moving-target following** and deliberate occlusion, logging center error, target switches, frame timing, and servo-limit events.\n\n```mermaid\nflowchart LR\n  C[Camera frame] --> T[Selected target]\n  T --> E[Center error]\n  E --> U[Limited servo command]\n  U --> C\n```\n\n## Common pitfalls\n\n- **Oscillation:** Excessive corrections and delayed frames can create back-and-forth hunting; reduce gains and inspect timing before adding complexity.\n- **Identity switches:** A second similar object can steal the tracker. Include a crossing-target trial rather than demonstrating only an isolated object.\n- **Mechanical limits:** Clamp commands and keep fingers and cables away from moving brackets.\n\n## When it's done\n\n- **Deliverable:** Record the physical head and tracking overlay together, including recovery after the target leaves and returns.\n- **Evaluation:** Save error traces and completion counts for slow motion, occlusion, empty scenes, and changed lighting; publish selection rules and control settings.",
+      "resources": [
+        {
+          "title": "Pixy Pet Robot",
+          "url": "https://www.youtube.com/watch?v=ken1zjEb3OM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Watch the guide author’s color-following robot and pan-tilt camera."
+        },
+        {
+          "title": "Overview and Materials | Pixy Pet Robot - Color vision follower | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/pixy-pet-robot-color-vision-follower-using-pixycam/overview",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Inspect the real camera, pan-tilt assembly, and setup."
+        },
+        {
+          "title": "Feedback Control Basics | Pixy Pet Robot - Color vision follower | Adafruit Learning System",
+          "url": "https://learn.adafruit.com/pixy-pet-robot-color-vision-follower-using-pixycam/feedback-control-basics",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Understand image error, proportional correction, and damping."
+        },
+        {
+          "title": "YOLO Multi-Object Tracking in Video | Ultralytics",
+          "url": "https://docs.ultralytics.com/modes/track/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Adapt the selected-object perception front end using persistent tracks."
+        }
+      ],
+      "sources": [
+        "https://learn.adafruit.com/pixy-pet-robot-color-vision-follower-using-pixycam/overview",
+        "https://www.youtube.com/watch?v=ken1zjEb3OM",
+        "https://learn.adafruit.com/pixy-pet-robot-color-vision-follower-using-pixycam/feedback-control-basics",
+        "https://docs.ultralytics.com/modes/track/"
+      ]
+    },
+    {
+      "node_id": "p:people-counter-and-tracker-for-a-lab-entrance",
+      "type": "project",
+      "name": "People counter and tracker for a lab entrance",
+      "summary": "Track people across entrance-camera frames and count directional line crossings without counting the same person again in every frame.",
+      "lesson_md": "## In one sentence\n\nTrack people across entrance-camera frames and count directional line crossings without counting the same person again in every frame.\n\n![ByteTrack demonstration showing tracked pedestrians with bounding boxes and identities](/img/lessons/projects_perception_2-people.webp)\n*ByteTrack demonstration showing tracked pedestrians with bounding boxes and identities. Source: [Publisher](https://github.com/FoundationVision/ByteTrack), license unknown.*\n\n## What you will learn\n\n- **Detection** finds person boxes in one frame; **tracking** associates those boxes across time and gives them persistent identities.\n- **An ID switch** occurs when a track changes identity. ByteTrack associates detections to tracks, including lower-confidence boxes that can help recover partly hidden people.\n- **Counting** is an event problem: think of processing a session transition once, rather than incrementing a database counter on every request.\n\n> **Key idea:** The unit you count is a directional crossing event, not a detection and not merely a new track ID.\n\n## What you need\n\n- **Setup:** Use a fixed camera, a recorded entrance clip with participants’ permission, and a detector plus tracker; start offline without purchasing robot hardware.\n- **Software:** The map connects YOLO11 and ByteTrack through Multi-object tracking; current Ultralytics tracking docs explain selecting supported tracking configurations.\n- **Preparation:** Complete Intro: calibrate a webcam and track AprilTags for camera handling; manually annotate entry and exit events before scoring.\n\n## Steps\n\n1. **Mark a crossing line** on the entrance image and define which side means inside; keep the camera stationary throughout evaluation.\n2. **Run person detection** and tracking, drawing each box and persistent ID; save a per-frame log before implementing counting.\n3. **Store per-ID side:** In a worked example, outside, outside, inside produces one entry; inside, inside produces no additional entry.\n4. **Count direction changes** only after a valid crossing; define how to handle tracks that start on the line or disappear there.\n5. **Test annotated clips** containing people passing together, reversing direction, occlusion, empty scenes, and changed lighting; inspect identity switches.\n6. **Demo the overlay** with track IDs and separate in/out totals, then compare every counted event with the manual event list.\n\n```mermaid\nflowchart LR\n  F[Video frames] --> D[Person boxes]\n  D --> T[Track identities]\n  T --> L[Line crossing state]\n  L --> C[In and out totals]\n```\n\n## Common pitfalls\n\n- **New IDs are not entries:** A person may receive another ID after an occlusion; inspect fragmented tracks near the crossing line.\n- **Boundary jitter:** A box center can bounce across the line while someone stands still; use a declared transition rule and test stationary people.\n- **Occupancy versus flow:** In/out counts alone do not establish current room occupancy unless initial occupancy and missed events are accounted for.\n\n## When it's done\n\n- **Deliverable:** Save an annotated video, predicted and manual crossing events, and totals with false counts, missed crossings, and ID-switch examples.\n- **Reproducibility:** Record camera placement, line coordinates, detector checkpoint, tracker configuration, and counting rules; share only consented footage or anonymized results.",
+      "resources": [
+        {
+          "title": "How to Run Multi-Object Tracking with Ultralytics YOLO26 | BoT-SORT & ByteTrack | VisionAI 🚀",
+          "url": "https://www.youtube.com/watch?v=qQkzKISt5GE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See persistent IDs and supported trackers in the official tracking walkthrough."
+        },
+        {
+          "title": "YOLO Multi-Object Tracking in Video | Ultralytics",
+          "url": "https://docs.ultralytics.com/modes/track/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Select a tracker and retain identities across successive frames."
+        },
+        {
+          "title": "Real-Time Object Counting with YOLO26 | Ultralytics",
+          "url": "https://docs.ultralytics.com/guides/object-counting/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Inspect region-based counting and in/out outputs; adapt to people."
+        },
+        {
+          "title": "FoundationVision/ByteTrack",
+          "url": "https://github.com/FoundationVision/ByteTrack",
+          "format": "Repo",
+          "level": "Beginner",
+          "why": "Inspect the original tracker implementation."
+        },
+        {
+          "title": "ByteTrack: Multi-Object Tracking by Associating Every Detection Box",
+          "url": "https://arxiv.org/abs/2110.06864",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "Understand why lower-confidence detections can help recover tracks."
+        }
+      ],
+      "sources": [
+        "https://github.com/FoundationVision/ByteTrack",
+        "https://www.youtube.com/watch?v=qQkzKISt5GE",
+        "https://docs.ultralytics.com/modes/track/",
+        "https://docs.ultralytics.com/guides/object-counting/",
+        "https://arxiv.org/abs/2110.06864"
+      ]
+    }
+  ]
+}
