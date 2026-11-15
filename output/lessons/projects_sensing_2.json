@@ -342,6 +342,646 @@
         "https://docs.python.org/3/library/hashlib.html",
         "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg"
       ]
+    },
+    {
+      "node_id": "p:remountable-camera-lidar-calibration-target-and-fixture",
+      "type": "project",
+      "name": "Remountable camera-LiDAR calibration target and fixture",
+      "summary": "Build a rigid, remountable camera-plus-LiDAR rig, calibrate it with Koide's toolbox, and measure how much the camera-to-LiDAR transform changes after each remount.",
+      "lesson_md": "## In one sentence\n\nBuild a rigid, remountable camera-plus-LiDAR rig, calibrate it with Koide's toolbox, and measure how much the camera-to-LiDAR transform changes after each remount.\n\n![Overview of LiDAR-camera calibration with projected points](/img/lessons/projects_sensing_2-camera-lidar-calib.webp)\n*Overview figure of the direct visual LiDAR calibration toolbox. Source: [koide3.github.io](https://koide3.github.io/direct_visual_lidar_calibration/), MIT license.*\n\n## What you will learn\n\n- **Extrinsic calibration:** Finding the rotation and translation between two sensors so LiDAR points land on the right camera pixels.\n- **Targetless calibration:** Koide's toolbox uses environment structure and texture instead of a board, and needs at least one LiDAR-camera pair.\n- **Two-stage solver:** SuperGlue image matching gives an initial guess via RANSAC; direct registration based on normalized information distance (NID) refines it.\n- **Independent check:** A measured physical target tells you whether the optimiser's answer is right, not just converged.\n\n> **Key idea:** An optimiser reporting success is like a test suite with no assertions: add an independent target to prove the transform.\n\n## What you need\n\n- **Sensors:** A camera and a Livox Mid-360 (360° x 59° field of view, 0.1 m minimum detection range, 265 g).\n- **Fixture:** A rigid plate with keyed or pinned remount points, and a measured calibration target with known corner positions.\n- **Software:** The toolbox (ROS1/ROS2, PCL, OpenCV, GTSAM, Ceres), OpenCV `solvePnP` for target pose.\n- **Budget:** €500-5k planning estimate, 2-4 weeks.\n\n## Steps\n\n1. **Calibrate camera intrinsics** first; the extrinsic step assumes them.\n2. **Collect data** as the toolbox's data-collection guide describes, then run its calibration example.\n3. **Verify independently:** detect the measured target in the image, project its LiDAR points, and record pixel residuals.\n4. **Remount 10+ times** and recalibrate after each; plot translation and rotation spread.\n5. **Provoke failures:** a featureless scene, a covered lens, and a deliberately bad starting pose; log failed initialisations.\n\n```mermaid\nflowchart LR\n  A[\"Rigid rig\"] --> B[\"Record LiDAR + image\"]\n  B --> C[\"SuperGlue initial guess\"]\n  C --> D[\"NID refinement\"]\n  D --> E[\"Target residual check\"]\n  E --> F[\"Remount and repeat\"]\n  F --> B\n```\n\n## Common pitfalls\n\n- **Assuming convergence:** Targetless optimisation can fail; report failed initialisations instead of hiding them.\n- **Loose mounts:** Without keyed features, remount spread swamps the calibration error you want to measure.\n- **Wrong transform direction:** Write down whether a matrix maps camera to LiDAR or LiDAR to camera.\n\n## When it's done\n\n- **Video:** The rig before and after remounting, with LiDAR points overlaid on the target.\n- **Repeatability plot:** Transform spread across remounts, next to target residuals.\n- **Failure log:** Every failed or suspicious calibration, with its scene.\n",
+      "resources": [
+        {
+          "title": "Camera LiDAR Calibration ROS Package Tutorial",
+          "url": "https://www.youtube.com/watch?v=WmzEnjmffQU",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "Shows a camera-LiDAR calibration being run end to end, so you can see what the overlays look like."
+        },
+        {
+          "title": "direct_visual_lidar_calibration",
+          "url": "https://koide3.github.io/direct_visual_lidar_calibration/",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Docs for Koide's targetless, single-shot toolbox: supported sensors, data collection and calibration example."
+        },
+        {
+          "title": "koide3/direct_visual_lidar_calibration",
+          "url": "https://github.com/koide3/direct_visual_lidar_calibration",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Source and dependency list (ROS1/ROS2, PCL, OpenCV, GTSAM, Ceres, optional SuperGlue)."
+        },
+        {
+          "title": "[2302.05094] General, Single-shot, Target-less, and Automatic LiDAR-Camera Extrinsic Calibration Toolbox",
+          "url": "https://arxiv.org/abs/2302.05094",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The ICRA 2023 paper behind the toolbox: SuperGlue initial guess, then NID-based direct registration."
+        },
+        {
+          "title": "Livox Mid-360",
+          "url": "https://www.livoxtech.com/mid-360",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "The LiDAR on this map: 360° x 59° field of view, 0.1 m minimum range, non-repetitive hybrid-solid scanning."
+        }
+      ],
+      "sources": [
+        "https://koide3.github.io/direct_visual_lidar_calibration/",
+        "https://github.com/koide3/direct_visual_lidar_calibration",
+        "https://arxiv.org/abs/2302.05094",
+        "https://www.livoxtech.com/mid-360",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/calib3d/include/opencv2/calib3d.hpp"
+      ]
+    },
+    {
+      "node_id": "p:removable-forearm-skin-sleeve-with-calibration-identity",
+      "type": "project",
+      "name": "Removable forearm skin sleeve with calibration identity",
+      "summary": "Package AnySkin magnetic touch patches as a removable sleeve on an unpowered SO-101 forearm, and record every reading with its patch and calibration ID.",
+      "lesson_md": "## In one sentence\n\nPackage AnySkin magnetic touch patches as a removable sleeve on an unpowered SO-101 forearm, and record every reading with its patch and calibration ID.\n\n![AnySkin replaceable magnetic tactile skin and its electronics](/img/lessons/projects_sensing_2-skin-sleeve.webp)\n*AnySkin's replaceable magnetic skin and sensing hardware. Source: [any-skin.github.io](https://any-skin.github.io/), Creative Commons Attribution-ShareAlike 4.0 International License.*\n\n## What you will learn\n\n- **Magnetic touch:** AnySkin senses contact through distortions in a magnetic field made by magnetized iron particles in the soft surface.\n- **Separable design:** The skin is physically separated from its electronics, so a damaged skin can be replaced easily.\n- **Raw signals:** The electronics are five magnetometers, each measuring magnetic flux density in three axes.\n- **Drift and zero:** The repo warns readings drift to non-zero without load; the visualizer re-zeros on the B key.\n- **Calibration identity:** Every recording must say which patch, which electronics and which zero produced it.\n\n> **Key idea:** A replaceable skin is like a swappable dependency: pin its version, or yesterday's data silently stops matching today's sensor.\n\n## What you need\n\n- **Arm:** A stationary, supported SO-101 (its follower uses six STS3215 motors), unpowered for this project.\n- **Sensing:** AnySkin patches and the startup kit electronics (magnetometer board, Adafruit QT Py microcontroller, QWIIC cable).\n- **Software:** `pip install anyskin`, Python logging, and the LeRobotDataset v3 metadata style for manifests.\n- **Budget and time:** €500-5k planning estimate, 3+ months.\n\n## Steps\n\n1. **Design the sleeve:** an original printed or fabric carrier holding patches at marked sites; check added mass and cable routing.\n2. **Assign IDs:** label each patch and board; write a sensing manifest mapping site to patch ID and calibration.\n3. **Zero and record:** re-zero with no load, then indent each marked site with the same tool and log all 15 channels.\n4. **Swap a patch** and repeat; compare responses before and after replacement.\n5. **Check interference:** move the unpowered arm's motors near the patch by hand and watch for magnetic disturbance.\n6. **Test failures:** no contact at all, an unplugged cable, and a patch recorded under the wrong ID.\n\n```mermaid\nflowchart LR\n  A[\"Patch + board IDs\"] --> B[\"Manifest\"]\n  C[\"Zero with no load\"] --> D[\"Indent marked site\"]\n  D --> E[\"15-channel log\"]\n  B --> E\n  E --> F[\"Swap patch, compare\"]\n```\n\n## Common pitfalls\n\n- **Skipping the zero:** Drift makes an untouched patch look pressed.\n- **Unlabelled swaps:** Replacing a patch without updating the manifest corrupts every later recording.\n- **Safety claims:** No contact-control policy or safety claim; this is sensing on a supported, stationary arm.\n\n## When it's done\n\n- **Video:** The forearm sleeve being indented at marked sites, with live response and patch and calibration IDs on screen.\n- **Comparison:** Response per site before and after a patch swap.\n- **Failure log:** No-contact, unplugged and wrong-ID trials.\n\nLeads to Recording archive recovery and calibration-manifest integrity.\n",
+      "resources": [
+        {
+          "title": "Introducing AnySkin",
+          "url": "https://www.youtube.com/watch?v=A6tpDcADRoQ",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Short video by the AnySkin author showing the replaceable magnetic skin in action."
+        },
+        {
+          "title": "AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://any-skin.github.io/",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Project page: how the magnetic skin works, five 3-axis magnetometers, skin replacement results."
+        },
+        {
+          "title": "raunaqbhirangi/anyskin",
+          "url": "https://github.com/raunaqbhirangi/anyskin",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Python package and visualizer (`pip install anyskin`, `anyskin_viz`), plus how to re-zero drift."
+        },
+        {
+          "title": "[2409.08276] AnySkin: Plug-and-play Skin Sensing for Robotic Touch",
+          "url": "https://arxiv.org/abs/2409.08276",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "The paper on versatility, replaceability and data reusability of the sensor."
+        },
+        {
+          "title": "SO-101",
+          "url": "https://huggingface.co/docs/lerobot/so101",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official SO-101 build guide for the arm that will carry the sleeve."
+        }
+      ],
+      "sources": [
+        "https://any-skin.github.io/",
+        "https://github.com/raunaqbhirangi/anyskin",
+        "https://arxiv.org/abs/2409.08276",
+        "https://huggingface.co/docs/lerobot/so101",
+        "https://huggingface.co/docs/lerobot/lerobot-dataset-v3"
+      ]
+    },
+    {
+      "node_id": "p:reproducible-radar-multipath-and-material-test-enclosure",
+      "type": "project",
+      "name": "Reproducible radar multipath and material test enclosure",
+      "summary": "Build a low-energy test enclosure with swappable wall panels and fixed target spots, then measure how materials and reflections change repeated radar captures.",
+      "lesson_md": "## In one sentence\n\nBuild a low-energy test enclosure with swappable wall panels and fixed target spots, then measure how materials and reflections change repeated radar captures.\n\n![IWR6843 radar chip functional block diagram](/img/lessons/projects_sensing_2-radar-multipath.webp)\n*Functional block diagram of the TI IWR6843 radar chip. Source: [ti.com](https://www.ti.com/product/IWR6843), license unknown.*\n\n## What you will learn\n\n- **FMCW radar:** The radar sends a chirp; the reflection is a delayed copy, mixed down and digitized into ADC data whose frequency grows with distance.\n- **Multipath:** One signal can arrive by a direct path and a longer reflected path. In TV this creates faded duplicate \"ghost\" images.\n- **Ghosts in radar:** TI notes interference can cause missed detections, blind spots, reduced range and ghost objects. A bouncing wall can look like a farther target.\n- **Separating causes:** Multipath, empty-room background and packet loss look similar in a plot; only controlled trials separate them.\n\n> **Key idea:** Reproducibility is your unit test: the same panels and target positions must give the same radar response before any difference means something.\n\n## What you need\n\n- **Radar:** IWR6843ISK (IWR6843: 60-64 GHz, 3 transmitters, 4 receivers, 25,000 ksps ADC, 12 dBm TX power), optionally a DCA1000EVM for raw capture.\n- **Enclosure:** An original open box with keyed slots for interchangeable panels (cardboard, wood, foam, metal sheet) and marked target positions.\n- **Software:** TI mmWave Studio or SDK demo, Python for summaries.\n- **Budget:** €500-5k planning estimate, 1-2 months.\n\n## Steps\n\n1. **Fix the geometry:** mount the radar and target spots with pins; photograph and measure every configuration.\n2. **Empty baseline:** record the enclosure with no target and each panel set, several times.\n3. **Add one target** at fixed positions and repeat each configuration at least five times.\n4. **Swap one variable** at a time: panel material, panel angle, target spot.\n5. **Summarise responses:** detection count, range of strongest returns and extra \"ghost\" ranges per configuration.\n6. **Log transport health:** record packet loss so dropped data is not mistaken for material effects; force one cable failure.\n\n```mermaid\nflowchart LR\n  A[\"Pinned radar\"] --> B[\"Panel set\"]\n  B --> C[\"Empty baseline\"]\n  B --> D[\"Target at spot\"]\n  C --> E[\"Repeat x5\"]\n  D --> E\n  E --> F[\"Compare summaries\"]\n```\n\n## Common pitfalls\n\n- **Changing two things at once:** You can no longer tell which change caused the difference.\n- **People in the room:** Moving bodies reflect radar; keep the area empty. No people tracking or covert monitoring.\n- **Over-claiming:** This is a repeatability fixture, not a new radar-odometry result.\n\n## When it's done\n\n- **Video:** Panels swapped and targets placed, with captured response summaries for repeated configurations.\n- **Repeatability table:** Spread of each metric across repeats, per configuration.\n- **Failure log:** Empty-room, packet-loss and cable-failure trials.\n\nBuilds toward Radar ADC capture throughput and packet-loss characterization.\n",
+      "resources": [
+        {
+          "title": "Introduction to mmwave sensing : FMCW Radars",
+          "url": "https://www.youtube.com/watch?v=8cHACNNDWD8",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "How FMCW chirps turn reflections into range, the reason a longer bounce path shows up as a farther fake target."
+        },
+        {
+          "title": "mmWave radar sensors | TI.com",
+          "url": "https://www.ti.com/video/series/mmwave-training-series.html",
+          "format": "Course",
+          "level": "Intermediate",
+          "why": "TI's training curriculum on mmWave radar fundamentals and configuration."
+        },
+        {
+          "title": "IWR6843 data sheet, product information and support | TI.com",
+          "url": "https://www.ti.com/product/IWR6843",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Key radar chip specs: 60-64 GHz, 3 TX, 4 RX, ADC sampling rate and TX power."
+        },
+        {
+          "title": "Multipath propagation",
+          "url": "https://en.wikipedia.org/wiki/Multipath_propagation",
+          "format": "Article",
+          "level": "Beginner",
+          "why": "Plain explanation of signals arriving by direct and reflected paths, and why that creates ghosts."
+        },
+        {
+          "title": "Interference Mitigation For AWR/IWR Devices",
+          "url": "https://www.ti.com/lit/an/swra662/swra662.pdf",
+          "format": "Paper",
+          "level": "Advanced",
+          "why": "TI application note on FMCW signal flow and how interference causes missed detections and ghost objects."
+        }
+      ],
+      "sources": [
+        "https://www.ti.com/product/IWR6843",
+        "https://www.ti.com/tool/DCA1000EVM",
+        "https://www.ti.com/video/series/mmwave-training-series.html",
+        "https://en.wikipedia.org/wiki/Multipath_propagation",
+        "https://www.ti.com/lit/an/swra662/swra662.pdf"
+      ]
+    },
+    {
+      "node_id": "p:reusable-event-rgb-calibration-target-and-coverage-protocol",
+      "type": "project",
+      "name": "Reusable event-RGB calibration target and coverage protocol",
+      "summary": "Build a reusable low-voltage active target that both an event camera and a frame camera can see, and write a coverage protocol that tests calibration on held-out views.",
+      "lesson_md": "## In one sentence\n\nBuild a reusable low-voltage active target that both an event camera and a frame camera can see, and write a coverage protocol that tests calibration on held-out views.\n\n![Event-camera extrinsic calibration validation view](/img/lessons/projects_sensing_2-event-rgb-calib.webp)\n*Extrinsics validation step of the Metavision calibration pipeline. Source: [docs.prophesee.ai](https://docs.prophesee.ai/stable/samples/modules/calibration/calibration_pipeline.html), All Rights Reserved.*\n\n## What you will learn\n\n- **Why a normal board fails:** An event camera only sees brightness changes, so a still chessboard is invisible. Prophesee's pipeline uses a **blinking chessboard** or an active LED marker.\n- **Detection counts:** The docs suggest about 50 detections for a 9x6 chessboard and about 100 for an 8-LED active marker.\n- **Pipeline stages:** Pattern detection, intrinsics estimation and validation, synchronized detection, then extrinsics estimation and validation.\n- **Coverage:** Calibration views must spread across the whole image, because distortion grows towards the edges.\n\n> **Key idea:** A calibration target is test infrastructure: make it reproducible, and keep some views out of training to measure real error.\n\n## What you need\n\n- **Cameras:** An event camera and a frame (RGB) camera on one rigid mount.\n- **Target:** An original low-voltage LED or screen-based blinking pattern; Prophesee also ships HTML pages that blink patterns on any screen.\n- **Software:** Metavision SDK calibration samples (check module licensing first) and OpenCV camera calibration tools.\n- **Budget:** €500-5k planning estimate, 1-2 months.\n\n## Steps\n\n1. **Build the target** with a measured pattern and a stable blink frequency; the pipeline warns \"Unstable frequency\" otherwise.\n2. **Plan coverage:** divide each image into a grid and require detections in every cell, near and far.\n3. **Collect detections** for both cameras, keeping 20% of poses aside as held-out views.\n4. **Calibrate** intrinsics for each camera, then the event-to-RGB extrinsics.\n5. **Validate on held-out views:** project target points from one camera into the other and measure re-projection error.\n6. **Test failures:** target off, target out of view, and a blink rate the camera cannot track.\n\n```mermaid\nflowchart LR\n  A[\"Blinking target\"] --> B[\"Event camera detections\"]\n  A --> C[\"RGB detections\"]\n  B --> D[\"Intrinsics + extrinsics\"]\n  C --> D\n  D --> E[\"Held-out reprojection\"]\n  E --> F[\"Coverage report\"]\n```\n\n## Common pitfalls\n\n- **Centre-only views:** Good-looking numbers with poor edge accuracy.\n- **Screen after-image:** Prophesee warns blinking patterns may leave a temporary after image; use them only during calibration.\n- **Over-claiming:** This is an original fixture and protocol, not a new calibration algorithm.\n\n## When it's done\n\n- **Video:** The target viewed by both cameras, with held-out reprojection overlays.\n- **Coverage map:** Detections per image cell for each camera.\n- **Failure log:** Each failed calibration and its cause.\n\nNeeded before Recorded event-stream polarity and time microscope.\n",
+      "resources": [
+        {
+          "title": "How to calibrate your event camera?",
+          "url": "https://www.youtube.com/watch?v=RYW2sHcm5aI",
+          "format": "Video",
+          "level": "Intermediate",
+          "why": "UZH Robotics and Perception Group explains why event cameras need special calibration patterns."
+        },
+        {
+          "title": "Metavision Calibration Pipeline (C++) — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/samples/modules/calibration/calibration_pipeline.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Prophesee's pipeline: blinking chessboard or LED marker, detection counts, intrinsics and extrinsics steps."
+        },
+        {
+          "title": "OpenCV: Camera Calibration",
+          "url": "https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html",
+          "format": "Course",
+          "level": "Beginner",
+          "why": "Frame-camera side of the job: chessboard calibration and re-projection error."
+        },
+        {
+          "title": "Welcome to Metavision SDK — Metavision SDK Docs 5.3.1 documentation",
+          "url": "https://docs.prophesee.ai/stable/index.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Entry point to the SDK docs, including the open-source licenses page to check before reuse."
+        }
+      ],
+      "sources": [
+        "https://docs.prophesee.ai/stable/samples/modules/calibration/calibration_pipeline.html",
+        "https://docs.prophesee.ai/stable/index.html",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.markdown",
+        "https://docs.prophesee.ai/stable/concepts.html"
+      ]
+    },
+    {
+      "node_id": "p:rgb-depth-registration-against-a-measured-stepped-target",
+      "type": "project",
+      "name": "RGB-depth registration against a measured stepped target",
+      "summary": "Point a RealSense D405 at a measured stepped target and check, region by region, how well colour edges and depth edges line up.",
+      "lesson_md": "## In one sentence\n\nPoint a RealSense D405 at a measured stepped target and check, region by region, how well colour edges and depth edges line up.\n\n![RealSense D405 depth camera](/img/lessons/projects_sensing_2-rgb-depth.webp)\n*The RealSense D405 short-range stereo depth camera. Source: [realsenseai.com](https://www.realsenseai.com/depth-camera-d405/), license unknown.*\n\n## What you will learn\n\n- **Stereo depth:** The D405 is a short-range stereo camera with a 87° x 58° field of view and an ideal range of 7 cm to 50 cm.\n- **Registration:** Mapping each depth pixel to the matching colour pixel. The D405 uses an image signal processor so RGB and depth data are matched.\n- **Intrinsics:** `CameraInfo` stores the 3x3 `K` matrix (focal lengths, principal point) that projects 3D points to pixels.\n- **Occlusion:** Near a step edge, some surfaces are visible to one viewpoint but not another, so edges need not coincide perfectly.\n\n> **Key idea:** Registration is a join between two tables keyed by pixel; a measured target is the ground-truth test that the join key is right.\n\n## What you need\n\n- **Camera:** RealSense D405 (global shutter, sub-millimetre accuracy claimed at close range).\n- **Target:** A stepped block, for example three wooden steps, with each height measured by calipers, plus high-contrast edges.\n- **Software:** librealsense with Python bindings, OpenCV (`projectPoints`), numpy.\n- **Budget:** Under €500 planning estimate, 2-4 weeks.\n\n## Steps\n\n1. **Measure the target:** record every step height and edge position; place it inside the 7-50 cm range.\n2. **Check units and frames:** confirm the depth unit and axis convention reported by the SDK before any maths.\n3. **Capture aligned frames** of colour and depth, plus the intrinsics.\n4. **Extract edges** from colour and from depth jumps; overlay them.\n5. **Compute residuals:** pixel distance between matching edges, per image region (centre, corners), and depth error versus measured step heights.\n6. **Test failures:** target closer than 7 cm, an empty scene, and a covered lens.\n\n```mermaid\nflowchart LR\n  A[\"Measured steps\"] --> B[\"Capture RGB + depth\"]\n  B --> C[\"Check units, K\"]\n  C --> D[\"Colour edges\"]\n  C --> E[\"Depth edges\"]\n  D --> F[\"Residual map\"]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Forcing edges to match:** Occlusion makes small offsets real; mark occluded bands instead of hiding them.\n- **Wrong units:** A metres-versus-millimetres mix-up makes every step 1000 times off.\n- **Scope creep:** This is alignment validation, not segmentation.\n\n## When it's done\n\n- **Overlay image set:** Colour and depth edges on the stepped target, per region.\n- **Residual table:** Edge offsets in pixels and step-height errors in millimetres.\n- **Failure log:** Too-close, empty and covered-lens captures.\n",
+      "resources": [
+        {
+          "title": "Depth Camera - Computerphile",
+          "url": "https://www.youtube.com/watch?v=bRkUGqsz6SI",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Clear explanation of how depth cameras measure distance and where they fail."
+        },
+        {
+          "title": "D405 - RealSense",
+          "url": "https://www.realsenseai.com/depth-camera-d405/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Official D405 page: short-range stereo, 7-50 cm ideal range, global shutter, matched RGB and depth."
+        },
+        {
+          "title": "realsenseai/librealsense",
+          "url": "https://github.com/IntelRealSense/librealsense",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "The RealSense SDK used to stream and align depth and color."
+        },
+        {
+          "title": "sensor_msgs/CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "How intrinsics (K, distortion) travel with each image in ROS."
+        }
+      ],
+      "sources": [
+        "https://www.realsenseai.com/depth-camera-d405/",
+        "https://github.com/IntelRealSense/librealsense",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/calib3d/include/opencv2/calib3d.hpp"
+      ]
+    },
+    {
+      "node_id": "p:robot-motor-noise-audio-acquisition-dossier",
+      "type": "project",
+      "name": "Robot motor-noise audio acquisition dossier",
+      "summary": "Record an unloaded robot arm and microphone array together, then compare quiet-room, powered-idle and slow-motion audio at measured microphone placements.",
+      "lesson_md": "## In one sentence\n\nRecord an unloaded robot arm and microphone array together, then compare quiet-room, powered-idle and slow-motion audio at measured microphone placements.\n\n![ReSpeaker microphone array board](/img/lessons/projects_sensing_2-motor-noise-audio.webp)\n*The ReSpeaker Mic Array v2.0 used for multichannel audio acquisition. Source: [wiki.seeedstudio.com](https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/), license unknown.*\n\n## What you will learn\n\n- **Spectrum:** A plot of signal power against frequency helps compare recordings without relying only on listening.\n- **Channel identity:** The ReSpeaker firmware changes available channels; record firmware and distinguish raw microphones from processed output.\n- **Acquisition contract:** Treat audio like an API response: channel order, sample rate and sample format belong beside the bytes.\n\n> **Key idea:** A quieter processed channel is not evidence that the motors produced less sound.\n\n## What you need\n\n- **Bench:** A supported arm, fixed microphone stand, ruler and computer with the chosen array's recording tools.\n- **Analysis:** Python and SciPy; Welch's method averages frequency-power estimates from overlapping sections of a recording.\n- **Preparation:** Complete Microphone channel ordering and geometry clap board and Assemble & teleoperate an SO-101 before comparing placements.\n- **Planning estimate:** Allow 2–4 weeks and €500–5k hardware, excluding host compute, taxes and shipping; this student proposal is not a measured result.\n\n## Steps\n\n1. **Document capture settings:** Save firmware, channel mapping, sample width and actual sample rate from the recording configuration.\n2. **Fix the geometry:** Mark microphone position and arm path; keep the room and gain settings unchanged between comparison recordings.\n3. **Capture baselines:** Record quiet room, powered idle and repeated unloaded slow motion, with a video identifying each condition.\n4. **Plot each channel:** Compare waveforms and spectra; count samples reaching the digital format's limits as possible clipping, not trustworthy peaks.\n5. **Repeat placements:** Move only the microphone; compare equal-duration excerpts with identical analysis settings and preserve original files.\n6. **Exercise failures:** Save an empty recording and a disconnected-device attempt; distinguish missing samples from successfully recorded quiet audio.\n7. **Film the demonstration:** Show guarded arm motion, microphone geometry, live levels and the resulting comparison plots together.\n\n```mermaid\nflowchart LR\n  A[Mark placement] --> B[Record conditions]\n  B --> C[Check channels]\n  C --> D[Waveforms and spectra]\n  D --> E[Compare repeats]\n```\n\n## Common pitfalls\n\n- **Automatic processing:** Log processing settings; do not attribute a changed spectrum to motor motion if capture settings also changed.\n- **Unsupported conclusions:** Do not implement keyword control, source tracking or noise cancellation; this project measures acquisition conditions.\n- **Moving hardware:** Use conservative speeds, an unloaded supported arm and a guarded, clear workspace with an independent stop.\n\n## When it's done\n\n- **Dossier:** Deliver original audio, configuration, placement measurements, repeat plots and explicit normal, empty and failed-capture outcomes.\n- **Reproduction:** Another student can identify the selected channels and repeat one comparison without guessing your recording settings.\n",
+      "resources": [
+        {
+          "title": "A gentle introduction to beamforming",
+          "url": "https://www.youtube.com/watch?v=etTcru7CrWU",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why combining microphone channels changes a recording before choosing raw or processed audio."
+        },
+        {
+          "title": "reSpeaker USB 4-Mic Array XVF3000 v2.0",
+          "url": "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the board, firmware channel layouts and recording examples."
+        },
+        {
+          "title": "respeaker/usb_4_mic_array",
+          "url": "https://github.com/respeaker/usb_4_mic_array",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect the device recording and tuning tools rather than assuming every channel is raw."
+        },
+        {
+          "title": "welch",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Estimate frequency-dependent signal power using the actual recording sample rate."
+        },
+        {
+          "title": "wave — Read and write WAV files",
+          "url": "https://docs.python.org/3/library/wave.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect channel count, sample width and sampling frequency in saved recordings."
+        }
+      ],
+      "sources": [
+        "https://wiki.seeedstudio.com/ReSpeaker_Mic_Array_v2.0/",
+        "https://github.com/respeaker/usb_4_mic_array",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html",
+        "https://docs.python.org/3/library/wave.html"
+      ]
+    },
+    {
+      "node_id": "p:rolling-shutter-and-exposure-artifact-ruler",
+      "type": "project",
+      "name": "Rolling-shutter and exposure artifact ruler",
+      "summary": "Move a patterned target slowly past a fixed camera and measure image skew separately from motion blur while changing exposure settings.",
+      "lesson_md": "## In one sentence\n\nMove a patterned target slowly past a fixed camera and measure image skew separately from motion blur while changing exposure settings.\n\n![Distorted airplane propeller blades](/img/lessons/projects_sensing_2-rolling-shutter.webp)\n*Published rolling-shutter propeller distortion; the student experiment uses a guarded slow target, not a propeller. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Propellor_with_rolling-shutter_artifact.jpg), CC BY-SA 4.0.*\n\n## What you will learn\n\n- **Rolling shutter:** Different image rows are exposed at different times, so a moving straight edge can appear tilted.\n- **Exposure:** The time a sensor collects light; motion during that interval can smear an edge into blur.\n- **Software analogy:** Imagine reading a changing array row by row without a snapshot lock: its rows need not describe one instant.\n\n> **Key idea:** Shortening exposure does not turn a rolling-shutter sensor into a global-shutter sensor.\n\n## What you need\n\n- **Fixture:** A guarded, bounded-speed patterned slider, ruler and fixed camera with documented shutter type and accessible exposure controls.\n- **Camera choice:** OAK-D documentation lists rolling shutter for its color sensor and global shutter for its monochrome pair; identify the actual stream.\n- **Background:** Use RGB cameras & intrinsic calibration to distinguish camera geometry from movement-dependent artifacts.\n- **Planning estimate:** This student proposal allows 2–4 weeks and under €500 hardware, excluding host compute, taxes and shipping.\n\n## Steps\n\n1. **Identify the stream:** Save camera model, sensor, shutter documentation, resolution and the exposure setting actually reported by the driver.\n2. **Capture a stationary reference:** Photograph the patterned target beside the ruler; preserve the image without enhancement.\n3. **Repeat slow passes:** Keep camera and target path fixed; label movement direction and capture several comparable passes.\n4. **Change exposure only:** Repeat supported settings with automatic exposure disabled where available; record gain and lighting rather than silently changing them.\n5. **Measure separate effects:** Report edge width as blur and horizontal edge displacement between rows as skew, both in pixels.\n6. **Test missing evidence:** Record an empty view and a failed camera read; neither should produce a fabricated target measurement.\n7. **Film the comparison:** Show the restrained target, settings and overlays beside stationary references, including unsuccessful detections.\n\n```mermaid\nflowchart LR\n  A[Identify shutter] --> B[Stationary reference]\n  B --> C[Repeat slow motion]\n  C --> D[Change exposure]\n  D --> E[Measure skew and blur]\n```\n\n## Common pitfalls\n\n- **Wrong sensor:** A camera housing can contain different shutter types; do not generalize one stream's behavior to all streams.\n- **Confounded trials:** A changed target speed or viewpoint prevents a clean exposure comparison; retain unmatched trials but label them.\n- **Fixture hazard:** Keep motion slow and guarded; do not use high-speed rotors to reproduce the illustration.\n\n## When it's done\n\n- **Artifact ruler:** Provide repeated image overlays and a settings table separating skew, blur, empty-view and acquisition-failure results.\n- **Honest outcome:** If skew is not measurable, report that limit instead of claiming the camera has no rolling shutter.\n",
+      "resources": [
+        {
+          "title": "Why Do Cameras Do This? | Rolling Shutter Explained  - Smarter Every Day 172",
+          "url": "https://www.youtube.com/watch?v=dNVtMmLlnoE",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how sequential image rows distort moving objects; use a slow fixture instead of copying rotor demonstrations."
+        },
+        {
+          "title": "Electronic Shutter Types",
+          "url": "https://docs.baslerweb.com/electronic-shutter-types",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Distinguish global exposure from rolling exposure and recognize geometric distortion."
+        },
+        {
+          "title": "Exposure Time",
+          "url": "https://docs.baslerweb.com/exposure-time",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Understand exposure duration and why requested settings must be checked against the chosen camera."
+        },
+        {
+          "title": "OAK-D",
+          "url": "https://docs.luxonis.com/hardware/products/OAK-D",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check the different shutter types of the OAK-D color and monochrome sensors."
+        }
+      ],
+      "sources": [
+        "https://docs.baslerweb.com/electronic-shutter-types",
+        "https://docs.baslerweb.com/exposure-time",
+        "https://docs.luxonis.com/hardware/products/OAK-D",
+        "https://commons.wikimedia.org/wiki/File:Propellor_with_rolling-shutter_artifact.jpg"
+      ]
+    },
+    {
+      "node_id": "p:ros-sensor-message-units-and-covariance-contract-linter",
+      "type": "project",
+      "name": "ROS sensor-message units and covariance contract linter",
+      "summary": "Build a command-line checker that accepts valid synthetic ROS sensor messages and explains malformed arrays, missing estimates, wrong declared units and unexpected frames.",
+      "lesson_md": "## In one sentence\n\nBuild a command-line checker that accepts valid synthetic ROS sensor messages and explains malformed arrays, missing estimates, wrong declared units and unexpected frames.\n\n![ROS publisher and subscriber topic diagram](/img/lessons/projects_sensing_2-ros-msg-linter.webp)\n*ROS 2 messages connect a publisher to a subscriber through a topic. Source: [docs.ros.org](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Topics/Understanding-ROS2-Topics.html), license unknown.*\n\n## What you will learn\n\n- **Semantic contract:** A message can have the correct type but the wrong meaning, like a JSON API returning milliseconds where seconds were promised.\n- **Covariance:** A matrix describing uncertainty; `Imu` uses all zeros for unknown uncertainty, not perfect measurements.\n- **Unavailable estimate:** An `Imu` covariance's first element of -1 marks an absent estimate; consumers must ignore that associated field.\n\n> **Key idea:** Validate only what the message and an explicit producer contract actually let you know.\n\n## What you need\n\n- **Software:** Python, synthetic fixtures and a small contract file declaring expected frames, units and required calibration metadata.\n- **Message rules:** Read Image, Imu, CameraInfo and JointState definitions before writing rejection rules.\n- **Map connection:** This extends ROS 2 sensor drivers, metadata & recording and prepares Sensor QoS loss-versus-latency capture experiment.\n- **Planning estimate:** One week, €0 additional hardware; this software-only student proposal excludes host compute.\n\n## Steps\n\n1. **Write passing fixtures:** Include normal measurements, an unavailable orientation and an optional empty joint-effort array.\n2. **Check image structure:** Enforce payload length equal to row stride times height; stride means bytes per complete row.\n3. **Check joint arrays:** Require populated arrays to match joint names; preserve the definition's permission for optional empty arrays.\n4. **Check declared meaning:** Compare producer unit and frame metadata with your contract; do not infer units merely from numeric magnitude.\n5. **Check calibration state:** Recognize CameraInfo's uncalibrated convention and report missing required calibration separately from malformed matrix dimensions.\n6. **Mutate fixtures:** Add a shortened image, mismatched joint array and empty input file; assert distinct, readable outcomes.\n7. **Record the demo:** Show a passing run, each deliberate rejection and a corrected rerun with machine-readable diagnostics.\n\n```mermaid\nflowchart LR\n  A[Fixture and contract] --> B[Structural checks]\n  B --> C[Semantic checks]\n  C --> D[Diagnostic report]\n  D --> E[Regression tests]\n```\n\n## Common pitfalls\n\n- **False certainty:** Plausible numbers cannot prove units; unknown producer metadata must remain unknown.\n- **Legitimate emptiness:** An absent orientation estimate is not a failed whole IMU message; keep errors scoped to the affected field.\n- **Different project:** Do not build a micro-ROS publisher or duplicate the camera/joint demonstration-timing audit.\n\n## When it's done\n\n- **Regression suite:** Every fixture has an expected outcome, including valid, unavailable, empty and malformed cases.\n- **Actionable output:** Diagnostics name the message, field, violated rule and correction without silently repairing the original evidence.\n",
+      "resources": [
+        {
+          "title": "ROS2 - Create a Custom Interface (Custom Message)",
+          "url": "https://www.youtube.com/watch?v=E_xBPI8SQig",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand typed ROS messages before adding checks that types alone cannot enforce."
+        },
+        {
+          "title": "sensor_msgs/Imu.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Read acceleration units and the distinct unknown and unavailable covariance conventions."
+        },
+        {
+          "title": "sensor_msgs/Image.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Validate row stride, image payload length and optical-frame metadata."
+        },
+        {
+          "title": "sensor_msgs/JointState.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/JointState.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Check matching arrays without rejecting fields that are legitimately empty."
+        },
+        {
+          "title": "sensor_msgs/CameraInfo.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect calibration matrices, image dimensions and the uncalibrated-camera convention."
+        }
+      ],
+      "sources": [
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Image.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/JointState.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/CameraInfo.msg",
+        "https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Topics/Understanding-ROS2-Topics.html"
+      ]
+    },
+    {
+      "node_id": "p:rtk-stationary-receiver-and-correction-outage-logbook",
+      "type": "project",
+      "name": "RTK stationary receiver and correction-outage logbook",
+      "summary": "Keep a satellite-navigation antenna fixed outdoors and log receiver quality flags and position scatter before, during and after interrupting its correction-data feed.",
+      "lesson_md": "## In one sentence\n\nKeep a satellite-navigation antenna fixed outdoors and log receiver quality flags and position scatter before, during and after interrupting its correction-data feed.\n\n![u-blox ZED-F9P module top and bottom](/img/lessons/projects_sensing_2-rtk-outage.webp)\n*The u-blox ZED-F9P receiver module, not a complete antenna installation. Source: [u-blox.com](https://www.u-blox.com/en/product/zed-f9p-module), license unknown.*\n\n## What you will learn\n\n- **GNSS:** Satellite navigation provides position; RTK, real-time kinematic positioning, uses additional correction information.\n- **Float versus fixed:** These RTK states distinguish unresolved from resolved carrier-phase integer ambiguities; preserve receiver flags instead of guessing from plot smoothness.\n- **Software analogy:** Interrupt corrections like an upstream service dependency: log both transport availability and the receiver's resulting state.\n\n> **Key idea:** A tight cluster of repeated positions does not prove that the cluster is at the correct location.\n\n## What you need\n\n- **Receiver:** A compatible ZED-F9P board, antenna, stable mount, supported logging software and lawful access to a correction source.\n- **Log fields:** Preserve receiver time, position, solution flags and correction-feed events; retain raw receiver output alongside interpreted tables.\n- **Map connection:** Use GNSS & RTK receiver hardware to prepare GNSS receiver position-time metadata ingestion contract.\n- **Planning estimate:** One week and €500–5k hardware, excluding host compute, taxes and shipping; this is a student proposal, not an accuracy promise.\n\n## Steps\n\n1. **Document the installation:** Photograph the fixed antenna and note receiver firmware, correction source and logging configuration.\n2. **Record a baseline:** Leave the antenna untouched and save positions with the receiver's solution flags and correction-feed status.\n3. **Interrupt corrections only:** Mark the event in the log while leaving receiver power and satellite reception unchanged.\n4. **Restore the feed:** Continue recording through recovery; measure observed state transitions without promising a particular recovery time.\n5. **Plot separate evidence:** Show position scatter, flags and outage intervals together; distinguish relative repeatability from independently surveyed accuracy.\n6. **Test absent data:** Include an empty log and a stopped logger; identify missing records separately from continued degraded receiver solutions.\n7. **Film the logbook:** Pair an installation time-lapse with plots and a readable event timeline, including failure intervals.\n\n```mermaid\nflowchart LR\n  A[Fixed antenna] --> B[Baseline log]\n  B --> C[Pause corrections]\n  C --> D[Restore corrections]\n  D --> E[Compare flags and scatter]\n```\n\n## Common pitfalls\n\n- **Generic status fields:** Keep receiver-specific RTK flags; do not assume a generic position message preserves every quality distinction.\n- **Changed environment:** Moving the antenna during an outage confounds the comparison; document any accidental movement.\n- **Navigation hazard:** Use a standalone stationary bench, never a safety-critical navigation feed; this project does not implement sensor fusion.\n\n## When it's done\n\n- **Evidence package:** Deliver raw logs, event markers, solution-state plots and scatter grouped by observed state, including empty and failed acquisition.\n- **Honest conclusion:** State what changed after correction loss and which accuracy questions remain unanswered without surveyed ground truth.\n",
+      "resources": [
+        {
+          "title": "How RTK works | Real-Time Kinematic for Precise GNSS Positioning",
+          "url": "https://www.youtube.com/watch?v=ieearzWTCZw",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Understand why a stationary satellite receiver also needs correction data for RTK operation."
+        },
+        {
+          "title": "ZED-F9P module",
+          "url": "https://www.u-blox.com/en/product/zed-f9p-module",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the supported receiver family and its high-precision positioning role."
+        },
+        {
+          "title": "ZED-F9P Integration manual",
+          "url": "https://content.u-blox.com/sites/default/files/ZED-F9P_IntegrationManual_UBX-18010802.pdf",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Read RTK solution states and correction handling before interpreting an outage."
+        },
+        {
+          "title": "sensor_msgs/NavSatFix.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatFix.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish latitude and longitude from local position uncertainty and receiver-specific solution flags."
+        }
+      ],
+      "sources": [
+        "https://www.u-blox.com/en/product/zed-f9p-module",
+        "https://content.u-blox.com/sites/default/files/ZED-F9P_IntegrationManual_UBX-18010802.pdf",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/NavSatFix.msg"
+      ]
+    },
+    {
+      "node_id": "p:sampling-rate-aliasing-on-a-moving-distance-target",
+      "type": "project",
+      "name": "Sampling-rate aliasing on a moving distance target",
+      "summary": "Record a slowly oscillating distance target, then deliberately remove samples to show how sparse measurements can suggest the wrong motion.",
+      "lesson_md": "## In one sentence\n\nRecord a slowly oscillating distance target, then deliberately remove samples to show how sparse measurements can suggest the wrong motion.\n\n![Sine waves passing through the same sampled points](/img/lessons/projects_sensing_2-aliasing.webp)\n*Different sine waves agree at the sample locations, illustrating aliasing. Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:AliasingSines.svg), CC BY-SA 3.0.*\n\n## What you will learn\n\n- **Aliasing:** Different changing signals can produce the same sparse samples; apparent motion is not necessarily the original motion.\n- **Acquisition versus polling:** Separate the sensor's measurement configuration from how often your computer requests or receives values.\n- **Software analogy:** Reading a changing counter occasionally cannot recover every intermediate update; extra plotting cannot recreate observations you never stored.\n\n> **Key idea:** Downsampling a recording tests information loss in your processing, not the sensor's maximum physical sampling rate.\n\n## What you need\n\n- **Bench:** A fixed distance sensor, guarded slow-moving target, ruler and video reference showing the actual motion.\n- **Recording:** Timestamp each reading and preserve validity flags; use Python plots to compare the original and reduced recordings.\n- **Preparation:** Start with Measurement truth versus resolution: a sensor-error notebook and Sensor characteristics, uncertainty & noise.\n- **Planning estimate:** Allow 2–4 weeks and under €500 hardware, excluding host compute, taxes and shipping; this is a student proposal.\n\n## Steps\n\n1. **Measure the target path:** Mark ruler positions and record a stationary reference before introducing slow repetitive motion.\n2. **Capture the original:** Save timestamps, distances, status and configuration; inspect actual intervals rather than assuming a perfectly regular sample clock.\n3. **Choose reductions:** As an illustrative experiment, keep every second sample, then every fourth; preserve the original timestamps.\n4. **Overlay the traces:** Compare turning points and apparent oscillations with the video; label which curves discard measurements.\n5. **Compare filtered reduction:** On suitable regularly sampled data, use an anti-aliasing filter before downsampling; explain that filtering changes the signal being retained.\n6. **Exercise failures:** Remove the target, then introduce a missing-record interval; leave gaps visible instead of inventing continuous motion.\n7. **Film the demonstration:** Show the guarded motion, ruler and live original-versus-reduced plots with retained-sample markers.\n\n```mermaid\nflowchart LR\n  A[Slow target] --> B[Timestamped readings]\n  B --> C[Keep original]\n  C --> D[Remove samples]\n  C --> E[Filter then reduce]\n  D --> F[Compare with video]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Connected dots:** Plot markers as well as lines; interpolation can conceal how little evidence remains.\n- **Rate claims:** Report observed valid-reading intervals, not an achieved vendor maximum or an assumed host polling frequency.\n- **Moving fixture:** Keep travel slow and guarded; do not increase speed just to obtain a more dramatic plot.\n\n## When it's done\n\n- **Comparison package:** Deliver original recordings, reduction code, timestamps, target video and empty-target and missing-record outcomes.\n- **Explanation:** Identify one misleading reduced trace and explain exactly which original observations were lost.\n",
+      "resources": [
+        {
+          "title": "The intuition behind the Nyquist-Shannon Sampling Theorem",
+          "url": "https://www.youtube.com/watch?v=Jv5FU8oUWEY",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See why sparse samples can suggest a different motion from the one that occurred."
+        },
+        {
+          "title": "Pololu - VL53L1X Time-of-Flight Distance Sensor Carrier with Voltage Regulator, 50cm Max",
+          "url": "https://www.pololu.com/product/3415",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check the chosen carrier's ranging modes and timing limits instead of assuming host polling equals acquisition rate."
+        },
+        {
+          "title": "pololu/vl53l1x-arduino",
+          "url": "https://github.com/pololu/vl53l1x-arduino",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Capture range and validity information using the actual sensor library."
+        },
+        {
+          "title": "decimate",
+          "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Compare naive sample removal with downsampling that first applies an anti-aliasing filter."
+        }
+      ],
+      "sources": [
+        "https://www.pololu.com/product/3415",
+        "https://github.com/pololu/vl53l1x-arduino",
+        "https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html",
+        "https://www.youtube.com/watch?v=Jv5FU8oUWEY",
+        "https://commons.wikimedia.org/wiki/File:AliasingSines.svg"
+      ]
+    },
+    {
+      "node_id": "p:sensor-qos-loss-versus-latency-capture-experiment",
+      "type": "project",
+      "name": "Sensor QoS loss-versus-latency capture experiment",
+      "summary": "Send numbered synthetic sensor messages through a controlled impaired network and compare delivery, delay and recording under compatible ROS 2 quality-of-service profiles.",
+      "lesson_md": "## In one sentence\n\nSend numbered synthetic sensor messages through a controlled impaired network and compare delivery, delay and recording under compatible ROS 2 quality-of-service profiles.\n\n![ROS 2 best-effort image transfer demonstration](/img/lessons/projects_sensing_2-sensor-qos.webp)\n*The ROS 2 QoS tutorial's best-effort image-transfer demonstration. Source: [docs.ros.org](https://docs.ros.org/en/jazzy/Tutorials/Demos/Quality-of-Service.html), license unknown.*\n\n## What you will learn\n\n- **QoS:** Quality of service is the delivery agreement between publishers and subscribers, including reliability and queued-message history.\n- **Reliable delivery:** ROS 2 can retry delivery; best effort may lose messages, so compare freshness as well as missing sequence numbers.\n- **Software analogy:** Treat this like load-testing a message broker, with the producer's ledger as the independent record of attempted messages.\n\n> **Key idea:** A successfully created recording file proves neither complete delivery nor timely delivery.\n\n## What you need\n\n- **Test environment:** ROS 2, rosbag2 and an isolated Linux network path where netem can introduce repeatable delay or packet loss.\n- **Ground truth:** A synthetic publisher writing sequence counters and send timestamps to a separate local ledger before transmission.\n- **Preparation:** Complete ROS sensor-message units and covariance contract linter; keep payload validation separate from network behavior.\n- **Planning estimate:** This software-only student proposal allows 2–4 weeks and €0 additional hardware, excluding host compute.\n\n## Steps\n\n1. **Verify the network path:** Confirm test messages traverse the impaired interface; same-process or shared-memory delivery would bypass your experiment.\n2. **Establish a baseline:** Record publisher, subscriber and recorder configurations, counters and timestamps without impairment.\n3. **Compare compatible profiles:** Run reliable and best-effort trials separately, holding payload, send schedule and queue settings constant where possible.\n4. **Introduce impairment:** Apply a documented netem delay or loss setting only to the isolated path; save the exact configuration and cleanup command.\n5. **Reconcile recordings:** Compare received and recorded counters with the producer ledger; plot gaps and delays using timestamps from a common clock.\n6. **Exercise missing delivery:** Include a silent publisher and an incompatible-profile trial; distinguish silence, refusal to match and actual missing packets.\n7. **Film the experiment:** Show impairment settings, live delivery plots and replay counts; remove the test impairment afterward.\n\n```mermaid\nflowchart LR\n  A[Producer ledger] --> B[QoS publisher]\n  B --> C[Impaired network]\n  C --> D[Subscriber]\n  C --> E[Recorder]\n  D --> F[Compare counters]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Clock mismatch:** Arrival minus send time is meaningful only with a shared clock or documented synchronization; otherwise report arrival intervals separately.\n- **Profile mismatch:** A best-effort publisher cannot satisfy a reliable subscriber; no connection is not evidence of network loss.\n- **Scope creep:** Do not claim losslessness or deploy impairment on a shared robot network; this is a controlled capture experiment.\n\n## When it's done\n\n- **Trial report:** Deliver profile settings, network conditions, producer ledger, received counters, bag counts and delay plots.\n- **Failure evidence:** Clearly label baseline, empty-stream, incompatible-profile and impaired-delivery outcomes, including unsuccessful trials.\n",
+      "resources": [
+        {
+          "title": "Quality Of Service | ROS 6 - 1 | Software Training Fall 2021",
+          "url": "https://www.youtube.com/watch?v=cyNNzEGKOZc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Introduce ROS 2 delivery policies before comparing reliable and best-effort streams."
+        },
+        {
+          "title": "Quality of Service settings",
+          "url": "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Check reliability, queue history and publisher/subscriber compatibility rules."
+        },
+        {
+          "title": "tc-netem(8) - Linux manual page",
+          "url": "https://man7.org/linux/man-pages/man8/tc-netem.8.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Apply documented delay and packet-loss conditions to an isolated test network."
+        },
+        {
+          "title": "ros2/rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect recording options and QoS overrides, then verify captured messages rather than file existence."
+        }
+      ],
+      "sources": [
+        "https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html",
+        "https://man7.org/linux/man-pages/man8/tc-netem.8.html",
+        "https://github.com/ros2/rosbag2",
+        "https://docs.ros.org/en/jazzy/Tutorials/Demos/Quality-of-Service.html"
+      ]
+    },
+    {
+      "node_id": "p:six-axis-wrench-units-and-lever-arm-replay",
+      "type": "project",
+      "name": "Six-axis wrench units and lever-arm replay",
+      "summary": "Replay synthetic forces at measured lever arms and animate how torque changes when the force location or reporting frame changes.",
+      "lesson_md": "## In one sentence\n\nReplay synthetic forces at measured lever arms and animate how torque changes when the force location or reporting frame changes.\n\n![ATI Mini45 force torque transducer](/img/lessons/projects_sensing_2-wrench-lever-arm.webp)\n*An ATI Mini45 transducer illustrates real hardware; this lesson uses synthetic data only. Source: [ati-ia.com](https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45), All rights reserved.*\n\n## What you will learn\n\n- **Wrench:** Three force components and three moment components describe a load; moment, or torque, describes its turning effect about an origin.\n- **Lever arm:** The vector from that origin to the force application point; torque is its cross product with force.\n- **Software analogy:** A wrench needs a coordinate frame like a vector needs its schema; the same physical load has different coordinates in different frames.\n\n> **Key idea:** Moving the reporting origin can change torque even when the applied force stays unchanged.\n\n## What you need\n\n- **Software:** Python, vector arithmetic and a plotting tool that displays axes, an application point and force arrows.\n- **Synthetic fixtures:** Store force, application point, frame and expected torque explicitly; label every plot as simulated, not an ATI measurement.\n- **Map connection:** This introduces Force/torque sensing & current-based torque estimation and prepares Wrist transducer zeroing and load-fixture calibration.\n- **Planning estimate:** One week and €0 hardware for this software-only student proposal; host compute is excluded.\n\n## Steps\n\n1. **Define coordinates:** Choose right-handed axes and state component ordering; use metres, newtons for force and newton-metres for torque.\n2. **Create a worked fixture:** Set r=(0.1,0,0) m and F=(0,0,-10) N; r cross F gives torque (0,1,0) N·m.\n3. **Change the arm:** Double that synthetic x-offset while keeping force unchanged; verify that the y-torque doubles.\n4. **Change the frame:** Rotate axes, then translate the origin in separate tests; compare transformed results with recomputation from the transformed geometry.\n5. **Add boundary cases:** Replay zero load, force through the origin and an empty input sequence; keep each meaning distinct.\n6. **Reject bad input:** Fail a fixture missing its frame or mixing incompatible declared units; retain a readable explanation.\n7. **Record the animation:** Display axes, force location, arrows, expected torque and residuals while stepping through all fixtures.\n\n```mermaid\nflowchart LR\n  A[Synthetic force and point] --> B[Declare frame]\n  B --> C[Cross product]\n  C --> D[Change frame]\n  D --> E[Compare and animate]\n```\n\n## Common pitfalls\n\n- **Hidden conventions:** Modern Robotics and an application may pack vectors differently; ROS Wrench instead names separate force and torque fields.\n- **Wrong units:** Centimetres entered as metres produce a different lever arm; convert once at the input boundary.\n- **Hardware claims:** A synthetic replay verifies your geometry code, not a transducer's accuracy or calibration.\n\n## When it's done\n\n- **Verified fixtures:** Deliver expected and computed six-component results for normal, zero, empty and deliberately invalid input cases.\n- **Explainable animation:** Another student can predict the torque sign before pressing play and identify which origin each readout uses.\n",
+      "resources": [
+        {
+          "title": "3.4. Wrenches",
+          "url": "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-4-wrenches/",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "Work through forces, moments and changing the frame used to express a wrench."
+        },
+        {
+          "title": "Why ATI Force/Torque Sensors?",
+          "url": "https://www.youtube.com/watch?v=BMhbFkqrQ-s",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See the hardware counterpart of the synthetic force and torque channels."
+        },
+        {
+          "title": "geometry_msgs/Wrench.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/geometry_msgs/msg/Wrench.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Inspect the separate force and torque vectors without assuming a six-number ordering."
+        },
+        {
+          "title": "REP 103 -- Standard Units of Measure and Coordinate Conventions",
+          "url": "https://www.ros.org/reps/rep-0103.html",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Use consistent metric units and coordinate conventions in the replay."
+        }
+      ],
+      "sources": [
+        "https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-4-wrenches/",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/geometry_msgs/msg/Wrench.msg",
+        "https://www.ros.org/reps/rep-0103.html",
+        "https://www.ati-ia.com/products/ft/ft_models.aspx?id=Mini45"
+      ]
+    },
+    {
+      "node_id": "p:stationary-imu-warm-up-and-temperature-drift-dossier",
+      "type": "project",
+      "name": "Stationary IMU warm-up and temperature-drift dossier",
+      "summary": "Keep an inertial sensor still after power-up and record how its readings change over time, alongside temperature only when the driver exposes it.",
+      "lesson_md": "## In one sentence\n\nKeep an inertial sensor still after power-up and record how its readings change over time, alongside temperature only when the driver exposes it.\n\n![TDK ICM-42688-P inertial sensor package](/img/lessons/projects_sensing_2-imu-drift.webp)\n*The ICM-42688-P six-axis inertial sensor package, not a complete logging board. Source: [invensense.tdk.com](https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/), All rights reserved.*\n\n## What you will learn\n\n- **IMU:** An inertial measurement unit combines motion sensors; a gyroscope measures angular velocity and an accelerometer measures acceleration-related specific force.\n- **Bias:** A slowly varying offset differs from fast noise; Kalibr's basic noise model assumes a stationary sensor at constant temperature.\n- **Software analogy:** Treat warm-up like observing a service after startup: plot the transient instead of assuming the first response represents steady behavior.\n\n> **Key idea:** A trend that follows temperature is a correlation, not a calibrated temperature-compensation model.\n\n## What you need\n\n- **Hardware:** A supported IMU board, rigid mount and logger saving timestamps, axis readings, configuration and restart events.\n- **Temperature evidence:** Use timestamped device telemetry only if available; mark it unavailable rather than substituting room temperature for sensor temperature.\n- **Background:** Read IMUs: accelerometers, gyroscopes & magnetometers and Sensor characteristics, uncertainty & noise before interpreting offsets.\n- **Planning estimate:** Allow 2–4 weeks and under €500 hardware, excluding host compute, taxes and shipping; this is a student proposal.\n\n## Steps\n\n1. **Fix the board:** Mark its orientation and record mounting, driver settings and the exact power-up event.\n2. **Log without movement:** Capture each axis and actual timestamps from startup; include device temperature only when the driver reports it.\n3. **Plot raw evidence:** Show gyroscope readings, acceleration and optional temperature against elapsed time, leaving missing intervals visible.\n4. **Compare equal windows:** Calculate per-axis means and spread over repeated windows; retain units and sample counts beside each result.\n5. **Repeat the startup:** Keep mounting and settings unchanged; compare whether the observed trend repeats instead of fitting a universal correction.\n6. **Test absent data:** Include an empty recording and an unplugged logger; distinguish interrupted acquisition from genuinely constant measurements.\n7. **Film the dossier:** Pair a stationary-board time-lapse with plots and annotations for restarts, missing samples and unavailable temperature.\n\n```mermaid\nflowchart LR\n  A[Fix orientation] --> B[Power up]\n  B --> C[Log axes and time]\n  C --> D[Compare windows]\n  D --> E[Repeat startup]\n```\n\n## Common pitfalls\n\n- **Gravity confusion:** Do not label every stationary accelerometer value as bias; retain orientation and explain the gravity contribution.\n- **Unavailable telemetry:** A chip's capabilities do not prove that your chosen board and driver export temperature.\n- **Heating hazard:** Use ordinary room conditions; do not heat batteries or components to force a visible trend.\n\n## When it's done\n\n- **Repeatable dossier:** Deliver raw captures, startup markers, configuration, per-axis window statistics and temperature availability explicitly recorded.\n- **Limited conclusion:** Report observed warm-up behavior and failed captures without claiming calibrated thermal compensation or navigation performance.\n",
+      "resources": [
+        {
+          "title": "Gyro Noise Analysis Using Allan Deviation Plots",
+          "url": "https://www.youtube.com/watch?v=6Bsd5kLgHtM",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See how stationary gyroscope recordings expose noise over different averaging times."
+        },
+        {
+          "title": "ICM-42688-P",
+          "url": "https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Identify the six-axis inertial sensor used as the hardware example."
+        },
+        {
+          "title": "IMU Noise Model",
+          "url": "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Distinguish fast noise from slowly varying bias and read the constant-temperature limitation."
+        },
+        {
+          "title": "sensor_msgs/Temperature.msg",
+          "url": "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Temperature.msg",
+          "format": "Docs",
+          "level": "Intermediate",
+          "why": "Interpret a temperature reading and its measurement timestamp when the driver supplies one."
+        }
+      ],
+      "sources": [
+        "https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42688-p/",
+        "https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Temperature.msg",
+        "https://raw.githubusercontent.com/ros2/common_interfaces/rolling/sensor_msgs/msg/Imu.msg"
+      ]
+    },
+    {
+      "node_id": "p:synthetic-sensor-outage-and-saturation-playback-harness",
+      "type": "project",
+      "name": "Synthetic sensor outage and saturation playback harness",
+      "summary": "Insert a controllable fault layer into a simulated sensor pipeline and replay dropouts, clipped values and stale timestamps with visible diagnostic explanations.",
+      "lesson_md": "## In one sentence\n\nInsert a controllable fault layer into a simulated sensor pipeline and replay dropouts, clipped values and stale timestamps with visible diagnostic explanations.\n\n![Gazebo simulation showing a robot and wall](/img/lessons/projects_sensing_2-sensor-outage-harness.webp)\n*A Gazebo sensors-tutorial scene supplies a simulated source; the fault layer is the student project. Source: [gazebosim.org](https://gazebosim.org/docs/harmonic/sensors/), Creative Commons Attribution 4.0.*\n\n## What you will learn\n\n- **Dropout:** An expected measurement is absent; it is different from a received measurement whose numeric value happens to be zero.\n- **Saturation:** A value is limited to a configured bound, hiding any larger underlying value.\n- **Software analogy:** This is fault injection for a sensor API: preserve a clean upstream record, then test how downstream diagnostics describe corrupted inputs.\n\n> **Key idea:** The injector's event ledger must remain independent of the diagnostics being tested.\n\n## What you need\n\n- **Simulation:** Gazebo sensor output or a saved baseline, a small relay program and plots showing source and modified streams separately.\n- **Fault configuration:** Declare timing intervals, numeric limits and timestamp-age rules as test parameters, not as manufacturer specifications.\n- **Preparation:** Build on Gazebo noise-model fingerprint with known ground truth and Sensor simulation & noise models.\n- **Planning estimate:** This software-only student proposal allows 2–4 weeks and €0 additional hardware, excluding host compute.\n\n## Steps\n\n1. **Save a clean baseline:** Inspect the chosen stream's units, timestamps and ordinary values before adding any mutation.\n2. **Add an explicit relay:** Keep the original stream immutable; write every deliberate mutation to a separate event ledger.\n3. **Inject one fault:** Start with a scheduled dropout, then test numeric clipping and stale timestamps in separate runs.\n4. **Define diagnostic rules:** Report missing expected messages, injected bounds and timestamp age independently; state each rule's assumptions.\n5. **Compare against the ledger:** Measure which scheduled faults were reported and which clean intervals were incorrectly flagged.\n6. **Exercise boundary cases:** Replay an empty source, a healthy stream and an invalid fault configuration; report setup errors without silently enabling faults.\n7. **Record the demonstration:** Show the relay setting, clean and modified plots, diagnostic reasons and replayed event timeline together.\n\n```mermaid\nflowchart LR\n  A[Clean sensor stream] --> B[Fault relay]\n  B --> C[Modified stream]\n  B --> D[Injection ledger]\n  C --> E[Diagnostics]\n  D --> F[Compare reports]\n  E --> F\n```\n\n## Common pitfalls\n\n- **Held values:** Repeating an old value is not the same as dropping a message; record the timestamp behavior you actually inject.\n- **Ambiguous bounds:** A real sensor may legitimately reach a limit; your test knows clipping because the independent injector recorded it.\n- **Scope creep:** Do not add navigation, a robot policy or safety guarantees; this harness evaluates diagnostic behavior only.\n\n## When it's done\n\n- **Replay package:** Deliver baseline data, fault schedules, modified output and expected versus observed diagnostic events.\n- **Failure coverage:** Include healthy, empty-source, dropout, saturation, stale-time and invalid-configuration results, with missed detections reported rather than hidden.\n",
+      "resources": [
+        {
+          "title": "Gazebo tutorials: Sensors",
+          "url": "https://www.youtube.com/watch?v=WcFyGPEfhHc",
+          "format": "Video",
+          "level": "Beginner",
+          "why": "See simulated sensors and their output before inserting an explicit fault layer."
+        },
+        {
+          "title": "Sensors",
+          "url": "https://gazebosim.org/docs/harmonic/sensors/",
+          "format": "Docs",
+          "level": "Beginner",
+          "why": "Follow the Gazebo IMU, contact and LiDAR examples to obtain a baseline simulated measurement stream."
+        },
+        {
+          "title": "ros/diagnostics",
+          "url": "https://github.com/ros/diagnostics/tree/ros2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Inspect ROS 2 diagnostic tools for reporting stream health rather than changing a controller."
+        },
+        {
+          "title": "ros2/rosbag2",
+          "url": "https://github.com/ros2/rosbag2",
+          "format": "Repo",
+          "level": "Intermediate",
+          "why": "Record and replay evidence before and after fault injection."
+        }
+      ],
+      "sources": [
+        "https://gazebosim.org/docs/harmonic/sensors/",
+        "https://github.com/ros/diagnostics/tree/ros2",
+        "https://github.com/ros2/rosbag2"
+      ]
     }
   ]
 }
